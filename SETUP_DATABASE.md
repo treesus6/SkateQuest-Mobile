@@ -156,6 +156,131 @@ CREATE POLICY "Authenticated users can add shops"
   WITH CHECK (auth.uid() IS NOT NULL);
 ```
 
+### Create Crews Table
+```sql
+CREATE TABLE crews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_by UUID REFERENCES users(id) ON DELETE CASCADE,
+  member_count INTEGER DEFAULT 1,
+  total_xp INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE crews ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view crews
+CREATE POLICY "Anyone can view crews"
+  ON crews FOR SELECT
+  USING (true);
+
+-- Authenticated users can create crews
+CREATE POLICY "Authenticated users can create crews"
+  ON crews FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Only creator can update crew
+CREATE POLICY "Creator can update crew"
+  ON crews FOR UPDATE
+  USING (auth.uid() = created_by);
+```
+
+### Create Crew Members Table
+```sql
+CREATE TABLE crew_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  crew_id UUID REFERENCES crews(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(crew_id, user_id)
+);
+
+-- Enable Row Level Security
+ALTER TABLE crew_members ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view crew members
+CREATE POLICY "Anyone can view crew members"
+  ON crew_members FOR SELECT
+  USING (true);
+
+-- Authenticated users can join crews
+CREATE POLICY "Authenticated users can join crews"
+  ON crew_members FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Users can leave crews
+CREATE POLICY "Users can leave crews"
+  ON crew_members FOR DELETE
+  USING (auth.uid() = user_id);
+```
+
+### Create Events Table
+```sql
+CREATE TABLE events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title TEXT NOT NULL,
+  description TEXT,
+  location TEXT NOT NULL,
+  date DATE NOT NULL,
+  time TEXT NOT NULL,
+  created_by UUID REFERENCES users(id) ON DELETE CASCADE,
+  attendee_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index for date queries
+CREATE INDEX idx_events_date ON events(date);
+
+-- Enable Row Level Security
+ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view events
+CREATE POLICY "Anyone can view events"
+  ON events FOR SELECT
+  USING (true);
+
+-- Authenticated users can create events
+CREATE POLICY "Authenticated users can create events"
+  ON events FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Only creator can update/delete events
+CREATE POLICY "Creator can update events"
+  ON events FOR UPDATE
+  USING (auth.uid() = created_by);
+```
+
+### Create Event RSVPs Table
+```sql
+CREATE TABLE event_rsvps (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(event_id, user_id)
+);
+
+-- Enable Row Level Security
+ALTER TABLE event_rsvps ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view RSVPs
+CREATE POLICY "Anyone can view RSVPs"
+  ON event_rsvps FOR SELECT
+  USING (true);
+
+-- Authenticated users can RSVP
+CREATE POLICY "Authenticated users can RSVP"
+  ON event_rsvps FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Users can cancel their RSVP
+CREATE POLICY "Users can cancel RSVP"
+  ON event_rsvps FOR DELETE
+  USING (auth.uid() = user_id);
+```
+
 ## Step 2: Create Storage Bucket (Optional)
 
 For image and video uploads:

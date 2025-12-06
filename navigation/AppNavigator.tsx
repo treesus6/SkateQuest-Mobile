@@ -9,6 +9,10 @@ import MapScreen from '../screens/MapScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChallengesScreen from '../screens/ChallengesScreen';
 import AddSpotScreen from '../screens/AddSpotScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import ShopsScreen from '../screens/ShopsScreen';
+import CrewsScreen from '../screens/CrewsScreen';
+import EventsScreen from '../screens/EventsScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -16,6 +20,10 @@ export type RootStackParamList = {
   Profile: undefined;
   Challenges: undefined;
   AddSpot: { latitude?: number; longitude?: number };
+  Leaderboard: undefined;
+  Shops: undefined;
+  Crews: undefined;
+  Events: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -67,6 +75,26 @@ export default function AppNavigator() {
               name="AddSpot"
               component={AddSpotScreen}
               options={{ title: 'Add Spot' }}
+            />
+            <Stack.Screen
+              name="Leaderboard"
+              component={LeaderboardScreen}
+              options={{ title: 'Leaderboard' }}
+            />
+            <Stack.Screen
+              name="Shops"
+              component={ShopsScreen}
+              options={{ title: 'Skate Shops' }}
+            />
+            <Stack.Screen
+              name="Crews"
+              component={CrewsScreen}
+              options={{ title: 'Crews' }}
+            />
+            <Stack.Screen
+              name="Events"
+              component={EventsScreen}
+              options={{ title: 'Events' }}
             />
           </>
         )}
