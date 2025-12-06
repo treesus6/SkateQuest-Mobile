@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "SkateQuest",
+    "slug": "skatequest",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android", "web"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skatequest.app"
+    },
+    "android": {
+      "package": "com.skatequest.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
