@@ -59,6 +59,14 @@ export default function MapScreen() {
       <View style={styles.featuresGrid}>
         <TouchableOpacity
           style={styles.featureCard}
+          onPress={() => navigation.navigate('Feed')}
+        >
+          <Text style={styles.featureIcon}>🌟</Text>
+          <Text style={styles.featureText}>Feed</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
           onPress={() => navigation.navigate('Challenges')}
         >
           <Text style={styles.featureIcon}>🏆</Text>
@@ -67,10 +75,34 @@ export default function MapScreen() {
 
         <TouchableOpacity
           style={styles.featureCard}
+          onPress={() => navigation.navigate('TrickTracker')}
+        >
+          <Text style={styles.featureIcon}>🛹</Text>
+          <Text style={styles.featureText}>Tricks</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => navigation.navigate('SkateGame')}
+        >
+          <Text style={styles.featureIcon}>🎮</Text>
+          <Text style={styles.featureText}>SKATE</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
           onPress={() => navigation.navigate('Leaderboard')}
         >
           <Text style={styles.featureIcon}>📊</Text>
           <Text style={styles.featureText}>Leaderboard</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.featureCard}
+          onPress={() => navigation.navigate('Playlists')}
+        >
+          <Text style={styles.featureIcon}>🎧</Text>
+          <Text style={styles.featureText}>Playlists</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

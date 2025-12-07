@@ -13,6 +13,11 @@ import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ShopsScreen from '../screens/ShopsScreen';
 import CrewsScreen from '../screens/CrewsScreen';
 import EventsScreen from '../screens/EventsScreen';
+import FeedScreen from '../screens/FeedScreen';
+import UploadMediaScreen from '../screens/UploadMediaScreen';
+import TrickTrackerScreen from '../screens/TrickTrackerScreen';
+import SkateGameScreen from '../screens/SkateGameScreen';
+import PlaylistsScreen from '../screens/PlaylistsScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -24,6 +29,12 @@ export type RootStackParamList = {
   Shops: undefined;
   Crews: undefined;
   Events: undefined;
+  Feed: undefined;
+  UploadMedia: undefined;
+  TrickTracker: undefined;
+  SkateGame: undefined;
+  Playlists: undefined;
+  GameDetail: { gameId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -95,6 +106,31 @@ export default function AppNavigator() {
               name="Events"
               component={EventsScreen}
               options={{ title: 'Events' }}
+            />
+            <Stack.Screen
+              name="Feed"
+              component={FeedScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="UploadMedia"
+              component={UploadMediaScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="TrickTracker"
+              component={TrickTrackerScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SkateGame"
+              component={SkateGameScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Playlists"
+              component={PlaylistsScreen}
+              options={{ headerShown: false }}
             />
           </>
         )}
