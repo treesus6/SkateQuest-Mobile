@@ -20,6 +20,7 @@ import {
   uploadVideo,
   saveMediaToDatabase,
 } from '../lib/mediaUpload';
+import { analyzeTrickVideo, saveAnalysisResult, TrickAnalysisResult } from '../lib/trickAnalyzer';
 
 export default function UploadMediaScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -28,6 +29,8 @@ export default function UploadMediaScreen({ navigation }: any) {
   const [caption, setCaption] = useState('');
   const [trickName, setTrickName] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<TrickAnalysisResult | null>(null);
 
   const handlePickImage = async (useCamera: boolean = false) => {
     try {
@@ -53,6 +56,28 @@ export default function UploadMediaScreen({ navigation }: any) {
     }
   };
 
+  const handleAnalyzeTrick = async () => {
+    if (!mediaUri || mediaType !== 'video') return;
+
+    setAnalyzing(true);
+
+    try {
+      const result = await analyzeTrickVideo(mediaUri);
+      setAnalysis(result);
+      setTrickName(result.trickName);
+
+      Alert.alert(
+        '🎯 Analysis Complete!',
+        `Detected: ${result.trickName}\nScore: ${result.score}/100\n\n${result.feedback}`,
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to analyze trick');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!mediaUri || !user) return;
 
@@ -70,18 +95,23 @@ export default function UploadMediaScreen({ navigation }: any) {
       // Save to database
       const media = await saveMediaToDatabase(user.id, mediaResult, {
         caption: caption || undefined,
-        trickName: trickName || undefined,
+        trickName: trickName || analysis?.trickName || undefined,
       });
+
+      // Save analysis if available
+      if (analysis) {
+        await saveAnalysisResult(media.id, analysis);
+      }
 
       // Create activity
       await supabase.from('activities').insert([
         {
           user_id: user.id,
           activity_type: 'media_uploaded',
-          title: trickName
-            ? `Landed a ${trickName}!`
+          title: trickName || analysis?.trickName
+            ? `Landed a ${trickName || analysis?.trickName}!`
             : `Posted a new ${mediaType}`,
-          description: caption || undefined,
+          description: caption || analysis?.feedback || undefined,
           media_id: media.id,
         },
       ]);
@@ -169,13 +199,59 @@ export default function UploadMediaScreen({ navigation }: any) {
             onPress={() => {
               setMediaUri(null);
               setMediaType(null);
+              setAnalysis(null);
             }}
           >
             <Text style={styles.changeButtonText}>Change Media</Text>
           </TouchableOpacity>
 
+          {mediaType === 'video' && !analysis && (
+            <TouchableOpacity
+              style={[styles.analyzeButton, analyzing && styles.analyzeButtonDisabled]}
+              onPress={handleAnalyzeTrick}
+              disabled={analyzing}
+            >
+              {analyzing ? (
+                <>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.analyzeButtonText}>  Analyzing...</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.analyzeButtonIcon}>🤖</Text>
+                  <Text style={styles.analyzeButtonText}>Analyze Trick with AI</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {analysis && (
+            <View style={styles.analysisCard}>
+              <Text style={styles.analysisTitle}>🎯 AI Analysis</Text>
+              <Text style={styles.analysisDetected}>
+                Detected: <Text style={styles.analysisTrick}>{analysis.trickName}</Text>
+              </Text>
+              <Text style={styles.analysisScore}>
+                Score: {analysis.score}/100
+              </Text>
+              <Text style={styles.analysisFeedback}>{analysis.feedback}</Text>
+              {analysis.detectedElements.length > 0 && (
+                <View style={styles.elementsContainer}>
+                  <Text style={styles.elementsTitle}>Detected:</Text>
+                  {analysis.detectedElements.map((element, index) => (
+                    <Text key={index} style={styles.elementText}>
+                      ✓ {element}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Trick Name (optional)</Text>
+            <Text style={styles.inputLabel}>
+              Trick Name {analysis ? '(AI detected)' : '(optional)'}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="e.g., Kickflip, Heelflip"
@@ -290,6 +366,77 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  analyzeButton: {
+    flexDirection: 'row',
+    backgroundColor: '#9C27B0',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  analyzeButtonDisabled: {
+    opacity: 0.6,
+  },
+  analyzeButtonIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  analyzeButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  analysisCard: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#9C27B0',
+  },
+  analysisTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  analysisDetected: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  analysisTrick: {
+    fontWeight: 'bold',
+    color: '#9C27B0',
+    fontSize: 16,
+  },
+  analysisScore: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  analysisFeedback: {
+    fontSize: 13,
+    color: '#333',
+    fontStyle: 'italic',
+    marginBottom: 10,
+  },
+  elementsContainer: {
+    marginTop: 8,
+  },
+  elementsTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 5,
+  },
+  elementText: {
+    fontSize: 12,
+    color: '#444',
+    marginLeft: 5,
+    marginBottom: 2,
   },
   inputContainer: {
     marginBottom: 20,
