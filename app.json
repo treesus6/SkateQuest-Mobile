@@ -15,6 +15,17 @@
     },
     "web": {
       "bundler": "metro"
+    },
+    "hooks": {
+      "postPublish": [
+        {
+          "file": "sentry-expo/upload-sourcemaps",
+          "config": {
+            "organization": "YOUR_SENTRY_ORG",
+            "project": "YOUR_SENTRY_PROJECT"
+          }
+        }
+      ]
     }
   }
 }

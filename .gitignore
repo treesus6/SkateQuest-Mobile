@@ -13,6 +13,10 @@ out/
 build/
 dist/
 
+# Expo
+.expo/
+.expo-shared/
+
 # Production
 *.log
 npm-debug.log*

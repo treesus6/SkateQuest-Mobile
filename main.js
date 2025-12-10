@@ -590,7 +590,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                             const modalTitle = document.getElementById('modalTitle');
                             if (modal && modalText && modalTitle) {
                                 modalTitle.textContent = 'Complete Challenge?';
-                                modalText.innerHTML = `<strong>${data.title || 'Challenge'}</strong><br/>${(data.description || '')}<br/><small>XP: ${data.xp || 0} • Spot: ${data.spotId || ''}</small>`;
+                                // Fix XSS vulnerability by using textContent
+                                modalText.textContent = '';
+                                const strong = document.createElement('strong');
+                                strong.textContent = data.title || 'Challenge';
+                                modalText.appendChild(strong);
+                                modalText.appendChild(document.createElement('br'));
+                                const desc = document.createTextNode(data.description || '');
+                                modalText.appendChild(desc);
+                                modalText.appendChild(document.createElement('br'));
+                                const small = document.createElement('small');
+                                small.textContent = `XP: ${data.xp || 0} • Spot: ${data.spotId || ''}`;
+                                modalText.appendChild(small);
                                 modal.hidden = false; modal.style.display = 'block';
                                 // store action to run on confirm
                                 window.__pendingConfirmAction = async () => {
@@ -739,8 +750,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showToast("Location captured successfully!", "success");
             } catch (geoError) {
                 console.warn("Geolocation failed:", geoError);
-                showToast("Unable to get location. Using default location.", "warning");
-                position = { coords: { latitude: 0, longitude: 0 } };
+                showToast("Location is required for proof upload. Please enable location permissions.", "error");
+                return; // Exit early instead of using invalid 0,0 coordinates
             }
 
             const storageRef = ref(storage, `proofs/${userId}/${challengeId}`);
@@ -793,40 +804,90 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Calculate time ago
                 const timeAgo = getTimeAgo(data.timestamp);
-                
-                // Add card content
-                card.innerHTML = `
-                    <div class="challenge-header">
-                        <strong>${data.userName}</strong> at <strong>${data.spotName}</strong>
-                    </div>
-                    <img src="${data.mediaUrl}" alt="Challenge proof" style="max-width:100%; border-radius:4px;">
-                    <div class="challenge-info">
-                        <p class="trick-name">🛹 ${data.trickName}</p>
-                        <p>✨ Verified by: ${data.verifiedBy.length} skaters</p>
-                        <p>🕒 ${timeAgo}</p>
-                        <button onclick="showOnMap(${data.location?.lat}, ${data.location?.lng})" class="location-btn">
-                            📍 Show on map
-                        </button>
-                    </div>
-                `;
+
+                // Fix XSS vulnerability by creating elements programmatically
+                const header = document.createElement('div');
+                header.className = 'challenge-header';
+                const strong1 = document.createElement('strong');
+                strong1.textContent = data.userName || 'Unknown';
+                header.appendChild(strong1);
+                header.appendChild(document.createTextNode(' at '));
+                const strong2 = document.createElement('strong');
+                strong2.textContent = data.spotName || 'Unknown Spot';
+                header.appendChild(strong2);
+                card.appendChild(header);
+
+                const img = document.createElement('img');
+                img.src = data.mediaUrl || '';
+                img.alt = 'Challenge proof';
+                img.style.maxWidth = '100%';
+                img.style.borderRadius = '4px';
+                card.appendChild(img);
+
+                const info = document.createElement('div');
+                info.className = 'challenge-info';
+
+                const trickP = document.createElement('p');
+                trickP.className = 'trick-name';
+                trickP.textContent = `🛹 ${data.trickName || 'Unknown Trick'}`;
+                info.appendChild(trickP);
+
+                const verifiedP = document.createElement('p');
+                verifiedP.textContent = `✨ Verified by: ${data.verifiedBy?.length || 0} skaters`;
+                info.appendChild(verifiedP);
+
+                const timeP = document.createElement('p');
+                timeP.textContent = `🕒 ${timeAgo}`;
+                info.appendChild(timeP);
+
+                if (data.location?.lat && data.location?.lng) {
+                    const btn = document.createElement('button');
+                    btn.className = 'location-btn';
+                    btn.textContent = '📍 Show on map';
+                    btn.addEventListener('click', () => showOnMap(data.location.lat, data.location.lng));
+                    info.appendChild(btn);
+                }
+
+                card.appendChild(info);
                 feed.appendChild(card);
 
                 // Add marker to map if location exists
                 if (window.map && data.location) {
+                    // Fix XSS vulnerability by creating popup content with DOM methods
+                    const popupDiv = document.createElement('div');
+                    popupDiv.className = 'challenge-popup';
+                    popupDiv.style.textAlign = 'center';
+
+                    const h3 = document.createElement('h3');
+                    h3.style.margin = '0 0 5px 0';
+                    h3.textContent = data.userName || 'Unknown';
+                    popupDiv.appendChild(h3);
+
+                    const p1 = document.createElement('p');
+                    p1.style.margin = '0 0 10px 0';
+                    const strong = document.createElement('strong');
+                    strong.textContent = data.trickName || 'Unknown Trick';
+                    p1.appendChild(strong);
+                    p1.appendChild(document.createElement('br'));
+                    p1.appendChild(document.createTextNode('at ' + (data.spotName || 'Unknown Spot')));
+                    popupDiv.appendChild(p1);
+
+                    const img = document.createElement('img');
+                    img.src = data.mediaUrl || '';
+                    img.alt = 'Challenge proof';
+                    img.style.maxWidth = '200px';
+                    img.style.borderRadius = '8px';
+                    img.style.margin = '5px 0';
+                    popupDiv.appendChild(img);
+
+                    const p2 = document.createElement('p');
+                    p2.style.margin = '5px 0 0 0';
+                    p2.style.color = '#666';
+                    p2.textContent = `✨ ${data.verifiedBy?.length || 0} verifications`;
+                    popupDiv.appendChild(p2);
+
                     const marker = L.marker([data.location.lat, data.location.lng])
-                        .bindPopup(`
-                            <div class="challenge-popup" style="text-align:center;">
-                                <h3 style="margin:0 0 5px 0;">${data.userName}</h3>
-                                <p style="margin:0 0 10px 0;">
-                                    <strong>${data.trickName}</strong><br>
-                                    at ${data.spotName}
-                                </p>
-                                <img src="${data.mediaUrl}" style="max-width:200px; border-radius:8px; margin:5px 0;">
-                                <p style="margin:5px 0 0 0; color:#666;">
-                                    ✨ ${data.verifiedBy.length} verifications
-                                </p>
-                            </div>
-                        `, {
+                        .bindPopup(popupDiv, {
                             maxWidth: 250,
                             className: 'challenge-popup'
                         })

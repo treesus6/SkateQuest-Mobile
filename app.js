@@ -192,14 +192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (challengesBtn) {
         challengesBtn.onclick = () => {
             setActiveButton(challengesBtn);
-            content.innerHTML = '<h2>Challenges</h2><p>View and participate in skating challenges. Feature coming soon!</p>';
+            renderChallenges();
         };
     }
 
     if (profileBtn) {
         profileBtn.onclick = () => {
             setActiveButton(profileBtn);
-            content.innerHTML = '<h2>Profile</h2><p>Your skater profile and stats. Feature coming soon!</p>';
+            renderProfile();
         };
     }
 
@@ -999,6 +999,129 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (cameraPreview) {
             cameraPreview.srcObject = null;
             cameraPreview.src = '';
+        }
+    }
+
+    async function renderChallenges() {
+        content.innerHTML = `
+            <h3>All Challenges</h3>
+            <p>Complete challenges from skate spots to earn XP!</p>
+            <div id="allChallengesList" style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <p>Loading challenges...</p>
+            </div>
+        `;
+
+        const challengesList = document.getElementById('allChallengesList');
+        if (!challengesList) return;
+
+        try {
+            // Get all challenges from all spots
+            const allChallenges = [];
+
+            for (const spot of skateSpots) {
+                const challengesSnapshot = await getDocs(
+                    collection(db, `/artifacts/${appId}/public/data/skate_spots/${spot.id}/challenges`)
+                );
+
+                challengesSnapshot.forEach(doc => {
+                    const challenge = doc.data();
+                    allChallenges.push({
+                        id: doc.id,
+                        spotId: spot.id,
+                        spotName: spot.name,
+                        ...challenge
+                    });
+                });
+            }
+
+            if (allChallenges.length === 0) {
+                challengesList.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No challenges available yet. Add spots with challenges to get started!</p>';
+                return;
+            }
+
+            // Filter out challenges already completed by current user
+            const pendingChallenges = allChallenges.filter(c =>
+                !c.completedBy || !c.completedBy.includes(currentUserId)
+            );
+
+            if (pendingChallenges.length === 0) {
+                challengesList.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">You\'ve completed all available challenges! Great job!</p>';
+                return;
+            }
+
+            // Render challenges
+            challengesList.innerHTML = pendingChallenges.map(challenge => {
+                const xpReward = challenge.xpReward || 50;
+                return `
+                    <div style="background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 5px 0; color: #333;">${challenge.text || 'Challenge'}</h4>
+                                <p style="margin: 5px 0; color: #666; font-size: 14px;">📍 ${challenge.spotName}</p>
+                                <p style="margin: 5px 0; color: #d2673d; font-weight: bold;">+${xpReward} XP</p>
+                            </div>
+                            <button
+                                class="complete-challenge-btn"
+                                data-spot-id="${challenge.spotId}"
+                                data-challenge-id="${challenge.id}"
+                                data-xp="${xpReward}"
+                                style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;"
+                                onmouseover="this.style.background='#45a049'"
+                                onmouseout="this.style.background='#4CAF50'"
+                            >
+                                Complete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add event listeners to complete buttons
+            document.querySelectorAll('.complete-challenge-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    const button = e.target;
+                    const spotId = button.dataset.spotId;
+                    const challengeId = button.dataset.challengeId;
+                    const xpReward = parseInt(button.dataset.xp);
+
+                    button.disabled = true;
+                    button.textContent = 'Completing...';
+
+                    try {
+                        // Update challenge with current user as completer
+                        const challengeRef = doc(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges/${challengeId}`);
+                        const challengeDoc = await getDoc(challengeRef);
+                        const challengeData = challengeDoc.data();
+
+                        const completedBy = [...(challengeData.completedBy || []), currentUserId];
+                        await updateDoc(challengeRef, { completedBy });
+
+                        // Update user profile with XP
+                        const profilePath = `/artifacts/${appId}/users/${currentUserId}/profile/data`;
+                        const currentXP = userProfile.xp || 0;
+                        const completedChallenges = userProfile.challengesCompleted || [];
+
+                        await updateDoc(doc(db, profilePath), {
+                            xp: currentXP + xpReward,
+                            challengesCompleted: [...completedChallenges, challengeId]
+                        });
+
+                        showModal(`Challenge completed! You earned ${xpReward} XP!`);
+
+                        // Reload challenges view
+                        renderChallenges();
+                    } catch (error) {
+                        console.error('Error completing challenge:', error);
+                        showModal('Failed to complete challenge. Please try again.');
+                        button.disabled = false;
+                        button.textContent = 'Complete';
+                    }
+                };
+            });
+
+        } catch (error) {
+            console.error('Error loading challenges:', error);
+            challengesList.innerHTML = '<p style="color: #f44336; text-align: center; padding: 20px;">Error loading challenges. Please try again.</p>';
         }
     }
 

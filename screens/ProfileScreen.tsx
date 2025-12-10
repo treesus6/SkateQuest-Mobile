@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
@@ -142,6 +143,37 @@ export default function ProfileScreen() {
         </View>
       )}
 
+      {__DEV__ && (
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugTitle}>🔧 Sentry Debug Tools (Dev Only)</Text>
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              throw new Error('Sentry Test Crash - JavaScript Error');
+            }}
+          >
+            <Text style={styles.testButtonText}>Test JS Crash</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              Sentry.nativeCrash();
+            }}
+          >
+            <Text style={styles.testButtonText}>Test Native Crash</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              Sentry.captureMessage('Test message from ProfileScreen', 'info');
+              Alert.alert('Sentry Test', 'Test message sent to Sentry!');
+            }}
+          >
+            <Text style={styles.testButtonText}>Send Test Message</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutButtonText}>Sign Out</Text>
       </TouchableOpacity>
@@ -221,6 +253,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginVertical: 5,
+  },
+  debugContainer: {
+    backgroundColor: '#fff3cd',
+    marginHorizontal: 15,
+    marginBottom: 15,
+    borderRadius: 8,
+    padding: 15,
+    borderWidth: 2,
+    borderColor: '#ffc107',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  testButton: {
+    backgroundColor: '#ffc107',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  testButtonText: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: '600',
   },
   signOutButton: {
     backgroundColor: '#ff3b30',
