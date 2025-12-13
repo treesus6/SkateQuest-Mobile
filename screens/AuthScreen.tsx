@@ -24,16 +24,47 @@ export default function AuthScreen() {
       return;
     }
 
-    setLoading(true);
-    const { error } = isSignUp
-      ? await signUp(email, password)
-      : await signIn(email, password);
-    setLoading(false);
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
 
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else if (isSignUp) {
-      Alert.alert('Success', 'Check your email for confirmation link');
+    setLoading(true);
+
+    if (isSignUp) {
+      // Sign up
+      const { error: signUpError } = await signUp(email, password);
+
+      if (signUpError) {
+        setLoading(false);
+        console.error('Signup error:', signUpError);
+        Alert.alert(
+          'Signup Failed',
+          signUpError.message + '\n\nMake sure you:\n1. Disabled email confirmation in Supabase\n2. Ran the SQL migrations'
+        );
+        return;
+      }
+
+      // Auto-login after successful signup
+      const { error: signInError } = await signIn(email, password);
+      setLoading(false);
+
+      if (signInError) {
+        Alert.alert(
+          'Signup Successful!',
+          'Account created but auto-login failed. Please sign in manually.'
+        );
+      }
+      // If no error, the AuthContext will automatically update and navigate
+    } else {
+      // Sign in
+      const { error } = await signIn(email, password);
+      setLoading(false);
+
+      if (error) {
+        console.error('Login error:', error);
+        Alert.alert('Login Failed', error.message);
+      }
     }
   };
 
