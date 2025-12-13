@@ -99,25 +99,22 @@ export default function SpotDetailScreen({ route, navigation }: any) {
 
     try {
       setUploading(true);
-      const uri = await pickImage();
-      if (!uri) return;
+      const result = await pickImage();
+      if (!result) return;
 
-      const photoUrl = await uploadImage(uri);
+      const photoResult = await uploadImage(result.uri, 'spot_photos', user.id);
 
       // Save to media table
-      const mediaId = await saveMediaToDatabase({
-        user_id: user.id,
-        type: 'photo',
-        url: photoUrl,
+      const media = await saveMediaToDatabase(user.id, photoResult, {
         caption: `Photo of ${spot?.name}`,
-        spot_id: spotId,
+        spotId,
       });
 
       // Link to spot_photos
       const { error } = await supabase.from('spot_photos').insert([
         {
           spot_id: spotId,
-          media_id: mediaId,
+          media_id: media.id,
           uploaded_by: user.id,
           is_primary: photos.length === 0, // First photo is primary
         },
@@ -171,7 +168,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
   };
 
   const getConditionIcon = (condition: string) => {
-    const icons = {
+    const icons: Record<string, string> = {
       dry: '☀️',
       wet: '💧',
       crowded: '👥',

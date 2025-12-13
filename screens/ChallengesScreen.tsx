@@ -25,7 +25,7 @@ export default function ChallengesScreen() {
       const { data, error } = await supabase
         .from('challenges')
         .select('*')
-        .eq('status', 'pending')
+        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -66,7 +66,7 @@ export default function ChallengesScreen() {
 
               // Update user XP
               const { data: userData, error: userError } = await supabase
-                .from('users')
+                .from('profiles')
                 .select('xp, challenges_completed')
                 .eq('id', user.id)
                 .single();
@@ -79,7 +79,7 @@ export default function ChallengesScreen() {
               ];
 
               await supabase
-                .from('users')
+                .from('profiles')
                 .update({
                   xp: (userData.xp || 0) + challenge.xp_reward,
                   challenges_completed: updatedChallenges,

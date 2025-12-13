@@ -111,9 +111,9 @@ export default function GameDetailScreen({ route, navigation }: any) {
 
   const pickAndSetVideo = async () => {
     try {
-      const uri = await pickVideo();
-      if (uri) {
-        setVideoUri(uri);
+      const result = await pickVideo();
+      if (result) {
+        setVideoUri(result.uri);
         setShowTrickModal(true);
       }
     } catch (error: any) {
@@ -127,15 +127,12 @@ export default function GameDetailScreen({ route, navigation }: any) {
     setSubmitting(true);
     try {
       // Upload video
-      const videoUrl = await uploadVideo(videoUri);
+      const videoResult = await uploadVideo(videoUri, 'game_videos', user.id);
 
       // Save to media table
-      const mediaId = await saveMediaToDatabase({
-        user_id: user.id,
-        type: 'video',
-        url: videoUrl,
+      const media = await saveMediaToDatabase(user.id, videoResult, {
         caption: `SKATE game trick: ${trickName}`,
-        trick_name: trickName,
+        trickName,
       });
 
       const turnNumber = turns.length + 1;
@@ -147,7 +144,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
           {
             game_id: gameId,
             player_id: user.id,
-            media_id: mediaId,
+            media_id: media.id,
             trick_name: trickName,
             turn_number: turnNumber,
           },
@@ -206,7 +203,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
         const newLetters = currentLetters + letterSequence[currentLetters.length];
 
         // Update letters
-        const updateData = isChallenger
+        const updateData: any = isChallenger
           ? { opponent_letters: newLetters }
           : { challenger_letters: newLetters };
 

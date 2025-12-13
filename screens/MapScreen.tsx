@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,10 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -15,25 +18,86 @@ import { SkateSpot } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const INITIAL_REGION = {
+  latitude: 37.78825,
+  longitude: -122.4324,
+  latitudeDelta: 0.1,
+  longitudeDelta: 0.1,
+};
+
+const SEARCH_RADIUS_KM = 50; // Load spots within 50km radius
+
 export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const mapRef = useRef<MapView>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [region, setRegion] = useState<Region>(INITIAL_REGION);
 
   useEffect(() => {
-    loadSpots();
+    requestLocationPermission();
   }, []);
 
-  const loadSpots = async () => {
+  const requestLocationPermission = async () => {
     try {
-      // TODO: Replace with actual Supabase table name
-      const { data, error } = await supabase
-        .from('skate_spots')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Permission',
+          'Please enable location to find nearby skate spots',
+          [{ text: 'OK', onPress: () => loadSpots(INITIAL_REGION.latitude, INITIAL_REGION.longitude) }]
+        );
+        setLoading(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setUserLocation(location);
+
+      const newRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
+      setRegion(newRegion);
+
+      loadSpots(location.coords.latitude, location.coords.longitude);
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get your location');
+      loadSpots(INITIAL_REGION.latitude, INITIAL_REGION.longitude);
+      setLoading(false);
+    }
+  };
+
+  const loadSpots = async (lat: number, lng: number) => {
+    try {
+      // Use PostGIS to query spots within radius
+      // ST_DWithin uses meters, so convert km to meters
+      const radiusMeters = SEARCH_RADIUS_KM * 1000;
+
+      const { data, error } = await supabase.rpc('get_nearby_spots', {
+        lat,
+        lng,
+        radius_meters: radiusMeters,
+      });
 
       if (error) {
-        console.error('Error loading spots:', error);
+        console.error('Error loading nearby spots:', error);
+        // Fallback: load all spots if the RPC function doesn't exist
+        const { data: allData, error: allError } = await supabase
+          .from('skate_spots')
+          .select('*')
+          .limit(500);
+
+        if (allError) {
+          console.error('Error loading spots:', allError);
+        } else {
+          setSpots(allData || []);
+        }
       } else {
         setSpots(data || []);
       }
@@ -44,16 +108,75 @@ export default function MapScreen() {
     }
   };
 
+  const onRegionChangeComplete = (newRegion: Region) => {
+    setRegion(newRegion);
+    // Reload spots for new region center
+    loadSpots(newRegion.latitude, newRegion.longitude);
+  };
+
+  const goToUserLocation = async () => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: userLocation.coords.latitude,
+        longitude: userLocation.coords.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#d2673d" />
+        <Text style={styles.loadingText}>Loading map...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.mapPlaceholder}>
-        <Text style={styles.placeholderText}>Map View</Text>
-        <Text style={styles.infoText}>
-          Map implementation with react-native-maps will go here
-        </Text>
-        <Text style={styles.infoText}>
-          Spots loaded: {spots.length}
-        </Text>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={region}
+        onRegionChangeComplete={onRegionChangeComplete}
+        showsUserLocation
+        showsMyLocationButton={false}
+      >
+        {spots.map((spot) => (
+          <Marker
+            key={spot.id}
+            coordinate={{
+              latitude: spot.latitude,
+              longitude: spot.longitude,
+            }}
+            title={spot.name}
+            description={`Difficulty: ${spot.difficulty || 'Unknown'}`}
+            onCalloutPress={() => {
+              // Navigate to spot detail if it exists
+              if (navigation.canGoBack()) {
+                navigation.navigate('SpotDetail', { spotId: spot.id });
+              }
+            }}
+          />
+        ))}
+      </MapView>
+
+      {/* User location button */}
+      {userLocation && (
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={goToUserLocation}
+        >
+          <Text style={styles.locationButtonText}>📍</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Spots counter */}
+      <View style={styles.counterBadge}>
+        <Text style={styles.counterText}>{spots.length} spots nearby</Text>
       </View>
 
       <View style={styles.featuresGrid}>
@@ -162,23 +285,58 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f0ea',
   },
-  mapPlaceholder: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0e0e0',
-    padding: 20,
+    backgroundColor: '#f5f0ea',
   },
-  placeholderText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
     color: '#666',
-    marginBottom: 10,
   },
-  infoText: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 5,
+  map: {
+    flex: 1,
+    width: '100%',
+  },
+  locationButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  locationButtonText: {
+    fontSize: 24,
+  },
+  counterBadge: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    backgroundColor: '#d2673d',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  counterText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   featuresGrid: {
     flexDirection: 'row',

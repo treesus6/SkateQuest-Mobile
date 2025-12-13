@@ -59,7 +59,7 @@ export default function SkateGameScreen({ navigation }: any) {
     try {
       // Find opponent by username
       const { data: opponentData, error: opponentError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id')
         .eq('username', opponentUsername.trim())
         .single();

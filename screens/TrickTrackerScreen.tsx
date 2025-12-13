@@ -119,14 +119,14 @@ export default function TrickTrackerScreen() {
 
       // Award XP
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('xp')
         .eq('id', user?.id)
         .single();
 
       if (userData) {
         await supabase
-          .from('users')
+          .from('profiles')
           .update({ xp: userData.xp + 25 })
           .eq('id', user?.id);
       }

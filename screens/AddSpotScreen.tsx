@@ -71,14 +71,14 @@ export default function AddSpotScreen() {
 
       // Update user's spots_added count
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('spots_added, xp')
         .eq('id', user?.id)
         .single();
 
       if (userData) {
         await supabase
-          .from('users')
+          .from('profiles')
           .update({
             spots_added: (userData.spots_added || 0) + 1,
             xp: (userData.xp || 0) + 100, // Award 100 XP for adding a spot

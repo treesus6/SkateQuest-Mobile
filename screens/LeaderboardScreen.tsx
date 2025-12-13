@@ -24,7 +24,7 @@ export default function LeaderboardScreen() {
         {
           event: '*',
           schema: 'public',
-          table: 'users',
+          table: 'profiles',
         },
         () => {
           loadLeaderboard();
@@ -40,7 +40,7 @@ export default function LeaderboardScreen() {
   const loadLeaderboard = async () => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .order('xp', { ascending: false })
         .limit(100);

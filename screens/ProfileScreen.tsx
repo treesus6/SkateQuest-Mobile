@@ -12,9 +12,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 
+interface LevelProgress {
+  current_level: number;
+  current_xp: number;
+  xp_for_current_level: number;
+  xp_for_next_level: number;
+  xp_progress: number;
+  xp_needed: number;
+  progress_percentage: number;
+}
+
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,7 +37,7 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', user?.id)
         .single();
@@ -38,6 +49,16 @@ export default function ProfileScreen() {
         console.error('Error loading profile:', error);
       } else {
         setProfile(data);
+
+        // Load level progress
+        if (data && data.xp !== undefined) {
+          const { data: progressData, error: progressError } = await supabase
+            .rpc('get_level_progress', { user_xp: data.xp });
+
+          if (!progressError && progressData) {
+            setLevelProgress(progressData);
+          }
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -61,7 +82,7 @@ export default function ProfileScreen() {
     };
 
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .insert([newProfile])
       .select()
       .single();
@@ -121,6 +142,31 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Challenges</Text>
         </View>
       </View>
+
+      {/* Level Progress Bar */}
+      {levelProgress && (
+        <View style={styles.levelProgressContainer}>
+          <View style={styles.levelProgressHeader}>
+            <Text style={styles.levelProgressTitle}>
+              Level {levelProgress.current_level} → {levelProgress.current_level + 1}
+            </Text>
+            <Text style={styles.levelProgressXP}>
+              {levelProgress.xp_progress} / {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
+            </Text>
+          </View>
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBar,
+                { width: `${Math.min(100, levelProgress.progress_percentage)}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.levelProgressSubtext}>
+            {levelProgress.xp_needed} XP needed for next level
+          </Text>
+        </View>
+      )}
 
       {profile?.streak && profile.streak > 0 && (
         <View style={styles.streakContainer}>
@@ -222,6 +268,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 5,
+  },
+  levelProgressContainer: {
+    backgroundColor: '#fff',
+    marginHorizontal: 15,
+    marginBottom: 15,
+    borderRadius: 8,
+    padding: 15,
+  },
+  levelProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  levelProgressTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  levelProgressXP: {
+    fontSize: 14,
+    color: '#d2673d',
+    fontWeight: '600',
+  },
+  progressBarContainer: {
+    height: 12,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+  },
+  levelProgressSubtext: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
   streakContainer: {
     backgroundColor: '#fff',

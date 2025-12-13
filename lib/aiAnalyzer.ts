@@ -106,7 +106,7 @@ async function extractVideoFrame(videoUri: string): Promise<string> {
   // - or upload video to a processing service
   // For now, we'll read a portion of the video file
   const base64 = await FileSystem.readAsStringAsync(videoUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64',
     length: 100000, // Read first 100KB
     position: 0,
   });

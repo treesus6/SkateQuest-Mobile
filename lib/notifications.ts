@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
 // Configure notification handler
@@ -9,6 +9,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -18,8 +20,8 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotifications(): Promise<string | null> {
   try {
-    // Check if running on physical device
-    if (!Device.isDevice) {
+    // Check if running on physical device (simulator/emulator check)
+    if (!Constants.isDevice) {
       console.log('Push notifications only work on physical devices');
       return null;
     }
@@ -75,7 +77,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 export async function savePushToken(userId: string, token: string): Promise<void> {
   try {
     const { error } = await supabase
-      .from('users')
+      .from('profiles')
       .update({ push_token: token })
       .eq('id', userId);
 
@@ -250,12 +252,12 @@ export async function notifyGameChallenge(
 }
 
 // ============================================================================
-// Database Migration (Add push_token column to users table)
+// Database Migration (Add push_token column to profiles table)
 // ============================================================================
 
 /**
- * SQL to add push_token column to users table:
+ * SQL to add push_token column to profiles table:
  *
- * ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT;
- * CREATE INDEX IF NOT EXISTS idx_users_push_token ON users(push_token);
+ * ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
+ * CREATE INDEX IF NOT EXISTS idx_profiles_push_token ON profiles(push_token);
  */
