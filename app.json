@@ -41,12 +41,9 @@
       ]
     },
     "updates": {
-      "enabled": false
-    },
-    "extra": {
-      "eas": {
-        "projectId": "your-eas-project-id"
-      }
+      "enabled": false,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_ERROR_RECOVERY"
     },
     "plugins": [
       [
