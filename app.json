@@ -40,6 +40,9 @@
         "RECORD_AUDIO"
       ]
     },
+    "updates": {
+      "enabled": false
+    },
     "extra": {
       "eas": {
         "projectId": "your-eas-project-id"
