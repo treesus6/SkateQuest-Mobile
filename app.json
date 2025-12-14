@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SkateQuest",
-    "slug": "skatequest",
+    "slug": "skatequest-dev",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -40,11 +40,6 @@
         "RECORD_AUDIO"
       ]
     },
-    "updates": {
-      "enabled": false,
-      "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_ERROR_RECOVERY"
-    },
     "plugins": [
       [
         "expo-camera",
@@ -60,17 +55,6 @@
           "locationAlwaysAndWhenInUsePermission": "Allow SkateQuest to use your location to find nearby skate spots."
         }
       ]
-    ],
-    "hooks": {
-      "postPublish": [
-        {
-          "file": "sentry-expo/upload-sourcemaps",
-          "config": {
-            "organization": "YOUR_SENTRY_ORG",
-            "project": "YOUR_SENTRY_PROJECT"
-          }
-        }
-      ]
-    }
+    ]
   }
 }
