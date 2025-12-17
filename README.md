@@ -74,20 +74,72 @@ A Progressive Web App (PWA) that helps skateboarders discover, share, and track 
 3. Start discovering and sharing skate spots!
 
 ### For Developers
-See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for full deployment guide.
 
+#### Environment Setup
+
+1. **Clone the repository**
 ```bash
-# Clone the repository
 git clone https://github.com/treesus6/SkateQuest-App.git
-cd SkateQuest-App
-
-# Start local development server
-npm run serve-local
-# or
-python3 -m http.server 8000
-
-# Visit http://localhost:8000
+cd SkateQuest-Mobile
 ```
+
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Configure environment variables**
+
+Copy the example environment file and fill in your values:
+```bash
+cp .env.example .env.development
+```
+
+Edit `.env.development` and add your configuration:
+- **EXPO_PUBLIC_SUPABASE_URL** - Your Supabase project URL (from [Supabase Dashboard](https://app.supabase.com))
+- **EXPO_PUBLIC_SUPABASE_KEY** - Your Supabase anon/public key
+- **EXPO_PUBLIC_SENTRY_DSN** - (Optional) Your Sentry DSN for error tracking
+- **EXPO_PUBLIC_OPENAI_API_KEY** - (Optional) OpenAI API key for AI trick analysis
+
+4. **Start the development server**
+```bash
+npm start
+```
+
+#### Switching Between Environments
+
+The app automatically uses different environment files based on your setup:
+
+**Development Mode** (default):
+```bash
+# Uses .env.development
+npm start
+```
+
+**Production Build**:
+```bash
+# Uses .env.production
+# Make sure to create and configure .env.production first
+cp .env.example .env.production
+# Edit .env.production with production credentials
+
+# Then build for your platform:
+npm run android  # For Android
+npm run ios      # For iOS
+```
+
+**Environment Variable Files**:
+- `.env.development` - Used during development (`npm start`)
+- `.env.production` - Used for production builds
+- `.env.example` - Template file (commit this to Git)
+- `.env` - Legacy file (can be removed if using environment-specific files)
+
+**Important Notes**:
+- All environment variables must start with `EXPO_PUBLIC_` to be accessible in your app
+- Never commit `.env.development` or `.env.production` files to Git (they contain secrets)
+- Always commit `.env.example` with placeholder values for team members
+
+See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for full deployment guide.
 
 ## 📚 Documentation
 

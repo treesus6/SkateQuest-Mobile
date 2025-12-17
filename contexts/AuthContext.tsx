@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/react-native';
 import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
@@ -40,6 +41,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Set Sentry user context for error tracking
+      if (session?.user) {
+        Sentry.setUser({
+          id: session.user.id,
+          email: session.user.email,
+        });
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'User logged in',
+          level: 'info',
+        });
+      } else {
+        Sentry.setUser(null);
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'User logged out',
+          level: 'info',
+        });
+      }
     });
 
     return () => {
