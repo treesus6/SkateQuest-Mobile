@@ -1,0 +1,47 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+jobs:
+  preview:
+    name: Build Expo Preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create Expo preview
+        run: |
+          npx expo export --platform all --output-dir dist
+          echo "Preview build created successfully"
+
+      - name: Comment PR with preview info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 📱 Expo Preview Build Ready!\n\nThe preview build has been created. To test:\n\n1. Install Expo Go on your device\n2. Run `npm start` locally\n3. Scan QR code to test changes\n\n**Commit**: ' + context.sha.substring(0, 7)
+            })
