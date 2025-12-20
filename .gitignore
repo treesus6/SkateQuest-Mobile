@@ -60,3 +60,4 @@ clear-cache.html
 validate-fixes.js
 *.bak
 *.local
+.expo/
