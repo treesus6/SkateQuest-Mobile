@@ -10,11 +10,13 @@ import {
   Dimensions,
   Image,
   Modal,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
+import PortalDimensionLogo from '../components/PortalDimensionLogo';
 
 const { width } = Dimensions.get('window');
 
@@ -279,7 +281,24 @@ export default function SpotDetailScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
+
+        {/* Sponsor Link */}
+        {spot.sponsor_name && spot.sponsor_url && (
+          <TouchableOpacity
+            style={styles.sponsorCard}
+            onPress={() => Linking.openURL(spot.sponsor_url!)}
+          >
+            <View style={styles.sponsorContent}>
+              <Text style={styles.sponsorLabel}>Supported by</Text>
+              <Text style={styles.sponsorName}>{spot.sponsor_name}</Text>
+            </View>
+            <Text style={styles.sponsorArrow}>→</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Portal Dimension Community Support */}
+      <PortalDimensionLogo skateparkName={spot.name} />
 
       {/* Live Conditions */}
       {conditions.length > 0 && (
@@ -551,6 +570,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#d2673d',
     fontWeight: '600',
+  },
+  sponsorCard: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#d2673d',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sponsorContent: {
+    flex: 1,
+  },
+  sponsorLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sponsorName: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  sponsorArrow: {
+    fontSize: 24,
+    color: '#fff',
+    marginLeft: 10,
   },
   conditionsCard: {
     backgroundColor: '#fff',
