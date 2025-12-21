@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from 'sentry-expo';
 import { AuthProvider } from './contexts/AuthContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import AppNavigator from './navigation/AppNavigator';
