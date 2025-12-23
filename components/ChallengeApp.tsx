@@ -1,16 +1,8 @@
-import React, { useState, useMemo, createContext, useContext } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  SafeAreaView,
-  StyleSheet,
-  StatusBar,
-} from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 
 /* ---------------------------------------------------------
    CHALLENGE + XP CONTEXT
@@ -42,44 +34,7 @@ const initialChallenges = [
   },
 ];
 
-export function ChallengeProvider({ children }: { children: React.ReactNode }) {
-  const [challenges, setChallenges] = useState(initialChallenges);
-  const [xp, setXp] = useState(0);
-  const [level, setLevel] = useState(1);
-
-  const completeChallenge = (id: string) => {
-    setChallenges((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, completed: true } : c));
-
-      // Only award XP if the challenge was not previously completed
-      const before = prev.find((c) => c.id === id);
-      const after = updated.find((c) => c.id === id);
-
-      if (after && before && !before.completed) {
-        const gainedXp = after.xp || 0;
-        setXp((prevXp) => {
-          const newXp = prevXp + gainedXp;
-          const newLevel = 1 + Math.floor(newXp / 500);
-          setLevel(newLevel);
-          return newXp;
-        });
-      }
-
-      return updated;
-    });
-  };
-
-  const value = useMemo(
-    () => ({ challenges, xp, level, completeChallenge }),
-    [challenges, xp, level]
-  );
-
-  return <ChallengeContext.Provider value={value}>{children}</ChallengeContext.Provider>;
-}
-
-export function useChallenges() {
-  return useContext(ChallengeContext);
-}
+/* The ChallengeProvider and hook are provided by ../contexts/ChallengeContext */
 
 /* ---------------------------------------------------------
    SCREENS
@@ -251,14 +206,10 @@ function SpotsStack() {
 export default function ChallengeApp() {
   return (
     <ChallengeProvider>
-      <NavigationContainer>
-        <Tab.Navigator screenOptions={{ headerShown: false }}>
-          <Tab.Screen name="Home" component={HomeScreen} />
-          <Tab.Screen name="ChallengesTab" component={ChallengesStack} options={{ title: 'Challenges' }} />
-          <Tab.Screen name="SpotsTab" component={SpotsStack} options={{ title: 'Spots' }} />
-          <Tab.Screen name="Profile" component={ProfileScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Tabs" component={Tabs} />
+        <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+      </Stack.Navigator>
     </ChallengeProvider>
   );
 }

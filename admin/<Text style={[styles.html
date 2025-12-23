@@ -1,0 +1,19 @@
+  <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Today’s Challenges</Text>
+  {dailyChallenges.map((ch) => (
+    <TouchableOpacity
+      key={ch.id}
+      style={styles.card}
+      onPress={() => navigation.navigate('ChallengeDetail', { id: ch.id })}
+    >
+      <Text style={styles.cardTitle}>{ch.title}</Text>
+      <Text style={styles.cardSubtitle}>{ch.xp} XP · {ch.difficulty}</Text>
+    </TouchableOpacity>
+  ))}
+
+  <TouchableOpacity
+    style={[styles.button, { marginTop: 24 }]}
+    onPress={() => navigation.navigate('ChallengesTab')}
+  >
+    <Text style={styles.buttonText}>View All Challenges</Text>
+  </TouchableOpacity>
+</View>
