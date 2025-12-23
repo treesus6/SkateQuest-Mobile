@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, StatusBar } from 'react-native';
@@ -9,6 +9,7 @@ import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
+import LevelUpModal from './LevelUpModal';
 
 
 /* ---------------------------------------------------------
@@ -191,13 +192,33 @@ function Tabs() {
   );
 }
 
-export default function ChallengeApp() {
+function InnerApp() {
+  const { level } = useChallenges();
+  const [lastLevel, setLastLevel] = useState(level);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+
+  useEffect(() => {
+    if (level > lastLevel) {
+      setShowLevelUp(true);
+      setLastLevel(level);
+    }
+  }, [level, lastLevel]);
+
   return (
-    <ChallengeProvider>
+    <>
+      <LevelUpModal visible={showLevelUp} level={level} onClose={() => setShowLevelUp(false)} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
+    </>
+  );
+}
+
+export default function ChallengeApp() {
+  return (
+    <ChallengeProvider>
+      <InnerApp />
     </ChallengeProvider>
   );
 }
