@@ -1,3 +1,65 @@
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useChallenges } from '../contexts/ChallengeContext';
+
+export default function ProfileScreen() {
+  const { xp, level, streakDays, challenges } = useChallenges();
+
+  const completed = challenges.filter((c) => c.completed).length;
+  const total = challenges.length;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.subtitle}>Level {level}</Text>
+
+      <Text style={styles.statText}>Total XP: {xp}</Text>
+      <Text style={styles.statText}>Completed challenges: {completed} / {total}</Text>
+      <Text style={styles.statText}>Streak: {streakDays} day(s)</Text>
+
+      <Text style={styles.sectionTitle}>Coming soon</Text>
+      <Text style={styles.bodyText}>• Achievements</Text>
+      <Text style={styles.bodyText}>• Best lines & favorite spots</Text>
+      <Text style={styles.bodyText}>• Crew stats and shared missions</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#05070B',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#F5F5F5',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#C7CED9',
+    marginBottom: 16,
+  },
+  statText: {
+    fontSize: 16,
+    color: '#F5F5F5',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F5F5F5',
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  bodyText: {
+    fontSize: 14,
+    color: '#C7CED9',
+  },
+});
 import React, { useState, useEffect } from 'react';
 import {
   View,

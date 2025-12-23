@@ -1,40 +1,15 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, StatusBar } from 'react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 
-/* ---------------------------------------------------------
-   CHALLENGE + XP CONTEXT
---------------------------------------------------------- */
+import HomeScreen from './HomeScreen';
+import CrewScreen from '../screens/CrewScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import SpotsScreenFromFile from '../screens/SpotsScreen';
+import DailyQuestsScreen from '../screens/DailyQuestsScreen';
 
-const ChallengeContext = createContext<any>(null);
-
-const initialChallenges = [
-  {
-    id: 'ch1',
-    title: 'Kickflip on flat',
-    description: 'Land a clean kickflip on flatground.',
-    xp: 100,
-    completed: false,
-  },
-  {
-    id: 'ch2',
-    title: '50-50 a ledge',
-    description: 'Find a ledge and get a 50-50 grind.',
-    xp: 150,
-    completed: false,
-  },
-  {
-    id: 'ch3',
-    title: 'Manual line',
-    description: 'Manual across a parking lot line for at least 3 seconds.',
-    xp: 120,
-    completed: false,
-  },
-];
-
-/* The ChallengeProvider and hook are provided by ../contexts/ChallengeContext */
 
 /* ---------------------------------------------------------
    SCREENS
@@ -200,6 +175,19 @@ function SpotsStack() {
     <Stack.Navigator>
       <Stack.Screen name="Spots" component={SpotsScreen} />
     </Stack.Navigator>
+  );
+}
+
+function Tabs() {
+  return (
+    <Tab.Navigator screenOptions={{ headerShown: false }}>
+      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />
+      <Tab.Screen name="ChallengesTab" component={ChallengesStack} options={{ title: 'Challenges' }} />
+      <Tab.Screen name="SpotsTab" component={SpotsScreenFromFile} options={{ title: 'Spots' }} />
+      <Tab.Screen name="CrewTab" component={CrewScreen} options={{ title: 'Crew' }} />
+      <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name="DailyTab" component={DailyQuestsScreen} options={{ title: 'Daily' }} />
+    </Tab.Navigator>
   );
 }
 
