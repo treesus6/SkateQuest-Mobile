@@ -5,17 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 
 import ChallengeApp from './components/ChallengeApp';
 import AuthProvider from './contexts/AuthContext';
-import NetworkProvider from './contexts/NetworkContext';
+import { NetworkProvider } from './contexts/NetworkContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import Onboarding from './components/Onboarding';
 import PortalDimensionLogo from './components/PortalDimensionLogo';
-import SpotConditionsWidget from './components/SpotConditionsWidget';
 
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
-
-import parks from './data/parks.json';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,13 +27,15 @@ export default function App() {
             <PortalDimensionLogo />
 
             <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Onboarding" component={Onboarding} />
+              <Stack.Screen name="Onboarding">
+                {({ navigation }) => (
+                  <Onboarding onComplete={() => navigation.navigate('Login')} />
+                )}
+              </Stack.Screen>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Signup" component={SignupScreen} />
               <Stack.Screen name="Main" component={ChallengeApp} />
             </Stack.Navigator>
-
-            <SpotConditionsWidget parks={parks} />
           </NavigationContainer>
         </AuthProvider>
       </NetworkProvider>

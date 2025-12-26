@@ -16,30 +16,6 @@ import LevelUpModal from './LevelUpModal';
    SCREENS
 --------------------------------------------------------- */
 
-function HomeScreen({ navigation }: any) {
-  const { xp, level, challenges } = useChallenges();
-  const completedCount = challenges.filter((c: any) => c.completed).length;
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <Text style={styles.title}>SkateQuest</Text>
-      <Text style={styles.subtitle}>Level {level} · {xp} XP</Text>
-      <Text style={styles.text}>
-        Completed challenges: {completedCount} / {challenges.length}
-      </Text>
-
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('ChallengesTab')}>
-        <Text style={styles.buttonText}>View Challenges</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('SpotsTab')}>
-        <Text style={styles.buttonText}>Explore Spots</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
-
 function ChallengeListScreen({ navigation }: any) {
   const { challenges } = useChallenges();
 
@@ -104,53 +80,6 @@ function SpotsScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Spots</Text>
       <Text style={styles.text}>Future: list nearby spots, spot-specific challenges, and maps.</Text>
-    </SafeAreaView>
-  );
-}
-
-function ProfileScreen() {
-  const { xp, level, challenges } = useChallenges();
-
-  const completed = challenges.filter((c: any) => c.completed);
-  const inProgress = challenges.filter((c: any) => !c.completed);
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Level {level}</Text>
-      <Text style={styles.text}>{xp} XP total</Text>
-
-      <Text style={[styles.subtitle, { marginTop: 16 }]}>Completed</Text>
-      {completed.length === 0 ? (
-        <Text style={styles.text}>No completed challenges yet.</Text>
-      ) : (
-        <FlatList
-          data={completed}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <View style={styles.smallRow}>
-              <Text style={styles.text}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.xp} XP</Text>
-            </View>
-          )}
-        />
-      )}
-
-      <Text style={[styles.subtitle, { marginTop: 16 }]}>In Progress</Text>
-      {inProgress.length === 0 ? (
-        <Text style={styles.text}>No active challenges — go skate!</Text>
-      ) : (
-        <FlatList
-          data={inProgress}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <View style={styles.smallRow}>
-              <Text style={styles.text}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.xp} XP</Text>
-            </View>
-          )}
-        />
-      )}
     </SafeAreaView>
   );
 }
