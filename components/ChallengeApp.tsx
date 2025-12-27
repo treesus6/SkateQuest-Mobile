@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, StatusBar } from 'react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreen from './HomeScreen';
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SpotsScreenFromFile from '../screens/SpotsScreen';
