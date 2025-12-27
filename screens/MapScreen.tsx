@@ -197,6 +197,14 @@ export default function MapScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={[styles.featureCard, styles.qrScannerCard]}
+          onPress={() => navigation.navigate('QRScanner')}
+        >
+          <Text style={styles.featureIcon}>📱</Text>
+          <Text style={styles.featureText}>Scan QR</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.featureCard}
           onPress={() => navigation.navigate('TrickTracker')}
         >
@@ -359,6 +367,9 @@ const styles = StyleSheet.create({
   },
   addSpotCard: {
     backgroundColor: '#d2673d',
+  },
+  qrScannerCard: {
+    backgroundColor: '#e8b44d',
   },
   featureIcon: {
     fontSize: 32,

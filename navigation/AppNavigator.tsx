@@ -23,6 +23,7 @@ import SkateGameScreen from '../screens/SkateGameScreen';
 import PlaylistsScreen from '../screens/PlaylistsScreen';
 import GameDetailScreen from '../screens/GameDetailScreen';
 import SpotDetailScreen from '../screens/SpotDetailScreen';
+import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -41,6 +42,7 @@ export type RootStackParamList = {
   Playlists: undefined;
   GameDetail: { gameId: string };
   SpotDetail: { spotId: string };
+  QRScanner: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -153,6 +155,11 @@ export default function AppNavigator() {
                 <Stack.Screen
                   name="SpotDetail"
                   component={SpotDetailScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="QRScanner"
+                  component={QRCodeScannerScreen}
                   options={{ headerShown: false }}
                 />
               </>
