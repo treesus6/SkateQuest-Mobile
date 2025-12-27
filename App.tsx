@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import ChallengeApp from './components/ChallengeApp';
 import AuthProvider from './contexts/AuthContext';
-import NetworkProvider from './contexts/NetworkContext';
+import { NetworkProvider } from './contexts/NetworkContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import Onboarding from './components/Onboarding';
