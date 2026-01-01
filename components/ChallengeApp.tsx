@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, StatusBar } from 'react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 
-import HomeScreen from './HomeScreen';
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SpotsScreenFromFile from '../screens/SpotsScreen';
@@ -94,62 +93,6 @@ function ChallengeDetailScreen({ route, navigation }: any) {
         <TouchableOpacity style={styles.button} onPress={handleComplete}>
           <Text style={styles.buttonText}>Mark as completed</Text>
         </TouchableOpacity>
-      )}
-    </SafeAreaView>
-  );
-}
-
-function SpotsScreen() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Spots</Text>
-      <Text style={styles.text}>Future: list nearby spots, spot-specific challenges, and maps.</Text>
-    </SafeAreaView>
-  );
-}
-
-function ProfileScreen() {
-  const { xp, level, challenges } = useChallenges();
-
-  const completed = challenges.filter((c: any) => c.completed);
-  const inProgress = challenges.filter((c: any) => !c.completed);
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Level {level}</Text>
-      <Text style={styles.text}>{xp} XP total</Text>
-
-      <Text style={[styles.subtitle, { marginTop: 16 }]}>Completed</Text>
-      {completed.length === 0 ? (
-        <Text style={styles.text}>No completed challenges yet.</Text>
-      ) : (
-        <FlatList
-          data={completed}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <View style={styles.smallRow}>
-              <Text style={styles.text}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.xp} XP</Text>
-            </View>
-          )}
-        />
-      )}
-
-      <Text style={[styles.subtitle, { marginTop: 16 }]}>In Progress</Text>
-      {inProgress.length === 0 ? (
-        <Text style={styles.text}>No active challenges — go skate!</Text>
-      ) : (
-        <FlatList
-          data={inProgress}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => (
-            <View style={styles.smallRow}>
-              <Text style={styles.text}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.xp} XP</Text>
-            </View>
-          )}
-        />
       )}
     </SafeAreaView>
   );
