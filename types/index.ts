@@ -169,3 +169,36 @@ export interface PlaylistLike {
   user_id: string;
   created_at: string;
 }
+
+export interface QRCode {
+  id: string;
+  code: string;
+  purchased_by: string;
+  purchaser_name: string;
+  purchase_price: number;
+  status: 'active' | 'found' | 'expired' | 'hidden';
+  hidden_at?: string;
+  hidden_location_lat?: number;
+  hidden_location_lng?: number;
+  hidden_location_description?: string;
+  found_by?: string;
+  found_by_name?: string;
+  found_at?: string;
+  xp_reward: number;
+  bonus_reward?: string;
+  trick_challenge?: string;
+  challenge_message?: string;
+  proof_required: boolean;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface CharityStats {
+  id: number;
+  total_raised: number;
+  total_qr_codes_sold: number;
+  total_qr_codes_found: number;
+  total_skateboards_donated: number;
+  total_kids_helped: number;
+  last_updated: string;
+}
