@@ -64,21 +64,20 @@ export async function trackApiCall<T>(
   operation: () => Promise<T>,
   tags?: Record<string, string>
 ): Promise<T> {
-  const transaction = Sentry.startTransaction({
-    op: 'api.call',
-    name: operationName,
-    tags,
-  });
-
   const startTime = Date.now();
 
   try {
     const result = await operation();
     const duration = Date.now() - startTime;
 
-    transaction.setStatus('ok');
-    transaction.setMeasurement('api_duration', duration, 'millisecond');
+    Sentry.addBreadcrumb({
+      category: 'api',
+      message: `API call: ${operationName}`,
+      level: 'info',
+      data: { operation: operationName, duration, ...tags },
+    });
 
+    Sentry.setMeasurement('api_duration', duration, 'millisecond');
     metrics.apiCallDurations.set(operationName, duration);
 
     // Alert if API call is slow (> 5 seconds)
@@ -91,10 +90,8 @@ export async function trackApiCall<T>(
 
     return result;
   } catch (error) {
-    transaction.setStatus('internal_error');
+    Sentry.captureException(error);
     throw error;
-  } finally {
-    transaction.finish();
   }
 }
 
@@ -106,22 +103,20 @@ export async function trackDatabaseQuery<T>(
   table: string,
   operation: () => Promise<T>
 ): Promise<T> {
-  const transaction = Sentry.startTransaction({
-    op: 'db.query',
-    name: queryName,
-    tags: {
-      table,
-    },
-  });
-
   const startTime = Date.now();
 
   try {
     const result = await operation();
     const duration = Date.now() - startTime;
 
-    transaction.setStatus('ok');
-    transaction.setMeasurement('query_duration', duration, 'millisecond');
+    Sentry.addBreadcrumb({
+      category: 'database',
+      message: `Database query: ${queryName}`,
+      level: 'info',
+      data: { query: queryName, table, duration },
+    });
+
+    Sentry.setMeasurement('query_duration', duration, 'millisecond');
 
     // Alert if query is slow (> 2 seconds)
     if (duration > 2000) {
@@ -133,10 +128,8 @@ export async function trackDatabaseQuery<T>(
 
     return result;
   } catch (error) {
-    transaction.setStatus('internal_error');
+    Sentry.captureException(error);
     throw error;
-  } finally {
-    transaction.finish();
   }
 }
 
@@ -162,20 +155,23 @@ export function trackImageLoad(imageUrl: string, loadTime: number): void {
 export async function trackVideoProcessing<T>(
   operation: () => Promise<T>
 ): Promise<T> {
-  const transaction = Sentry.startTransaction({
-    op: 'video.processing',
-    name: 'Video Processing',
-  });
+  const startTime = Date.now();
 
   try {
     const result = await operation();
-    transaction.setStatus('ok');
+    const duration = Date.now() - startTime;
+
+    Sentry.addBreadcrumb({
+      category: 'video',
+      message: 'Video processing completed',
+      level: 'info',
+      data: { duration },
+    });
+
     return result;
   } catch (error) {
-    transaction.setStatus('internal_error');
+    Sentry.captureException(error);
     throw error;
-  } finally {
-    transaction.finish();
   }
 }
 

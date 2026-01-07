@@ -8,7 +8,7 @@ import * as Sentry from '@sentry/react-native';
  * - Never logs sensitive data
  */
 
-const config: configLoggerType = {
+const config: configLoggerType<any, any> = {
   levels: {
     debug: 0,
     info: 1,

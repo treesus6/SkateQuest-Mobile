@@ -25,6 +25,23 @@ export interface Challenge {
   completed_at?: string;
 }
 
+export interface CallOut {
+  id: string;
+  challenger_id: string;
+  challenged_id: string;
+  spot_id?: string;
+  trick_name: string;
+  message?: string;
+  xp_reward: number;
+  status: 'pending' | 'accepted' | 'completed' | 'declined';
+  created_at: string;
+  completed_at?: string;
+  proof_media_id?: string;
+  challenger?: UserProfile;
+  challenged?: UserProfile;
+  spot?: SkateSpot;
+}
+
 export interface UserProfile {
   id: string;
   username: string;

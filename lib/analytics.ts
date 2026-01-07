@@ -16,13 +16,16 @@ export async function initializeAnalytics(): Promise<void> {
     const host = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
 
     if (!apiKey) {
-      console.log('PostHog API key not configured - analytics disabled');
+      if (__DEV__) {
+        console.log('PostHog API key not configured - analytics disabled');
+      }
       return;
     }
 
-    posthog = await PostHog.initAsync(apiKey, {
+    // Initialize PostHog
+    posthog = new PostHog(apiKey, {
       host,
-      captureApplicationLifecycleEvents: true,
+      captureAppLifecycleEvents: true,
       captureDeepLinks: true,
     });
 
@@ -38,9 +41,13 @@ export async function initializeAnalytics(): Promise<void> {
 
     posthog.register(deviceInfo);
 
-    console.log('Analytics initialized successfully');
+    if (__DEV__) {
+      console.log('Analytics initialized successfully');
+    }
   } catch (error) {
-    console.error('Analytics initialization error:', error);
+    if (__DEV__) {
+      console.error('Analytics initialization error:', error);
+    }
   }
 }
 
@@ -56,7 +63,9 @@ export function trackEvent(
   try {
     posthog.capture(eventName, properties);
   } catch (error) {
-    console.error('Analytics tracking error:', error);
+    if (__DEV__) {
+      console.error('Analytics tracking error:', error);
+    }
   }
 }
 
@@ -72,7 +81,9 @@ export function identifyUser(
   try {
     posthog.identify(userId, properties);
   } catch (error) {
-    console.error('Analytics identify error:', error);
+    if (__DEV__) {
+      console.error('Analytics identify error:', error);
+    }
   }
 }
 
@@ -98,7 +109,9 @@ export function setUserProperties(properties: Record<string, any>): void {
   try {
     posthog.register(properties);
   } catch (error) {
-    console.error('Analytics set properties error:', error);
+    if (__DEV__) {
+      console.error('Analytics set properties error:', error);
+    }
   }
 }
 
@@ -111,7 +124,9 @@ export function resetAnalytics(): void {
   try {
     posthog.reset();
   } catch (error) {
-    console.error('Analytics reset error:', error);
+    if (__DEV__) {
+      console.error('Analytics reset error:', error);
+    }
   }
 }
 

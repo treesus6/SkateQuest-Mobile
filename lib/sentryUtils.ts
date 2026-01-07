@@ -40,23 +40,28 @@ export const trackOperation = async <T>(
   operation: () => Promise<T>,
   tags?: Record<string, string>
 ): Promise<T> => {
-  const transaction = Sentry.startTransaction({
-    op: 'db.query',
-    name: operationName,
-  });
+  const startTime = Date.now();
 
-  if (tags) {
-    Object.entries(tags).forEach(([key, value]) => {
-      transaction.setTag(key, value);
-    });
-  }
+  Sentry.addBreadcrumb({
+    category: 'operation',
+    message: operationName,
+    level: 'info',
+    data: tags,
+  });
 
   try {
     const result = await operation();
-    transaction.setStatus('ok');
+    const duration = Date.now() - startTime;
+
+    Sentry.addBreadcrumb({
+      category: 'operation',
+      message: `${operationName} completed`,
+      level: 'info',
+      data: { ...tags, duration },
+    });
+
     return result;
   } catch (error) {
-    transaction.setStatus('unknown_error');
     Sentry.captureException(error, {
       tags,
       contexts: {
@@ -66,8 +71,6 @@ export const trackOperation = async <T>(
       },
     });
     throw error;
-  } finally {
-    transaction.finish();
   }
 };
 
