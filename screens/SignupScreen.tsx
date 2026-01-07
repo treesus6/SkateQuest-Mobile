@@ -3,12 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SignupScreen({ navigation }: any) {
-  const { signUpWithEmail, loading } = useAuth();
+  const { signUp, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSignup = async () => {
-    await signUpWithEmail(email.trim(), password);
+    await signUp(email.trim(), password);
   };
 
   return (

@@ -117,7 +117,7 @@ function ChallengesStack() {
 function SpotsStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Spots" component={SpotsScreen} />
+      <Stack.Screen name="Spots" component={SpotsScreenFromFile} />
     </Stack.Navigator>
   );
 }

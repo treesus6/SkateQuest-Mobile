@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { Camera, BarCodeScannedCallback } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -23,20 +23,17 @@ const { width, height } = Dimensions.get('window');
 export default function QRCodeScannerScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    requestCameraPermission();
-  }, []);
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
 
-  const requestCameraPermission = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  };
-
-  const handleBarCodeScanned: BarCodeScannedCallback = async ({ data }) => {
+  const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned || processing) return;
 
     setScanned(true);
@@ -192,7 +189,7 @@ export default function QRCodeScannerScreen() {
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#d2673d" />
@@ -200,12 +197,18 @@ export default function QRCodeScannerScreen() {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.text}>No access to camera</Text>
         <TouchableOpacity
           style={styles.button}
+          onPress={requestPermission}
+        >
+          <Text style={styles.buttonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, { marginTop: 10, backgroundColor: '#666' }]}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.buttonText}>Go Back</Text>
@@ -216,13 +219,13 @@ export default function QRCodeScannerScreen() {
 
   return (
     <View style={styles.container}>
-      <Camera
+      <CameraView
         style={styles.camera}
-        type={Camera.Constants.Type.back}
-        barCodeScannerSettings={{
-          barCodeTypes: [Camera.Constants.BarCodeType.qr],
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr'],
         }}
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       >
         <View style={styles.overlay}>
           <View style={styles.header}>
@@ -259,7 +262,7 @@ export default function QRCodeScannerScreen() {
             )}
           </View>
         </View>
-      </Camera>
+      </CameraView>
     </View>
   );
 }

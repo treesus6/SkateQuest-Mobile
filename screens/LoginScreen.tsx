@@ -3,12 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }: any) {
-  const { signInWithEmail, loading } = useAuth();
+  const { signIn, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    await signInWithEmail(email.trim(), password);
+    await signIn(email.trim(), password);
   };
 
   return (

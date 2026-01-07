@@ -107,7 +107,7 @@ export function sanitizeSearchQuery(query: string): string {
   }
 
   return query
-    .replace(/[';--]/g, '') // Remove SQL comment characters
+    .replace(/[';-]/g, '') // Remove SQL comment characters and dashes
     .replace(/\\/g, '') // Remove escape characters
     .trim()
     .slice(0, 100); // Limit length
