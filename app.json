@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SkateQuest",
-    "slug": "skatequest-dev",
+    "slug": "skatequest",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
