@@ -17,11 +17,13 @@
 ## 📱 After Build Completes
 
 ### Download Your Apps:
-Go to: https://expo.dev/accounts/treevanderveer/projects/skatequest-dev/builds
+Go to: https://expo.dev/accounts/treevanderveer/projects/skatequest/builds
 
 You'll see:
-- **Android APK** - Download this
-- **iOS IPA** - Download this
+- **Android APK** - Real standalone native app (NOT Expo Go!)
+- **iOS IPA** - Real standalone native app (NOT Expo Go!)
+
+**These are PRODUCTION apps** - they install and run independently, no Expo Go needed!
 
 ---
 
