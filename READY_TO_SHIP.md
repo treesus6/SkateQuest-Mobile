@@ -7,6 +7,7 @@
 ## ✅ WHAT'S COMPLETE
 
 ### Technical Setup
+
 - ✅ **Bun** - Installed and configured (faster package manager)
 - ✅ **Dependencies** - Clean install completed with Bun
 - ✅ **Sentry** - Error tracking configured with trustedDependencies
@@ -16,6 +17,7 @@
 ### Core Features (ALL IMPLEMENTED!)
 
 #### 1. Pokemon GO-Style Map (MapScreen.tsx)
+
 - ✅ Interactive map with 27,261+ skatepark pins
 - ✅ Geolocation showing user location
 - ✅ PostGIS nearby spots query
@@ -24,6 +26,7 @@
 - ✅ Feature grid navigation
 
 #### 2. Call Outs System (CallOutsScreen.tsx)
+
 - ✅ Challenge skaters to do tricks
 - ✅ Set XP rewards, specify locations
 - ✅ Add trash talk messages
@@ -32,6 +35,7 @@
 - ✅ Accept/decline/complete functionality
 
 #### 3. Spot Details (SpotDetailScreen.tsx)
+
 - ✅ Photo carousel
 - ✅ Spot info (difficulty, rating, tricks)
 - ✅ Live conditions reporting
@@ -40,12 +44,14 @@
 - ✅ **Sponsor link card** (Portal Dimension ready!)
 
 #### 4. ALL Other Screens Built
+
 - ✅ Auth, Profile, Crews, Challenges
 - ✅ Trick Tracker, Leaderboard, Feed
 - ✅ Upload Media, Add Spot, SKATE Game
 - ✅ Playlists, Shops, Events
 
 ### Database Ready
+
 - ✅ SQL migrations created
 - ✅ Sponsor fields defined
 - ✅ get_nearby_spots function written
@@ -92,6 +98,7 @@ After running the SQL:
 ## 📱 Features List
 
 ### Location-Based (Pokemon GO Style)
+
 - Check in at 27,261+ skateparks worldwide
 - Discover new user-submitted spots
 - QR code scanning (ready to implement)
@@ -99,6 +106,7 @@ After running the SQL:
 - Find parks near you
 
 ### Social & Community
+
 - **Call outs** - Challenge skaters to tricks
 - Crews - Build skate teams
 - Sessions - Organize meetups
@@ -107,6 +115,7 @@ After running the SQL:
 - Comments, likes, props
 
 ### Gamification
+
 - XP for visiting parks
 - XP for landing tricks
 - XP for accepting call outs
@@ -116,6 +125,7 @@ After running the SQL:
 - Reputation system
 
 ### Media & Content
+
 - Video uploads for tricks
 - Photo galleries for spots
 - Live conditions reporting
@@ -139,9 +149,11 @@ After running the SQL:
 ## 🚀 Next Steps to Deploy
 
 ### 1. Test Everything (20 minutes)
+
 ```bash
 bun expo start
 ```
+
 - [ ] Sign up works
 - [ ] Map loads with pins
 - [ ] Find Newport → see Portal Dimension link
@@ -150,6 +162,7 @@ bun expo start
 - [ ] Join crew
 
 ### 2. Build Production APK (30 minutes)
+
 ```bash
 bun add -g eas-cli
 eas login
@@ -157,6 +170,7 @@ eas build --platform android
 ```
 
 ### 3. Submit to Stores
+
 - Google Play Store (Android)
 - Apple App Store (iOS, need Apple Developer account)
 
@@ -165,11 +179,13 @@ eas build --platform android
 ## 💡 Portal Dimension Integration
 
 Newport Skate Park will show:
+
 - "Supported by Portal Dimension"
 - Clickable link to their website
 - You can demo this to get more businesses!
 
 **To add more sponsors:**
+
 ```sql
 UPDATE skate_spots
 SET sponsor_name = 'Business Name', sponsor_url = 'https://website.com'

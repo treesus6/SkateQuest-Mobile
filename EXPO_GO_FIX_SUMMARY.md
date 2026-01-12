@@ -9,11 +9,13 @@ The app was stuck in an infinite loop showing "java.io.IOException: failed to do
 After thorough investigation, the issue was caused by **THREE critical problems**:
 
 ### 1. Conflicting Entry Points
+
 - An `index.js` file existed that tried to manually register the root component using `registerRootComponent(App)`
 - `package.json` was configured to use the standard Expo entry point: `node_modules/expo/AppEntry.js`
 - This created a **double registration conflict** that prevented the app from initializing properly
 
 ### 2. Update Configuration Issues
+
 - `app.json` had an `updates` section with conflicting settings:
   - `"enabled": false` - Trying to disable updates
   - `"fallbackToCacheTimeout": 0` - Trying to bypass cache
@@ -21,6 +23,7 @@ After thorough investigation, the issue was caused by **THREE critical problems*
 - These conflicting settings confused Expo Go, making it continuously try to fetch updates
 
 ### 3. Sentry Hooks Interference
+
 - `app.json` had a `postPublish` hook configured for Sentry sourcemap uploads
 - While not directly causing the issue, this added complexity during app initialization
 
@@ -44,6 +47,7 @@ After thorough investigation, the issue was caused by **THREE critical problems*
 ### Final Configuration:
 
 **package.json** (unchanged, already correct):
+
 ```json
 {
   "main": "node_modules/expo/AppEntry.js"
@@ -51,6 +55,7 @@ After thorough investigation, the issue was caused by **THREE critical problems*
 ```
 
 **app.json** (cleaned):
+
 - No `updates` section
 - No `hooks` section
 - Just basic app configuration, platforms, and plugins
@@ -58,17 +63,20 @@ After thorough investigation, the issue was caused by **THREE critical problems*
 ## How to Test
 
 1. Clear all caches:
+
 ```bash
 cd /home/treevanderveer/SkateQuest-Mobile
 rm -rf .expo node_modules/.cache
 ```
 
 2. Start Expo with cache clearing:
+
 ```bash
 npx expo start --clear
 ```
 
 3. Open in Expo Go:
+
 - Scan the QR code
 - App should load directly without update errors
 - You'll see the Auth screen (or Map screen if logged in)
@@ -76,6 +84,7 @@ npx expo start --clear
 ## Why This Works
 
 ### The Standard Expo Flow:
+
 1. Expo Go scans QR code
 2. Connects to Metro bundler
 3. Metro bundles JavaScript using the entry point from `package.json`
@@ -83,6 +92,7 @@ npx expo start --clear
 5. App renders
 
 ### What Was Breaking It:
+
 1. Expo Go scans QR code
 2. Tries to initialize app
 3. **Encounters conflicting registration** (both `index.js` and standard entry)
@@ -92,6 +102,7 @@ npx expo start --clear
 7. **LOOP CONTINUES**
 
 ### How the Fix Resolves It:
+
 1. Removed `index.js` → No conflict
 2. Removed `updates` config → No update attempts
 3. Standard Expo flow works perfectly

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { supabase } from '../lib/supabase';
 import { SkateGame, SkateGameTurn } from '../types';
 import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
 
-export default function GameDetailScreen({ route, navigation }: any) {
+const GameDetailScreen = memo(({ route, navigation }: any) => {
   const { gameId } = route.params;
   const { user } = useAuth();
   const [game, setGame] = useState<SkateGame | null>(null);
@@ -75,11 +75,13 @@ export default function GameDetailScreen({ route, navigation }: any) {
       // Load game
       const { data: gameData, error: gameError } = await supabase
         .from('skate_games')
-        .select(`
+        .select(
+          `
           *,
           challenger:challenger_id(id, username, level, xp),
           opponent:opponent_id(id, username, level, xp)
-        `)
+        `
+        )
         .eq('id', gameId)
         .single();
 
@@ -90,11 +92,13 @@ export default function GameDetailScreen({ route, navigation }: any) {
       // Load turns
       const { data: turnsData, error: turnsError } = await supabase
         .from('skate_game_turns')
-        .select(`
+        .select(
+          `
           *,
           player:player_id(id, username, level),
           media:media_id(id, url, thumbnail_url, type)
-        `)
+        `
+        )
         .eq('game_id', gameId)
         .order('turn_number', { ascending: true });
 
@@ -138,17 +142,15 @@ export default function GameDetailScreen({ route, navigation }: any) {
       const turnNumber = turns.length + 1;
 
       // Add turn
-      const { error: turnError } = await supabase
-        .from('skate_game_turns')
-        .insert([
-          {
-            game_id: gameId,
-            player_id: user.id,
-            media_id: media.id,
-            trick_name: trickName,
-            turn_number: turnNumber,
-          },
-        ]);
+      const { error: turnError } = await supabase.from('skate_game_turns').insert([
+        {
+          game_id: gameId,
+          player_id: user.id,
+          media_id: media.id,
+          trick_name: trickName,
+          turn_number: turnNumber,
+        },
+      ]);
 
       if (turnError) throw turnError;
 
@@ -194,7 +196,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
 
       // If didn't match, give a letter
       if (!matched) {
-        const turn = turns.find((t) => t.id === turnId);
+        const turn = turns.find(t => t.id === turnId);
         if (!turn) return;
 
         const isChallenger = game.challenger_id === user.id;
@@ -316,10 +318,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
   const renderTurn = ({ item, index }: { item: SkateGameTurn; index: number }) => {
     const isMyTrick = item.player_id === user?.id;
     const needsResponse =
-      isMyTurn &&
-      index === turns.length - 1 &&
-      !isMyTrick &&
-      item.matched === null;
+      isMyTurn && index === turns.length - 1 && !isMyTrick && item.matched === null;
 
     return (
       <View style={[styles.turnCard, isMyTrick && styles.myTurnCard]}>
@@ -343,7 +342,9 @@ export default function GameDetailScreen({ route, navigation }: any) {
         )}
 
         {item.matched !== null && (
-          <View style={[styles.resultBadge, item.matched ? styles.matchedBadge : styles.missedBadge]}>
+          <View
+            style={[styles.resultBadge, item.matched ? styles.matchedBadge : styles.missedBadge]}
+          >
             <Text style={styles.resultText}>
               {item.matched ? '✅ Matched!' : '❌ Missed - Letter Added'}
             </Text>
@@ -395,7 +396,12 @@ export default function GameDetailScreen({ route, navigation }: any) {
         </View>
 
         {game.status === 'completed' && (
-          <View style={[styles.gameOverBanner, game.winner_id === user?.id ? styles.wonBanner : styles.lostBanner]}>
+          <View
+            style={[
+              styles.gameOverBanner,
+              game.winner_id === user?.id ? styles.wonBanner : styles.lostBanner,
+            ]}
+          >
             <Text style={styles.gameOverText}>
               {game.winner_id === user?.id ? '🏆 YOU WON!' : '😢 YOU LOST'}
             </Text>
@@ -417,7 +423,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
       <FlatList
         data={turns}
         renderItem={renderTurn}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.turnsList}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -501,7 +507,7 @@ export default function GameDetailScreen({ route, navigation }: any) {
       </Modal>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -790,3 +796,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default GameDetailScreen;

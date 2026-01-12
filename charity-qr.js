@@ -8,13 +8,13 @@ const supabase = window.supabaseClient;
 // ===== QR CODE PURCHASE =====
 
 export async function renderCharityShop() {
-    const content = document.getElementById('content');
-    if (!content) return;
+  const content = document.getElementById('content');
+  if (!content) return;
 
-    // Get current stats
-    const stats = await getCharityStats();
+  // Get current stats
+  const stats = await getCharityStats();
 
-    content.innerHTML = `
+  content.innerHTML = `
         <div style="padding:1.5rem;">
             <h2 style="background:linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
                 🛹❤️ Skateboards for Kids
@@ -130,81 +130,83 @@ export async function renderCharityShop() {
         </div>
     `;
 
-    // Add click handlers for purchase options
-    document.querySelectorAll('.purchase-option').forEach(option => {
-        option.addEventListener('click', async () => {
-            const amount = parseFloat(option.dataset.amount);
-            const qty = parseInt(option.dataset.qty);
-            await purchaseQRCodes(amount, qty);
-        });
-
-        // Hover effect
-        option.addEventListener('mouseenter', () => {
-            option.style.transform = 'scale(1.02)';
-            option.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-        });
-        option.addEventListener('mouseleave', () => {
-            option.style.transform = 'scale(1)';
-            option.style.boxShadow = 'none';
-        });
+  // Add click handlers for purchase options
+  document.querySelectorAll('.purchase-option').forEach(option => {
+    option.addEventListener('click', async () => {
+      const amount = parseFloat(option.dataset.amount);
+      const qty = parseInt(option.dataset.qty);
+      await purchaseQRCodes(amount, qty);
     });
 
-    // Custom amount purchase
-    document.getElementById('custom-purchase-btn').addEventListener('click', async () => {
-        const amount = parseFloat(document.getElementById('custom-amount').value);
-        if (!amount || amount < 2) {
-            alert('Minimum donation is $2');
-            return;
-        }
-        const qty = Math.floor(amount / 2); // 1 code per $2
-        await purchaseQRCodes(amount, qty);
+    // Hover effect
+    option.addEventListener('mouseenter', () => {
+      option.style.transform = 'scale(1.02)';
+      option.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
     });
+    option.addEventListener('mouseleave', () => {
+      option.style.transform = 'scale(1)';
+      option.style.boxShadow = 'none';
+    });
+  });
 
-    // View my codes button
-    document.getElementById('view-my-codes-btn').addEventListener('click', () => {
-        renderMyQRCodes();
-    });
+  // Custom amount purchase
+  document.getElementById('custom-purchase-btn').addEventListener('click', async () => {
+    const amount = parseFloat(document.getElementById('custom-amount').value);
+    if (!amount || amount < 2) {
+      alert('Minimum donation is $2');
+      return;
+    }
+    const qty = Math.floor(amount / 2); // 1 code per $2
+    await purchaseQRCodes(amount, qty);
+  });
 
-    // Scan QR button
-    document.getElementById('scan-qr-btn').addEventListener('click', () => {
-        renderQRScanner();
-    });
+  // View my codes button
+  document.getElementById('view-my-codes-btn').addEventListener('click', () => {
+    renderMyQRCodes();
+  });
+
+  // Scan QR button
+  document.getElementById('scan-qr-btn').addEventListener('click', () => {
+    renderQRScanner();
+  });
 }
 
 // ===== PURCHASE QR CODES =====
 
 async function purchaseQRCodes(amount, quantity) {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            alert('Please sign in to purchase QR codes');
-            return;
-        }
-
-        // Get user profile for username
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-
-        const username = profile?.username || 'Anonymous';
-
-        // Show customization modal
-        showCustomizeCodeModal(user.id, username, amount, quantity);
-
-    } catch (error) {
-        console.error('Purchase error:', error);
-        alert('Error purchasing codes. Please try again.');
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Please sign in to purchase QR codes');
+      return;
     }
+
+    // Get user profile for username
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    const username = profile?.username || 'Anonymous';
+
+    // Show customization modal
+    showCustomizeCodeModal(user.id, username, amount, quantity);
+  } catch (error) {
+    console.error('Purchase error:', error);
+    alert('Error purchasing codes. Please try again.');
+  }
 }
 
 // Show modal to customize QR code with trick challenge
 function showCustomizeCodeModal(userId, username, amount, quantity) {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1rem;';
+  const modal = document.createElement('div');
+  modal.style.cssText =
+    'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1rem;';
 
-    modal.innerHTML = `
+  modal.innerHTML = `
         <div style="background:white;padding:2rem;border-radius:12px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;">
             <h2 style="margin-top:0;">🎨 Customize Your QR Code${quantity > 1 ? 's' : ''}</h2>
             <p>Add a trick challenge for the finder!</p>
@@ -251,115 +253,125 @@ function showCustomizeCodeModal(userId, username, amount, quantity) {
         </div>
     `;
 
-    document.body.appendChild(modal);
+  document.body.appendChild(modal);
 
-    // Cancel button
-    modal.querySelector('#cancel-btn').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
+  // Cancel button
+  modal.querySelector('#cancel-btn').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
 
-    // Confirm purchase
-    modal.querySelector('#confirm-purchase-btn').addEventListener('click', async () => {
-        const trickChallenge = modal.querySelector('#trick-challenge').value.trim();
-        const customMessage = modal.querySelector('#custom-message').value.trim();
-        const xpReward = parseInt(modal.querySelector('#xp-reward').value);
-        const proofRequired = modal.querySelector('#proof-required').checked;
+  // Confirm purchase
+  modal.querySelector('#confirm-purchase-btn').addEventListener('click', async () => {
+    const trickChallenge = modal.querySelector('#trick-challenge').value.trim();
+    const customMessage = modal.querySelector('#custom-message').value.trim();
+    const xpReward = parseInt(modal.querySelector('#xp-reward').value);
+    const proofRequired = modal.querySelector('#proof-required').checked;
 
-        try {
-            // Create codes with customization
-            await createCustomQRCodes(
-                userId,
-                username,
-                amount,
-                quantity,
-                trickChallenge,
-                customMessage,
-                xpReward,
-                proofRequired
-            );
+    try {
+      // Create codes with customization
+      await createCustomQRCodes(
+        userId,
+        username,
+        amount,
+        quantity,
+        trickChallenge,
+        customMessage,
+        xpReward,
+        proofRequired
+      );
 
-            document.body.removeChild(modal);
+      document.body.removeChild(modal);
 
-            alert(`✅ Success! You created ${quantity} QR code${quantity > 1 ? 's' : ''}!\n\n` +
-                  (trickChallenge ? `Trick Challenge: ${trickChallenge}\n` : '') +
-                  `XP Reward: ${xpReward}\n\n` +
-                  `Check "View My QR Codes" to download and hide them!`);
+      alert(
+        `✅ Success! You created ${quantity} QR code${quantity > 1 ? 's' : ''}!\n\n` +
+          (trickChallenge ? `Trick Challenge: ${trickChallenge}\n` : '') +
+          `XP Reward: ${xpReward}\n\n` +
+          `Check "View My QR Codes" to download and hide them!`
+      );
 
-            renderCharityShop();
-
-        } catch (error) {
-            console.error('Error creating codes:', error);
-            alert('Error creating codes. Please try again.');
-        }
-    });
+      renderCharityShop();
+    } catch (error) {
+      console.error('Error creating codes:', error);
+      alert('Error creating codes. Please try again.');
+    }
+  });
 }
 
 // Create QR codes with customization
-async function createCustomQRCodes(userId, username, amount, quantity, trickChallenge, customMessage, xpReward, proofRequired) {
-    // First create donation record
-    const { error: donationError } = await supabase
-        .from('donations')
-        .insert({
-            donor_id: userId,
-            donor_name: username,
-            amount: amount,
-            type: 'qr_purchase',
-            payment_method: 'demo',
-            payment_id: 'demo_' + Date.now(),
-            status: 'completed'
-        });
+async function createCustomQRCodes(
+  userId,
+  username,
+  amount,
+  quantity,
+  trickChallenge,
+  customMessage,
+  xpReward,
+  proofRequired
+) {
+  // First create donation record
+  const { error: donationError } = await supabase.from('donations').insert({
+    donor_id: userId,
+    donor_name: username,
+    amount: amount,
+    type: 'qr_purchase',
+    payment_method: 'demo',
+    payment_id: 'demo_' + Date.now(),
+    status: 'completed',
+  });
 
-    if (donationError) throw donationError;
+  if (donationError) throw donationError;
 
-    // Create each QR code
-    const codes = [];
-    for (let i = 0; i < quantity; i++) {
-        // Generate unique code
-        const code = 'SK8-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+  // Create each QR code
+  const codes = [];
+  for (let i = 0; i < quantity; i++) {
+    // Generate unique code
+    const code = 'SK8-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
-        const { data, error } = await supabase
-            .from('qr_codes')
-            .insert({
-                code: code,
-                purchased_by: userId,
-                purchaser_name: username,
-                purchase_price: amount / quantity,
-                status: 'active',
-                trick_challenge: trickChallenge || null,
-                challenge_message: customMessage || null,
-                xp_reward: xpReward,
-                proof_required: proofRequired
-            })
-            .select()
-            .single();
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .insert({
+        code: code,
+        purchased_by: userId,
+        purchaser_name: username,
+        purchase_price: amount / quantity,
+        status: 'active',
+        trick_challenge: trickChallenge || null,
+        challenge_message: customMessage || null,
+        xp_reward: xpReward,
+        proof_required: proofRequired,
+      })
+      .select()
+      .single();
 
-        if (error) throw error;
-        codes.push(data);
-    }
+    if (error) throw error;
+    codes.push(data);
+  }
 
-    return codes;
+  return codes;
 }
 
 // ===== VIEW MY QR CODES =====
 
 export async function renderMyQRCodes() {
-    const content = document.getElementById('content');
-    if (!content) return;
+  const content = document.getElementById('content');
+  if (!content) return;
 
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-        // Get user's QR codes
-        const { data: codes, error } = await supabase
-            .from('qr_codes')
-            .select('*')
-            .eq('purchased_by', user.id)
-            .order('created_at', { ascending: false });
+    // Get user's QR codes
+    const { data: codes, error } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .eq('purchased_by', user.id)
+      .order('created_at', { ascending: false });
 
-        if (error) throw error;
+    if (error) throw error;
 
-        content.innerHTML = `
+    content.innerHTML = `
             <div style="padding:1.5rem;">
                 <button onclick="history.back()" style="margin-bottom:1rem;padding:0.5rem 1rem;background:#ddd;border:none;border-radius:6px;cursor:pointer;">
                     ← Back to Shop
@@ -374,27 +386,28 @@ export async function renderMyQRCodes() {
             </div>
         `;
 
-        const codesList = document.getElementById('codes-list');
+    const codesList = document.getElementById('codes-list');
 
-        codes.forEach(code => {
-            const codeCard = document.createElement('div');
-            codeCard.style.cssText = 'background:white;padding:1.5rem;border-radius:10px;border:2px solid #4ECDC4;';
+    codes.forEach(code => {
+      const codeCard = document.createElement('div');
+      codeCard.style.cssText =
+        'background:white;padding:1.5rem;border-radius:10px;border:2px solid #4ECDC4;';
 
-            const statusColors = {
-                'active': '#4ECDC4',
-                'hidden': '#667eea',
-                'found': '#4CAF50',
-                'expired': '#999'
-            };
+      const statusColors = {
+        active: '#4ECDC4',
+        hidden: '#667eea',
+        found: '#4CAF50',
+        expired: '#999',
+      };
 
-            const statusEmojis = {
-                'active': '🆕',
-                'hidden': '🗺️',
-                'found': '✅',
-                'expired': '⏰'
-            };
+      const statusEmojis = {
+        active: '🆕',
+        hidden: '🗺️',
+        found: '✅',
+        expired: '⏰',
+      };
 
-            codeCard.innerHTML = `
+      codeCard.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1rem;">
                     <div>
                         <h3 style="margin:0;font-family:monospace;font-size:1.3rem;">${code.code}</h3>
@@ -408,22 +421,32 @@ export async function renderMyQRCodes() {
                     </div>
                 </div>
 
-                ${code.status === 'found' ? `
+                ${
+                  code.status === 'found'
+                    ? `
                     <div style="background:#E8F5E9;padding:1rem;border-radius:6px;margin-bottom:1rem;">
                         <strong>Found by:</strong> ${code.found_by_name || 'Anonymous'}<br/>
                         <strong>Found:</strong> ${new Date(code.found_at).toLocaleString()}
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
 
-                ${code.status === 'hidden' ? `
+                ${
+                  code.status === 'hidden'
+                    ? `
                     <div style="background:#E3F2FD;padding:1rem;border-radius:6px;margin-bottom:1rem;">
                         <strong>Hidden at:</strong> ${code.hidden_location_description || 'Secret location'}<br/>
                         <strong>Hidden:</strong> ${new Date(code.hidden_at).toLocaleString()}
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
 
                 <div style="display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;">
-                    ${code.status === 'active' ? `
+                    ${
+                      code.status === 'active'
+                        ? `
                         <button class="download-qr-btn" data-code="${code.code}" style="flex:1;padding:0.6rem;background:#4ECDC4;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;min-width:120px;">
                             📥 Download
                         </button>
@@ -433,48 +456,49 @@ export async function renderMyQRCodes() {
                         <button class="mark-hidden-btn" data-code-id="${code.id}" style="flex:1;padding:0.6rem;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;min-width:120px;">
                             🗺️ Mark Hidden
                         </button>
-                    ` : ''}
+                    `
+                        : ''
+                    }
                 </div>
             `;
 
-            codesList.appendChild(codeCard);
-        });
+      codesList.appendChild(codeCard);
+    });
 
-        // Add event listeners
-        document.querySelectorAll('.download-qr-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const code = btn.dataset.code;
-                downloadQRCode(code);
-            });
-        });
+    // Add event listeners
+    document.querySelectorAll('.download-qr-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.dataset.code;
+        downloadQRCode(code);
+      });
+    });
 
-        document.querySelectorAll('.print-qr-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const code = btn.dataset.code;
-                printQRCodeFunc(code);
-            });
-        });
+    document.querySelectorAll('.print-qr-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.dataset.code;
+        printQRCodeFunc(code);
+      });
+    });
 
-        document.querySelectorAll('.mark-hidden-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const codeId = btn.dataset.codeId;
-                await markAsHidden(codeId);
-            });
-        });
-
-    } catch (error) {
-        console.error('Error loading codes:', error);
-        content.innerHTML = '<p>Error loading your codes.</p>';
-    }
+    document.querySelectorAll('.mark-hidden-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const codeId = btn.dataset.codeId;
+        await markAsHidden(codeId);
+      });
+    });
+  } catch (error) {
+    console.error('Error loading codes:', error);
+    content.innerHTML = '<p>Error loading your codes.</p>';
+  }
 }
 
 // ===== QR CODE SCANNER =====
 
 export function renderQRScanner() {
-    const content = document.getElementById('content');
-    if (!content) return;
+  const content = document.getElementById('content');
+  if (!content) return;
 
-    content.innerHTML = `
+  content.innerHTML = `
         <div style="padding:1.5rem;">
             <button onclick="history.back()" style="margin-bottom:1rem;padding:0.5rem 1rem;background:#ddd;border:none;border-radius:6px;cursor:pointer;">
                 ← Back
@@ -499,199 +523,195 @@ export function renderQRScanner() {
         </div>
     `;
 
-    document.getElementById('redeem-code-btn').addEventListener('click', async () => {
-        const code = document.getElementById('manual-code-input').value.trim().toUpperCase();
-        if (!code) {
-            alert('Please enter a code');
-            return;
-        }
-        await redeemQRCode(code);
-    });
+  document.getElementById('redeem-code-btn').addEventListener('click', async () => {
+    const code = document.getElementById('manual-code-input').value.trim().toUpperCase();
+    if (!code) {
+      alert('Please enter a code');
+      return;
+    }
+    await redeemQRCode(code);
+  });
 }
 
 // ===== HELPER FUNCTIONS =====
 
 async function getCharityStats() {
-    const { data, error } = await supabase
-        .from('charity_stats')
-        .select('*')
-        .eq('id', 1)
-        .single();
+  const { data, error } = await supabase.from('charity_stats').select('*').eq('id', 1).single();
 
-    if (error) {
-        console.error('Error loading stats:', error);
-        return {};
-    }
+  if (error) {
+    console.error('Error loading stats:', error);
+    return {};
+  }
 
-    return data || {};
+  return data || {};
 }
 
 async function downloadQRCode(codeData) {
-    try {
-        // Get full QR code details from database
-        const { data, error } = await supabase
-            .from('qr_codes')
-            .select('*')
-            .eq('code', codeData.code || codeData)
-            .single();
+  try {
+    // Get full QR code details from database
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .eq('code', codeData.code || codeData)
+      .single();
 
-        if (error) throw error;
+    if (error) throw error;
 
-        const qrCode = data;
+    const qrCode = data;
 
-        // Generate skateboard-shaped QR code
-        const canvas = generateSkateboardQR(
-            qrCode.code,
-            qrCode.trick_challenge,
-            qrCode.challenge_message,
-            qrCode.xp_reward || 100
-        );
+    // Generate skateboard-shaped QR code
+    const canvas = generateSkateboardQR(
+      qrCode.code,
+      qrCode.trick_challenge,
+      qrCode.challenge_message,
+      qrCode.xp_reward || 100
+    );
 
-        // Download the skateboard QR image
-        downloadSkateboardQR(canvas, qrCode.code);
+    // Download the skateboard QR image
+    downloadSkateboardQR(canvas, qrCode.code);
 
-        alert(`📥 Downloaded!\n\nYour skateboard QR code is ready!\n\n` +
-              `Code: ${qrCode.code}\n` +
-              (qrCode.trick_challenge ? `Trick: ${qrCode.trick_challenge}\n` : '') +
-              `XP Reward: ${qrCode.xp_reward || 100}\n\n` +
-              `Print it and hide it somewhere cool!`);
-
-    } catch (error) {
-        console.error('Error downloading QR code:', error);
-        alert('Error generating QR code. Please try again.');
-    }
+    alert(
+      `📥 Downloaded!\n\nYour skateboard QR code is ready!\n\n` +
+        `Code: ${qrCode.code}\n` +
+        (qrCode.trick_challenge ? `Trick: ${qrCode.trick_challenge}\n` : '') +
+        `XP Reward: ${qrCode.xp_reward || 100}\n\n` +
+        `Print it and hide it somewhere cool!`
+    );
+  } catch (error) {
+    console.error('Error downloading QR code:', error);
+    alert('Error generating QR code. Please try again.');
+  }
 }
 
 async function printQRCodeFunc(codeData) {
-    try {
-        // Get full QR code details from database
-        const { data, error } = await supabase
-            .from('qr_codes')
-            .select('*')
-            .eq('code', codeData.code || codeData)
-            .single();
+  try {
+    // Get full QR code details from database
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .eq('code', codeData.code || codeData)
+      .single();
 
-        if (error) throw error;
+    if (error) throw error;
 
-        const qrCode = data;
+    const qrCode = data;
 
-        // Generate skateboard-shaped QR code
-        const canvas = generateSkateboardQR(
-            qrCode.code,
-            qrCode.trick_challenge,
-            qrCode.challenge_message,
-            qrCode.xp_reward || 100
-        );
+    // Generate skateboard-shaped QR code
+    const canvas = generateSkateboardQR(
+      qrCode.code,
+      qrCode.trick_challenge,
+      qrCode.challenge_message,
+      qrCode.xp_reward || 100
+    );
 
-        // Print the skateboard QR
-        printSkateboardQR(canvas);
-
-    } catch (error) {
-        console.error('Error printing QR code:', error);
-        alert('Error generating QR code for print. Please try again.');
-    }
+    // Print the skateboard QR
+    printSkateboardQR(canvas);
+  } catch (error) {
+    console.error('Error printing QR code:', error);
+    alert('Error generating QR code for print. Please try again.');
+  }
 }
 
 async function markAsHidden(codeId) {
-    const location = prompt('Where did you hide it? (e.g., "Under bench at Venice Skatepark")');
-    if (!location) return;
+  const location = prompt('Where did you hide it? (e.g., "Under bench at Venice Skatepark")');
+  if (!location) return;
 
-    try {
-        const { error } = await supabase
-            .from('qr_codes')
-            .update({
-                status: 'hidden',
-                hidden_at: new Date().toISOString(),
-                hidden_location_description: location
-            })
-            .eq('id', codeId);
+  try {
+    const { error } = await supabase
+      .from('qr_codes')
+      .update({
+        status: 'hidden',
+        hidden_at: new Date().toISOString(),
+        hidden_location_description: location,
+      })
+      .eq('id', codeId);
 
-        if (error) throw error;
+    if (error) throw error;
 
-        alert('✅ Marked as hidden! Good luck to the finders!');
-        renderMyQRCodes();
-
-    } catch (error) {
-        console.error('Error marking as hidden:', error);
-        alert('Error updating code. Please try again.');
-    }
+    alert('✅ Marked as hidden! Good luck to the finders!');
+    renderMyQRCodes();
+  } catch (error) {
+    console.error('Error marking as hidden:', error);
+    alert('Error updating code. Please try again.');
+  }
 }
 
 async function redeemQRCode(code) {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            alert('Please sign in to redeem codes');
-            return;
-        }
-
-        // Get user profile
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', user.id)
-            .single();
-
-        // Find the QR code
-        const { data: qrCode, error: fetchError } = await supabase
-            .from('qr_codes')
-            .select('*')
-            .eq('code', code)
-            .single();
-
-        if (fetchError || !qrCode) {
-            alert('❌ Code not found. Check the code and try again.');
-            return;
-        }
-
-        if (qrCode.status === 'found') {
-            alert('⚠️ This code has already been found!');
-            return;
-        }
-
-        if (qrCode.purchased_by === user.id) {
-            alert('😅 You can\'t redeem your own code!');
-            return;
-        }
-
-        // Mark as found
-        const { error: updateError } = await supabase
-            .from('qr_codes')
-            .update({
-                status: 'found',
-                found_by: user.id,
-                found_by_name: profile?.username || 'Anonymous',
-                found_at: new Date().toISOString()
-            })
-            .eq('id', qrCode.id);
-
-        if (updateError) throw updateError;
-
-        // Award XP to finder
-        await supabase.rpc('increment_xp', {
-            user_id: user.id,
-            amount: qrCode.xp_reward || 100
-        });
-
-        alert(
-            `🎉 CODE FOUND!\n\n` +
-            `You earned ${qrCode.xp_reward || 100} XP!\n\n` +
-            `Thanks for participating in our charity scavenger hunt!\n\n` +
-            `Hidden by: ${qrCode.purchaser_name}\n` +
-            `Donated: $${qrCode.purchase_price.toFixed(2)} to help kids skate!`
-        );
-
-        renderCharityShop();
-
-    } catch (error) {
-        console.error('Error redeeming code:', error);
-        alert('Error redeeming code. Please try again.');
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Please sign in to redeem codes');
+      return;
     }
+
+    // Get user profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    // Find the QR code
+    const { data: qrCode, error: fetchError } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .eq('code', code)
+      .single();
+
+    if (fetchError || !qrCode) {
+      alert('❌ Code not found. Check the code and try again.');
+      return;
+    }
+
+    if (qrCode.status === 'found') {
+      alert('⚠️ This code has already been found!');
+      return;
+    }
+
+    if (qrCode.purchased_by === user.id) {
+      alert("😅 You can't redeem your own code!");
+      return;
+    }
+
+    // Mark as found
+    const { error: updateError } = await supabase
+      .from('qr_codes')
+      .update({
+        status: 'found',
+        found_by: user.id,
+        found_by_name: profile?.username || 'Anonymous',
+        found_at: new Date().toISOString(),
+      })
+      .eq('id', qrCode.id);
+
+    if (updateError) throw updateError;
+
+    // Award XP to finder
+    await supabase.rpc('increment_xp', {
+      user_id: user.id,
+      amount: qrCode.xp_reward || 100,
+    });
+
+    alert(
+      `🎉 CODE FOUND!\n\n` +
+        `You earned ${qrCode.xp_reward || 100} XP!\n\n` +
+        `Thanks for participating in our charity scavenger hunt!\n\n` +
+        `Hidden by: ${qrCode.purchaser_name}\n` +
+        `Donated: $${qrCode.purchase_price.toFixed(2)} to help kids skate!`
+    );
+
+    renderCharityShop();
+  } catch (error) {
+    console.error('Error redeeming code:', error);
+    alert('Error redeeming code. Please try again.');
+  }
 }
 
 // Export functions
 export default {
-    renderCharityShop,
-    renderMyQRCodes,
-    renderQRScanner
+  renderCharityShop,
+  renderMyQRCodes,
+  renderQRScanner,
 };

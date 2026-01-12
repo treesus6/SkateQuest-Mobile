@@ -41,9 +41,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Get push token
-    const token = (await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-expo-project-id', // Replace with actual project ID
-    })).data;
+    const token = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId: 'your-expo-project-id', // Replace with actual project ID
+      })
+    ).data;
 
     // Android-specific channel setup
     if (Platform.OS === 'android') {
@@ -186,10 +188,7 @@ export function addNotificationReceivedListener(
 /**
  * Send notification when it's the user's turn in a SKATE game
  */
-export async function notifyGameTurn(
-  opponentUsername: string,
-  gameId: string
-): Promise<void> {
+export async function notifyGameTurn(opponentUsername: string, gameId: string): Promise<void> {
   await sendLocalNotification(
     '🎯 Your Turn!',
     `${opponentUsername} posted a trick. Time to respond!`,
@@ -203,27 +202,17 @@ export async function notifyGameTurn(
 /**
  * Send notification when user wins a SKATE game
  */
-export async function notifyGameWin(
-  opponentUsername: string,
-  gameId: string
-): Promise<void> {
-  await sendLocalNotification(
-    '🏆 You Won!',
-    `You defeated ${opponentUsername} in SKATE!`,
-    {
-      type: 'game_won',
-      gameId,
-    }
-  );
+export async function notifyGameWin(opponentUsername: string, gameId: string): Promise<void> {
+  await sendLocalNotification('🏆 You Won!', `You defeated ${opponentUsername} in SKATE!`, {
+    type: 'game_won',
+    gameId,
+  });
 }
 
 /**
  * Send notification when user loses a SKATE game
  */
-export async function notifyGameLoss(
-  opponentUsername: string,
-  gameId: string
-): Promise<void> {
+export async function notifyGameLoss(opponentUsername: string, gameId: string): Promise<void> {
   await sendLocalNotification(
     '😢 Game Over',
     `${opponentUsername} won the game. Better luck next time!`,

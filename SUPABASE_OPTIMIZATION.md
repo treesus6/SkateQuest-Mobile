@@ -154,9 +154,7 @@ CREATE POLICY "Users can delete own comments"
 const { data } = await supabase.from('media').select('*');
 
 // ✅ Good: Fetch only needed columns
-const { data } = await supabase
-  .from('media')
-  .select('id, url, trick_name, user_id');
+const { data } = await supabase.from('media').select('id, url, trick_name, user_id');
 ```
 
 ### Limit results
@@ -179,11 +177,13 @@ const { data } = await supabase
 // ✅ Good: Fetch related data in one query
 const { data } = await supabase
   .from('media')
-  .select(`
+  .select(
+    `
     *,
     user:users(id, username, avatar_url),
     skatepark:skateparks(id, name)
-  `)
+  `
+  )
   .limit(20);
 ```
 
@@ -311,9 +311,8 @@ Use the offline cache utilities we created:
 import { fetchWithCache, CACHE_KEYS } from './lib/offlineCache';
 
 // Fetch with automatic caching
-const skateparks = await fetchWithCache(
-  CACHE_KEYS.SKATEPARKS,
-  () => supabase.from('skateparks').select('*')
+const skateparks = await fetchWithCache(CACHE_KEYS.SKATEPARKS, () =>
+  supabase.from('skateparks').select('*')
 );
 ```
 
@@ -344,9 +343,7 @@ CREATE POLICY "Users can upload own media"
 const filePath = `${userId}/videos/${timestamp}-${filename}`;
 
 // Makes it easy to list/delete user's files
-const { data } = await supabase.storage
-  .from('media')
-  .list(`${userId}/videos`);
+const { data } = await supabase.storage.from('media').list(`${userId}/videos`);
 ```
 
 ## Monitoring & Maintenance
@@ -354,6 +351,7 @@ const { data } = await supabase.storage
 ### Enable slow query logging
 
 In Supabase Dashboard:
+
 1. Go to Database → Settings
 2. Enable "Log slow queries"
 3. Set threshold to 1000ms (1 second)
@@ -387,6 +385,7 @@ ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 ### Enable Point-in-Time Recovery (PITR)
 
 In Supabase Dashboard:
+
 1. Go to Database → Backups
 2. Enable PITR
 3. Set retention period (7-30 days recommended)

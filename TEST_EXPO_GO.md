@@ -18,12 +18,14 @@ The "failed to download remote update" error was caused by:
 ## Testing Steps
 
 1. **Clear everything**:
+
    ```bash
    cd /home/treevanderveer/SkateQuest-Mobile
    rm -rf .expo node_modules/.cache
    ```
 
 2. **Start the development server**:
+
    ```bash
    npx expo start --clear
    ```

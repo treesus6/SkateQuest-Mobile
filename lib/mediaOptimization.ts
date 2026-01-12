@@ -28,12 +28,7 @@ export async function optimizeImage(
   uri: string,
   options: ImageOptimizationOptions = {}
 ): Promise<OptimizedImage> {
-  const {
-    maxWidth = 1920,
-    maxHeight = 1920,
-    quality = 0.8,
-    format = 'jpeg',
-  } = options;
+  const { maxWidth = 1920, maxHeight = 1920, quality = 0.8, format = 'jpeg' } = options;
 
   try {
     // Get original image info
@@ -53,7 +48,8 @@ export async function optimizeImage(
       [{ resize: { width: maxWidth, height: maxHeight } }],
       {
         compress: quality,
-        format: format === 'png' ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG,
+        format:
+          format === 'png' ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG,
       }
     );
 
@@ -86,10 +82,7 @@ export async function optimizeImage(
 /**
  * Generate thumbnail for image
  */
-export async function generateThumbnail(
-  uri: string,
-  size: number = 200
-): Promise<string> {
+export async function generateThumbnail(uri: string, size: number = 200): Promise<string> {
   try {
     const thumbnail = await ImageManipulator.manipulateAsync(
       uri,
@@ -110,9 +103,7 @@ export async function generateThumbnail(
 /**
  * Generate multiple image sizes (responsive images)
  */
-export async function generateImageSizes(
-  uri: string
-): Promise<{
+export async function generateImageSizes(uri: string): Promise<{
   thumbnail: string;
   small: string;
   medium: string;
@@ -141,9 +132,7 @@ export async function generateImageSizes(
 /**
  * Validate and optimize video (placeholder - actual video compression requires native modules)
  */
-export async function optimizeVideo(
-  uri: string
-): Promise<{ uri: string; fileSize: number }> {
+export async function optimizeVideo(uri: string): Promise<{ uri: string; fileSize: number }> {
   try {
     const info = await FileSystem.getInfoAsync(uri);
     const fileSize = (info as any).size || 0;
@@ -174,9 +163,7 @@ export async function optimizeVideo(
 /**
  * Generate video thumbnail (extract first frame)
  */
-export async function generateVideoThumbnail(
-  videoUri: string
-): Promise<string> {
+export async function generateVideoThumbnail(videoUri: string): Promise<string> {
   try {
     // This requires expo-video-thumbnails or similar
     // For now, return a placeholder

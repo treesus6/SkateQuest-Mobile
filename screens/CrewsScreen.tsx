@@ -114,15 +114,10 @@ export default function CrewsScreen() {
         <Text style={styles.crewName}>{item.name}</Text>
         <Text style={styles.crewXP}>{item.total_xp} XP</Text>
       </View>
-      {item.description && (
-        <Text style={styles.crewDescription}>{item.description}</Text>
-      )}
+      {item.description && <Text style={styles.crewDescription}>{item.description}</Text>}
       <View style={styles.crewFooter}>
         <Text style={styles.memberCount}>👥 {item.member_count} members</Text>
-        <TouchableOpacity
-          style={styles.joinButton}
-          onPress={() => joinCrew(item.id)}
-        >
+        <TouchableOpacity style={styles.joinButton} onPress={() => joinCrew(item.id)}>
           <Text style={styles.joinButtonText}>Join Crew</Text>
         </TouchableOpacity>
       </View>
@@ -133,10 +128,7 @@ export default function CrewsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>👥 Crews</Text>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-        >
+        <TouchableOpacity style={styles.createButton} onPress={() => setShowCreateModal(true)}>
           <Text style={styles.createButtonText}>+ Create Crew</Text>
         </TouchableOpacity>
       </View>
@@ -144,7 +136,7 @@ export default function CrewsScreen() {
       <FlatList
         data={crews}
         renderItem={renderCrew}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadCrews}

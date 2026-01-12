@@ -78,11 +78,12 @@ Or manually add through the Shops UI in the app.
 ### Customization
 
 **Marker Icon**: Modify the shop icon in `app.js` at the `shopIcon` definition:
+
 ```javascript
 const shopIcon = L.divIcon({
-    className: 'shop-marker',
-    html: '<div style="background:#4CAF50;...">🛒</div>',
-    iconSize: [30, 30]
+  className: 'shop-marker',
+  html: '<div style="background:#4CAF50;...">🛒</div>',
+  iconSize: [30, 30],
 });
 ```
 

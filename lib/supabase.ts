@@ -13,9 +13,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Key present:', !!supabaseAnonKey);
   console.error('');
   console.error('Make sure eas.json has EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY');
-  throw new Error(
-    'Supabase credentials not configured. Check eas.json production env vars.'
-  );
+  throw new Error('Supabase credentials not configured. Check eas.json production env vars.');
 }
 
 console.log('✅ Initializing Supabase for SkateQuest...');

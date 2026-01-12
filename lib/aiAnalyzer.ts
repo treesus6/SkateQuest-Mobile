@@ -18,9 +18,7 @@ export interface TrickAnalysisResult {
  * Analyze a trick video using OpenAI Vision API
  * Requires EXPO_PUBLIC_OPENAI_API_KEY in .env
  */
-export async function analyzeTrickWithAI(
-  videoUri: string
-): Promise<TrickAnalysisResult> {
+export async function analyzeTrickWithAI(videoUri: string): Promise<TrickAnalysisResult> {
   const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -37,7 +35,7 @@ export async function analyzeTrickWithAI(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4-vision-preview',
@@ -281,7 +279,7 @@ export async function quickAnalyzeTrick(
   }
 
   // Simulate analysis delay
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
   return analyzeTrickHeuristic();
 }

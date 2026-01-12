@@ -75,18 +75,10 @@ export default function AppNavigator() {
             }}
           >
             {!user ? (
-              <Stack.Screen
-                name="Auth"
-                component={AuthScreen}
-                options={{ headerShown: false }}
-              />
+              <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
             ) : (
               <>
-                <Stack.Screen
-                  name="Map"
-                  component={MapScreen}
-                  options={{ title: 'SkateQuest' }}
-                />
+                <Stack.Screen name="Map" component={MapScreen} options={{ title: 'SkateQuest' }} />
                 <Stack.Screen
                   name="Profile"
                   component={ProfileScreen}
@@ -112,21 +104,13 @@ export default function AppNavigator() {
                   component={ShopsScreen}
                   options={{ title: 'Skate Shops' }}
                 />
-                <Stack.Screen
-                  name="Crews"
-                  component={CrewsScreen}
-                  options={{ title: 'Crews' }}
-                />
+                <Stack.Screen name="Crews" component={CrewsScreen} options={{ title: 'Crews' }} />
                 <Stack.Screen
                   name="Events"
                   component={EventsScreen}
                   options={{ title: 'Events' }}
                 />
-                <Stack.Screen
-                  name="Feed"
-                  component={FeedScreen}
-                  options={{ headerShown: false }}
-                />
+                <Stack.Screen name="Feed" component={FeedScreen} options={{ headerShown: false }} />
                 <Stack.Screen
                   name="UploadMedia"
                   component={UploadMediaScreen}

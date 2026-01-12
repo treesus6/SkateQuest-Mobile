@@ -1,0 +1,16 @@
+name: Publish OTA Update
+
+on:
+  push:
+    branches: ['main']
+    paths-ignore:
+      - 'android/**'
+      - 'ios/**'
+
+jobs:
+  update:
+    name: Publish Update
+    type: update
+    params:
+      branch: ${{ github.ref_name }}
+      message: "Update from commit ${{ github.sha }}"

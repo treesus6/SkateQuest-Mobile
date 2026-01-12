@@ -9,6 +9,7 @@ The app uses environment-specific configuration files to manage different settin
 ## Environment Files
 
 ### File Structure
+
 ```
 .env.example         # Template file with placeholder values (COMMIT TO GIT)
 .env.development     # Development environment config (DO NOT COMMIT)
@@ -21,11 +22,13 @@ The app uses environment-specific configuration files to manage different settin
 #### Required Variables
 
 **EXPO_PUBLIC_SUPABASE_URL**
+
 - Your Supabase project URL
 - Format: `https://[project-id].supabase.co`
 - Get from: [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
 
 **EXPO_PUBLIC_SUPABASE_KEY**
+
 - Your Supabase anonymous/public API key
 - This is safe to expose in client-side code (it's the `anon` key, not the `service_role` key)
 - Get from: [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
@@ -33,11 +36,13 @@ The app uses environment-specific configuration files to manage different settin
 #### Optional Variables
 
 **EXPO_PUBLIC_SENTRY_DSN**
+
 - Sentry Data Source Name for error tracking
 - Leave empty to disable error tracking in development
 - Get from: [Sentry Dashboard](https://sentry.io) → Settings → Projects → [Your Project] → Client Keys (DSN)
 
 **EXPO_PUBLIC_OPENAI_API_KEY**
+
 - OpenAI API key for AI-powered trick analysis
 - Leave empty to use heuristic (local) trick analysis instead
 - Get from: [OpenAI Platform](https://platform.openai.com/api-keys)
@@ -47,11 +52,13 @@ The app uses environment-specific configuration files to manage different settin
 ### Initial Setup
 
 1. **Copy the example file to create your development environment:**
+
    ```bash
    cp .env.example .env.development
    ```
 
 2. **Edit `.env.development` with your actual values:**
+
    ```bash
    # Use your preferred editor
    nano .env.development
@@ -68,6 +75,7 @@ The app uses environment-specific configuration files to manage different settin
 ### Setting Up Production Environment
 
 1. **Create production environment file:**
+
    ```bash
    cp .env.example .env.production
    ```
@@ -110,6 +118,7 @@ npm run ios
 If you need to manually switch environments during development:
 
 1. **Option 1: Rename files temporarily**
+
    ```bash
    # Switch to production
    mv .env.development .env.development.backup
@@ -122,6 +131,7 @@ If you need to manually switch environments during development:
 
 2. **Option 2: Use shell script (recommended)**
    Create a `switch-env.sh` script:
+
    ```bash
    #!/bin/bash
    if [ "$1" = "production" ]; then
@@ -134,6 +144,7 @@ If you need to manually switch environments during development:
    ```
 
    Usage:
+
    ```bash
    chmod +x switch-env.sh
    ./switch-env.sh development  # Switch to dev
@@ -184,6 +195,7 @@ Sentry.init({
 ## Security Best Practices
 
 ### DO ✅
+
 - Commit `.env.example` with placeholder values
 - Use different Supabase projects for dev and prod
 - Keep `.env.development` and `.env.production` in `.gitignore`
@@ -191,6 +203,7 @@ Sentry.init({
 - Rotate keys if accidentally committed
 
 ### DON'T ❌
+
 - Never commit `.env.development` or `.env.production` to Git
 - Never use `service_role` key in client-side code
 - Never hardcode credentials in source files
@@ -201,12 +214,14 @@ Sentry.init({
 ### Variables Not Loading
 
 1. **Restart the development server:**
+
    ```bash
    # Stop the server (Ctrl+C) and restart
    npm start
    ```
 
 2. **Clear cache and restart:**
+
    ```bash
    expo start -c
    ```
@@ -218,6 +233,7 @@ Sentry.init({
 ### "Unable to connect to Supabase"
 
 1. **Check your Supabase URL format:**
+
    ```env
    # Correct:
    EXPO_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co
@@ -237,6 +253,7 @@ Sentry.init({
 ### Environment Not Switching
 
 1. **Expo caches environment variables** - always restart with cache clear:
+
    ```bash
    expo start -c
    ```

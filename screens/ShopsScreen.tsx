@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Linking,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Shop } from '../types';
 
@@ -59,7 +51,8 @@ export default function ShopsScreen() {
     <View style={styles.shopCard}>
       <View style={styles.shopHeader}>
         <Text style={styles.shopName}>
-          {item.verified && '✓ '}{item.name}
+          {item.verified && '✓ '}
+          {item.name}
         </Text>
         {item.verified && (
           <View style={styles.verifiedBadge}>
@@ -70,25 +63,17 @@ export default function ShopsScreen() {
 
       <Text style={styles.address}>📍 {item.address}</Text>
 
-      {item.hours && (
-        <Text style={styles.hours}>🕒 {item.hours}</Text>
-      )}
+      {item.hours && <Text style={styles.hours}>🕒 {item.hours}</Text>}
 
       <View style={styles.actions}>
         {item.phone && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => openPhone(item.phone!)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => openPhone(item.phone!)}>
             <Text style={styles.actionButtonText}>📞 Call</Text>
           </TouchableOpacity>
         )}
 
         {item.website && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => openWebsite(item.website!)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => openWebsite(item.website!)}>
             <Text style={styles.actionButtonText}>🌐 Website</Text>
           </TouchableOpacity>
         )}
@@ -97,9 +82,7 @@ export default function ShopsScreen() {
           style={[styles.actionButton, styles.primaryButton]}
           onPress={() => openMaps(item.latitude, item.longitude, item.name)}
         >
-          <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
-            📍 Directions
-          </Text>
+          <Text style={[styles.actionButtonText, styles.primaryButtonText]}>📍 Directions</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -109,15 +92,13 @@ export default function ShopsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🛒 Skate Shops</Text>
-        <Text style={styles.headerSubtitle}>
-          {shops.length} shops found
-        </Text>
+        <Text style={styles.headerSubtitle}>{shops.length} shops found</Text>
       </View>
 
       <FlatList
         data={shops}
         renderItem={renderShop}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadShops}

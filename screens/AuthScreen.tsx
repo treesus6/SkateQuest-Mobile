@@ -40,7 +40,8 @@ export default function AuthScreen() {
         console.error('Signup error:', signUpError);
         Alert.alert(
           'Signup Failed',
-          signUpError.message + '\n\nMake sure you:\n1. Disabled email confirmation in Supabase\n2. Ran the SQL migrations'
+          signUpError.message +
+            '\n\nMake sure you:\n1. Disabled email confirmation in Supabase\n2. Ran the SQL migrations'
         );
         return;
       }
@@ -108,9 +109,7 @@ export default function AuthScreen() {
 
         <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
           <Text style={styles.toggleText}>
-            {isSignUp
-              ? 'Already have an account? Sign In'
-              : "Don't have an account? Sign Up"}
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </Text>
         </TouchableOpacity>
       </View>

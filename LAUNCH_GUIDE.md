@@ -7,10 +7,12 @@ Complete guide to getting your app on phones and sharing with the world!
 ## 📱 PART 1: Test on Your Phone (5 minutes)
 
 ### Step 1: Install Expo Go
+
 - **iPhone**: [App Store - Expo Go](https://apps.apple.com/app/expo-go/id982107779)
 - **Android**: [Play Store - Expo Go](https://play.google.com/store/apps/details?id=host.exp.exponent)
 
 ### Step 2: Start Your App
+
 ```bash
 cd ~/SkateQuest-Mobile
 npm install
@@ -18,10 +20,12 @@ npx expo start
 ```
 
 ### Step 3: Scan QR Code
+
 - **iPhone**: Open Camera app → Point at QR code → Tap notification
 - **Android**: Open Expo Go app → Tap "Scan QR Code" → Point at QR code
 
 ### Step 4: Test!
+
 - Sign up with email/password
 - Create a spot
 - Try SKATE game mode
@@ -34,6 +38,7 @@ npx expo start
 ## 🔔 PART 2: Enable Push Notifications (15 minutes)
 
 ### Step 1: Update package.json
+
 Already done! ✅ (expo-notifications is installed)
 
 ### Step 2: Add Notification Code to App.tsx
@@ -42,7 +47,11 @@ Open `App.tsx` and add:
 
 ```typescript
 import { useEffect } from 'react';
-import { registerForPushNotifications, savePushToken, addNotificationResponseListener } from './lib/notifications';
+import {
+  registerForPushNotifications,
+  savePushToken,
+  addNotificationResponseListener,
+} from './lib/notifications';
 
 // Inside your App component, add:
 useEffect(() => {
@@ -55,7 +64,7 @@ useEffect(() => {
   });
 
   // Handle notification taps
-  const subscription = addNotificationResponseListener((response) => {
+  const subscription = addNotificationResponseListener(response => {
     const data = response.notification.request.content.data;
     console.log('Notification tapped:', data);
 
@@ -70,6 +79,7 @@ useEffect(() => {
 ```
 
 ### Step 3: Get Expo Project ID
+
 ```bash
 npx expo whoami
 # If not logged in: npx expo login
@@ -85,6 +95,7 @@ This creates `eas.json` and shows your project ID.
 Open `lib/notifications.ts` and replace `'your-expo-project-id'` with your actual project ID from `app.json`.
 
 ### Step 5: Test Notifications
+
 ```bash
 npx expo start
 ```
@@ -119,12 +130,14 @@ EXPO_PUBLIC_OPENAI_API_KEY=sk-...your-actual-key...
 ```
 
 ### Step 3: Restart App
+
 ```bash
 # Stop expo (Ctrl+C)
 npx expo start --clear
 ```
 
 ### Step 4: Test AI Analysis
+
 - Upload a trick video
 - Tap "🤖 Analyze Trick with AI"
 - Get instant feedback!
@@ -153,17 +166,20 @@ You'll get a URL like: `exp://u/yourname/skatequest`
 Build real `.apk` (Android) and `.ipa` (iOS) files:
 
 #### 1. Install EAS CLI
+
 ```bash
 npm install -g eas-cli
 eas login
 ```
 
 #### 2. Configure Build
+
 ```bash
 eas build:configure
 ```
 
 #### 3. Build for Android (Free)
+
 ```bash
 eas build --platform android --profile preview
 ```
@@ -171,6 +187,7 @@ eas build --platform android --profile preview
 This creates an `.apk` file you can share directly!
 
 #### 4. Build for iOS (Requires Apple Developer Account - $99/year)
+
 ```bash
 eas build --platform ios --profile preview
 ```
@@ -186,11 +203,13 @@ This creates an `.ipa` file for TestFlight.
 ### Android (Google Play Store)
 
 #### Prerequisites:
+
 - Google Play Developer account ($25 one-time)
 - Privacy policy URL
 - App screenshots
 
 #### Steps:
+
 ```bash
 # Build production APK
 eas build --platform android --profile production
@@ -210,11 +229,13 @@ eas build --platform android --profile production --auto-submit
 ### iOS (Apple App Store)
 
 #### Prerequisites:
+
 - Apple Developer account ($99/year)
 - Privacy policy URL
 - App screenshots
 
 #### Steps:
+
 ```bash
 # Build production IPA
 eas build --platform ios --profile production
@@ -238,23 +259,28 @@ eas submit --platform ios
 ### App Assets Needed:
 
 #### 1. App Icon
+
 - Create 1024x1024 PNG
 - Put in `assets/icon.png`
 
 #### 2. Splash Screen
+
 - Create 1284x2778 PNG
 - Put in `assets/splash.png`
 
 #### 3. Screenshots (for stores)
+
 - iPhone: 6.5" display (1284 x 2778)
 - Android: 1080 x 1920
 
 #### 4. Privacy Policy
+
 - Required for both stores
 - Use generator: [Privacy Policy Generator](https://www.privacypolicygenerator.info/)
 - Host on your website or GitHub Pages
 
 #### 5. App Description
+
 ```
 SkateQuest - Level up your skating!
 
@@ -371,30 +397,35 @@ Join the skate community and become a better skater!
 ## 🎯 Quick Start Roadmap
 
 ### Today (2 hours)
+
 - ✅ Test on your phone via Expo Go
 - ✅ Enable push notifications
 - ✅ Enable AI analysis
 - ✅ Share with 5 friends via Expo URL
 
 ### This Week
+
 - Build standalone APK
 - Test with 10 beta users
 - Create app icon & screenshots
 - Set up social media accounts
 
 ### Next Week
+
 - Submit to Play Store
 - Submit to App Store
 - Create landing page
 - Start marketing campaign
 
 ### Month 1
+
 - Get 100 users
 - Gather feedback
 - Fix bugs
 - Add requested features
 
 ### Month 2-3
+
 - Get 1,000 users
 - Local skate shop partnerships
 - Influencer marketing
@@ -405,12 +436,14 @@ Join the skate community and become a better skater!
 ## 🆘 Common Issues
 
 ### "Expo Go won't open app"
+
 ```bash
 npx expo start --clear
 # Make sure phone and computer are on same WiFi
 ```
 
 ### "Build failed"
+
 ```bash
 # Check eas.json is configured
 eas build:configure
@@ -420,11 +453,13 @@ eas build --platform android --profile preview
 ```
 
 ### "Notifications not working"
+
 - Must use **physical device** (not simulator)
 - Check permissions in phone Settings
 - Verify Expo project ID in notifications.ts
 
 ### "AI analysis not working"
+
 - Check OpenAI API key in `.env`
 - Restart expo: `npx expo start --clear`
 - Check OpenAI account has credits
@@ -473,6 +508,7 @@ eas build --platform android --profile preview
 ## 🎉 You're Ready!
 
 Your app is **production-ready** with:
+
 - 18 database tables ✅
 - 8 major features ✅
 - Push notifications ✅

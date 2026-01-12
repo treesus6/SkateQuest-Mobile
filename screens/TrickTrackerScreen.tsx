@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -31,13 +31,15 @@ const COMMON_TRICKS = [
   'Smith Grind',
 ];
 
-export default function TrickTrackerScreen() {
+const TrickTrackerScreen = memo(() => {
   const { user } = useAuth();
   const [tricks, setTricks] = useState<UserTrick[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTrickName, setNewTrickName] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'trying' | 'landed' | 'consistent'>('trying');
+  const [selectedStatus, setSelectedStatus] = useState<'trying' | 'landed' | 'consistent'>(
+    'trying'
+  );
 
   useEffect(() => {
     if (user) {
@@ -98,7 +100,10 @@ export default function TrickTrackerScreen() {
     }
   };
 
-  const updateTrickStatus = async (trick: UserTrick, newStatus: 'trying' | 'landed' | 'consistent') => {
+  const updateTrickStatus = async (
+    trick: UserTrick,
+    newStatus: 'trying' | 'landed' | 'consistent'
+  ) => {
     const updates: any = {
       status: newStatus,
       updated_at: new Date().toISOString(),
@@ -132,10 +137,7 @@ export default function TrickTrackerScreen() {
       }
     }
 
-    const { error } = await supabase
-      .from('user_tricks')
-      .update(updates)
-      .eq('id', trick.id);
+    const { error } = await supabase.from('user_tricks').update(updates).eq('id', trick.id);
 
     if (error) {
       Alert.alert('Error', error.message);
@@ -168,10 +170,7 @@ export default function TrickTrackerScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase
-            .from('user_tricks')
-            .delete()
-            .eq('id', trick.id);
+          const { error } = await supabase.from('user_tricks').delete().eq('id', trick.id);
 
           if (!error) {
             loadTricks();
@@ -227,10 +226,7 @@ export default function TrickTrackerScreen() {
         </View>
 
         <View style={styles.trickActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => incrementAttempts(item)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => incrementAttempts(item)}>
             <Text style={styles.actionButtonText}>+1 Try</Text>
           </TouchableOpacity>
 
@@ -267,10 +263,7 @@ export default function TrickTrackerScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🛹 Trick Tracker</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowAddModal(true)}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
           <Text style={styles.addButtonText}>+ Add Trick</Text>
         </TouchableOpacity>
       </View>
@@ -278,7 +271,7 @@ export default function TrickTrackerScreen() {
       <FlatList
         data={tricks}
         renderItem={renderTrick}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -308,7 +301,7 @@ export default function TrickTrackerScreen() {
 
             <Text style={styles.suggestionsTitle}>Common Tricks:</Text>
             <View style={styles.suggestionsContainer}>
-              {COMMON_TRICKS.map((trick) => (
+              {COMMON_TRICKS.map(trick => (
                 <TouchableOpacity
                   key={trick}
                   style={styles.suggestionChip}
@@ -342,7 +335,7 @@ export default function TrickTrackerScreen() {
       </Modal>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -526,3 +519,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default TrickTrackerScreen;

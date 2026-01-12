@@ -26,6 +26,7 @@ Complete guide for submitting SkateQuest to Apple App Store and Google Play Stor
 **Secondary Category**: Social Networking
 
 **Description**:
+
 ```
 Discover skateparks, share your best tricks, and connect with skaters worldwide!
 
@@ -67,18 +68,22 @@ SKATE SAFE! Always wear protective equipment.
 Required sizes (use Figma or screenshot tool):
 
 #### iPhone 6.7" (iPhone 14 Pro Max, 15 Pro Max)
+
 - Size: 1290 x 2796 pixels
 - Screenshots needed: 3-10
 
 #### iPhone 6.5" (iPhone 11 Pro Max, XS Max)
+
 - Size: 1242 x 2688 pixels
 - Screenshots needed: 3-10
 
 #### iPad Pro 12.9" (optional but recommended)
+
 - Size: 2048 x 2732 pixels
 - Screenshots needed: 3-10
 
 **Screenshot Ideas**:
+
 1. Map view showing nearby skateparks
 2. Trick video with AI analysis results
 3. Challenge leaderboard
@@ -106,6 +111,7 @@ Required sizes (use Figma or screenshot tool):
 **Copyright**: © 2024 SkateQuest
 
 **Age Rating**:
+
 - Unrestricted Web Access: Yes (for skatepark maps)
 - Made for Kids: No
 - Rating: 12+ (mild violence/injuries inherent to skateboarding)
@@ -113,16 +119,19 @@ Required sizes (use Figma or screenshot tool):
 ### 6. App Review Information
 
 **Contact Information**:
+
 - First Name: [Your Name]
 - Last Name: [Your Last Name]
 - Email: [Your Email]
 - Phone: [Your Phone]
 
 **Demo Account** (if login required):
+
 - Username: demo@skatequest.app
 - Password: DemoSkate2024!
 
 **Notes**:
+
 ```
 SkateQuest is a skateboarding app for discovering skateparks and sharing tricks.
 
@@ -149,11 +158,13 @@ Thank you for reviewing!
 **App Name**: SkateQuest
 
 **Short Description** (80 chars max):
+
 ```
 Discover skateparks, share tricks, and connect with skaters!
 ```
 
 **Full Description** (4000 chars max):
+
 ```
 [Same as iOS description above]
 ```
@@ -163,6 +174,7 @@ Discover skateparks, share tricks, and connect with skaters!
 **Tags**: skateboarding, skateparks, extreme sports, action sports, sports community
 
 **Contact Details**:
+
 - Website: https://github.com/treesus6/SkateQuest-App
 - Email: contact@skatequest.app
 - Privacy Policy: [Link to Privacy Policy]
@@ -172,9 +184,11 @@ Discover skateparks, share tricks, and connect with skaters!
 **Icon**: 512 x 512 pixels (PNG, 32-bit)
 
 **Feature Graphic**: 1024 x 500 pixels (JPG or PNG)
+
 - Showcase app name and key feature
 
 **Phone Screenshots**: At least 2, up to 8
+
 - Min: 320px
 - Max: 3840px
 
@@ -183,6 +197,7 @@ Discover skateparks, share tricks, and connect with skaters!
 **10-inch Tablet Screenshots**: Optional
 
 **Promo Video**: Optional
+
 - YouTube URL
 
 ### 3. Content Rating

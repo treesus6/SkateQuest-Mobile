@@ -2,19 +2,19 @@
 // Ensures users accept terms before using the app
 
 export function showOnboarding() {
-    // Check if user has already completed onboarding
-    const hasCompletedOnboarding = localStorage.getItem('skatequest_onboarding_completed');
-    const termsVersion = '2024-11-30'; // Update this when terms change
-    const acceptedVersion = localStorage.getItem('skatequest_terms_version');
+  // Check if user has already completed onboarding
+  const hasCompletedOnboarding = localStorage.getItem('skatequest_onboarding_completed');
+  const termsVersion = '2024-11-30'; // Update this when terms change
+  const acceptedVersion = localStorage.getItem('skatequest_terms_version');
 
-    if (hasCompletedOnboarding && acceptedVersion === termsVersion) {
-        return; // User has already onboarded with current terms
-    }
+  if (hasCompletedOnboarding && acceptedVersion === termsVersion) {
+    return; // User has already onboarded with current terms
+  }
 
-    // Create onboarding modal
-    const modal = document.createElement('div');
-    modal.id = 'onboarding-modal';
-    modal.style.cssText = `
+  // Create onboarding modal
+  const modal = document.createElement('div');
+  modal.id = 'onboarding-modal';
+  modal.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -29,7 +29,7 @@ export function showOnboarding() {
         animation: fadeIn 0.3s ease-in;
     `;
 
-    modal.innerHTML = `
+  modal.innerHTML = `
         <style>
             @keyframes fadeIn {
                 from { opacity: 0; }
@@ -231,124 +231,125 @@ export function showOnboarding() {
         </div>
     `;
 
-    document.body.appendChild(modal);
+  document.body.appendChild(modal);
 
-    // Get elements
-    const termsCheckbox = document.getElementById('terms-checkbox');
-    const ageCheckbox = document.getElementById('age-checkbox');
-    const getStartedBtn = document.getElementById('get-started-btn');
-    const viewTermsLink = document.getElementById('view-terms-link');
-    const viewPrivacyLink = document.getElementById('view-privacy-link');
+  // Get elements
+  const termsCheckbox = document.getElementById('terms-checkbox');
+  const ageCheckbox = document.getElementById('age-checkbox');
+  const getStartedBtn = document.getElementById('get-started-btn');
+  const viewTermsLink = document.getElementById('view-terms-link');
+  const viewPrivacyLink = document.getElementById('view-privacy-link');
 
-    // Enable/disable button based on checkboxes
-    function updateButtonState() {
-        const bothChecked = termsCheckbox.checked && ageCheckbox.checked;
-        getStartedBtn.disabled = !bothChecked;
+  // Enable/disable button based on checkboxes
+  function updateButtonState() {
+    const bothChecked = termsCheckbox.checked && ageCheckbox.checked;
+    getStartedBtn.disabled = !bothChecked;
+  }
+
+  termsCheckbox.addEventListener('change', updateButtonState);
+  ageCheckbox.addEventListener('change', updateButtonState);
+
+  // View terms link
+  viewTermsLink.addEventListener('click', e => {
+    e.preventDefault();
+    const legalBtn = document.getElementById('legalBtn');
+    if (legalBtn) {
+      // Temporarily hide onboarding modal
+      modal.style.display = 'none';
+      legalBtn.click();
+
+      // Add button to return to onboarding
+      setTimeout(() => {
+        const returnBtn = document.createElement('button');
+        returnBtn.textContent = '← Back to Onboarding';
+        returnBtn.style.cssText =
+          'position:fixed;top:20px;right:20px;z-index:10001;padding:1rem 1.5rem;background:#4ECDC4;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        returnBtn.onclick = () => {
+          modal.style.display = 'flex';
+          returnBtn.remove();
+          document.getElementById('legalModal')?.style.display = 'none';
+        };
+        document.body.appendChild(returnBtn);
+      }, 100);
+    }
+  });
+
+  // Privacy policy link (same as terms for now)
+  viewPrivacyLink.addEventListener('click', e => {
+    e.preventDefault();
+    viewTermsLink.click();
+  });
+
+  // Checkbox container clicks
+  document.getElementById('terms-checkbox-container').addEventListener('click', e => {
+    if (e.target.tagName !== 'A' && e.target.tagName !== 'INPUT') {
+      termsCheckbox.checked = !termsCheckbox.checked;
+      updateButtonState();
+    }
+  });
+
+  document.getElementById('age-checkbox-container').addEventListener('click', e => {
+    if (e.target.tagName !== 'INPUT') {
+      ageCheckbox.checked = !ageCheckbox.checked;
+      updateButtonState();
+    }
+  });
+
+  // Get Started button
+  getStartedBtn.addEventListener('click', () => {
+    if (!termsCheckbox.checked || !ageCheckbox.checked) {
+      alert('Please accept the terms and confirm your age to continue.');
+      return;
     }
 
-    termsCheckbox.addEventListener('change', updateButtonState);
-    ageCheckbox.addEventListener('change', updateButtonState);
+    // Record acceptance
+    const timestamp = new Date().toISOString();
+    localStorage.setItem('skatequest_onboarding_completed', 'true');
+    localStorage.setItem('skatequest_terms_version', termsVersion);
+    localStorage.setItem('skatequest_terms_accepted_at', timestamp);
 
-    // View terms link
-    viewTermsLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        const legalBtn = document.getElementById('legalBtn');
-        if (legalBtn) {
-            // Temporarily hide onboarding modal
-            modal.style.display = 'none';
-            legalBtn.click();
+    // Analytics event (if analytics is set up)
+    if (window.gtag) {
+      window.gtag('event', 'onboarding_completed', {
+        timestamp: timestamp,
+        terms_version: termsVersion,
+      });
+    }
 
-            // Add button to return to onboarding
-            setTimeout(() => {
-                const returnBtn = document.createElement('button');
-                returnBtn.textContent = '← Back to Onboarding';
-                returnBtn.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10001;padding:1rem 1.5rem;background:#4ECDC4;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
-                returnBtn.onclick = () => {
-                    modal.style.display = 'flex';
-                    returnBtn.remove();
-                    document.getElementById('legalModal')?.style.display = 'none';
-                };
-                document.body.appendChild(returnBtn);
-            }, 100);
+    // Show success animation
+    getStartedBtn.innerHTML = '✅ Welcome to SkateQuest!';
+    getStartedBtn.style.background = '#4CAF50';
+
+    // Remove modal with fade out
+    setTimeout(() => {
+      modal.style.animation = 'fadeOut 0.3s ease-out';
+      modal.style.opacity = '0';
+      setTimeout(() => {
+        modal.remove();
+
+        // Trigger discover view
+        const discoverBtn = document.getElementById('discoverBtn');
+        if (discoverBtn) {
+          discoverBtn.click();
         }
-    });
+      }, 300);
+    }, 800);
+  });
 
-    // Privacy policy link (same as terms for now)
-    viewPrivacyLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        viewTermsLink.click();
-    });
+  // Prevent closing modal by clicking outside
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {
+      // Don't allow closing - user must accept terms
+      modal.style.animation = 'shake 0.5s';
+      setTimeout(() => {
+        modal.style.animation = '';
+      }, 500);
+    }
+  });
 
-    // Checkbox container clicks
-    document.getElementById('terms-checkbox-container').addEventListener('click', (e) => {
-        if (e.target.tagName !== 'A' && e.target.tagName !== 'INPUT') {
-            termsCheckbox.checked = !termsCheckbox.checked;
-            updateButtonState();
-        }
-    });
-
-    document.getElementById('age-checkbox-container').addEventListener('click', (e) => {
-        if (e.target.tagName !== 'INPUT') {
-            ageCheckbox.checked = !ageCheckbox.checked;
-            updateButtonState();
-        }
-    });
-
-    // Get Started button
-    getStartedBtn.addEventListener('click', () => {
-        if (!termsCheckbox.checked || !ageCheckbox.checked) {
-            alert('Please accept the terms and confirm your age to continue.');
-            return;
-        }
-
-        // Record acceptance
-        const timestamp = new Date().toISOString();
-        localStorage.setItem('skatequest_onboarding_completed', 'true');
-        localStorage.setItem('skatequest_terms_version', termsVersion);
-        localStorage.setItem('skatequest_terms_accepted_at', timestamp);
-
-        // Analytics event (if analytics is set up)
-        if (window.gtag) {
-            window.gtag('event', 'onboarding_completed', {
-                timestamp: timestamp,
-                terms_version: termsVersion
-            });
-        }
-
-        // Show success animation
-        getStartedBtn.innerHTML = '✅ Welcome to SkateQuest!';
-        getStartedBtn.style.background = '#4CAF50';
-
-        // Remove modal with fade out
-        setTimeout(() => {
-            modal.style.animation = 'fadeOut 0.3s ease-out';
-            modal.style.opacity = '0';
-            setTimeout(() => {
-                modal.remove();
-
-                // Trigger discover view
-                const discoverBtn = document.getElementById('discoverBtn');
-                if (discoverBtn) {
-                    discoverBtn.click();
-                }
-            }, 300);
-        }, 800);
-    });
-
-    // Prevent closing modal by clicking outside
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            // Don't allow closing - user must accept terms
-            modal.style.animation = 'shake 0.5s';
-            setTimeout(() => {
-                modal.style.animation = '';
-            }, 500);
-        }
-    });
-
-    // Add shake animation
-    const style = document.createElement('style');
-    style.textContent = `
+  // Add shake animation
+  const style = document.createElement('style');
+  style.textContent = `
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
@@ -359,20 +360,20 @@ export function showOnboarding() {
             to { opacity: 0; }
         }
     `;
-    document.head.appendChild(style);
+  document.head.appendChild(style);
 }
 
 // Export function to check if user has accepted current terms
 export function hasAcceptedTerms() {
-    const hasCompleted = localStorage.getItem('skatequest_onboarding_completed');
-    const termsVersion = '2024-11-30';
-    const acceptedVersion = localStorage.getItem('skatequest_terms_version');
-    return hasCompleted && acceptedVersion === termsVersion;
+  const hasCompleted = localStorage.getItem('skatequest_onboarding_completed');
+  const termsVersion = '2024-11-30';
+  const acceptedVersion = localStorage.getItem('skatequest_terms_version');
+  return hasCompleted && acceptedVersion === termsVersion;
 }
 
 // Export function to force show onboarding (for testing or terms updates)
 export function forceShowOnboarding() {
-    localStorage.removeItem('skatequest_onboarding_completed');
-    localStorage.removeItem('skatequest_terms_version');
-    showOnboarding();
+  localStorage.removeItem('skatequest_onboarding_completed');
+  localStorage.removeItem('skatequest_terms_version');
+  showOnboarding();
 }

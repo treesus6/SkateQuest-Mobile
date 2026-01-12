@@ -122,9 +122,7 @@ function generateTicketId(): string {
  * Shake to report feature detector
  * Returns cleanup function
  */
-export function enableShakeToReport(
-  onShake: () => void
-): () => void {
+export function enableShakeToReport(onShake: () => void): () => void {
   // This would use react-native-shake or accelerometer
   // For now, this is a placeholder
   Logger.info('Shake to report enabled');

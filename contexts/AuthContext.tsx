@@ -26,18 +26,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }, 10000);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    }).catch((error) => {
-      clearTimeout(timeout);
-      console.error('Supabase session error:', error);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(timeout);
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch(error => {
+        clearTimeout(timeout);
+        console.error('Supabase session error:', error);
+        setLoading(false);
+      });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

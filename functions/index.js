@@ -8,7 +8,10 @@ const db = admin.firestore();
 // Requires authenticated caller (Firebase Auth token) and will verify the challenge exists
 exports.completeChallenge = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Request has no authentication context.');
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Request has no authentication context.'
+    );
   }
   const uid = context.auth.uid;
   const { challengeId } = data || {};
@@ -17,7 +20,7 @@ exports.completeChallenge = functions.https.onCall(async (data, context) => {
   }
 
   const challengeRef = db.collection('challenges').doc(challengeId);
-  return db.runTransaction(async (tx) => {
+  return db.runTransaction(async tx => {
     const snap = await tx.get(challengeRef);
     if (!snap.exists) {
       throw new functions.https.HttpsError('not-found', 'Challenge not found');
@@ -28,8 +31,15 @@ exports.completeChallenge = functions.https.onCall(async (data, context) => {
     }
     const xp = c.xp || 0;
     const userRef = db.collection('users').doc(uid);
-    tx.update(userRef, { xp: admin.firestore.FieldValue.increment(xp), lastCompleted: admin.firestore.FieldValue.serverTimestamp() });
-    tx.update(challengeRef, { status: 'complete', completedBy: uid, completedAt: admin.firestore.FieldValue.serverTimestamp() });
+    tx.update(userRef, {
+      xp: admin.firestore.FieldValue.increment(xp),
+      lastCompleted: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.update(challengeRef, {
+      status: 'complete',
+      completedBy: uid,
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return { success: true, xp };
   });
 });
@@ -48,12 +58,20 @@ exports.logPortalClick = functions.https.onCall(async (data, context) => {
 
   // Basic rate limiting: disallow clicks more than once every 10 seconds per user
   try {
-    const recentQuery = await clicksRef.where('uid', '==', uid).orderBy('timestamp', 'desc').limit(1).get();
+    const recentQuery = await clicksRef
+      .where('uid', '==', uid)
+      .orderBy('timestamp', 'desc')
+      .limit(1)
+      .get();
     if (!recentQuery.empty) {
       const last = recentQuery.docs[0].data().timestamp;
       const lastMillis = last.toMillis ? last.toMillis() : last._seconds * 1000;
-      if (Date.now() - lastMillis < 10000) { // 10s
-        throw new functions.https.HttpsError('resource-exhausted', 'Too many clicks; please wait a bit');
+      if (Date.now() - lastMillis < 10000) {
+        // 10s
+        throw new functions.https.HttpsError(
+          'resource-exhausted',
+          'Too many clicks; please wait a bit'
+        );
       }
     }
   } catch (err) {
@@ -67,8 +85,12 @@ exports.logPortalClick = functions.https.onCall(async (data, context) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
       location,
       uid,
-      userAgent: (context.rawRequest && context.rawRequest.headers && context.rawRequest.headers['user-agent']) || null,
-      clickDate: new Date().toISOString().split('T')[0]
+      userAgent:
+        (context.rawRequest &&
+          context.rawRequest.headers &&
+          context.rawRequest.headers['user-agent']) ||
+        null,
+      clickDate: new Date().toISOString().split('T')[0],
     });
     return { success: true };
   } catch (e) {

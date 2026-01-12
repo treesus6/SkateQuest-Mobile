@@ -72,22 +72,18 @@ export default function QRCodeScannerScreen() {
 
       // Check if expired
       if (qrData.status === 'expired' || new Date(qrData.expires_at) < new Date()) {
-        Alert.alert(
-          'Expired Code',
-          'This QR code has expired.',
-          [{ text: 'Scan Again', onPress: () => setScanned(false) }]
-        );
+        Alert.alert('Expired Code', 'This QR code has expired.', [
+          { text: 'Scan Again', onPress: () => setScanned(false) },
+        ]);
         setProcessing(false);
         return;
       }
 
       // Check if user is trying to scan their own code
       if (qrData.purchased_by === user?.id) {
-        Alert.alert(
-          'Your Own Code!',
-          "You can't scan a QR code you created yourself.",
-          [{ text: 'Scan Again', onPress: () => setScanned(false) }]
-        );
+        Alert.alert('Your Own Code!', "You can't scan a QR code you created yourself.", [
+          { text: 'Scan Again', onPress: () => setScanned(false) },
+        ]);
         setProcessing(false);
         return;
       }
@@ -96,11 +92,9 @@ export default function QRCodeScannerScreen() {
       await handleSuccessfulScan(qrData);
     } catch (err) {
       console.error('Error scanning QR code:', err);
-      Alert.alert(
-        'Error',
-        'Failed to process QR code. Please try again.',
-        [{ text: 'Scan Again', onPress: () => setScanned(false) }]
-      );
+      Alert.alert('Error', 'Failed to process QR code. Please try again.', [
+        { text: 'Scan Again', onPress: () => setScanned(false) },
+      ]);
       setProcessing(false);
     }
   };
@@ -166,25 +160,19 @@ export default function QRCodeScannerScreen() {
 
       message += '\n\nThis donation helps kids get skateboards!';
 
-      Alert.alert(
-        '🎉 Success!',
-        message,
-        [
-          {
-            text: 'Awesome!',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('🎉 Success!', message, [
+        {
+          text: 'Awesome!',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
 
       setProcessing(false);
     } catch (err) {
       console.error('Error updating QR code:', err);
-      Alert.alert(
-        'Error',
-        'Found the code but failed to update. Please try again.',
-        [{ text: 'OK', onPress: () => setScanned(false) }]
-      );
+      Alert.alert('Error', 'Found the code but failed to update. Please try again.', [
+        { text: 'OK', onPress: () => setScanned(false) },
+      ]);
       setProcessing(false);
     }
   };
@@ -201,10 +189,7 @@ export default function QRCodeScannerScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.text}>No access to camera</Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={requestPermission}
-        >
+        <TouchableOpacity style={styles.button} onPress={requestPermission}>
           <Text style={styles.buttonText}>Grant Permission</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -230,9 +215,7 @@ export default function QRCodeScannerScreen() {
         <View style={styles.overlay}>
           <View style={styles.header}>
             <Text style={styles.title}>Scan QR Code</Text>
-            <Text style={styles.subtitle}>
-              Find charity QR codes hidden around town!
-            </Text>
+            <Text style={styles.subtitle}>Find charity QR codes hidden around town!</Text>
           </View>
 
           <View style={styles.scanArea}>
@@ -248,14 +231,9 @@ export default function QRCodeScannerScreen() {
             ) : (
               <>
                 <Text style={styles.instruction}>
-                  {scanned
-                    ? 'Processing...'
-                    : 'Point your camera at a SkateQuest QR code'}
+                  {scanned ? 'Processing...' : 'Point your camera at a SkateQuest QR code'}
                 </Text>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => navigation.goBack()}
-                >
+                <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
               </>

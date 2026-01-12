@@ -82,10 +82,7 @@ export async function trackApiCall<T>(
 
     // Alert if API call is slow (> 5 seconds)
     if (duration > 5000) {
-      Sentry.captureMessage(
-        `Slow API call: ${operationName} took ${duration}ms`,
-        'warning'
-      );
+      Sentry.captureMessage(`Slow API call: ${operationName} took ${duration}ms`, 'warning');
     }
 
     return result;
@@ -152,9 +149,7 @@ export function trackImageLoad(imageUrl: string, loadTime: number): void {
 /**
  * Track video processing performance
  */
-export async function trackVideoProcessing<T>(
-  operation: () => Promise<T>
-): Promise<T> {
+export async function trackVideoProcessing<T>(operation: () => Promise<T>): Promise<T> {
   const startTime = Date.now();
 
   try {

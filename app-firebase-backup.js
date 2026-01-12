@@ -1,212 +1,282 @@
 // Copyright (c) 2024 Your Name / SkateQuest. All Rights Reserved.
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Wait for Firebase with timeout protection
-    await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-            console.warn('Firebase initialization timeout, proceeding anyway...');
-            resolve();
-        }, 10000); // 10 second timeout
+  // Wait for Firebase with timeout protection
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.warn('Firebase initialization timeout, proceeding anyway...');
+      resolve();
+    }, 10000); // 10 second timeout
 
-        const interval = setInterval(() => {
-            if (window.firebaseInstances) {
-                clearInterval(interval);
-                clearTimeout(timeout);
-                resolve();
-            }
-        }, 100);
+    const interval = setInterval(() => {
+      if (window.firebaseInstances) {
+        clearInterval(interval);
+        clearTimeout(timeout);
+        resolve();
+      }
+    }, 100);
+  });
+
+  // Safely extract Firebase instances with error handling
+  let db,
+    auth,
+    storage,
+    doc,
+    getDoc,
+    setDoc,
+    addDoc,
+    onSnapshot,
+    collection,
+    serverTimestamp,
+    updateDoc,
+    increment,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    signInAnonymously,
+    onAuthStateChanged,
+    appId,
+    query,
+    where,
+    getDocs;
+
+  try {
+    const instances = window.firebaseInstances || {};
+    ({
+      db,
+      auth,
+      storage,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      onSnapshot,
+      collection,
+      serverTimestamp,
+      updateDoc,
+      increment,
+      ref,
+      uploadBytes,
+      getDownloadURL,
+      signInAnonymously,
+      onAuthStateChanged,
+      appId,
+      query,
+      where,
+      getDocs,
+    } = instances);
+
+    if (!db || !auth) {
+      console.error('Firebase not properly initialized');
+      showModal('App initialization error. Please refresh the page.');
+      return;
+    }
+  } catch (error) {
+    console.error('Error loading Firebase instances:', error);
+    return;
+  }
+
+  // Initialize map with error handling
+  let map;
+  try {
+    const mapElement = document.getElementById('map');
+    if (!mapElement) {
+      console.error('Map element not found');
+      return;
+    }
+
+    // Use the map created in main.js
+    map = window.map;
+
+    if (!map) {
+      throw new Error('Map not initialized in main.js');
+    }
+
+    // Expose map globally for error recovery
+    window.map = map;
+    // Make the map available to integrations (parks layer, etc.)
+    window.sqMap = map;
+
+    // Fix map rendering on resize
+    window.addEventListener('resize', () => {
+      if (map && typeof map.invalidateSize === 'function') {
+        setTimeout(() => map.invalidateSize(), 100);
+      }
     });
+  } catch (error) {
+    console.error('Map initialization error:', error);
+    showModal('Map failed to load. Please refresh the page.');
+    return;
+  }
 
-    // Safely extract Firebase instances with error handling
-    let db, auth, storage, doc, getDoc, setDoc, addDoc, onSnapshot, collection, serverTimestamp, updateDoc, increment, ref, uploadBytes, getDownloadURL, signInAnonymously, onAuthStateChanged, appId, query, where, getDocs;
+  // When user clicks on the map while in add mode, show the add form at that coord
+  if (map && typeof map.on === 'function') {
+    map.on('click', e => {
+      if (!mapClickToAdd) return;
+      const { lat, lng } = e.latlng;
+      // add or move temporary marker
+      if (!tempAddMarker) tempAddMarker = L.marker([lat, lng]).addTo(map);
+      else tempAddMarker.setLatLng([lat, lng]);
+      showAddSpotForm(lat.toFixed(6), lng.toFixed(6));
+    });
+  }
 
-    try {
-        const instances = window.firebaseInstances || {};
-        ({ db, auth, storage, doc, getDoc, setDoc, addDoc, onSnapshot, collection, serverTimestamp, updateDoc, increment, ref, uploadBytes, getDownloadURL, signInAnonymously, onAuthStateChanged, appId, query, where, getDocs } = instances);
+  let skateSpots = [],
+    userProfile = {},
+    markers = [];
+  let skateShops = [],
+    shopMarkers = [];
+  let showShops = false;
 
-        if (!db || !auth) {
-            console.error('Firebase not properly initialized');
-            showModal('App initialization error. Please refresh the page.');
-            return;
-        }
-    } catch (error) {
-        console.error('Error loading Firebase instances:', error);
-        return;
-    }
+  // Initialize marker cluster groups for better performance
+  let markerClusterGroup = null;
+  let shopMarkerClusterGroup = null;
 
-    // Initialize map with error handling
-    let map;
-    try {
-        const mapElement = document.getElementById('map');
-        if (!mapElement) {
-            console.error('Map element not found');
-            return;
-        }
-
-        // Use the map created in main.js
-        map = window.map;
-        
-        if (!map) {
-            throw new Error('Map not initialized in main.js');
-        }
-
-        // Expose map globally for error recovery
-        window.map = map;
-        // Make the map available to integrations (parks layer, etc.)
-        window.sqMap = map;
-
-        // Fix map rendering on resize
-        window.addEventListener('resize', () => {
-            if (map && typeof map.invalidateSize === 'function') {
-                setTimeout(() => map.invalidateSize(), 100);
-            }
+  // Initialize clusters after map is ready
+  if (typeof L !== 'undefined' && typeof L.markerClusterGroup === 'function') {
+    markerClusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 60,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+    });
+    shopMarkerClusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: function (cluster) {
+        return L.divIcon({
+          html:
+            '<div style="background:#FF5722;color:white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:bold;">' +
+            cluster.getChildCount() +
+            '</div>',
+          className: 'shop-cluster',
+          iconSize: L.point(40, 40),
         });
-    } catch (error) {
-        console.error('Map initialization error:', error);
-        showModal('Map failed to load. Please refresh the page.');
-        return;
-    }
+      },
+    });
+    console.log('✓ Marker cluster groups initialized');
+  } else {
+    console.warn('MarkerCluster not available, falling back to standard markers');
+  }
+  let currentUserId = null,
+    userLocationMarker = null,
+    currentUserPosition = null;
+  let mediaRecorder,
+    recordedChunks = [],
+    recordedVideoUrl = null,
+    videoStream = null;
+  let mapClickToAdd = false,
+    tempAddMarker = null;
 
-    // When user clicks on the map while in add mode, show the add form at that coord
-    if (map && typeof map.on === 'function') {
-        map.on('click', (e) => {
-        if (!mapClickToAdd) return;
-        const { lat, lng } = e.latlng;
-        // add or move temporary marker
-        if (!tempAddMarker) tempAddMarker = L.marker([lat, lng]).addTo(map);
-        else tempAddMarker.setLatLng([lat, lng]);
-        showAddSpotForm(lat.toFixed(6), lng.toFixed(6));
-        });
-    }
+  const content = document.getElementById('content');
+  const discoverBtn = document.getElementById('discoverBtn');
+  const addSpotBtn = document.getElementById('addSpotBtn');
+  const crewsBtn = document.getElementById('crewsBtn');
+  const eventsBtn = document.getElementById('eventsBtn');
+  const shopsBtn = document.getElementById('shopsBtn');
+  const profileBtn = document.getElementById('profileBtn');
+  const centerMapBtn = document.getElementById('centerMapBtn');
+  const legalBtn = document.getElementById('legalBtn');
+  const modal = document.getElementById('customModal');
+  const modalText = document.getElementById('modalText');
+  const closeButton = document.querySelector('.close-button');
+  const cameraModal = document.getElementById('cameraModal');
+  const cameraPreview = document.getElementById('cameraPreview');
+  const recordBtn = document.getElementById('recordBtn');
+  const stopRecordBtn = document.getElementById('stopRecordBtn');
+  const saveVideoBtn = document.getElementById('saveVideoBtn');
+  const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+  const legalModal = document.getElementById('legalModal');
+  const legalText = document.getElementById('legalText');
+  const shopsToggle = document.getElementById('shops-toggle');
 
-    let skateSpots = [], userProfile = {}, markers = [];
-    let skateShops = [], shopMarkers = [];
-    let showShops = false;
-    
-    // Initialize marker cluster groups for better performance
-    let markerClusterGroup = null;
-    let shopMarkerClusterGroup = null;
-    
-    // Initialize clusters after map is ready
-    if (typeof L !== 'undefined' && typeof L.markerClusterGroup === 'function') {
-        markerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 60,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true
-        });
-        shopMarkerClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 50,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: function(cluster) {
-                return L.divIcon({ 
-                    html: '<div style="background:#FF5722;color:white;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:bold;">' + cluster.getChildCount() + '</div>',
-                    className: 'shop-cluster',
-                    iconSize: L.point(40, 40)
-                });
-            }
-        });
-        console.log('✓ Marker cluster groups initialized');
-    } else {
-        console.warn('MarkerCluster not available, falling back to standard markers');
-    }
-    let currentUserId = null, userLocationMarker = null, currentUserPosition = null;
-    let mediaRecorder, recordedChunks = [], recordedVideoUrl = null, videoStream = null;
-    let mapClickToAdd = false, tempAddMarker = null;
-
-    const content = document.getElementById('content');
-    const discoverBtn = document.getElementById('discoverBtn');
-    const addSpotBtn = document.getElementById('addSpotBtn');
-    const crewsBtn = document.getElementById('crewsBtn');
-    const eventsBtn = document.getElementById('eventsBtn');
-    const shopsBtn = document.getElementById('shopsBtn');
-    const profileBtn = document.getElementById('profileBtn');
-    const centerMapBtn = document.getElementById('centerMapBtn');
-    const legalBtn = document.getElementById('legalBtn');
-    const modal = document.getElementById('customModal');
-    const modalText = document.getElementById('modalText');
-    const closeButton = document.querySelector('.close-button');
-    const cameraModal = document.getElementById('cameraModal');
-    const cameraPreview = document.getElementById('cameraPreview');
-    const recordBtn = document.getElementById('recordBtn');
-    const stopRecordBtn = document.getElementById('stopRecordBtn');
-    const saveVideoBtn = document.getElementById('saveVideoBtn');
-    const cancelCameraBtn = document.getElementById('cancelCameraBtn');
-    const legalModal = document.getElementById('legalModal');
-    const legalText = document.getElementById('legalText');
-    const shopsToggle = document.getElementById('shops-toggle');
-
-    document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
+  document.querySelectorAll('.close-button').forEach(
+    btn =>
+      (btn.onclick = () => {
         btn.closest('.modal').style.display = 'none';
-    });
-    window.onclick = (event) => { if (event.target.classList.contains('modal')) event.target.style.display = "none"; };
-    function showModal(message) { 
-        if (modalText && modal) {
-            modalText.textContent = message;
-            modal.style.display = "block";
-        } else {
-            console.warn('Modal elements not found:', message);
-        }
+      })
+  );
+  window.onclick = event => {
+    if (event.target.classList.contains('modal')) event.target.style.display = 'none';
+  };
+  function showModal(message) {
+    if (modalText && modal) {
+      modalText.textContent = message;
+      modal.style.display = 'block';
+    } else {
+      console.warn('Modal elements not found:', message);
     }
-    function setActiveButton(activeBtn) {
-        if (!activeBtn) return;
-        [discoverBtn, addSpotBtn, crewsBtn, eventsBtn, shopsBtn, profileBtn, legalBtn].filter(btn => btn).forEach(btn => btn.classList.remove('active'));
-        activeBtn.classList.add('active');
+  }
+  function setActiveButton(activeBtn) {
+    if (!activeBtn) return;
+    [discoverBtn, addSpotBtn, crewsBtn, eventsBtn, shopsBtn, profileBtn, legalBtn]
+      .filter(btn => btn)
+      .forEach(btn => btn.classList.remove('active'));
+    activeBtn.classList.add('active');
+  }
+
+  console.log('Button check:', {
+    discoverBtn,
+    addSpotBtn,
+    crewsBtn,
+    eventsBtn,
+    shopsBtn,
+    profileBtn,
+    legalBtn,
+  });
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      currentUserId = user.uid;
+      setupRealtimeListeners();
+      startGpsTracking();
+      document.querySelectorAll('nav button').forEach(b => (b.disabled = false));
+      if (discoverBtn) discoverBtn.click();
+    } else {
+      currentUserId = null;
+      document.querySelectorAll('nav button').forEach(b => (b.disabled = true));
     }
+  });
 
-    console.log('Button check:', {discoverBtn, addSpotBtn, crewsBtn, eventsBtn, shopsBtn, profileBtn, legalBtn});
-
-    onAuthStateChanged(auth, user => {
-        if (user) {
-            currentUserId = user.uid;
-            setupRealtimeListeners();
-            startGpsTracking();
-            document.querySelectorAll('nav button').forEach(b => b.disabled = false);
-            if (discoverBtn) discoverBtn.click();
-        } else {
-            currentUserId = null;
-            document.querySelectorAll('nav button').forEach(b => b.disabled = true);
-        }
-    });
-
-    async function signIn() {
-        try {
-            if (!auth) {
-                console.error('Auth not initialized');
-                return;
-            }
-            await window.firebaseRetry(async () => {
-                await signInAnonymously(auth);
-            }, 'Sign in');
-        } catch (error) {
-            console.error("Error signing in:", error);
-            showModal("Could not connect. Check your internet and refresh.");
-        }
+  async function signIn() {
+    try {
+      if (!auth) {
+        console.error('Auth not initialized');
+        return;
+      }
+      await window.firebaseRetry(async () => {
+        await signInAnonymously(auth);
+      }, 'Sign in');
+    } catch (error) {
+      console.error('Error signing in:', error);
+      showModal('Could not connect. Check your internet and refresh.');
     }
+  }
 
-    if (legalBtn && legalText && legalModal) {
-    }
-    if (challengesBtn) {
-        challengesBtn.onclick = () => {
-            setActiveButton(challengesBtn);
-            content.innerHTML = '<h2>Challenges</h2><p>View and participate in skating challenges. Feature coming soon!</p>';
-        };
-    }
+  if (legalBtn && legalText && legalModal) {
+  }
+  if (challengesBtn) {
+    challengesBtn.onclick = () => {
+      setActiveButton(challengesBtn);
+      content.innerHTML =
+        '<h2>Challenges</h2><p>View and participate in skating challenges. Feature coming soon!</p>';
+    };
+  }
 
-    if (profileBtn) {
-        profileBtn.onclick = () => {
-            setActiveButton(profileBtn);
-            content.innerHTML = '<h2>Profile</h2><p>Your skater profile and stats. Feature coming soon!</p>';
-        };
-    }
+  if (profileBtn) {
+    profileBtn.onclick = () => {
+      setActiveButton(profileBtn);
+      content.innerHTML =
+        '<h2>Profile</h2><p>Your skater profile and stats. Feature coming soon!</p>';
+    };
+  }
 
-
-    if (legalBtn && legalText && legalModal) {
-        legalBtn.onclick = () => {
-            setActiveButton(legalBtn);
-            legalText.innerHTML = `
+  if (legalBtn && legalText && legalModal) {
+    legalBtn.onclick = () => {
+      setActiveButton(legalBtn);
+      legalText.innerHTML = `
             <p><em>Last Updated: August 16, 2025</em></p>
             <p><strong>Legal Disclaimer:</strong> These documents are provided as a starting point. It is strongly recommended that you consult with a qualified legal professional to ensure these policies are complete and appropriate for your specific situation before launching your application.</p>
             
@@ -250,66 +320,104 @@ document.addEventListener('DOMContentLoaded', async () => {
             <h4>3. Data Security</h4>
             <p>We use Google Firebase services to store and protect your data, relying on their robust security infrastructure to keep your information safe.</p>
         `;
-            legalModal.style.display = 'block';
-        };
-    }
+      legalModal.style.display = 'block';
+    };
+  }
 
-    signIn();
+  signIn();
 
-    function setupRealtimeListeners() {
-        if (!currentUserId) return;
-        const spotsPath = `/artifacts/${appId}/public/data/skate_spots`;
-        onSnapshot(collection(db, spotsPath), s => { skateSpots = []; s.forEach(d => skateSpots.push({ id: d.id, ...d.data() })); renderMarkers(); }, e => console.error(e));
-        
-        // Listen to skate shops collection
-        onSnapshot(collection(db, 'shops'), s => { 
-            skateShops = []; 
-            s.forEach(d => skateShops.push({ id: d.id, ...d.data() })); 
-            renderShopMarkers(); 
-        }, e => console.error('Error loading shops:', e));
-        
-        const profilePath = `/artifacts/${appId}/users/${currentUserId}/profile/data`;
-        onSnapshot(doc(db, profilePath), async d => {
-            if (d.exists()) { userProfile = d.data(); } 
-            else { const p = { username: `Skater${Math.floor(Math.random() * 1000)}`, level: 1, xp: 0, spotsAdded: 0, challengesCompleted: [], createdAt: serverTimestamp() }; await setDoc(doc(db, profilePath), p); userProfile = p; }
-            if (profileBtn.classList.contains('active')) renderProfile();
-        }, e => console.error(e));
-    }
+  function setupRealtimeListeners() {
+    if (!currentUserId) return;
+    const spotsPath = `/artifacts/${appId}/public/data/skate_spots`;
+    onSnapshot(
+      collection(db, spotsPath),
+      s => {
+        skateSpots = [];
+        s.forEach(d => skateSpots.push({ id: d.id, ...d.data() }));
+        renderMarkers();
+      },
+      e => console.error(e)
+    );
 
-    function startGpsTracking() {
-        if (!navigator.geolocation) return showModal("Geolocation is not supported.");
-        const userIcon = L.divIcon({ className: 'user-location-marker', iconSize: [18, 18] });
-        navigator.geolocation.watchPosition(pos => {
-            currentUserPosition = [pos.coords.latitude, pos.coords.longitude];
-            if (!userLocationMarker) { userLocationMarker = L.marker(currentUserPosition, { icon: userIcon }).addTo(map); map.setView(currentUserPosition, 16); } 
-            else { userLocationMarker.setLatLng(currentUserPosition); }
-        }, e => { if (e.code === 1) showModal("Please enable location services."); }, { enableHighAccuracy: true });
-    }
+    // Listen to skate shops collection
+    onSnapshot(
+      collection(db, 'shops'),
+      s => {
+        skateShops = [];
+        s.forEach(d => skateShops.push({ id: d.id, ...d.data() }));
+        renderShopMarkers();
+      },
+      e => console.error('Error loading shops:', e)
+    );
 
-    if (centerMapBtn) {
-        centerMapBtn.onclick = () => {
-            if (currentUserPosition) map.setView(currentUserPosition, 16);
-            else showModal("Finding your location...");
-        };
-    }
-
-    function renderMarkers() {
-        // Clear existing markers
-        if (markerClusterGroup) {
-            markerClusterGroup.clearLayers();
-            if (map.hasLayer(markerClusterGroup)) {
-                map.removeLayer(markerClusterGroup);
-            }
+    const profilePath = `/artifacts/${appId}/users/${currentUserId}/profile/data`;
+    onSnapshot(
+      doc(db, profilePath),
+      async d => {
+        if (d.exists()) {
+          userProfile = d.data();
         } else {
-            markers.forEach(m => map.removeLayer(m));
+          const p = {
+            username: `Skater${Math.floor(Math.random() * 1000)}`,
+            level: 1,
+            xp: 0,
+            spotsAdded: 0,
+            challengesCompleted: [],
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(doc(db, profilePath), p);
+          userProfile = p;
         }
-        markers = [];
-        
-        skateSpots.forEach(spot => {
-            if (spot.coords && spot.coords.latitude && spot.coords.longitude) {
-                const marker = L.marker([spot.coords.latitude, spot.coords.longitude]);
-        
-                let popupContent = `
+        if (profileBtn.classList.contains('active')) renderProfile();
+      },
+      e => console.error(e)
+    );
+  }
+
+  function startGpsTracking() {
+    if (!navigator.geolocation) return showModal('Geolocation is not supported.');
+    const userIcon = L.divIcon({ className: 'user-location-marker', iconSize: [18, 18] });
+    navigator.geolocation.watchPosition(
+      pos => {
+        currentUserPosition = [pos.coords.latitude, pos.coords.longitude];
+        if (!userLocationMarker) {
+          userLocationMarker = L.marker(currentUserPosition, { icon: userIcon }).addTo(map);
+          map.setView(currentUserPosition, 16);
+        } else {
+          userLocationMarker.setLatLng(currentUserPosition);
+        }
+      },
+      e => {
+        if (e.code === 1) showModal('Please enable location services.');
+      },
+      { enableHighAccuracy: true }
+    );
+  }
+
+  if (centerMapBtn) {
+    centerMapBtn.onclick = () => {
+      if (currentUserPosition) map.setView(currentUserPosition, 16);
+      else showModal('Finding your location...');
+    };
+  }
+
+  function renderMarkers() {
+    // Clear existing markers
+    if (markerClusterGroup) {
+      markerClusterGroup.clearLayers();
+      if (map.hasLayer(markerClusterGroup)) {
+        map.removeLayer(markerClusterGroup);
+      }
+    } else {
+      markers.forEach(m => map.removeLayer(m));
+    }
+    markers = [];
+
+    skateSpots.forEach(spot => {
+      if (spot.coords && spot.coords.latitude && spot.coords.longitude) {
+        const marker = L.marker([spot.coords.latitude, spot.coords.longitude]);
+
+        let popupContent = `
                     <strong>${spot.name}</strong><br/>
                     ${spot.imageUrl ? `<img src="${spot.imageUrl}" alt="${spot.name}" style="max-width:150px;border-radius:8px;margin-top:5px;"/><br/>` : ''}
                     Difficulty: ${spot.difficulty}<br/>
@@ -326,76 +434,76 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button type="submit">Add Challenge</button>
                     </form>
                 `;
-        
-                marker.bindPopup(popupContent);
-                markers.push(marker);
-                
-                // Add to cluster group or map
-                if (markerClusterGroup) {
-                    markerClusterGroup.addLayer(marker);
-                } else {
-                    marker.addTo(map);
-                }
-        
-                marker.on('popupopen', () => {
-                    // Add the spot ID to the popup's HTML element
-                    marker.getPopup()._content.parentElement.dataset.spotId = spot.id;
-                    const form = document.getElementById(`addChallengeForm-${spot.id}`);
-                    form.onsubmit = (e) => {
-                        e.preventDefault();
-                        addChallengeToSpot(spot.id);
-                    };
-                    renderChallengesForSpot(spot.id);
-                });
-            }
-        });
-        
-        // Add cluster group to map
-        if (markerClusterGroup && markers.length > 0) {
-            map.addLayer(markerClusterGroup);
-            console.log(`✓ Rendered ${markers.length} skate spot markers with clustering`);
-        } else if (markers.length > 0) {
-            console.log(`✓ Rendered ${markers.length} skate spot markers`);
-        }
-    }
 
-    // Helper function to escape HTML to prevent XSS
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+        marker.bindPopup(popupContent);
+        markers.push(marker);
 
-    // Render skate shop markers on the map
-    function renderShopMarkers() {
-        // Remove existing shop markers
-        if (shopMarkerClusterGroup) {
-            shopMarkerClusterGroup.clearLayers();
-            if (map.hasLayer(shopMarkerClusterGroup)) {
-                map.removeLayer(shopMarkerClusterGroup);
-            }
+        // Add to cluster group or map
+        if (markerClusterGroup) {
+          markerClusterGroup.addLayer(marker);
         } else {
-            shopMarkers.forEach(m => map.removeLayer(m));
+          marker.addTo(map);
         }
-        shopMarkers = [];
-        
-        // Only render if shops toggle is enabled
-        if (!showShops) return;
-        
-        skateShops.forEach(shop => {
-            if (shop.coords && shop.coords.latitude && shop.coords.longitude) {
-                // Create custom icon for shops (different from skate spots)
-                const shopIcon = L.divIcon({
-                    className: 'shop-marker',
-                    html: '<div style="background:#4CAF50;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:18px;">🛒</span></div>',
-                    iconSize: [30, 30],
-                    iconAnchor: [15, 15]
-                });
-                
-                const marker = L.marker([shop.coords.latitude, shop.coords.longitude], { icon: shopIcon });
-        
-                let popupContent = `
+
+        marker.on('popupopen', () => {
+          // Add the spot ID to the popup's HTML element
+          marker.getPopup()._content.parentElement.dataset.spotId = spot.id;
+          const form = document.getElementById(`addChallengeForm-${spot.id}`);
+          form.onsubmit = e => {
+            e.preventDefault();
+            addChallengeToSpot(spot.id);
+          };
+          renderChallengesForSpot(spot.id);
+        });
+      }
+    });
+
+    // Add cluster group to map
+    if (markerClusterGroup && markers.length > 0) {
+      map.addLayer(markerClusterGroup);
+      console.log(`✓ Rendered ${markers.length} skate spot markers with clustering`);
+    } else if (markers.length > 0) {
+      console.log(`✓ Rendered ${markers.length} skate spot markers`);
+    }
+  }
+
+  // Helper function to escape HTML to prevent XSS
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Render skate shop markers on the map
+  function renderShopMarkers() {
+    // Remove existing shop markers
+    if (shopMarkerClusterGroup) {
+      shopMarkerClusterGroup.clearLayers();
+      if (map.hasLayer(shopMarkerClusterGroup)) {
+        map.removeLayer(shopMarkerClusterGroup);
+      }
+    } else {
+      shopMarkers.forEach(m => map.removeLayer(m));
+    }
+    shopMarkers = [];
+
+    // Only render if shops toggle is enabled
+    if (!showShops) return;
+
+    skateShops.forEach(shop => {
+      if (shop.coords && shop.coords.latitude && shop.coords.longitude) {
+        // Create custom icon for shops (different from skate spots)
+        const shopIcon = L.divIcon({
+          className: 'shop-marker',
+          html: '<div style="background:#4CAF50;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:18px;">🛒</span></div>',
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        });
+
+        const marker = L.marker([shop.coords.latitude, shop.coords.longitude], { icon: shopIcon });
+
+        let popupContent = `
                     <div style="min-width:200px;">
                         <h3 style="margin:0 0 10px 0;color:#4CAF50;">🛹 ${escapeHtml(shop.name)}</h3>
                         ${shop.address ? `<p style="margin:5px 0;"><strong>📍 Address:</strong><br/>${escapeHtml(shop.address)}</p>` : ''}
@@ -405,122 +513,137 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${shop.verified ? '<p style="margin:5px 0;color:#4CAF50;">✓ Verified Shop</p>' : ''}
                     </div>
                 `;
-        
-                marker.bindPopup(popupContent);
-                shopMarkers.push(marker);
-                
-                // Add to cluster group or map
-                if (shopMarkerClusterGroup) {
-                    shopMarkerClusterGroup.addLayer(marker);
-                } else {
-                    marker.addTo(map);
-                }
-            }
-        });
-        
-        // Add shop cluster group to map
-        if (shopMarkerClusterGroup && shopMarkers.length > 0) {
-            map.addLayer(shopMarkerClusterGroup);
-            console.log(`✓ Rendered ${shopMarkers.length} shop markers with clustering`);
-        } else if (shopMarkers.length > 0) {
-            console.log(`✓ Rendered ${shopMarkers.length} shop markers`);
+
+        marker.bindPopup(popupContent);
+        shopMarkers.push(marker);
+
+        // Add to cluster group or map
+        if (shopMarkerClusterGroup) {
+          shopMarkerClusterGroup.addLayer(marker);
+        } else {
+          marker.addTo(map);
         }
+      }
+    });
+
+    // Add shop cluster group to map
+    if (shopMarkerClusterGroup && shopMarkers.length > 0) {
+      map.addLayer(shopMarkerClusterGroup);
+      console.log(`✓ Rendered ${shopMarkers.length} shop markers with clustering`);
+    } else if (shopMarkers.length > 0) {
+      console.log(`✓ Rendered ${shopMarkers.length} shop markers`);
+    }
+  }
+
+  // New function to add a challenge to a spot
+  async function addChallengeToSpot(spotId) {
+    if (!currentUserId) {
+      showModal('You must be logged in to add a challenge.');
+      return;
+    }
+    const challengeText = document.getElementById(`challengeText-${spotId}`).value;
+    if (!challengeText.trim()) {
+      return;
     }
 
-    // New function to add a challenge to a spot
-    async function addChallengeToSpot(spotId) {
-        if (!currentUserId) {
-            showModal("You must be logged in to add a challenge.");
-            return;
+    try {
+      await addDoc(
+        collection(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges`),
+        {
+          description: challengeText,
+          addedBy: currentUserId,
+          createdAt: serverTimestamp(),
+          completedBy: [],
         }
-        const challengeText = document.getElementById(`challengeText-${spotId}`).value;
-        if (!challengeText.trim()) {
-            return;
-        }
-
-        try {
-            await addDoc(collection(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges`), {
-                description: challengeText,
-                addedBy: currentUserId,
-                createdAt: serverTimestamp(),
-                completedBy: []
-            });
-            document.getElementById(`challengeText-${spotId}`).value = '';
-            showModal("Challenge added!");
-        } catch (error) {
-            console.error("Error adding challenge: ", error);
-            showModal("Failed to add challenge.");
-        }
+      );
+      document.getElementById(`challengeText-${spotId}`).value = '';
+      showModal('Challenge added!');
+    } catch (error) {
+      console.error('Error adding challenge: ', error);
+      showModal('Failed to add challenge.');
     }
+  }
 
-    // Updated function to render challenges for a specific spot with a "Complete" button
-    function renderChallengesForSpot(spotId) {
-        const challengesList = document.getElementById(`challengesList-${spotId}`);
-        if (!challengesList) return;
+  // Updated function to render challenges for a specific spot with a "Complete" button
+  function renderChallengesForSpot(spotId) {
+    const challengesList = document.getElementById(`challengesList-${spotId}`);
+    if (!challengesList) return;
 
-        onSnapshot(collection(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges`), (snapshot) => {
-            challengesList.innerHTML = '';
-            snapshot.forEach(doc => {
-                const challenge = doc.data();
-                const li = document.createElement('li');
-                li.innerHTML = `
+    onSnapshot(
+      collection(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges`),
+      snapshot => {
+        challengesList.innerHTML = '';
+        snapshot.forEach(doc => {
+          const challenge = doc.data();
+          const li = document.createElement('li');
+          li.innerHTML = `
                     ${challenge.description}
                     <button class="complete-challenge-btn" data-challenge-id="${doc.id}">Complete</button>
                 `;
-                challengesList.appendChild(li);
-            });
-        }, (error) => {
-            console.error("Error getting challenges: ", error);
-            challengesList.innerHTML = '<li>Failed to load challenges.</li>';
+          challengesList.appendChild(li);
         });
+      },
+      error => {
+        console.error('Error getting challenges: ', error);
+        challengesList.innerHTML = '<li>Failed to load challenges.</li>';
+      }
+    );
+  }
+
+  // New event listener for all "Complete" buttons
+  document.addEventListener('click', async e => {
+    if (e.target.classList.contains('complete-challenge-btn')) {
+      const challengeId = e.target.dataset.challengeId;
+      const spotId = e.target.closest('.leaflet-popup-pane').dataset.spotId;
+      completeChallenge(spotId, challengeId);
+    }
+  });
+
+  // New function to handle challenge completion
+  async function completeChallenge(spotId, challengeId) {
+    if (!currentUserId) {
+      showModal('You must be logged in to complete a challenge.');
+      return;
     }
 
-    // New event listener for all "Complete" buttons
-    document.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('complete-challenge-btn')) {
-            const challengeId = e.target.dataset.challengeId;
-            const spotId = e.target.closest('.leaflet-popup-pane').dataset.spotId;
-            completeChallenge(spotId, challengeId);
-        }
-    });
+    showModal('Completing challenge... please wait.');
 
-    // New function to handle challenge completion
-    async function completeChallenge(spotId, challengeId) {
-        if (!currentUserId) {
-            showModal("You must be logged in to complete a challenge.");
-            return;
-        }
-        
-        showModal("Completing challenge... please wait.");
-        
-        try {
-            const challengeRef = doc(db, `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges/${challengeId}`);
-            const challengeDoc = await getDoc(challengeRef);
-            const challengeData = challengeDoc.data();
-            
-            // Add user to the list of people who have completed this challenge
-            const completedBy = [...(challengeData.completedBy || []), currentUserId];
-            await updateDoc(challengeRef, { completedBy: completedBy });
+    try {
+      const challengeRef = doc(
+        db,
+        `/artifacts/${appId}/public/data/skate_spots/${spotId}/challenges/${challengeId}`
+      );
+      const challengeDoc = await getDoc(challengeRef);
+      const challengeData = challengeDoc.data();
 
-            // Reward the user with XP
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), { xp: increment(100) });
+      // Add user to the list of people who have completed this challenge
+      const completedBy = [...(challengeData.completedBy || []), currentUserId];
+      await updateDoc(challengeRef, { completedBy: completedBy });
 
-            showModal("Challenge completed! You earned 100 XP!");
-        } catch (error) {
-            console.error("Error completing challenge: ", error);
-            showModal("Failed to complete challenge.");
-        }
+      // Reward the user with XP
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        xp: increment(100),
+      });
+
+      showModal('Challenge completed! You earned 100 XP!');
+    } catch (error) {
+      console.error('Error completing challenge: ', error);
+      showModal('Failed to complete challenge.');
     }
+  }
 
-    if (discoverBtn) {
-        discoverBtn.onclick = () => { setActiveButton(discoverBtn); content.innerHTML = '<p>Use the map to discover skate spots. Tap markers for details.</p>'; };
-    }
+  if (discoverBtn) {
+    discoverBtn.onclick = () => {
+      setActiveButton(discoverBtn);
+      content.innerHTML = '<p>Use the map to discover skate spots. Tap markers for details.</p>';
+    };
+  }
 
-    // Helper to show the Add Spot form for given coordinates
-    function showAddSpotForm(lat = '', lng = '') {
-        setActiveButton(addSpotBtn);
-        recordedVideoUrl = null;
-        content.innerHTML = `
+  // Helper to show the Add Spot form for given coordinates
+  function showAddSpotForm(lat = '', lng = '') {
+    setActiveButton(addSpotBtn);
+    recordedVideoUrl = null;
+    content.innerHTML = `
             <h3>Add New Spot</h3>
             <p>Tap Save to add the spot at the selected location.</p>
             <form id="addSpotForm">
@@ -537,119 +660,156 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <button type="button" id="cancelAddSpotBtn">Cancel</button>
             </form>
         `;
-        document.getElementById('recordVideoBtn').onclick = () => openCamera();
-        document.getElementById('cancelAddSpotBtn').onclick = () => { 
-            mapClickToAdd = false; 
-            if (tempAddMarker) { map.removeLayer(tempAddMarker); tempAddMarker = null; }
-            content.innerHTML = ''; 
-            setActiveButton(discoverBtn); 
-        };
+    document.getElementById('recordVideoBtn').onclick = () => openCamera();
+    document.getElementById('cancelAddSpotBtn').onclick = () => {
+      mapClickToAdd = false;
+      if (tempAddMarker) {
+        map.removeLayer(tempAddMarker);
+        tempAddMarker = null;
+      }
+      content.innerHTML = '';
+      setActiveButton(discoverBtn);
+    };
 
-        // Spot image handling
-        const spotImageInput = document.getElementById('spotImageInput');
-        const spotImagePreview = document.getElementById('spotImagePreview');
-        let selectedSpotImageFile = null;
-        spotImageInput.onchange = (ev) => {
-            const f = ev.target.files && ev.target.files[0];
-            if (!f) { selectedSpotImageFile = null; spotImagePreview.innerHTML = ''; return; }
-            // quick client-side checks
-            if (f.size > 5 * 1024 * 1024) { showModal('Image too large (max 5MB).'); spotImageInput.value = ''; selectedSpotImageFile = null; spotImagePreview.innerHTML = ''; return; }
-            if (!f.type.startsWith('image/')) { showModal('Only image files are allowed.'); spotImageInput.value = ''; selectedSpotImageFile = null; spotImagePreview.innerHTML = ''; return; }
-            selectedSpotImageFile = f;
-            spotImagePreview.innerHTML = `<img src="${URL.createObjectURL(f)}" style="max-width:200px;border-radius:8px;margin-top:0.5em;"/>`;
-        };
+    // Spot image handling
+    const spotImageInput = document.getElementById('spotImageInput');
+    const spotImagePreview = document.getElementById('spotImagePreview');
+    let selectedSpotImageFile = null;
+    spotImageInput.onchange = ev => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) {
+        selectedSpotImageFile = null;
+        spotImagePreview.innerHTML = '';
+        return;
+      }
+      // quick client-side checks
+      if (f.size > 5 * 1024 * 1024) {
+        showModal('Image too large (max 5MB).');
+        spotImageInput.value = '';
+        selectedSpotImageFile = null;
+        spotImagePreview.innerHTML = '';
+        return;
+      }
+      if (!f.type.startsWith('image/')) {
+        showModal('Only image files are allowed.');
+        spotImageInput.value = '';
+        selectedSpotImageFile = null;
+        spotImagePreview.innerHTML = '';
+        return;
+      }
+      selectedSpotImageFile = f;
+      spotImagePreview.innerHTML = `<img src="${URL.createObjectURL(f)}" style="max-width:200px;border-radius:8px;margin-top:0.5em;"/>`;
+    };
 
-        document.getElementById('addSpotForm').onsubmit = async (e) => {
-            e.preventDefault();
-            if (!currentUserId) return showModal("You must be signed in.");
-            const newSpot = {
-                name: document.getElementById('spotName').value.trim(),
-                coords: { latitude: parseFloat(document.getElementById('spotLat').value), longitude: parseFloat(document.getElementById('spotLng').value) },
-                difficulty: document.getElementById('spotDifficulty').value,
-                tricks: document.getElementById('spotTricks').value.split(',').map(t => t.trim()).filter(Boolean),
-                addedBy: currentUserId, createdAt: serverTimestamp(),
-                ...(recordedVideoUrl && { videoUrl: recordedVideoUrl })
-            };
-            try {
-                showModal('Adding spot...');
+    document.getElementById('addSpotForm').onsubmit = async e => {
+      e.preventDefault();
+      if (!currentUserId) return showModal('You must be signed in.');
+      const newSpot = {
+        name: document.getElementById('spotName').value.trim(),
+        coords: {
+          latitude: parseFloat(document.getElementById('spotLat').value),
+          longitude: parseFloat(document.getElementById('spotLng').value),
+        },
+        difficulty: document.getElementById('spotDifficulty').value,
+        tricks: document
+          .getElementById('spotTricks')
+          .value.split(',')
+          .map(t => t.trim())
+          .filter(Boolean),
+        addedBy: currentUserId,
+        createdAt: serverTimestamp(),
+        ...(recordedVideoUrl && { videoUrl: recordedVideoUrl }),
+      };
+      try {
+        showModal('Adding spot...');
 
-                // If a spot image was selected, upload it first and attach URL with retry
-                if (selectedSpotImageFile) {
-                    await window.firebaseRetry(async () => {
-                        const imgName = `${currentUserId}/${Date.now()}_${selectedSpotImageFile.name}`;
-                        const imgRef = ref(storage, `spot_images/${imgName}`);
-                        const uploadResult = await uploadBytes(imgRef, selectedSpotImageFile);
-                        newSpot.imageUrl = await getDownloadURL(uploadResult.ref);
-                    }, 'Image upload');
-                }
+        // If a spot image was selected, upload it first and attach URL with retry
+        if (selectedSpotImageFile) {
+          await window.firebaseRetry(async () => {
+            const imgName = `${currentUserId}/${Date.now()}_${selectedSpotImageFile.name}`;
+            const imgRef = ref(storage, `spot_images/${imgName}`);
+            const uploadResult = await uploadBytes(imgRef, selectedSpotImageFile);
+            newSpot.imageUrl = await getDownloadURL(uploadResult.ref);
+          }, 'Image upload');
+        }
 
-                // Add spot with retry
-                await window.firebaseRetry(async () => {
-                    await addDoc(collection(db, `/artifacts/${appId}/public/data/skate_spots`), newSpot);
-                    await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), { spotsAdded: increment(1), xp: increment(100) });
-                }, 'Add spot');
+        // Add spot with retry
+        await window.firebaseRetry(async () => {
+          await addDoc(collection(db, `/artifacts/${appId}/public/data/skate_spots`), newSpot);
+          await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+            spotsAdded: increment(1),
+            xp: increment(100),
+          });
+        }, 'Add spot');
 
-                showModal('Spot added! You earned 100 XP!');
-                mapClickToAdd = false;
-                if (tempAddMarker) { map.removeLayer(tempAddMarker); tempAddMarker = null; }
-                if (discoverBtn) discoverBtn.click();
-            } catch (error) {
-                console.error("Error adding spot: ", error);
-                showModal("Failed to add spot. Please check your connection and try again.");
-            }
-        };
-    }
+        showModal('Spot added! You earned 100 XP!');
+        mapClickToAdd = false;
+        if (tempAddMarker) {
+          map.removeLayer(tempAddMarker);
+          tempAddMarker = null;
+        }
+        if (discoverBtn) discoverBtn.click();
+      } catch (error) {
+        console.error('Error adding spot: ', error);
+        showModal('Failed to add spot. Please check your connection and try again.');
+      }
+    };
+  }
 
-    if (addSpotBtn) {
-        addSpotBtn.onclick = () => {
-            // Toggle map-click-to-add mode. When enabled, user clicks map to place a spot.
-            if (mapClickToAdd) {
-                mapClickToAdd = false;
-                if (tempAddMarker) { map.removeLayer(tempAddMarker); tempAddMarker = null; }
-                setActiveButton(null);
-                content.innerHTML = '<p>Map click-to-add canceled.</p>';
-                return;
-            }
-            mapClickToAdd = true;
-            setActiveButton(addSpotBtn);
-            content.innerHTML = '<p>Click anywhere on the map to add a new spot. Click the "Add Spot" button again to cancel.</p>';
-        };
-    }
+  if (addSpotBtn) {
+    addSpotBtn.onclick = () => {
+      // Toggle map-click-to-add mode. When enabled, user clicks map to place a spot.
+      if (mapClickToAdd) {
+        mapClickToAdd = false;
+        if (tempAddMarker) {
+          map.removeLayer(tempAddMarker);
+          tempAddMarker = null;
+        }
+        setActiveButton(null);
+        content.innerHTML = '<p>Map click-to-add canceled.</p>';
+        return;
+      }
+      mapClickToAdd = true;
+      setActiveButton(addSpotBtn);
+      content.innerHTML =
+        '<p>Click anywhere on the map to add a new spot. Click the "Add Spot" button again to cancel.</p>';
+    };
+  }
 
-    // Crews button handler
-    if (crewsBtn) {
-        crewsBtn.onclick = () => {
-            setActiveButton(crewsBtn);
-            renderCrewsPanel();
-        };
-    }
+  // Crews button handler
+  if (crewsBtn) {
+    crewsBtn.onclick = () => {
+      setActiveButton(crewsBtn);
+      renderCrewsPanel();
+    };
+  }
 
-    // Events button handler
-    if (eventsBtn) {
-        eventsBtn.onclick = () => {
-            setActiveButton(eventsBtn);
-            renderEventsPanel();
-        };
-    }
+  // Events button handler
+  if (eventsBtn) {
+    eventsBtn.onclick = () => {
+      setActiveButton(eventsBtn);
+      renderEventsPanel();
+    };
+  }
 
-    // Shops button handler
-    if (shopsBtn) {
-        shopsBtn.onclick = () => {
-            setActiveButton(shopsBtn);
-            renderShopsPanel();
-        };
-    }
+  // Shops button handler
+  if (shopsBtn) {
+    shopsBtn.onclick = () => {
+      setActiveButton(shopsBtn);
+      renderShopsPanel();
+    };
+  }
 
-    // Shops toggle handler
-    if (shopsToggle) {
-        shopsToggle.onchange = () => {
-            showShops = shopsToggle.checked;
-            renderShopMarkers();
-        };
-    }
+  // Shops toggle handler
+  if (shopsToggle) {
+    shopsToggle.onchange = () => {
+      showShops = shopsToggle.checked;
+      renderShopMarkers();
+    };
+  }
 
-    function renderShopsPanel() {
-        content.innerHTML = `
+  function renderShopsPanel() {
+    content.innerHTML = `
             <div style="padding:1rem;">
                 <h2>🛹 Skate Shops</h2>
                 <p>Discover local skate shops near you!</p>
@@ -709,241 +869,279 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Hook up toggle in panel
-        const toggleShopsPanel = document.getElementById('toggle-shops-panel');
-        if (toggleShopsPanel) {
-            toggleShopsPanel.onchange = () => {
-                showShops = toggleShopsPanel.checked;
-                if (shopsToggle) shopsToggle.checked = showShops;
-                renderShopMarkers();
-            };
-        }
-
-        // Display shops list
-        renderShopsList();
-
-        // Handle form submission
-        const form = document.getElementById('add-shop-form');
-        if (form) {
-            form.onsubmit = async (e) => {
-                e.preventDefault();
-                await addShop();
-            };
-        }
+    // Hook up toggle in panel
+    const toggleShopsPanel = document.getElementById('toggle-shops-panel');
+    if (toggleShopsPanel) {
+      toggleShopsPanel.onchange = () => {
+        showShops = toggleShopsPanel.checked;
+        if (shopsToggle) shopsToggle.checked = showShops;
+        renderShopMarkers();
+      };
     }
 
-    function renderShopsList() {
-        const shopsItems = document.getElementById('shops-items');
-        if (!shopsItems) return;
+    // Display shops list
+    renderShopsList();
 
-        if (skateShops.length === 0) {
-            shopsItems.innerHTML = '<p style="color:#666;">No shops added yet. Be the first to add one!</p>';
-            return;
-        }
+    // Handle form submission
+    const form = document.getElementById('add-shop-form');
+    if (form) {
+      form.onsubmit = async e => {
+        e.preventDefault();
+        await addShop();
+      };
+    }
+  }
 
-        shopsItems.innerHTML = skateShops.map((shop, index) => `
+  function renderShopsList() {
+    const shopsItems = document.getElementById('shops-items');
+    if (!shopsItems) return;
+
+    if (skateShops.length === 0) {
+      shopsItems.innerHTML =
+        '<p style="color:#666;">No shops added yet. Be the first to add one!</p>';
+      return;
+    }
+
+    shopsItems.innerHTML = skateShops
+      .map(
+        (shop, index) => `
             <div style="padding:1.2rem;margin-bottom:1rem;border:2px solid #FF5722;border-radius:12px;background:linear-gradient(135deg, #fff 0%, #f5f5f5 100%);box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                 <h4 style="margin:0 0 0.8rem 0;color:#FF5722;font-size:1.2rem;">${escapeHtml(shop.name)}</h4>
                 ${shop.verified ? '<span style="background:#4CAF50;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:bold;">✓ VERIFIED</span>' : ''}
 
                 <div style="margin-top:0.8rem;display:flex;flex-direction:column;gap:0.5rem;">
-                    ${shop.address ? `<div style="display:flex;align-items:start;gap:0.5rem;">
+                    ${
+                      shop.address
+                        ? `<div style="display:flex;align-items:start;gap:0.5rem;">
                         <span style="font-size:1.2rem;">📍</span>
                         <span style="color:#333;">${escapeHtml(shop.address)}</span>
-                    </div>` : ''}
+                    </div>`
+                        : ''
+                    }
 
-                    ${shop.hours ? `<div style="display:flex;align-items:start;gap:0.5rem;">
+                    ${
+                      shop.hours
+                        ? `<div style="display:flex;align-items:start;gap:0.5rem;">
                         <span style="font-size:1.2rem;">🕐</span>
                         <span style="color:#555;">${escapeHtml(shop.hours)}</span>
-                    </div>` : ''}
+                    </div>`
+                        : ''
+                    }
                 </div>
 
                 <!-- Action Buttons -->
                 <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;">
-                    ${shop.website ? `
+                    ${
+                      shop.website
+                        ? `
                         <a href="${escapeHtml(shop.website)}" target="_blank" rel="noopener"
                            style="flex:1;min-width:120px;padding:0.6rem;background:#4CAF50;color:white;text-decoration:none;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
                             🌐 Visit Website
                         </a>
-                    ` : ''}
+                    `
+                        : ''
+                    }
 
-                    ${shop.phone ? `
+                    ${
+                      shop.phone
+                        ? `
                         <a href="tel:${escapeHtml(shop.phone)}"
                            style="flex:1;min-width:120px;padding:0.6rem;background:#2196F3;color:white;text-decoration:none;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
                             📞 Call Now
                         </a>
-                    ` : ''}
+                    `
+                        : ''
+                    }
 
                     <button data-shop-index="${index}" class="view-shop-btn"
                             style="flex:1;min-width:120px;padding:0.6rem;background:#FF5722;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.3rem;">
                         🗺️ View on Map
                     </button>
 
-                    ${shop.instagram ? `
+                    ${
+                      shop.instagram
+                        ? `
                         <a href="https://instagram.com/${escapeHtml(shop.instagram)}" target="_blank" rel="noopener"
                            style="padding:0.6rem;background:linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);color:white;text-decoration:none;border-radius:8px;font-weight:bold;display:flex;align-items:center;justify-content:center;">
                             📸 IG
                         </a>
-                    ` : ''}
+                    `
+                        : ''
+                    }
                 </div>
             </div>
-        `).join('');
-        
-        // Add event listeners to view shop buttons
-        document.querySelectorAll('.view-shop-btn').forEach(btn => {
-            btn.onclick = (e) => {
-                const shopIndex = parseInt(e.target.getAttribute('data-shop-index'));
-                const shop = skateShops[shopIndex];
-                if (shop && shop.coords) {
-                    map.setView([shop.coords.latitude, shop.coords.longitude], 16);
-                }
-            };
-        });
+        `
+      )
+      .join('');
+
+    // Add event listeners to view shop buttons
+    document.querySelectorAll('.view-shop-btn').forEach(btn => {
+      btn.onclick = e => {
+        const shopIndex = parseInt(e.target.getAttribute('data-shop-index'));
+        const shop = skateShops[shopIndex];
+        if (shop && shop.coords) {
+          map.setView([shop.coords.latitude, shop.coords.longitude], 16);
+        }
+      };
+    });
+  }
+
+  async function addShop() {
+    if (!currentUserId) {
+      showModal('You must be signed in to add a shop.');
+      return;
     }
 
-    async function addShop() {
-        if (!currentUserId) {
-            showModal("You must be signed in to add a shop.");
-            return;
-        }
+    const name = document.getElementById('shop-name').value.trim();
+    const address = document.getElementById('shop-address').value.trim();
+    const lat = parseFloat(document.getElementById('shop-lat').value);
+    const lng = parseFloat(document.getElementById('shop-lng').value);
+    const phone = document.getElementById('shop-phone').value.trim();
+    const website = document.getElementById('shop-website').value.trim();
+    const instagram = document.getElementById('shop-instagram').value.trim().replace('@', '');
+    const hours = document.getElementById('shop-hours').value.trim();
 
-        const name = document.getElementById('shop-name').value.trim();
-        const address = document.getElementById('shop-address').value.trim();
-        const lat = parseFloat(document.getElementById('shop-lat').value);
-        const lng = parseFloat(document.getElementById('shop-lng').value);
-        const phone = document.getElementById('shop-phone').value.trim();
-        const website = document.getElementById('shop-website').value.trim();
-        const instagram = document.getElementById('shop-instagram').value.trim().replace('@', '');
-        const hours = document.getElementById('shop-hours').value.trim();
-
-        if (!name || !address || isNaN(lat) || isNaN(lng)) {
-            showModal("Please fill out all required fields (Name, Address, Latitude, Longitude).");
-            return;
-        }
-
-        // Validate coordinate ranges
-        if (lat < -90 || lat > 90) {
-            showModal("Latitude must be between -90 and 90 degrees.");
-            return;
-        }
-        if (lng < -180 || lng > 180) {
-            showModal("Longitude must be between -180 and 180 degrees.");
-            return;
-        }
-
-        try {
-            const shopData = {
-                name,
-                address,
-                coords: {
-                    latitude: lat,
-                    longitude: lng
-                },
-                phone: phone || null,
-                website: website || null,
-                instagram: instagram || null,
-                hours: hours || null,
-                addedBy: currentUserId,
-                verified: false,
-                createdAt: serverTimestamp()
-            };
-
-            await addDoc(collection(db, 'shops'), shopData);
-            showModal("Shop added successfully!");
-            
-            // Clear form
-            document.getElementById('add-shop-form').reset();
-            
-            // Refresh shops list
-            renderShopsList();
-            
-            // Enable shops on map
-            showShops = true;
-            if (shopsToggle) shopsToggle.checked = true;
-            renderShopMarkers();
-
-        } catch (error) {
-            console.error("Error adding shop:", error);
-            showModal("Failed to add shop. Please try again.");
-        }
+    if (!name || !address || isNaN(lat) || isNaN(lng)) {
+      showModal('Please fill out all required fields (Name, Address, Latitude, Longitude).');
+      return;
     }
 
-    async function openCamera() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return showModal("Camera not supported on your browser.");
-        if (!cameraModal || !cameraPreview || !recordBtn || !stopRecordBtn || !saveVideoBtn) {
-            return showModal("Camera UI not available.");
-        }
-        try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
-            cameraModal.style.display = "block";
-            cameraPreview.srcObject = videoStream;
-            recordBtn.style.display = 'inline-block';
-            stopRecordBtn.style.display = 'none';
-            saveVideoBtn.style.display = 'none';
-        } catch (err) { console.error("Camera Error:", err); showModal("Could not access camera. Please check permissions."); }
+    // Validate coordinate ranges
+    if (lat < -90 || lat > 90) {
+      showModal('Latitude must be between -90 and 90 degrees.');
+      return;
+    }
+    if (lng < -180 || lng > 180) {
+      showModal('Longitude must be between -180 and 180 degrees.');
+      return;
     }
 
-    if (recordBtn) {
-        recordBtn.onclick = () => {
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(videoStream);
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            mediaRecorder.onstop = () => {
-                const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-                if (cameraPreview) {
-                    cameraPreview.srcObject = null;
-                    cameraPreview.src = URL.createObjectURL(videoBlob);
-                }
-                if (saveVideoBtn) saveVideoBtn.style.display = 'inline-block';
-            };
-            mediaRecorder.start();
-            recordBtn.style.display = 'none';
-            if (stopRecordBtn) stopRecordBtn.style.display = 'inline-block';
-        };
-    }
+    try {
+      const shopData = {
+        name,
+        address,
+        coords: {
+          latitude: lat,
+          longitude: lng,
+        },
+        phone: phone || null,
+        website: website || null,
+        instagram: instagram || null,
+        hours: hours || null,
+        addedBy: currentUserId,
+        verified: false,
+        createdAt: serverTimestamp(),
+      };
 
-    if (stopRecordBtn) {
-        stopRecordBtn.onclick = () => { mediaRecorder.stop(); stopRecordBtn.style.display = 'none'; };
+      await addDoc(collection(db, 'shops'), shopData);
+      showModal('Shop added successfully!');
+
+      // Clear form
+      document.getElementById('add-shop-form').reset();
+
+      // Refresh shops list
+      renderShopsList();
+
+      // Enable shops on map
+      showShops = true;
+      if (shopsToggle) shopsToggle.checked = true;
+      renderShopMarkers();
+    } catch (error) {
+      console.error('Error adding shop:', error);
+      showModal('Failed to add shop. Please try again.');
     }
-    
-    if (saveVideoBtn) {
-        saveVideoBtn.onclick = async () => {
-        showModal("Uploading video...");
+  }
+
+  async function openCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+      return showModal('Camera not supported on your browser.');
+    if (!cameraModal || !cameraPreview || !recordBtn || !stopRecordBtn || !saveVideoBtn) {
+      return showModal('Camera UI not available.');
+    }
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: true,
+      });
+      cameraModal.style.display = 'block';
+      cameraPreview.srcObject = videoStream;
+      recordBtn.style.display = 'inline-block';
+      stopRecordBtn.style.display = 'none';
+      saveVideoBtn.style.display = 'none';
+    } catch (err) {
+      console.error('Camera Error:', err);
+      showModal('Could not access camera. Please check permissions.');
+    }
+  }
+
+  if (recordBtn) {
+    recordBtn.onclick = () => {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(videoStream);
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
         const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-        const videoFileName = `${currentUserId}_${Date.now()}.webm`;
-        const storageRef = ref(storage, `skate_spots_videos/${videoFileName}`);
-        try {
-            const snapshot = await uploadBytes(storageRef, videoBlob);
-            recordedVideoUrl = await getDownloadURL(snapshot.ref);
-            document.getElementById('videoStatus').innerHTML = `<p>✅ Video attached!</p>`;
-            closeCamera();
-            showModal("Video uploaded successfully!");
-        } catch (error) {
-            console.error("Upload failed", error);
-            showModal("Video upload failed. Please try again. (Note: Storage setup may be incomplete).");
-        }
-        };
-    }
-
-    function closeCamera() {
-        if (videoStream) {
-            videoStream.getTracks().forEach(track => track.stop());
-        }
-        if (cameraModal) cameraModal.style.display = "none";
         if (cameraPreview) {
-            cameraPreview.srcObject = null;
-            cameraPreview.src = '';
+          cameraPreview.srcObject = null;
+          cameraPreview.src = URL.createObjectURL(videoBlob);
         }
+        if (saveVideoBtn) saveVideoBtn.style.display = 'inline-block';
+      };
+      mediaRecorder.start();
+      recordBtn.style.display = 'none';
+      if (stopRecordBtn) stopRecordBtn.style.display = 'inline-block';
+    };
+  }
+
+  if (stopRecordBtn) {
+    stopRecordBtn.onclick = () => {
+      mediaRecorder.stop();
+      stopRecordBtn.style.display = 'none';
+    };
+  }
+
+  if (saveVideoBtn) {
+    saveVideoBtn.onclick = async () => {
+      showModal('Uploading video...');
+      const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+      const videoFileName = `${currentUserId}_${Date.now()}.webm`;
+      const storageRef = ref(storage, `skate_spots_videos/${videoFileName}`);
+      try {
+        const snapshot = await uploadBytes(storageRef, videoBlob);
+        recordedVideoUrl = await getDownloadURL(snapshot.ref);
+        document.getElementById('videoStatus').innerHTML = `<p>✅ Video attached!</p>`;
+        closeCamera();
+        showModal('Video uploaded successfully!');
+      } catch (error) {
+        console.error('Upload failed', error);
+        showModal(
+          'Video upload failed. Please try again. (Note: Storage setup may be incomplete).'
+        );
+      }
+    };
+  }
+
+  function closeCamera() {
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
     }
+    if (cameraModal) cameraModal.style.display = 'none';
+    if (cameraPreview) {
+      cameraPreview.srcObject = null;
+      cameraPreview.src = '';
+    }
+  }
 
-    function renderProfile() {
-        // Calculate trick stats
-        const trickProgress = userProfile.trickProgress || {};
-        const learningCount = Object.values(trickProgress).filter(s => s === 'learning').length;
-        const landedCount = Object.values(trickProgress).filter(s => s === 'landed').length;
-        const masteredCount = Object.values(trickProgress).filter(s => s === 'mastered').length;
+  function renderProfile() {
+    // Calculate trick stats
+    const trickProgress = userProfile.trickProgress || {};
+    const learningCount = Object.values(trickProgress).filter(s => s === 'learning').length;
+    const landedCount = Object.values(trickProgress).filter(s => s === 'landed').length;
+    const masteredCount = Object.values(trickProgress).filter(s => s === 'mastered').length;
 
-        content.innerHTML = `
+    content.innerHTML = `
             <h3>My Profile</h3>
             <p><strong>Username:</strong> ${userProfile.username || 'Anonymous'}</p>
             ${userProfile.crewTag ? `<p><strong>Crew:</strong> <span style="background:#667eea;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-weight:bold;">[${userProfile.crewTag}]</span></p>` : ''}
@@ -953,12 +1151,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             <!-- Session Tracker -->
             <div style="margin-top:2rem;padding:1.5rem;background:linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 50%, #2BFF88 100%);border-radius:12px;color:white;">
                 <h3 style="margin-top:0;">📊 Session Tracker</h3>
-                ${!userProfile.activeSession ? `
+                ${
+                  !userProfile.activeSession
+                    ? `
                     <p>Track your skating sessions!</p>
                     <button id="start-session-btn" style="padding:0.8rem 1.5rem;background:white;color:#333;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:1rem;">
                         🎬 Start Session
                     </button>
-                ` : `
+                `
+                    : `
                     <div id="active-session-display">
                         <p style="font-size:1.2rem;font-weight:bold;">⏱️ Session in Progress</p>
                         <p>Started: ${new Date(userProfile.activeSession.startTime?.toDate ? userProfile.activeSession.startTime.toDate() : userProfile.activeSession.startTime).toLocaleTimeString()}</p>
@@ -967,7 +1168,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ⏹️ End Session
                         </button>
                     </div>
-                `}
+                `
+                }
             </div>
 
             <!-- Session History -->
@@ -1024,166 +1226,175 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div id="callOutsList"></div>
         `;
 
-        document.getElementById('callOutBtn').onclick = () => {
-            document.getElementById('callOutFormContainer').style.display = 'block';
-        };
+    document.getElementById('callOutBtn').onclick = () => {
+      document.getElementById('callOutFormContainer').style.display = 'block';
+    };
 
-        document.getElementById('callOutForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const targetUsername = document.getElementById('targetUsername').value.trim();
-            const trickName = document.getElementById('trickName').value.trim();
-            if (!targetUsername || !trickName) return showModal("Please fill out all fields.");
+    document.getElementById('callOutForm').onsubmit = async e => {
+      e.preventDefault();
+      const targetUsername = document.getElementById('targetUsername').value.trim();
+      const trickName = document.getElementById('trickName').value.trim();
+      if (!targetUsername || !trickName) return showModal('Please fill out all fields.');
 
-            try {
-                // Find user by username (requires a query)
-                const usersRef = collection(db, `/artifacts/${appId}/users`);
-                const q = query(usersRef, where("username", "==", targetUsername));
-                const querySnapshot = await getDocs(q);
+      try {
+        // Find user by username (requires a query)
+        const usersRef = collection(db, `/artifacts/${appId}/users`);
+        const q = query(usersRef, where('username', '==', targetUsername));
+        const querySnapshot = await getDocs(q);
 
-                if (querySnapshot.empty) {
-                    return showModal("User not found.");
-                }
-
-                const targetUser = querySnapshot.docs[0];
-                const targetId = targetUser.id;
-
-                await addDoc(collection(db, `/artifacts/${appId}/trick_callouts`), {
-                    challengerId: currentUserId,
-                    challengerUsername: userProfile.username,
-                    targetId: targetId,
-                    targetUsername: targetUsername,
-                    trick: trickName,
-                    status: 'pending',
-                    createdAt: serverTimestamp()
-                });
-
-                showModal("Call-Out sent!");
-                document.getElementById('callOutFormContainer').style.display = 'none';
-            } catch (error) {
-                console.error("Error sending call-out: ", error);
-                showModal("Failed to send call-out.");
-            }
-        };
-
-        // Load and display call-outs
-        loadCallOuts();
-
-        // Initialize trick tracker
-        renderTricksList('all');
-
-        // Add filter listener
-        document.getElementById('trickLevelFilter').onchange = (e) => {
-            renderTricksList(e.target.value);
-        };
-
-        // Session tracking handlers
-        const startSessionBtn = document.getElementById('start-session-btn');
-        const endSessionBtn = document.getElementById('end-session-btn');
-
-        if (startSessionBtn) {
-            startSessionBtn.onclick = () => startSession();
+        if (querySnapshot.empty) {
+          return showModal('User not found.');
         }
 
-        if (endSessionBtn) {
-            endSessionBtn.onclick = () => endSession();
-        }
+        const targetUser = querySnapshot.docs[0];
+        const targetId = targetUser.id;
 
-        // Start session timer if active
-        if (userProfile.activeSession) {
-            updateSessionTimer();
-        }
+        await addDoc(collection(db, `/artifacts/${appId}/trick_callouts`), {
+          challengerId: currentUserId,
+          challengerUsername: userProfile.username,
+          targetId: targetId,
+          targetUsername: targetUsername,
+          trick: trickName,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+        });
 
-        // Load session history
-        loadSessionHistory();
+        showModal('Call-Out sent!');
+        document.getElementById('callOutFormContainer').style.display = 'none';
+      } catch (error) {
+        console.error('Error sending call-out: ', error);
+        showModal('Failed to send call-out.');
+      }
+    };
+
+    // Load and display call-outs
+    loadCallOuts();
+
+    // Initialize trick tracker
+    renderTricksList('all');
+
+    // Add filter listener
+    document.getElementById('trickLevelFilter').onchange = e => {
+      renderTricksList(e.target.value);
+    };
+
+    // Session tracking handlers
+    const startSessionBtn = document.getElementById('start-session-btn');
+    const endSessionBtn = document.getElementById('end-session-btn');
+
+    if (startSessionBtn) {
+      startSessionBtn.onclick = () => startSession();
     }
 
-    async function loadCallOuts() {
-        const callOutsList = document.getElementById('callOutsList');
-        if (!callOutsList) return;
-
-        const sentQuery = query(collection(db, `/artifacts/${appId}/trick_callouts`), where("challengerId", "==", currentUserId));
-        const receivedQuery = query(collection(db, `/artifacts/${appId}/trick_callouts`), where("targetId", "==", currentUserId));
-
-        const [sentSnapshot, receivedSnapshot] = await Promise.all([getDocs(sentQuery), getDocs(receivedQuery)]);
-
-        let html = '<h4>Sent</h4><ul>';
-        sentSnapshot.forEach(doc => {
-            const callout = doc.data();
-            html += `<li>vs ${callout.targetUsername} - ${callout.trick} (${callout.status})</li>`;
-        });
-        html += '</ul><h4>Received</h4><ul>';
-        receivedSnapshot.forEach(doc => {
-            const callout = doc.data();
-            html += `<li>from ${callout.challengerUsername} - ${callout.trick} (${callout.status}) <button class="complete-callout" data-id="${doc.id}">Complete</button></li>`;
-        });
-        html += '</ul>';
-        callOutsList.innerHTML = html;
-
-        document.querySelectorAll('.complete-callout').forEach(button => {
-            button.onclick = (e) => {
-                const calloutId = e.target.dataset.id;
-                // Here you would trigger the video recording flow
-                showModal(`Completing call-out ${calloutId}... (video recording not implemented yet)`);
-            };
-        });
+    if (endSessionBtn) {
+      endSessionBtn.onclick = () => endSession();
     }
 
-    // Render tricks list based on filter
-    function renderTricksList(level) {
-        const tricksListDiv = document.getElementById('tricksList');
-        if (!tricksListDiv || typeof window.getAllTricks !== 'function') return;
+    // Start session timer if active
+    if (userProfile.activeSession) {
+      updateSessionTimer();
+    }
 
-        const trickProgress = userProfile.trickProgress || {};
-        let tricks = [];
+    // Load session history
+    loadSessionHistory();
+  }
 
-        if (level === 'all') {
-            tricks = window.getAllTricks();
-        } else {
-            tricks = window.getTricksByLevel(level);
-        }
+  async function loadCallOuts() {
+    const callOutsList = document.getElementById('callOutsList');
+    if (!callOutsList) return;
 
-        // Group tricks by level for better organization
-        const groupedTricks = {};
-        tricks.forEach(trick => {
-            const trickLevel = Object.keys(window.TRICKS_LIBRARY).find(key =>
-                window.TRICKS_LIBRARY[key].some(t => t.id === trick.id)
-            );
-            if (!groupedTricks[trickLevel]) groupedTricks[trickLevel] = [];
-            groupedTricks[trickLevel].push(trick);
-        });
+    const sentQuery = query(
+      collection(db, `/artifacts/${appId}/trick_callouts`),
+      where('challengerId', '==', currentUserId)
+    );
+    const receivedQuery = query(
+      collection(db, `/artifacts/${appId}/trick_callouts`),
+      where('targetId', '==', currentUserId)
+    );
 
-        let html = '';
-        const levelOrder = ['beginner', 'intermediate', 'advanced', 'expert'];
-        const levelEmojis = {
-            'beginner': '🟢',
-            'intermediate': '🟡',
-            'advanced': '🟠',
-            'expert': '🔴'
-        };
+    const [sentSnapshot, receivedSnapshot] = await Promise.all([
+      getDocs(sentQuery),
+      getDocs(receivedQuery),
+    ]);
 
-        levelOrder.forEach(lvl => {
-            if (!groupedTricks[lvl] || (level !== 'all' && level !== lvl)) return;
+    let html = '<h4>Sent</h4><ul>';
+    sentSnapshot.forEach(doc => {
+      const callout = doc.data();
+      html += `<li>vs ${callout.targetUsername} - ${callout.trick} (${callout.status})</li>`;
+    });
+    html += '</ul><h4>Received</h4><ul>';
+    receivedSnapshot.forEach(doc => {
+      const callout = doc.data();
+      html += `<li>from ${callout.challengerUsername} - ${callout.trick} (${callout.status}) <button class="complete-callout" data-id="${doc.id}">Complete</button></li>`;
+    });
+    html += '</ul>';
+    callOutsList.innerHTML = html;
 
-            html += `<div class="trick-level-group" style="margin-bottom: 1.5rem;">
+    document.querySelectorAll('.complete-callout').forEach(button => {
+      button.onclick = e => {
+        const calloutId = e.target.dataset.id;
+        // Here you would trigger the video recording flow
+        showModal(`Completing call-out ${calloutId}... (video recording not implemented yet)`);
+      };
+    });
+  }
+
+  // Render tricks list based on filter
+  function renderTricksList(level) {
+    const tricksListDiv = document.getElementById('tricksList');
+    if (!tricksListDiv || typeof window.getAllTricks !== 'function') return;
+
+    const trickProgress = userProfile.trickProgress || {};
+    let tricks = [];
+
+    if (level === 'all') {
+      tricks = window.getAllTricks();
+    } else {
+      tricks = window.getTricksByLevel(level);
+    }
+
+    // Group tricks by level for better organization
+    const groupedTricks = {};
+    tricks.forEach(trick => {
+      const trickLevel = Object.keys(window.TRICKS_LIBRARY).find(key =>
+        window.TRICKS_LIBRARY[key].some(t => t.id === trick.id)
+      );
+      if (!groupedTricks[trickLevel]) groupedTricks[trickLevel] = [];
+      groupedTricks[trickLevel].push(trick);
+    });
+
+    let html = '';
+    const levelOrder = ['beginner', 'intermediate', 'advanced', 'expert'];
+    const levelEmojis = {
+      beginner: '🟢',
+      intermediate: '🟡',
+      advanced: '🟠',
+      expert: '🔴',
+    };
+
+    levelOrder.forEach(lvl => {
+      if (!groupedTricks[lvl] || (level !== 'all' && level !== lvl)) return;
+
+      html += `<div class="trick-level-group" style="margin-bottom: 1.5rem;">
                 <h4 style="text-transform: capitalize; color: #FF5722;">${levelEmojis[lvl]} ${lvl} Tricks</h4>
                 <div class="tricks-grid" style="display: grid; gap: 0.5rem;">`;
 
-            groupedTricks[lvl].forEach(trick => {
-                const status = trickProgress[trick.id] || 'not-started';
-                const statusColors = {
-                    'learning': '#FFA500',
-                    'landed': '#4CAF50',
-                    'mastered': '#9C27B0',
-                    'not-started': '#757575'
-                };
-                const statusLabels = {
-                    'learning': '📚 Learning',
-                    'landed': '✅ Landed',
-                    'mastered': '⭐ Mastered',
-                    'not-started': '⚪ Not Started'
-                };
+      groupedTricks[lvl].forEach(trick => {
+        const status = trickProgress[trick.id] || 'not-started';
+        const statusColors = {
+          learning: '#FFA500',
+          landed: '#4CAF50',
+          mastered: '#9C27B0',
+          'not-started': '#757575',
+        };
+        const statusLabels = {
+          learning: '📚 Learning',
+          landed: '✅ Landed',
+          mastered: '⭐ Mastered',
+          'not-started': '⚪ Not Started',
+        };
 
-                html += `
+        html += `
                 <div class="trick-item" style="background: white; padding: 0.75rem; border-radius: 8px; border-left: 4px solid ${statusColors[status]}; display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <strong>${trick.name}</strong>
@@ -1198,188 +1409,196 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </select>
                     </div>
                 </div>`;
-            });
+      });
 
-            html += `</div></div>`;
+      html += `</div></div>`;
+    });
+
+    tricksListDiv.innerHTML = html || '<p>No tricks found for this level.</p>';
+
+    // Add event listeners for status changes
+    document.querySelectorAll('.trick-status-select').forEach(select => {
+      select.onchange = async e => {
+        const trickId = e.target.dataset.trickId;
+        const newStatus = e.target.value;
+        await updateTrickStatus(trickId, newStatus);
+      };
+    });
+  }
+
+  // Update trick status in Firebase
+  async function updateTrickStatus(trickId, status) {
+    try {
+      const profilePath = `/artifacts/${appId}/users/${currentUserId}/profile/data`;
+      const newProgress = { ...userProfile.trickProgress } || {};
+
+      if (status === 'not-started') {
+        delete newProgress[trickId];
+      } else {
+        newProgress[trickId] = status;
+      }
+
+      await updateDoc(doc(db, profilePath), {
+        trickProgress: newProgress,
+      });
+
+      userProfile.trickProgress = newProgress;
+
+      // Award XP for progression milestones
+      if (status === 'landed') {
+        await updateDoc(doc(db, profilePath), { xp: increment(50) });
+        showModal(`🎉 Trick landed! +50 XP`);
+      } else if (status === 'mastered') {
+        await updateDoc(doc(db, profilePath), { xp: increment(100) });
+        showModal(`⭐ Trick mastered! +100 XP`);
+      }
+
+      // Re-render to update stats
+      if (profileBtn.classList.contains('active')) {
+        renderProfile();
+      }
+    } catch (error) {
+      console.error('Error updating trick status:', error);
+      showModal('Failed to update trick status. Please try again.');
+    }
+  }
+
+  // ===== SESSION TRACKING SYSTEM =====
+
+  let sessionTimerInterval = null;
+
+  // Start a new session
+  async function startSession() {
+    try {
+      const sessionData = {
+        startTime: serverTimestamp(),
+        spotsVisited: [],
+        tricksAttempted: 0,
+        tricksLanded: 0,
+      };
+
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        activeSession: sessionData,
+      });
+
+      userProfile.activeSession = { ...sessionData, startTime: new Date() };
+
+      showModal('Session started! Go shred! 🛹');
+      renderProfile();
+    } catch (error) {
+      console.error('Error starting session:', error);
+      showModal('Failed to start session. Please try again.');
+    }
+  }
+
+  // End current session
+  async function endSession() {
+    if (!userProfile.activeSession) return;
+
+    try {
+      const endTime = new Date();
+      const startTime = userProfile.activeSession.startTime?.toDate
+        ? userProfile.activeSession.startTime.toDate()
+        : new Date(userProfile.activeSession.startTime);
+      const duration = Math.floor((endTime - startTime) / 1000); // in seconds
+
+      const sessionRecord = {
+        startTime: userProfile.activeSession.startTime,
+        endTime: serverTimestamp(),
+        duration: duration,
+        spotsVisited: userProfile.activeSession.spotsVisited || [],
+        tricksAttempted: userProfile.activeSession.tricksAttempted || 0,
+        tricksLanded: userProfile.activeSession.tricksLanded || 0,
+        userId: currentUserId,
+      };
+
+      // Save to sessions collection
+      await addDoc(
+        collection(db, `/artifacts/${appId}/users/${currentUserId}/sessions`),
+        sessionRecord
+      );
+
+      // Clear active session
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        activeSession: null,
+      });
+
+      // Award XP for session
+      const sessionXP = Math.min(Math.floor(duration / 60) * 5, 200); // 5 XP per minute, max 200
+      if (sessionXP > 0) {
+        await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+          xp: increment(sessionXP),
         });
+      }
 
-        tricksListDiv.innerHTML = html || '<p>No tricks found for this level.</p>';
+      userProfile.activeSession = null;
 
-        // Add event listeners for status changes
-        document.querySelectorAll('.trick-status-select').forEach(select => {
-            select.onchange = async (e) => {
-                const trickId = e.target.dataset.trickId;
-                const newStatus = e.target.value;
-                await updateTrickStatus(trickId, newStatus);
-            };
-        });
+      if (sessionTimerInterval) {
+        clearInterval(sessionTimerInterval);
+        sessionTimerInterval = null;
+      }
+
+      const durationMin = Math.floor(duration / 60);
+      showModal(`Session ended! Duration: ${durationMin} min. +${sessionXP} XP 🎉`);
+      renderProfile();
+    } catch (error) {
+      console.error('Error ending session:', error);
+      showModal('Failed to end session. Please try again.');
     }
+  }
 
-    // Update trick status in Firebase
-    async function updateTrickStatus(trickId, status) {
-        try {
-            const profilePath = `/artifacts/${appId}/users/${currentUserId}/profile/data`;
-            const newProgress = { ...userProfile.trickProgress } || {};
+  // Update session timer display
+  function updateSessionTimer() {
+    const timerElement = document.getElementById('session-timer');
+    if (!timerElement || !userProfile.activeSession) return;
 
-            if (status === 'not-started') {
-                delete newProgress[trickId];
-            } else {
-                newProgress[trickId] = status;
-            }
+    const updateTime = () => {
+      const now = new Date();
+      const startTime = userProfile.activeSession.startTime?.toDate
+        ? userProfile.activeSession.startTime.toDate()
+        : new Date(userProfile.activeSession.startTime);
+      const diff = Math.floor((now - startTime) / 1000);
 
-            await updateDoc(doc(db, profilePath), {
-                trickProgress: newProgress
-            });
+      const hours = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const seconds = diff % 60;
 
-            userProfile.trickProgress = newProgress;
+      timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    };
 
-            // Award XP for progression milestones
-            if (status === 'landed') {
-                await updateDoc(doc(db, profilePath), { xp: increment(50) });
-                showModal(`🎉 Trick landed! +50 XP`);
-            } else if (status === 'mastered') {
-                await updateDoc(doc(db, profilePath), { xp: increment(100) });
-                showModal(`⭐ Trick mastered! +100 XP`);
-            }
+    updateTime();
+    if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+    sessionTimerInterval = setInterval(updateTime, 1000);
+  }
 
-            // Re-render to update stats
-            if (profileBtn.classList.contains('active')) {
-                renderProfile();
-            }
-        } catch (error) {
-            console.error("Error updating trick status:", error);
-            showModal("Failed to update trick status. Please try again.");
-        }
-    }
+  // Load session history
+  async function loadSessionHistory() {
+    const historyDiv = document.getElementById('session-history');
+    if (!historyDiv) return;
 
-    // ===== SESSION TRACKING SYSTEM =====
+    try {
+      const sessionsQuery = query(
+        collection(db, `/artifacts/${appId}/users/${currentUserId}/sessions`),
+        orderBy('endTime', 'desc'),
+        limit(10)
+      );
+      const sessionsSnapshot = await getDocs(sessionsQuery);
 
-    let sessionTimerInterval = null;
+      if (sessionsSnapshot.empty) {
+        historyDiv.innerHTML =
+          '<p style="color:#666;">No sessions recorded yet. Start your first session!</p>';
+        return;
+      }
 
-    // Start a new session
-    async function startSession() {
-        try {
-            const sessionData = {
-                startTime: serverTimestamp(),
-                spotsVisited: [],
-                tricksAttempted: 0,
-                tricksLanded: 0
-            };
+      let html = '<div style="display:flex;flex-direction:column;gap:0.8rem;">';
+      sessionsSnapshot.forEach(doc => {
+        const session = doc.data();
+        const duration = session.duration || 0;
+        const durationMin = Math.floor(duration / 60);
+        const durationSec = duration % 60;
+        const endDate = session.endTime?.toDate ? session.endTime.toDate() : new Date();
 
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                activeSession: sessionData
-            });
-
-            userProfile.activeSession = { ...sessionData, startTime: new Date() };
-
-            showModal("Session started! Go shred! 🛹");
-            renderProfile();
-        } catch (error) {
-            console.error("Error starting session:", error);
-            showModal("Failed to start session. Please try again.");
-        }
-    }
-
-    // End current session
-    async function endSession() {
-        if (!userProfile.activeSession) return;
-
-        try {
-            const endTime = new Date();
-            const startTime = userProfile.activeSession.startTime?.toDate ? userProfile.activeSession.startTime.toDate() : new Date(userProfile.activeSession.startTime);
-            const duration = Math.floor((endTime - startTime) / 1000); // in seconds
-
-            const sessionRecord = {
-                startTime: userProfile.activeSession.startTime,
-                endTime: serverTimestamp(),
-                duration: duration,
-                spotsVisited: userProfile.activeSession.spotsVisited || [],
-                tricksAttempted: userProfile.activeSession.tricksAttempted || 0,
-                tricksLanded: userProfile.activeSession.tricksLanded || 0,
-                userId: currentUserId
-            };
-
-            // Save to sessions collection
-            await addDoc(collection(db, `/artifacts/${appId}/users/${currentUserId}/sessions`), sessionRecord);
-
-            // Clear active session
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                activeSession: null
-            });
-
-            // Award XP for session
-            const sessionXP = Math.min(Math.floor(duration / 60) * 5, 200); // 5 XP per minute, max 200
-            if (sessionXP > 0) {
-                await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                    xp: increment(sessionXP)
-                });
-            }
-
-            userProfile.activeSession = null;
-
-            if (sessionTimerInterval) {
-                clearInterval(sessionTimerInterval);
-                sessionTimerInterval = null;
-            }
-
-            const durationMin = Math.floor(duration / 60);
-            showModal(`Session ended! Duration: ${durationMin} min. +${sessionXP} XP 🎉`);
-            renderProfile();
-        } catch (error) {
-            console.error("Error ending session:", error);
-            showModal("Failed to end session. Please try again.");
-        }
-    }
-
-    // Update session timer display
-    function updateSessionTimer() {
-        const timerElement = document.getElementById('session-timer');
-        if (!timerElement || !userProfile.activeSession) return;
-
-        const updateTime = () => {
-            const now = new Date();
-            const startTime = userProfile.activeSession.startTime?.toDate ? userProfile.activeSession.startTime.toDate() : new Date(userProfile.activeSession.startTime);
-            const diff = Math.floor((now - startTime) / 1000);
-
-            const hours = Math.floor(diff / 3600);
-            const minutes = Math.floor((diff % 3600) / 60);
-            const seconds = diff % 60;
-
-            timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        };
-
-        updateTime();
-        if (sessionTimerInterval) clearInterval(sessionTimerInterval);
-        sessionTimerInterval = setInterval(updateTime, 1000);
-    }
-
-    // Load session history
-    async function loadSessionHistory() {
-        const historyDiv = document.getElementById('session-history');
-        if (!historyDiv) return;
-
-        try {
-            const sessionsQuery = query(
-                collection(db, `/artifacts/${appId}/users/${currentUserId}/sessions`),
-                orderBy('endTime', 'desc'),
-                limit(10)
-            );
-            const sessionsSnapshot = await getDocs(sessionsQuery);
-
-            if (sessionsSnapshot.empty) {
-                historyDiv.innerHTML = '<p style="color:#666;">No sessions recorded yet. Start your first session!</p>';
-                return;
-            }
-
-            let html = '<div style="display:flex;flex-direction:column;gap:0.8rem;">';
-            sessionsSnapshot.forEach(doc => {
-                const session = doc.data();
-                const duration = session.duration || 0;
-                const durationMin = Math.floor(duration / 60);
-                const durationSec = duration % 60;
-                const endDate = session.endTime?.toDate ? session.endTime.toDate() : new Date();
-
-                html += `
+        html += `
                     <div style="padding:1rem;background:#f5f5f5;border-radius:8px;border-left:4px solid #2BD2FF;">
                         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:0.5rem;">
                             <strong>${endDate.toLocaleDateString()}</strong>
@@ -1392,29 +1611,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
                 `;
-            });
-            html += '</div>';
+      });
+      html += '</div>';
 
-            historyDiv.innerHTML = html;
-        } catch (error) {
-            console.error("Error loading session history:", error);
-            historyDiv.innerHTML = '<p style="color:#999;">Failed to load session history.</p>';
-        }
+      historyDiv.innerHTML = html;
+    } catch (error) {
+      console.error('Error loading session history:', error);
+      historyDiv.innerHTML = '<p style="color:#999;">Failed to load session history.</p>';
     }
+  }
 
-    // ===== CREW/TEAM SYSTEM =====
+  // ===== CREW/TEAM SYSTEM =====
 
-    let userCrew = null;
-    let allCrews = [];
+  let userCrew = null;
+  let allCrews = [];
 
-    // Render crews panel
-    function renderCrewsPanel() {
-        content.innerHTML = `
+  // Render crews panel
+  function renderCrewsPanel() {
+    content.innerHTML = `
             <div style="padding:1.5rem;">
                 <h2 style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">🤝 Skate Crews</h2>
                 <p>Join or create a crew to compete together!</p>
 
-                ${userCrew ? `
+                ${
+                  userCrew
+                    ? `
                     <div id="my-crew-section" style="margin:1.5rem 0;padding:1.5rem;background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%);border-radius:12px;color:white;">
                         <h3 style="margin-top:0;">👥 My Crew</h3>
                         <div id="my-crew-details">Loading...</div>
@@ -1422,7 +1643,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             Leave Crew
                         </button>
                     </div>
-                ` : `
+                `
+                    : `
                     <div style="margin:1.5rem 0;padding:1.5rem;background:#f0f0f0;border-radius:12px;">
                         <h3>🆕 Create a Crew</h3>
                         <form id="create-crew-form" style="display:flex;flex-direction:column;gap:0.8rem;margin-top:1rem;">
@@ -1443,7 +1665,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </button>
                         </form>
                     </div>
-                `}
+                `
+                }
 
                 <hr style="margin:2rem 0;" />
 
@@ -1457,205 +1680,207 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Load crews data
-        loadCrews();
+    // Load crews data
+    loadCrews();
 
-        // Setup create crew form if user doesn't have a crew
-        if (!userCrew) {
-            const createCrewForm = document.getElementById('create-crew-form');
-            if (createCrewForm) {
-                createCrewForm.onsubmit = async (e) => {
-                    e.preventDefault();
-                    await createCrew();
-                };
-                // Force uppercase for tag
-                const tagInput = document.getElementById('crew-tag');
-                if (tagInput) {
-                    tagInput.oninput = (e) => {
-                        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                    };
-                }
-            }
-        } else {
-            // Setup leave crew button
-            const leaveCrewBtn = document.getElementById('leave-crew-btn');
-            if (leaveCrewBtn) {
-                leaveCrewBtn.onclick = () => leaveCrew();
-            }
-            // Load user's crew details
-            loadMyCrew();
+    // Setup create crew form if user doesn't have a crew
+    if (!userCrew) {
+      const createCrewForm = document.getElementById('create-crew-form');
+      if (createCrewForm) {
+        createCrewForm.onsubmit = async e => {
+          e.preventDefault();
+          await createCrew();
+        };
+        // Force uppercase for tag
+        const tagInput = document.getElementById('crew-tag');
+        if (tagInput) {
+          tagInput.oninput = e => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          };
         }
+      }
+    } else {
+      // Setup leave crew button
+      const leaveCrewBtn = document.getElementById('leave-crew-btn');
+      if (leaveCrewBtn) {
+        leaveCrewBtn.onclick = () => leaveCrew();
+      }
+      // Load user's crew details
+      loadMyCrew();
+    }
+  }
+
+  // Create a new crew
+  async function createCrew() {
+    const name = document.getElementById('crew-name').value.trim();
+    const tag = document.getElementById('crew-tag').value.trim().toUpperCase();
+    const bio = document.getElementById('crew-bio').value.trim();
+
+    if (!name || !tag) {
+      showModal('Please provide crew name and tag.');
+      return;
     }
 
-    // Create a new crew
-    async function createCrew() {
-        const name = document.getElementById('crew-name').value.trim();
-        const tag = document.getElementById('crew-tag').value.trim().toUpperCase();
-        const bio = document.getElementById('crew-bio').value.trim();
-
-        if (!name || !tag) {
-            showModal("Please provide crew name and tag.");
-            return;
-        }
-
-        if (tag.length < 2 || tag.length > 5) {
-            showModal("Crew tag must be 2-5 characters.");
-            return;
-        }
-
-        try {
-            // Check if tag already exists
-            const tagQuery = query(collection(db, `/artifacts/${appId}/crews`), where("tag", "==", tag));
-            const tagSnapshot = await getDocs(tagQuery);
-
-            if (!tagSnapshot.empty) {
-                showModal("This crew tag is already taken. Choose another one.");
-                return;
-            }
-
-            const crewData = {
-                name,
-                tag,
-                bio: bio || '',
-                founderId: currentUserId,
-                founderName: userProfile.username || 'Anonymous',
-                members: [currentUserId],
-                memberNames: [userProfile.username || 'Anonymous'],
-                totalXP: userProfile.xp || 0,
-                challengesCompleted: 0,
-                spotsAdded: userProfile.spotsAdded || 0,
-                createdAt: serverTimestamp()
-            };
-
-            const crewRef = await addDoc(collection(db, `/artifacts/${appId}/crews`), crewData);
-
-            // Update user profile with crew ID
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                crewId: crewRef.id,
-                crewTag: tag
-            });
-
-            userProfile.crewId = crewRef.id;
-            userProfile.crewTag = tag;
-            userCrew = { id: crewRef.id, ...crewData };
-
-            showModal(`Crew "${name}" created successfully!`);
-            renderCrewsPanel();
-        } catch (error) {
-            console.error("Error creating crew:", error);
-            showModal("Failed to create crew. Please try again.");
-        }
+    if (tag.length < 2 || tag.length > 5) {
+      showModal('Crew tag must be 2-5 characters.');
+      return;
     }
 
-    // Join an existing crew
-    async function joinCrew(crewId, crewTag) {
-        if (userCrew) {
-            showModal("You must leave your current crew before joining another.");
-            return;
-        }
+    try {
+      // Check if tag already exists
+      const tagQuery = query(collection(db, `/artifacts/${appId}/crews`), where('tag', '==', tag));
+      const tagSnapshot = await getDocs(tagQuery);
 
-        try {
-            const crewRef = doc(db, `/artifacts/${appId}/crews/${crewId}`);
+      if (!tagSnapshot.empty) {
+        showModal('This crew tag is already taken. Choose another one.');
+        return;
+      }
 
-            // Add user to crew members
-            await updateDoc(crewRef, {
-                members: [...(userCrew?.members || []), currentUserId],
-                memberNames: [...(userCrew?.memberNames || []), userProfile.username || 'Anonymous'],
-                totalXP: increment(userProfile.xp || 0),
-                spotsAdded: increment(userProfile.spotsAdded || 0)
-            });
+      const crewData = {
+        name,
+        tag,
+        bio: bio || '',
+        founderId: currentUserId,
+        founderName: userProfile.username || 'Anonymous',
+        members: [currentUserId],
+        memberNames: [userProfile.username || 'Anonymous'],
+        totalXP: userProfile.xp || 0,
+        challengesCompleted: 0,
+        spotsAdded: userProfile.spotsAdded || 0,
+        createdAt: serverTimestamp(),
+      };
 
-            // Update user profile
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                crewId: crewId,
-                crewTag: crewTag
-            });
+      const crewRef = await addDoc(collection(db, `/artifacts/${appId}/crews`), crewData);
 
-            userProfile.crewId = crewId;
-            userProfile.crewTag = crewTag;
+      // Update user profile with crew ID
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        crewId: crewRef.id,
+        crewTag: tag,
+      });
 
-            showModal(`You've joined the crew!`);
-            renderCrewsPanel();
-        } catch (error) {
-            console.error("Error joining crew:", error);
-            showModal("Failed to join crew. Please try again.");
-        }
+      userProfile.crewId = crewRef.id;
+      userProfile.crewTag = tag;
+      userCrew = { id: crewRef.id, ...crewData };
+
+      showModal(`Crew "${name}" created successfully!`);
+      renderCrewsPanel();
+    } catch (error) {
+      console.error('Error creating crew:', error);
+      showModal('Failed to create crew. Please try again.');
+    }
+  }
+
+  // Join an existing crew
+  async function joinCrew(crewId, crewTag) {
+    if (userCrew) {
+      showModal('You must leave your current crew before joining another.');
+      return;
     }
 
-    // Leave current crew
-    async function leaveCrew() {
-        if (!userCrew) return;
+    try {
+      const crewRef = doc(db, `/artifacts/${appId}/crews/${crewId}`);
 
-        const confirmed = confirm(`Are you sure you want to leave "${userCrew.name}"?`);
-        if (!confirmed) return;
+      // Add user to crew members
+      await updateDoc(crewRef, {
+        members: [...(userCrew?.members || []), currentUserId],
+        memberNames: [...(userCrew?.memberNames || []), userProfile.username || 'Anonymous'],
+        totalXP: increment(userProfile.xp || 0),
+        spotsAdded: increment(userProfile.spotsAdded || 0),
+      });
 
-        try {
-            const crewRef = doc(db, `/artifacts/${appId}/crews/${userCrew.id}`);
+      // Update user profile
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        crewId: crewId,
+        crewTag: crewTag,
+      });
 
-            // Remove user from crew
-            const newMembers = userCrew.members.filter(id => id !== currentUserId);
-            const newMemberNames = userCrew.memberNames.filter(name => name !== (userProfile.username || 'Anonymous'));
+      userProfile.crewId = crewId;
+      userProfile.crewTag = crewTag;
 
-            if (newMembers.length === 0) {
-                // Delete crew if no members left
-                await deleteDoc(crewRef);
-                showModal("Crew dissolved (no members remaining).");
-            } else {
-                await updateDoc(crewRef, {
-                    members: newMembers,
-                    memberNames: newMemberNames,
-                    totalXP: increment(-(userProfile.xp || 0)),
-                    spotsAdded: increment(-(userProfile.spotsAdded || 0))
-                });
-                showModal("You've left the crew.");
-            }
-
-            // Update user profile
-            await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
-                crewId: null,
-                crewTag: null
-            });
-
-            userProfile.crewId = null;
-            userProfile.crewTag = null;
-            userCrew = null;
-
-            renderCrewsPanel();
-        } catch (error) {
-            console.error("Error leaving crew:", error);
-            showModal("Failed to leave crew. Please try again.");
-        }
+      showModal(`You've joined the crew!`);
+      renderCrewsPanel();
+    } catch (error) {
+      console.error('Error joining crew:', error);
+      showModal('Failed to join crew. Please try again.');
     }
+  }
 
-    // Load all crews
-    async function loadCrews() {
-        try {
-            const crewsSnapshot = await getDocs(collection(db, `/artifacts/${appId}/crews`));
-            allCrews = [];
-            crewsSnapshot.forEach(doc => {
-                allCrews.push({ id: doc.id, ...doc.data() });
-            });
+  // Leave current crew
+  async function leaveCrew() {
+    if (!userCrew) return;
 
-            // Check if user has a crew
-            if (userProfile.crewId) {
-                userCrew = allCrews.find(c => c.id === userProfile.crewId);
-            }
+    const confirmed = confirm(`Are you sure you want to leave "${userCrew.name}"?`);
+    if (!confirmed) return;
 
-            renderCrewsList();
-            renderCrewLeaderboard();
-        } catch (error) {
-            console.error("Error loading crews:", error);
-        }
+    try {
+      const crewRef = doc(db, `/artifacts/${appId}/crews/${userCrew.id}`);
+
+      // Remove user from crew
+      const newMembers = userCrew.members.filter(id => id !== currentUserId);
+      const newMemberNames = userCrew.memberNames.filter(
+        name => name !== (userProfile.username || 'Anonymous')
+      );
+
+      if (newMembers.length === 0) {
+        // Delete crew if no members left
+        await deleteDoc(crewRef);
+        showModal('Crew dissolved (no members remaining).');
+      } else {
+        await updateDoc(crewRef, {
+          members: newMembers,
+          memberNames: newMemberNames,
+          totalXP: increment(-(userProfile.xp || 0)),
+          spotsAdded: increment(-(userProfile.spotsAdded || 0)),
+        });
+        showModal("You've left the crew.");
+      }
+
+      // Update user profile
+      await updateDoc(doc(db, `/artifacts/${appId}/users/${currentUserId}/profile/data`), {
+        crewId: null,
+        crewTag: null,
+      });
+
+      userProfile.crewId = null;
+      userProfile.crewTag = null;
+      userCrew = null;
+
+      renderCrewsPanel();
+    } catch (error) {
+      console.error('Error leaving crew:', error);
+      showModal('Failed to leave crew. Please try again.');
     }
+  }
 
-    // Load user's crew details
-    async function loadMyCrew() {
-        if (!userCrew) return;
+  // Load all crews
+  async function loadCrews() {
+    try {
+      const crewsSnapshot = await getDocs(collection(db, `/artifacts/${appId}/crews`));
+      allCrews = [];
+      crewsSnapshot.forEach(doc => {
+        allCrews.push({ id: doc.id, ...doc.data() });
+      });
 
-        const myCrewDetails = document.getElementById('my-crew-details');
-        if (!myCrewDetails) return;
+      // Check if user has a crew
+      if (userProfile.crewId) {
+        userCrew = allCrews.find(c => c.id === userProfile.crewId);
+      }
 
-        myCrewDetails.innerHTML = `
+      renderCrewsList();
+      renderCrewLeaderboard();
+    } catch (error) {
+      console.error('Error loading crews:', error);
+    }
+  }
+
+  // Load user's crew details
+  async function loadMyCrew() {
+    if (!userCrew) return;
+
+    const myCrewDetails = document.getElementById('my-crew-details');
+    if (!myCrewDetails) return;
+
+    myCrewDetails.innerHTML = `
             <h4 style="margin:0.5rem 0;font-size:1.5rem;">[${userCrew.tag}] ${userCrew.name}</h4>
             ${userCrew.bio ? `<p style="margin:0.5rem 0;opacity:0.9;">${escapeHtml(userCrew.bio)}</p>` : ''}
             <div style="margin-top:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:1rem;">
@@ -1677,19 +1902,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ${userCrew.memberNames?.join(', ') || 'None'}
             </div>
         `;
+  }
+
+  // Render crews list
+  function renderCrewsList() {
+    const crewsList = document.getElementById('crews-list');
+    if (!crewsList) return;
+
+    if (allCrews.length === 0) {
+      crewsList.innerHTML = '<p style="color:#666;">No crews yet. Be the first to create one!</p>';
+      return;
     }
 
-    // Render crews list
-    function renderCrewsList() {
-        const crewsList = document.getElementById('crews-list');
-        if (!crewsList) return;
-
-        if (allCrews.length === 0) {
-            crewsList.innerHTML = '<p style="color:#666;">No crews yet. Be the first to create one!</p>';
-            return;
-        }
-
-        crewsList.innerHTML = allCrews.map(crew => `
+    crewsList.innerHTML = allCrews
+      .map(
+        crew => `
             <div style="padding:1rem;margin-bottom:1rem;border:2px solid #667eea;border-radius:10px;background:white;">
                 <h4 style="margin:0 0 0.5rem 0;color:#667eea;"><span style="background:#667eea;color:white;padding:0.2rem 0.5rem;border-radius:4px;margin-right:0.5rem;">${escapeHtml(crew.tag)}</span>${escapeHtml(crew.name)}</h4>
                 ${crew.bio ? `<p style="margin:0.5rem 0;color:#666;font-size:0.9rem;">${escapeHtml(crew.bio)}</p>` : ''}
@@ -1698,43 +1925,52 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span>⭐ ${crew.totalXP || 0} XP</span>
                     <span>📍 ${crew.spotsAdded || 0} spots</span>
                 </div>
-                ${!userCrew && crew.id !== userProfile.crewId ? `
+                ${
+                  !userCrew && crew.id !== userProfile.crewId
+                    ? `
                     <button class="join-crew-btn" data-crew-id="${crew.id}" data-crew-tag="${crew.tag}"
                             style="margin-top:0.8rem;padding:0.5rem 1rem;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">
                         Join Crew
                     </button>
-                ` : ''}
+                `
+                    : ''
+                }
                 ${crew.id === userProfile.crewId ? '<span style="color:#4CAF50;font-weight:bold;">✓ Your Crew</span>' : ''}
             </div>
-        `).join('');
+        `
+      )
+      .join('');
 
-        // Add event listeners to join buttons
-        document.querySelectorAll('.join-crew-btn').forEach(btn => {
-            btn.onclick = () => {
-                const crewId = btn.dataset.crewId;
-                const crewTag = btn.dataset.crewTag;
-                joinCrew(crewId, crewTag);
-            };
-        });
+    // Add event listeners to join buttons
+    document.querySelectorAll('.join-crew-btn').forEach(btn => {
+      btn.onclick = () => {
+        const crewId = btn.dataset.crewId;
+        const crewTag = btn.dataset.crewTag;
+        joinCrew(crewId, crewTag);
+      };
+    });
+  }
+
+  // Render crew leaderboard
+  function renderCrewLeaderboard() {
+    const leaderboard = document.getElementById('crew-leaderboard');
+    if (!leaderboard) return;
+
+    const sortedCrews = [...allCrews].sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0));
+
+    if (sortedCrews.length === 0) {
+      leaderboard.innerHTML = '<p style="color:#666;">No crews to display yet.</p>';
+      return;
     }
 
-    // Render crew leaderboard
-    function renderCrewLeaderboard() {
-        const leaderboard = document.getElementById('crew-leaderboard');
-        if (!leaderboard) return;
+    const medals = ['🥇', '🥈', '🥉'];
 
-        const sortedCrews = [...allCrews].sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0));
-
-        if (sortedCrews.length === 0) {
-            leaderboard.innerHTML = '<p style="color:#666;">No crews to display yet.</p>';
-            return;
-        }
-
-        const medals = ['🥇', '🥈', '🥉'];
-
-        leaderboard.innerHTML = `
+    leaderboard.innerHTML = `
             <div style="background:#f5f5f5;border-radius:10px;padding:1rem;">
-                ${sortedCrews.slice(0, 10).map((crew, index) => `
+                ${sortedCrews
+                  .slice(0, 10)
+                  .map(
+                    (crew, index) => `
                     <div style="padding:0.8rem;margin-bottom:0.5rem;background:white;border-radius:8px;display:flex;justify-content:space-between;align-items:center;${crew.id === userProfile.crewId ? 'border:2px solid #4CAF50;' : ''}">
                         <div style="display:flex;align-items:center;gap:0.8rem;">
                             <span style="font-size:1.5rem;min-width:30px;">${medals[index] || `#${index + 1}`}</span>
@@ -1749,18 +1985,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div style="font-size:1.2rem;font-weight:bold;color:#667eea;">${crew.totalXP || 0} XP</div>
                         </div>
                     </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
             </div>
         `;
-    }
+  }
 
-    // ===== EVENTS & MEETUPS SYSTEM =====
+  // ===== EVENTS & MEETUPS SYSTEM =====
 
-    let allEvents = [];
+  let allEvents = [];
 
-    // Render events panel
-    function renderEventsPanel() {
-        content.innerHTML = `
+  // Render events panel
+  function renderEventsPanel() {
+    content.innerHTML = `
             <div style="padding:1.5rem;">
                 <h2 style="background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">📅 Events & Meetups</h2>
                 <p>Join or create skateboarding events in your area!</p>
@@ -1807,111 +2045,110 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Setup form
-        const createEventForm = document.getElementById('create-event-form');
-        if (createEventForm) {
-            createEventForm.onsubmit = async (e) => {
-                e.preventDefault();
-                await createEvent();
-            };
-        }
-
-        // Load events
-        loadEvents();
+    // Setup form
+    const createEventForm = document.getElementById('create-event-form');
+    if (createEventForm) {
+      createEventForm.onsubmit = async e => {
+        e.preventDefault();
+        await createEvent();
+      };
     }
 
-    // Create a new event
-    async function createEvent() {
-        const name = document.getElementById('event-name').value.trim();
-        const datetime = document.getElementById('event-datetime').value;
-        const location = document.getElementById('event-location').value.trim();
-        const description = document.getElementById('event-description').value.trim();
-        const type = document.getElementById('event-type').value;
+    // Load events
+    loadEvents();
+  }
 
-        if (!name || !datetime || !location) {
-            showModal("Please fill out all required fields.");
-            return;
-        }
+  // Create a new event
+  async function createEvent() {
+    const name = document.getElementById('event-name').value.trim();
+    const datetime = document.getElementById('event-datetime').value;
+    const location = document.getElementById('event-location').value.trim();
+    const description = document.getElementById('event-description').value.trim();
+    const type = document.getElementById('event-type').value;
 
-        try {
-            const eventData = {
-                name,
-                datetime: new Date(datetime),
-                location,
-                description: description || '',
-                type,
-                organizerId: currentUserId,
-                organizerName: userProfile.username || 'Anonymous',
-                attendees: [currentUserId],
-                attendeeNames: [userProfile.username || 'Anonymous'],
-                createdAt: serverTimestamp()
-            };
-
-            await addDoc(collection(db, `/artifacts/${appId}/events`), eventData);
-
-            showModal("Event created successfully! 🎉");
-            document.getElementById('create-event-form').reset();
-            loadEvents();
-        } catch (error) {
-            console.error("Error creating event:", error);
-            showModal("Failed to create event. Please try again.");
-        }
+    if (!name || !datetime || !location) {
+      showModal('Please fill out all required fields.');
+      return;
     }
 
-    // Load all events
-    async function loadEvents() {
-        try {
-            const now = new Date();
-            const eventsSnapshot = await getDocs(collection(db, `/artifacts/${appId}/events`));
+    try {
+      const eventData = {
+        name,
+        datetime: new Date(datetime),
+        location,
+        description: description || '',
+        type,
+        organizerId: currentUserId,
+        organizerName: userProfile.username || 'Anonymous',
+        attendees: [currentUserId],
+        attendeeNames: [userProfile.username || 'Anonymous'],
+        createdAt: serverTimestamp(),
+      };
 
-            allEvents = [];
-            eventsSnapshot.forEach(doc => {
-                const event = { id: doc.id, ...doc.data() };
-                // Convert datetime to Date if it's a timestamp
-                if (event.datetime?.toDate) {
-                    event.datetime = event.datetime.toDate();
-                } else if (typeof event.datetime === 'string') {
-                    event.datetime = new Date(event.datetime);
-                }
-                allEvents.push(event);
-            });
+      await addDoc(collection(db, `/artifacts/${appId}/events`), eventData);
 
-            // Filter to upcoming events and sort by date
-            allEvents = allEvents
-                .filter(e => e.datetime > now)
-                .sort((a, b) => a.datetime - b.datetime);
+      showModal('Event created successfully! 🎉');
+      document.getElementById('create-event-form').reset();
+      loadEvents();
+    } catch (error) {
+      console.error('Error creating event:', error);
+      showModal('Failed to create event. Please try again.');
+    }
+  }
 
-            renderEventsList();
-        } catch (error) {
-            console.error("Error loading events:", error);
+  // Load all events
+  async function loadEvents() {
+    try {
+      const now = new Date();
+      const eventsSnapshot = await getDocs(collection(db, `/artifacts/${appId}/events`));
+
+      allEvents = [];
+      eventsSnapshot.forEach(doc => {
+        const event = { id: doc.id, ...doc.data() };
+        // Convert datetime to Date if it's a timestamp
+        if (event.datetime?.toDate) {
+          event.datetime = event.datetime.toDate();
+        } else if (typeof event.datetime === 'string') {
+          event.datetime = new Date(event.datetime);
         }
+        allEvents.push(event);
+      });
+
+      // Filter to upcoming events and sort by date
+      allEvents = allEvents.filter(e => e.datetime > now).sort((a, b) => a.datetime - b.datetime);
+
+      renderEventsList();
+    } catch (error) {
+      console.error('Error loading events:', error);
+    }
+  }
+
+  // Render events list
+  function renderEventsList() {
+    const eventsList = document.getElementById('events-list');
+    if (!eventsList) return;
+
+    if (allEvents.length === 0) {
+      eventsList.innerHTML = '<p style="color:#666;">No upcoming events. Create one!</p>';
+      return;
     }
 
-    // Render events list
-    function renderEventsList() {
-        const eventsList = document.getElementById('events-list');
-        if (!eventsList) return;
+    const eventTypeEmojis = {
+      jam: '🎸',
+      contest: '🏆',
+      meetup: '🤝',
+      lesson: '📚',
+      demo: '🎬',
+    };
 
-        if (allEvents.length === 0) {
-            eventsList.innerHTML = '<p style="color:#666;">No upcoming events. Create one!</p>';
-            return;
-        }
+    eventsList.innerHTML = allEvents
+      .map(event => {
+        const isAttending = event.attendees?.includes(currentUserId);
+        const eventDate = event.datetime;
+        const dateStr = eventDate.toLocaleDateString();
+        const timeStr = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const eventTypeEmojis = {
-            'jam': '🎸',
-            'contest': '🏆',
-            'meetup': '🤝',
-            'lesson': '📚',
-            'demo': '🎬'
-        };
-
-        eventsList.innerHTML = allEvents.map(event => {
-            const isAttending = event.attendees?.includes(currentUserId);
-            const eventDate = event.datetime;
-            const dateStr = eventDate.toLocaleDateString();
-            const timeStr = eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            return `
+        return `
                 <div style="padding:1.5rem;margin-bottom:1rem;border:2px solid #f5576c;border-radius:12px;background:${isAttending ? 'linear-gradient(135deg, #f093fb10 0%, #f5576c10 100%)' : 'white'};">
                     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:0.8rem;">
                         <h4 style="margin:0;color:#f5576c;">${eventTypeEmojis[event.type] || '📅'} ${escapeHtml(event.name)}</h4>
@@ -1928,75 +2165,82 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${event.description ? `<p style="margin:0.8rem 0;color:#666;font-size:0.9rem;">${escapeHtml(event.description)}</p>` : ''}
 
                     <div style="margin-top:1rem;">
-                        ${isAttending ? `
+                        ${
+                          isAttending
+                            ? `
                             <button class="leave-event-btn" data-event-id="${event.id}"
                                     style="padding:0.6rem 1.2rem;background:#ccc;color:#333;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">
                                 Cancel RSVP
                             </button>
                             <span style="margin-left:1rem;color:#4CAF50;font-weight:bold;">✓ You're attending!</span>
-                        ` : `
+                        `
+                            : `
                             <button class="join-event-btn" data-event-id="${event.id}"
                                     style="padding:0.6rem 1.2rem;background:#f5576c;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">
                                 RSVP / Join Event
                             </button>
-                        `}
+                        `
+                        }
                     </div>
                 </div>
             `;
-        }).join('');
+      })
+      .join('');
 
-        // Add event listeners
-        document.querySelectorAll('.join-event-btn').forEach(btn => {
-            btn.onclick = () => joinEvent(btn.dataset.eventId);
-        });
+    // Add event listeners
+    document.querySelectorAll('.join-event-btn').forEach(btn => {
+      btn.onclick = () => joinEvent(btn.dataset.eventId);
+    });
 
-        document.querySelectorAll('.leave-event-btn').forEach(btn => {
-            btn.onclick = () => leaveEvent(btn.dataset.eventId);
-        });
+    document.querySelectorAll('.leave-event-btn').forEach(btn => {
+      btn.onclick = () => leaveEvent(btn.dataset.eventId);
+    });
+  }
+
+  // Join an event
+  async function joinEvent(eventId) {
+    try {
+      const event = allEvents.find(e => e.id === eventId);
+      if (!event) return;
+
+      const eventRef = doc(db, `/artifacts/${appId}/events/${eventId}`);
+
+      await updateDoc(eventRef, {
+        attendees: [...(event.attendees || []), currentUserId],
+        attendeeNames: [...(event.attendeeNames || []), userProfile.username || 'Anonymous'],
+      });
+
+      showModal("You're attending this event! 🎉");
+      loadEvents();
+    } catch (error) {
+      console.error('Error joining event:', error);
+      showModal('Failed to join event. Please try again.');
     }
+  }
 
-    // Join an event
-    async function joinEvent(eventId) {
-        try {
-            const event = allEvents.find(e => e.id === eventId);
-            if (!event) return;
+  // Leave an event
+  async function leaveEvent(eventId) {
+    try {
+      const event = allEvents.find(e => e.id === eventId);
+      if (!event) return;
 
-            const eventRef = doc(db, `/artifacts/${appId}/events/${eventId}`);
+      const eventRef = doc(db, `/artifacts/${appId}/events/${eventId}`);
 
-            await updateDoc(eventRef, {
-                attendees: [...(event.attendees || []), currentUserId],
-                attendeeNames: [...(event.attendeeNames || []), userProfile.username || 'Anonymous']
-            });
+      const newAttendees = event.attendees.filter(id => id !== currentUserId);
+      const newAttendeeNames = event.attendeeNames.filter(
+        name => name !== (userProfile.username || 'Anonymous')
+      );
 
-            showModal("You're attending this event! 🎉");
-            loadEvents();
-        } catch (error) {
-            console.error("Error joining event:", error);
-            showModal("Failed to join event. Please try again.");
-        }
+      await updateDoc(eventRef, {
+        attendees: newAttendees,
+        attendeeNames: newAttendeeNames,
+      });
+
+      showModal('RSVP cancelled.');
+      loadEvents();
+    } catch (error) {
+      console.error('Error leaving event:', error);
+      showModal('Failed to cancel RSVP. Please try again.');
     }
-
-    // Leave an event
-    async function leaveEvent(eventId) {
-        try {
-            const event = allEvents.find(e => e.id === eventId);
-            if (!event) return;
-
-            const eventRef = doc(db, `/artifacts/${appId}/events/${eventId}`);
-
-            const newAttendees = event.attendees.filter(id => id !== currentUserId);
-            const newAttendeeNames = event.attendeeNames.filter(name => name !== (userProfile.username || 'Anonymous'));
-
-            await updateDoc(eventRef, {
-                attendees: newAttendees,
-                attendeeNames: newAttendeeNames
-            });
-
-            showModal("RSVP cancelled.");
-            loadEvents();
-        } catch (error) {
-            console.error("Error leaving event:", error);
-            showModal("Failed to cancel RSVP. Please try again.");
-        }
-    }
+  }
 });

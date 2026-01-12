@@ -17,11 +17,11 @@ export default function SpotsScreen() {
     <View style={styles.card}>
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.meta}>
-        {item.city || ''}{item.city && item.state ? ', ' : ''}{item.state || ''}
+        {item.city || ''}
+        {item.city && item.state ? ', ' : ''}
+        {item.state || ''}
       </Text>
-      {item.difficulty && (
-        <Text style={styles.meta}>Park level: {item.difficulty}</Text>
-      )}
+      {item.difficulty && <Text style={styles.meta}>Park level: {item.difficulty}</Text>}
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>View spot challenges (soon)</Text>
       </TouchableOpacity>
@@ -35,7 +35,7 @@ export default function SpotsScreen() {
 
       <FlatList
         data={data}
-        keyExtractor={(item) => item.id || item.name}
+        keyExtractor={item => item.id || item.name}
         renderItem={renderItem}
         contentContainerStyle={{ paddingVertical: 8 }}
       />

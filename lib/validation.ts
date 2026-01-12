@@ -13,14 +13,8 @@ export const signupSchema = yup.object().shape({
     .required('Username is required')
     .min(3, 'Username must be at least 3 characters')
     .max(20, 'Username must not exceed 20 characters')
-    .matches(
-      /^[a-zA-Z0-9_]+$/,
-      'Username can only contain letters, numbers, and underscores'
-    ),
-  email: yup
-    .string()
-    .required('Email is required')
-    .email('Please enter a valid email'),
+    .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+  email: yup.string().required('Email is required').email('Please enter a valid email'),
   password: yup
     .string()
     .required('Password is required')
@@ -32,18 +26,12 @@ export const signupSchema = yup.object().shape({
 });
 
 export const loginSchema = yup.object().shape({
-  email: yup
-    .string()
-    .required('Email is required')
-    .email('Please enter a valid email'),
+  email: yup.string().required('Email is required').email('Please enter a valid email'),
   password: yup.string().required('Password is required'),
 });
 
 export const resetPasswordSchema = yup.object().shape({
-  email: yup
-    .string()
-    .required('Email is required')
-    .email('Please enter a valid email'),
+  email: yup.string().required('Email is required').email('Please enter a valid email'),
 });
 
 // Profile schemas
@@ -55,9 +43,7 @@ export const updateProfileSchema = yup.object().shape({
     .max(20, 'Username must not exceed 20 characters')
     .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
   bio: yup.string().max(500, 'Bio must not exceed 500 characters'),
-  level: yup
-    .string()
-    .oneOf(['Beginner', 'Intermediate', 'Advanced', 'Pro'], 'Invalid skill level'),
+  level: yup.string().oneOf(['Beginner', 'Intermediate', 'Advanced', 'Pro'], 'Invalid skill level'),
 });
 
 // Skatepark schemas
@@ -208,10 +194,10 @@ export function validateFileType(
 /**
  * Validate image file
  */
-export function validateImage(file: {
-  mimeType: string;
-  size: number;
-}): { valid: boolean; error?: string } {
+export function validateImage(file: { mimeType: string; size: number }): {
+  valid: boolean;
+  error?: string;
+} {
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   const maxSize = 10; // 10MB
 
@@ -231,10 +217,10 @@ export function validateImage(file: {
 /**
  * Validate video file
  */
-export function validateVideo(file: {
-  mimeType: string;
-  size: number;
-}): { valid: boolean; error?: string } {
+export function validateVideo(file: { mimeType: string; size: number }): {
+  valid: boolean;
+  error?: string;
+} {
   const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
   const maxSize = 100; // 100MB
 

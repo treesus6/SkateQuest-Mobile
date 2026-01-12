@@ -191,10 +191,7 @@ export const SECURITY_HEADERS = {
 /**
  * Throttle function calls (debounce with leading edge)
  */
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
-  limitMs: number
-): T {
+export function throttle<T extends (...args: any[]) => any>(func: T, limitMs: number): T {
   let lastCall = 0;
 
   return ((...args: any[]) => {
@@ -210,10 +207,7 @@ export function throttle<T extends (...args: any[]) => any>(
 /**
  * Debounce function calls
  */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  waitMs: number
-): T {
+export function debounce<T extends (...args: any[]) => any>(func: T, waitMs: number): T {
   let timeoutId: NodeJS.Timeout;
 
   return ((...args: any[]) => {

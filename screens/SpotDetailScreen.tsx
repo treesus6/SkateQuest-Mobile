@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import PortalDimensionLogo from '../components/PortalDimensionLogo';
 
 const { width } = Dimensions.get('window');
 
-export default function SpotDetailScreen({ route, navigation }: any) {
+const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const { spotId } = route.params;
   const { user } = useAuth();
   const [spot, setSpot] = useState<SkateSpot | null>(null);
@@ -51,10 +51,12 @@ export default function SpotDetailScreen({ route, navigation }: any) {
       // Load photos
       const { data: photosData, error: photosError } = await supabase
         .from('spot_photos')
-        .select(`
+        .select(
+          `
           *,
           media:media_id(*)
-        `)
+        `
+        )
         .eq('spot_id', spotId)
         .order('is_primary', { ascending: false })
         .order('created_at', { ascending: false });
@@ -65,10 +67,12 @@ export default function SpotDetailScreen({ route, navigation }: any) {
       // Load active conditions (not expired)
       const { data: conditionsData, error: conditionsError } = await supabase
         .from('spot_conditions')
-        .select(`
+        .select(
+          `
           *,
           reporter:reported_by(username)
-        `)
+        `
+        )
         .eq('spot_id', spotId)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
@@ -212,12 +216,12 @@ export default function SpotDetailScreen({ route, navigation }: any) {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
+              onMomentumScrollEnd={e => {
                 const index = Math.round(e.nativeEvent.contentOffset.x / width);
                 setActivePhotoIndex(index);
               }}
             >
-              {photos.map((photo) => (
+              {photos.map(photo => (
                 <Image
                   key={photo.id}
                   source={{ uri: photo.media?.url }}
@@ -230,10 +234,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
               {photos.map((_, index) => (
                 <View
                   key={index}
-                  style={[
-                    styles.indicator,
-                    index === activePhotoIndex && styles.activeIndicator,
-                  ]}
+                  style={[styles.indicator, index === activePhotoIndex && styles.activeIndicator]}
                 />
               ))}
             </View>
@@ -245,7 +246,11 @@ export default function SpotDetailScreen({ route, navigation }: any) {
           </View>
         )}
 
-        <TouchableOpacity style={styles.addPhotoButton} onPress={uploadSpotPhoto} disabled={uploading}>
+        <TouchableOpacity
+          style={styles.addPhotoButton}
+          onPress={uploadSpotPhoto}
+          disabled={uploading}
+        >
           {uploading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
@@ -259,7 +264,12 @@ export default function SpotDetailScreen({ route, navigation }: any) {
         <Text style={styles.spotName}>{spot.name}</Text>
 
         <View style={styles.metaRow}>
-          <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(spot.difficulty) }]}>
+          <View
+            style={[
+              styles.difficultyBadge,
+              { backgroundColor: getDifficultyColor(spot.difficulty) },
+            ]}
+          >
             <Text style={styles.difficultyText}>{spot.difficulty || 'Unknown'}</Text>
           </View>
           {spot.rating && (
@@ -307,7 +317,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
             <Text style={styles.cardTitle}>🔴 Live Conditions</Text>
             <Text style={styles.cardSubtitle}>Updated recently</Text>
           </View>
-          {conditions.map((condition) => (
+          {conditions.map(condition => (
             <View key={condition.id} style={styles.conditionRow}>
               <Text style={styles.conditionIcon}>{getConditionIcon(condition.condition)}</Text>
               <View style={styles.conditionInfo}>
@@ -343,7 +353,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
       {challenges.length > 0 && (
         <View style={styles.challengesCard}>
           <Text style={styles.cardTitle}>🎯 Active Challenges</Text>
-          {challenges.map((challenge) => (
+          {challenges.map(challenge => (
             <TouchableOpacity
               key={challenge.id}
               style={styles.challengeRow}
@@ -360,9 +370,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
       <View style={styles.actionsCard}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() =>
-            navigation.navigate('Challenges', { spotId: spot.id })
-          }
+          onPress={() => navigation.navigate('Challenges', { spotId: spot.id })}
         >
           <Text style={styles.actionButtonText}>🎯 View All Challenges</Text>
         </TouchableOpacity>
@@ -389,7 +397,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
                 { value: 'cops', label: 'Cops', icon: '👮' },
                 { value: 'clear', label: 'Clear', icon: '✅' },
                 { value: 'under_construction', label: 'Construction', icon: '🚧' },
-              ].map((option) => (
+              ].map(option => (
                 <TouchableOpacity
                   key={option.value}
                   style={styles.conditionOption}
@@ -412,7 +420,7 @@ export default function SpotDetailScreen({ route, navigation }: any) {
       </Modal>
     </ScrollView>
   );
-}
+});
 
 function getTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -768,3 +776,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default SpotDetailScreen;

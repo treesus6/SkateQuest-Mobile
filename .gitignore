@@ -17,6 +17,10 @@ dist/
 .expo/
 .expo-shared/
 
+# Native folders (managed by Expo Prebuild/CNG)
+android/
+ios/
+
 # Production
 *.log
 npm-debug.log*
@@ -61,3 +65,5 @@ validate-fixes.js
 *.bak
 *.local
 .expo/
+android/
+ios/

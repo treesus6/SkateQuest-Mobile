@@ -20,7 +20,9 @@ export interface MediaUploadResult {
 /**
  * Pick image from library or camera
  */
-export async function pickImage(useCamera: boolean = false): Promise<ImagePicker.ImagePickerAsset | null> {
+export async function pickImage(
+  useCamera: boolean = false
+): Promise<ImagePicker.ImagePickerAsset | null> {
   // Request permissions
   const { status } = useCamera
     ? await ImagePicker.requestCameraPermissionsAsync()
@@ -52,7 +54,9 @@ export async function pickImage(useCamera: boolean = false): Promise<ImagePicker
 /**
  * Pick video from library or camera
  */
-export async function pickVideo(useCamera: boolean = false): Promise<ImagePicker.ImagePickerAsset | null> {
+export async function pickVideo(
+  useCamera: boolean = false
+): Promise<ImagePicker.ImagePickerAsset | null> {
   const { status } = useCamera
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -103,21 +107,19 @@ export async function uploadToStorage(
     const filePath = `${folder}/${Date.now()}_${fileName}.${ext}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, decode(base64), {
-        contentType: `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
-        upsert: false,
-      });
+    const { data, error } = await supabase.storage.from(bucket).upload(filePath, decode(base64), {
+      contentType: `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
+      upsert: false,
+    });
 
     if (error) {
       throw error;
     }
 
     // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
     return publicUrl;
   } catch (error) {
@@ -178,9 +180,7 @@ export async function deleteFromStorage(url: string, bucket: string): Promise<vo
     const bucketIndex = urlParts.findIndex(part => part === bucket);
     const filePath = urlParts.slice(bucketIndex + 1).join('/');
 
-    const { error } = await supabase.storage
-      .from(bucket)
-      .remove([filePath]);
+    const { error } = await supabase.storage.from(bucket).remove([filePath]);
 
     if (error) {
       throw error;
@@ -205,17 +205,19 @@ export async function saveMediaToDatabase(
 ): Promise<any> {
   const { data, error } = await supabase
     .from('media')
-    .insert([{
-      user_id: userId,
-      type: mediaResult.type,
-      url: mediaResult.url,
-      thumbnail_url: mediaResult.thumbnailUrl,
-      file_size: mediaResult.fileSize,
-      duration: mediaResult.duration,
-      caption: options?.caption,
-      trick_name: options?.trickName,
-      spot_id: options?.spotId,
-    }])
+    .insert([
+      {
+        user_id: userId,
+        type: mediaResult.type,
+        url: mediaResult.url,
+        thumbnail_url: mediaResult.thumbnailUrl,
+        file_size: mediaResult.fileSize,
+        duration: mediaResult.duration,
+        caption: options?.caption,
+        trick_name: options?.trickName,
+        spot_id: options?.spotId,
+      },
+    ])
     .select()
     .single();
 

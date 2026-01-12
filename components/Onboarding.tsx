@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Dimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -20,22 +13,26 @@ interface OnboardingScreen {
 const screens: OnboardingScreen[] = [
   {
     title: 'Discover Skateparks',
-    description: 'Find skateparks near you or explore spots around the world. Get directions, see photos, and read reviews from other skaters.',
+    description:
+      'Find skateparks near you or explore spots around the world. Get directions, see photos, and read reviews from other skaters.',
     icon: '🗺️',
   },
   {
     title: 'Share Your Tricks',
-    description: 'Upload videos and photos of your best tricks. Get AI-powered analysis and feedback to improve your skills.',
+    description:
+      'Upload videos and photos of your best tricks. Get AI-powered analysis and feedback to improve your skills.',
     icon: '🛹',
   },
   {
     title: 'Complete Challenges',
-    description: 'Take on daily and weekly challenges. Compete on leaderboards and earn rewards for landing new tricks.',
+    description:
+      'Take on daily and weekly challenges. Compete on leaderboards and earn rewards for landing new tricks.',
     icon: '🏆',
   },
   {
     title: 'Connect with Skaters',
-    description: 'Follow your favorite skaters, join crews, and discover local skate events. Build your skate community.',
+    description:
+      'Follow your favorite skaters, join crews, and discover local skate events. Build your skate community.',
     icon: '👥',
   },
 ];
@@ -91,21 +88,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       {/* Dots indicator */}
       <View style={styles.dotsContainer}>
         {screens.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              index === currentScreen && styles.dotActive,
-            ]}
-          />
+          <View key={index} style={[styles.dot, index === currentScreen && styles.dotActive]} />
         ))}
       </View>
 
       {/* Next/Get Started button */}
       <TouchableOpacity style={styles.button} onPress={handleNext}>
-        <Text style={styles.buttonText}>
-          {isLastScreen ? "Let's Go!" : 'Next'}
-        </Text>
+        <Text style={styles.buttonText}>{isLastScreen ? "Let's Go!" : 'Next'}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -95,19 +95,15 @@ async function checkForUpdates() {
     if (update.isAvailable) {
       await Updates.fetchUpdateAsync();
       // Alert user to restart
-      Alert.alert(
-        'Update Available',
-        'A new version is available. Restart to update?',
-        [
-          { text: 'Later', style: 'cancel' },
-          {
-            text: 'Restart Now',
-            onPress: async () => {
-              await Updates.reloadAsync();
-            },
+      Alert.alert('Update Available', 'A new version is available. Restart to update?', [
+        { text: 'Later', style: 'cancel' },
+        {
+          text: 'Restart Now',
+          onPress: async () => {
+            await Updates.reloadAsync();
           },
-        ]
-      );
+        },
+      ]);
     }
   } catch (error) {
     console.error('Error checking for updates:', error);

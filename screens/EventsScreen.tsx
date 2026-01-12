@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -101,19 +94,12 @@ export default function EventsScreen() {
 
       <View style={styles.eventContent}>
         <Text style={styles.eventTitle}>{item.title}</Text>
-        {item.description && (
-          <Text style={styles.eventDescription}>{item.description}</Text>
-        )}
+        {item.description && <Text style={styles.eventDescription}>{item.description}</Text>}
         <Text style={styles.eventLocation}>📍 {item.location}</Text>
-        <Text style={styles.attendeeCount}>
-          👥 {item.attendee_count} attending
-        </Text>
+        <Text style={styles.attendeeCount}>👥 {item.attendee_count} attending</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.rsvpButton}
-        onPress={() => rsvp(item.id)}
-      >
+      <TouchableOpacity style={styles.rsvpButton} onPress={() => rsvp(item.id)}>
         <Text style={styles.rsvpButtonText}>RSVP</Text>
       </TouchableOpacity>
     </View>
@@ -129,16 +115,14 @@ export default function EventsScreen() {
       <FlatList
         data={events}
         renderItem={renderEvent}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadEvents}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No upcoming events</Text>
-            <Text style={styles.emptySubtext}>
-              Check back later or create your own!
-            </Text>
+            <Text style={styles.emptySubtext}>Check back later or create your own!</Text>
           </View>
         }
       />

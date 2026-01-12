@@ -3,6 +3,7 @@
 ## 🎯 What This Does
 
 Adds a clickable Portal Dimension logo at Newport Skatepark in Oregon that:
+
 - ✅ Shows as a custom marker on the map
 - ✅ Opens Portal Dimension's website when clicked
 - ✅ Tracks every click (locally + Firebase)
@@ -39,6 +40,7 @@ website: 'https://portaldimension.com', // Update with actual URL
 ### 3. Verify Coordinates
 
 The default coordinates are for Newport Skatepark, Oregon:
+
 - Latitude: 44.6368
 - Longitude: -124.0537
 
@@ -56,6 +58,7 @@ firebase deploy --only firestore:rules
 The local server should still be running. Refresh the browser at http://localhost:8000
 
 You should see:
+
 - ✅ Portal Dimension logo appears at Newport Skatepark
 - ✅ Logo has hover effect (scales up, glows)
 - ✅ Clicking logo opens website
@@ -67,10 +70,11 @@ You should see:
 Open browser console (F12) and type:
 
 ```javascript
-PortalDimensionSpot.getStats()
+PortalDimensionSpot.getStats();
 ```
 
 You should see:
+
 ```javascript
 {
   totalClicks: X,
@@ -85,8 +89,9 @@ You should see:
 Open: http://localhost:8000/admin/portal-stats.html
 
 You'll see:
+
 - 📊 Total clicks
-- 📅 Today's clicks  
+- 📅 Today's clicks
 - 📈 Average per day
 - ⏰ Last click time
 - 📊 Bar chart (last 7 days)
@@ -118,11 +123,13 @@ git push origin main
 Once deployed:
 
 ### Console Stats:
+
 1. Go to https://sk8.quest
 2. Press F12 (open console)
 3. Type: `PortalDimensionSpot.getStats()`
 
 ### Full Dashboard:
+
 Visit: https://sk8.quest/admin/portal-stats.html
 
 ## 🎨 Customization Options
@@ -181,11 +188,13 @@ Edit lines 174-197 in `portal-dimension.js` to customize hover animations.
 ## 📈 Understanding the Data
 
 ### Local Storage
+
 - Stores: total clicks, last click, clicks by day
 - Persists across page refreshes
 - User-specific (not shared)
 
 ### Firebase Storage
+
 - Stores: every individual click with timestamp, location, user agent
 - Shared across all users
 - Real-time updates
@@ -206,6 +215,7 @@ Edit lines 174-197 in `portal-dimension.js` to customize hover animations.
 ## 🔐 Security
 
 The Firestore rule allows:
+
 - ✅ Anyone can READ click stats (public analytics)
 - ✅ Anyone can CREATE click records (track clicks)
 - ❌ Nobody can UPDATE or DELETE clicks (data integrity)
@@ -213,9 +223,11 @@ The Firestore rule allows:
 This prevents tampering while allowing legitimate tracking.
 
 ## 🛡️ Server setup: Deploy Cloud Function for secure logging
+
 To prevent spam and allow server-side rate-limiting, we've added a Cloud Function `logPortalClick` in `functions/index.js`.
 
 Deployment steps:
+
 1. From the project root, install functions dependencies and deploy the function:
 
 ```bash
@@ -225,6 +237,7 @@ firebase deploy --only functions:logPortalClick --project <your-project-id>
 ```
 
 2. Optionally deploy all functions:
+
 ```bash
 firebase deploy --only functions --project <your-project-id>
 ```
@@ -238,6 +251,7 @@ If you'd like, I can add a sample CI/CD workflow to deploy this function automat
 ## 💡 Future Enhancements
 
 Consider adding:
+
 - Geographic distribution of clicks
 - Time-of-day analysis
 - Referrer tracking (where users came from)
@@ -248,6 +262,7 @@ Consider adding:
 ## 📞 Support
 
 If you need help:
+
 1. Check console for errors
 2. Verify all files are deployed
 3. Test Firebase connection

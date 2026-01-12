@@ -70,6 +70,7 @@ After signing up, check if a profile was created:
 ## Common Issues & Solutions
 
 ### "Invalid login credentials"
+
 - **Cause:** Email confirmation is still enabled OR user doesn't exist
 - **Fix:**
   1. Disable email confirmation (Step 1)
@@ -77,6 +78,7 @@ After signing up, check if a profile was created:
   3. Sign up again
 
 ### "User already registered"
+
 - **Cause:** User exists but can't log in
 - **Fix:**
   1. Go to Authentication → Users
@@ -86,6 +88,7 @@ After signing up, check if a profile was created:
   5. If false, click "Send email confirmation" OR manually set it to true
 
 ### "Profile not found" after login
+
 - **Cause:** The auto-create trigger isn't working
 - **Fix:**
   1. Re-run `supabase-fix-signup.sql`
@@ -93,6 +96,7 @@ After signing up, check if a profile was created:
   3. Sign up again
 
 ### Still can't log in after signup
+
 - **Cause:** Email confirmation is enabled
 - **Fix:**
   1. Go to your email inbox

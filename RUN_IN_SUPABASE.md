@@ -102,6 +102,7 @@ Click **Run** ✅
 ## DONE! ✅
 
 Now your database has:
+
 - ✅ Sponsor fields for Portal Dimension (and future businesses)
 - ✅ Newport Skate Park with Portal Dimension link
 - ✅ Function for loading nearby spots on the map

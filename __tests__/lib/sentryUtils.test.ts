@@ -1,5 +1,10 @@
 import * as Sentry from '@sentry/react-native';
-import { logUserAction, logNavigation, trackOperation, tagSupabaseQuery } from '../../lib/sentryUtils';
+import {
+  logUserAction,
+  logNavigation,
+  trackOperation,
+  tagSupabaseQuery,
+} from '../../lib/sentryUtils';
 
 describe('SentryUtils', () => {
   beforeEach(() => {
@@ -34,36 +39,30 @@ describe('SentryUtils', () => {
 
   describe('trackOperation', () => {
     it('tracks successful operation', async () => {
-      const mockTransaction = {
-        setStatus: jest.fn(),
-        setTag: jest.fn(),
-        finish: jest.fn(),
-      };
-      (Sentry.startTransaction as jest.Mock).mockReturnValue(mockTransaction);
-
       const operation = jest.fn().mockResolvedValue({ success: true });
       const result = await trackOperation('fetch_skateparks', operation, { type: 'query' });
 
       expect(result).toEqual({ success: true });
-      expect(mockTransaction.setStatus).toHaveBeenCalledWith('ok');
-      expect(mockTransaction.finish).toHaveBeenCalled();
+      expect(Sentry.addBreadcrumb).toHaveBeenCalledWith({
+        category: 'operation',
+        message: 'fetch_skateparks',
+        level: 'info',
+        data: { type: 'query' },
+      });
+      expect(Sentry.addBreadcrumb).toHaveBeenCalledWith({
+        category: 'operation',
+        message: 'fetch_skateparks completed',
+        level: 'info',
+        data: expect.objectContaining({ type: 'query', duration: expect.any(Number) }),
+      });
     });
 
     it('captures errors and rethrows', async () => {
-      const mockTransaction = {
-        setStatus: jest.fn(),
-        setTag: jest.fn(),
-        finish: jest.fn(),
-      };
-      (Sentry.startTransaction as jest.Mock).mockReturnValue(mockTransaction);
-
       const error = new Error('Database error');
       const operation = jest.fn().mockRejectedValue(error);
 
       await expect(trackOperation('fetch_data', operation)).rejects.toThrow('Database error');
       expect(Sentry.captureException).toHaveBeenCalledWith(error, expect.any(Object));
-      expect(mockTransaction.setStatus).toHaveBeenCalledWith('unknown_error');
-      expect(mockTransaction.finish).toHaveBeenCalled();
     });
   });
 

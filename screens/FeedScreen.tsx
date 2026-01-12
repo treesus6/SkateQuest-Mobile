@@ -49,11 +49,13 @@ export default function FeedScreen({ navigation }: any) {
     try {
       const { data, error } = await supabase
         .from('activities')
-        .select(`
+        .select(
+          `
           *,
           user:users(id, username, level, xp),
           media(*)
-        `)
+        `
+        )
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -96,16 +98,10 @@ export default function FeedScreen({ navigation }: any) {
         <View style={styles.activityHeader}>
           <Text style={styles.activityIcon}>{icon}</Text>
           <View style={styles.activityHeaderText}>
-            <Text style={styles.username}>
-              {item.user?.username || 'Skater'}
-            </Text>
+            <Text style={styles.username}>{item.user?.username || 'Skater'}</Text>
             <Text style={styles.activityTitle}>{item.title}</Text>
-            {item.description && (
-              <Text style={styles.activityDescription}>{item.description}</Text>
-            )}
-            <Text style={styles.timestamp}>
-              {new Date(item.created_at).toLocaleDateString()}
-            </Text>
+            {item.description && <Text style={styles.activityDescription}>{item.description}</Text>}
+            <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleDateString()}</Text>
           </View>
           {item.xp_earned > 0 && (
             <View style={styles.xpBadge}>
@@ -130,9 +126,7 @@ export default function FeedScreen({ navigation }: any) {
                 resizeMode={ResizeMode.CONTAIN}
               />
             )}
-            {item.media.caption && (
-              <Text style={styles.mediaCaption}>{item.media.caption}</Text>
-            )}
+            {item.media.caption && <Text style={styles.mediaCaption}>{item.media.caption}</Text>}
           </View>
         )}
       </View>
@@ -154,11 +148,9 @@ export default function FeedScreen({ navigation }: any) {
       <FlatList
         data={activities}
         renderItem={renderActivity}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={loadFeed} />
-        }
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadFeed} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No activity yet</Text>

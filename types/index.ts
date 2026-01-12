@@ -9,6 +9,8 @@ export interface SkateSpot {
   image_url?: string;
   added_by?: string;
   created_at?: string;
+  sponsor_name?: string;
+  sponsor_url?: string;
 }
 
 export interface Challenge {
@@ -33,12 +35,13 @@ export interface CallOut {
   trick_name: string;
   message?: string;
   xp_reward: number;
-  status: 'pending' | 'accepted' | 'completed' | 'declined';
+  status: 'pending' | 'accepted' | 'completed' | 'declined' | 'failed';
   created_at: string;
   completed_at?: string;
   proof_media_id?: string;
   challenger?: UserProfile;
   challenged?: UserProfile;
+  challenged_user?: UserProfile;
   spot?: SkateSpot;
 }
 
@@ -94,7 +97,13 @@ export interface SpotPhoto {
 export interface Activity {
   id: string;
   user_id: string;
-  activity_type: 'spot_added' | 'challenge_completed' | 'trick_landed' | 'level_up' | 'media_uploaded' | 'skate_game_won';
+  activity_type:
+    | 'spot_added'
+    | 'challenge_completed'
+    | 'trick_landed'
+    | 'level_up'
+    | 'media_uploaded'
+    | 'skate_game_won';
   title: string;
   description?: string;
   xp_earned: number;

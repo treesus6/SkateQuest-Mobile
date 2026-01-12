@@ -37,7 +37,11 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "plugins": [
@@ -55,6 +59,11 @@
           "locationAlwaysAndWhenInUsePermission": "Allow SkateQuest to use your location to find nearby skate spots."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "09a104b9-9e22-4ae0-9836-2701e366d8e5"
+      }
+    }
   }
 }

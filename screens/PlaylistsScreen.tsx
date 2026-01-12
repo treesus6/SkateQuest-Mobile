@@ -35,10 +35,12 @@ export default function PlaylistsScreen() {
     try {
       const { data, error } = await supabase
         .from('playlists')
-        .select(`
+        .select(
+          `
           *,
           user:users(id, username, level)
-        `)
+        `
+        )
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
@@ -136,18 +138,13 @@ export default function PlaylistsScreen() {
             <Text style={styles.playlistName}>{item.name}</Text>
             <Text style={styles.playlistAuthor}>by {item.user?.username}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.likeButton}
-            onPress={() => likePlaylist(item.id)}
-          >
+          <TouchableOpacity style={styles.likeButton} onPress={() => likePlaylist(item.id)}>
             <Text style={styles.likeIcon}>❤️</Text>
             <Text style={styles.likeCount}>{item.likes_count}</Text>
           </TouchableOpacity>
         </View>
 
-        {item.description && (
-          <Text style={styles.playlistDescription}>{item.description}</Text>
-        )}
+        {item.description && <Text style={styles.playlistDescription}>{item.description}</Text>}
 
         <View style={styles.linksContainer}>
           {item.spotify_url && (
@@ -186,10 +183,7 @@ export default function PlaylistsScreen() {
           <Text style={styles.headerTitle}>🎧 Session Playlists</Text>
           <Text style={styles.headerSubtitle}>Music for skating</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowModal(true)}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowModal(true)}>
           <Text style={styles.addButtonText}>+ Share</Text>
         </TouchableOpacity>
       </View>
@@ -197,7 +191,7 @@ export default function PlaylistsScreen() {
       <FlatList
         data={playlists}
         renderItem={renderPlaylist}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -221,18 +215,14 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="Playlist name *"
               value={newPlaylist.name}
-              onChangeText={(text) =>
-                setNewPlaylist({ ...newPlaylist, name: text })
-              }
+              onChangeText={text => setNewPlaylist({ ...newPlaylist, name: text })}
             />
 
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Description (optional)"
               value={newPlaylist.description}
-              onChangeText={(text) =>
-                setNewPlaylist({ ...newPlaylist, description: text })
-              }
+              onChangeText={text => setNewPlaylist({ ...newPlaylist, description: text })}
               multiline
               numberOfLines={2}
             />
@@ -242,9 +232,7 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://open.spotify.com/playlist/..."
               value={newPlaylist.spotifyUrl}
-              onChangeText={(text) =>
-                setNewPlaylist({ ...newPlaylist, spotifyUrl: text })
-              }
+              onChangeText={text => setNewPlaylist({ ...newPlaylist, spotifyUrl: text })}
               autoCapitalize="none"
             />
 
@@ -253,9 +241,7 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://music.apple.com/..."
               value={newPlaylist.appleMusicUrl}
-              onChangeText={(text) =>
-                setNewPlaylist({ ...newPlaylist, appleMusicUrl: text })
-              }
+              onChangeText={text => setNewPlaylist({ ...newPlaylist, appleMusicUrl: text })}
               autoCapitalize="none"
             />
 
@@ -264,9 +250,7 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://youtube.com/playlist?list=..."
               value={newPlaylist.youtubeUrl}
-              onChangeText={(text) =>
-                setNewPlaylist({ ...newPlaylist, youtubeUrl: text })
-              }
+              onChangeText={text => setNewPlaylist({ ...newPlaylist, youtubeUrl: text })}
               autoCapitalize="none"
             />
 

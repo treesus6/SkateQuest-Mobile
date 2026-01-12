@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { CallOut, UserProfile, SkateSpot } from '../types';
 
 type TabType = 'received' | 'sent';
 
-export default function CallOutsScreen() {
+const CallOutsScreen = memo(() => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
@@ -48,27 +48,32 @@ export default function CallOutsScreen() {
 
     try {
       setLoading(true);
-      const query = activeTab === 'received'
-        ? supabase
-            .from('call_outs')
-            .select(`
+      const query =
+        activeTab === 'received'
+          ? supabase
+              .from('call_outs')
+              .select(
+                `
               *,
               challenger:profiles!call_outs_challenger_id_fkey(id, username, level, xp),
               challenged_user:profiles!call_outs_challenged_user_id_fkey(id, username, level, xp),
               spot:skate_spots(id, name, latitude, longitude)
-            `)
-            .eq('challenged_user_id', user.id)
-            .order('created_at', { ascending: false })
-        : supabase
-            .from('call_outs')
-            .select(`
+            `
+              )
+              .eq('challenged_user_id', user.id)
+              .order('created_at', { ascending: false })
+          : supabase
+              .from('call_outs')
+              .select(
+                `
               *,
               challenger:profiles!call_outs_challenger_id_fkey(id, username, level, xp),
               challenged_user:profiles!call_outs_challenged_user_id_fkey(id, username, level, xp),
               spot:skate_spots(id, name, latitude, longitude)
-            `)
-            .eq('challenger_id', user.id)
-            .order('created_at', { ascending: false });
+            `
+              )
+              .eq('challenger_id', user.id)
+              .order('created_at', { ascending: false });
 
       const { data, error } = await query;
 
@@ -88,7 +93,7 @@ export default function CallOutsScreen() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, level, xp')
+        .select('id, username, level, xp, spots_added, challenges_completed, created_at')
         .neq('id', user?.id)
         .order('xp', { ascending: false })
         .limit(50);
@@ -297,27 +302,19 @@ export default function CallOutsScreen() {
 
         {item.message && <Text style={styles.message}>"{item.message}"</Text>}
 
-        {item.spot && (
-          <Text style={styles.spotName}>📍 {item.spot.name}</Text>
-        )}
+        {item.spot && <Text style={styles.spotName}>📍 {item.spot.name}</Text>}
 
         <View style={styles.callOutFooter}>
           <Text style={styles.xpReward}>+{item.xp_reward} XP</Text>
 
           {isReceived && item.status === 'pending' && (
-            <TouchableOpacity
-              style={styles.acceptButton}
-              onPress={() => acceptCallOut(item)}
-            >
+            <TouchableOpacity style={styles.acceptButton} onPress={() => acceptCallOut(item)}>
               <Text style={styles.acceptButtonText}>Respond</Text>
             </TouchableOpacity>
           )}
 
           {isReceived && item.status === 'accepted' && (
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => completeCallOut(item)}
-            >
+            <TouchableOpacity style={styles.completeButton} onPress={() => completeCallOut(item)}>
               <Text style={styles.completeButtonText}>Complete</Text>
             </TouchableOpacity>
           )}
@@ -342,38 +339,29 @@ export default function CallOutsScreen() {
           style={[styles.tab, activeTab === 'sent' && styles.activeTab]}
           onPress={() => setActiveTab('sent')}
         >
-          <Text style={[styles.tabText, activeTab === 'sent' && styles.activeTabText]}>
-            Sent
-          </Text>
+          <Text style={[styles.tabText, activeTab === 'sent' && styles.activeTabText]}>Sent</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={callOuts}
         renderItem={renderCallOut}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadCallOuts}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
-              {activeTab === 'received'
-                ? 'No call outs received yet'
-                : 'No call outs sent yet'}
+              {activeTab === 'received' ? 'No call outs received yet' : 'No call outs sent yet'}
             </Text>
-            <Text style={styles.emptySubtext}>
-              Challenge someone to step up their game!
-            </Text>
+            <Text style={styles.emptySubtext}>Challenge someone to step up their game!</Text>
           </View>
         }
       />
 
       {/* Create Call Out Button */}
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => setShowCreateModal(true)}
-      >
+      <TouchableOpacity style={styles.createButton} onPress={() => setShowCreateModal(true)}>
         <Text style={styles.createButtonText}>+ Call Out</Text>
       </TouchableOpacity>
 
@@ -390,20 +378,23 @@ export default function CallOutsScreen() {
               <Text style={styles.modalTitle}>Create Call Out</Text>
 
               <Text style={styles.label}>Challenge Who?</Text>
-              <ScrollView horizontal style={styles.userScroll} showsHorizontalScrollIndicator={false}>
-                {users.map((u) => (
+              <ScrollView
+                horizontal
+                style={styles.userScroll}
+                showsHorizontalScrollIndicator={false}
+              >
+                {users.map(u => (
                   <TouchableOpacity
                     key={u.id}
-                    style={[
-                      styles.userChip,
-                      selectedUser === u.id && styles.selectedUserChip,
-                    ]}
+                    style={[styles.userChip, selectedUser === u.id && styles.selectedUserChip]}
                     onPress={() => setSelectedUser(u.id)}
                   >
-                    <Text style={[
-                      styles.userChipText,
-                      selectedUser === u.id && styles.selectedUserChipText,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.userChipText,
+                        selectedUser === u.id && styles.selectedUserChipText,
+                      ]}
+                    >
                       {u.username}
                     </Text>
                     <Text style={styles.userLevel}>Lv {u.level}</Text>
@@ -420,7 +411,11 @@ export default function CallOutsScreen() {
               />
 
               <Text style={styles.label}>Location (Optional)</Text>
-              <ScrollView horizontal style={styles.spotScroll} showsHorizontalScrollIndicator={false}>
+              <ScrollView
+                horizontal
+                style={styles.spotScroll}
+                showsHorizontalScrollIndicator={false}
+              >
                 <TouchableOpacity
                   style={[styles.spotChip, !selectedSpot && styles.selectedSpotChip]}
                   onPress={() => setSelectedSpot('')}
@@ -429,19 +424,18 @@ export default function CallOutsScreen() {
                     Any Spot
                   </Text>
                 </TouchableOpacity>
-                {spots.map((spot) => (
+                {spots.map(spot => (
                   <TouchableOpacity
                     key={spot.id}
-                    style={[
-                      styles.spotChip,
-                      selectedSpot === spot.id && styles.selectedSpotChip,
-                    ]}
+                    style={[styles.spotChip, selectedSpot === spot.id && styles.selectedSpotChip]}
                     onPress={() => setSelectedSpot(spot.id)}
                   >
-                    <Text style={[
-                      styles.spotChipText,
-                      selectedSpot === spot.id && styles.selectedSpotChipText,
-                    ]}>
+                    <Text
+                      style={[
+                        styles.spotChipText,
+                        selectedSpot === spot.id && styles.selectedSpotChipText,
+                      ]}
+                    >
                       {spot.name}
                     </Text>
                   </TouchableOpacity>
@@ -490,7 +484,7 @@ export default function CallOutsScreen() {
       </Modal>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -750,3 +744,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default CallOutsScreen;

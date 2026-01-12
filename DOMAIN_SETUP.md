@@ -7,6 +7,7 @@
 ### Domain Configuration
 
 **Current Setup:**
+
 - Primary: https://sk8.quest
 - Short Link: https://sk8.quest (redirects to primary)
 - Status: Active and paid for
@@ -21,6 +22,7 @@ CNAME   sk8     sk8.quest                   Auto
 ```
 
 **For Netlify:**
+
 ```
 1. Add custom domain: sk8.quest
 2. Set up automatic HTTPS
@@ -33,6 +35,7 @@ CNAME   sk8     sk8.quest                   Auto
 ```
 
 **For Firebase Hosting:**
+
 ```
 firebase.json:
 {
@@ -60,6 +63,7 @@ firebase hosting:channel:deploy production
 ### Redirect Strategy
 
 **All domains should redirect to primary:**
+
 - sk8.quest → sk8.quest (✅)
 - skatequest.com → sk8.quest
 - www.skatequest.com → sk8.quest
@@ -67,24 +71,31 @@ firebase hosting:channel:deploy production
 ### Use Cases for sk8.quest
 
 **1. QR Codes:**
+
 ```
 https://sk8.quest/qr/ABC123
 ```
+
 Shorter URLs fit better on printed QR codes
 
 **2. Social Media:**
+
 ```
 Visit sk8.quest to join!
 ```
+
 Easier to remember and type
 
 **3. Marketing Materials:**
+
 ```
 sk8.quest - Discover. Connect. Give Back.
 ```
+
 Clean, memorable branding
 
 **4. Deep Links:**
+
 ```
 https://sk8.quest/spot/[spot-id]
 https://sk8.quest/crew/[crew-id]
@@ -95,11 +106,13 @@ https://sk8.quest/charity
 ### URL Structure
 
 **Primary Site:**
+
 - Homepage: https://sk8.quest
 - About: https://sk8.quest/about (future)
 - Charity: https://sk8.quest/charity (future separate page)
 
 **Short Links (sk8.quest):**
+
 - QR Codes: https://sk8.quest/qr/{code}
 - Spots: https://sk8.quest/s/{id}
 - Crews: https://sk8.quest/c/{id}
@@ -108,6 +121,7 @@ https://sk8.quest/charity
 ### SSL/HTTPS Setup
 
 **Required for both domains:**
+
 - Let's Encrypt certificates (auto with Netlify/Firebase)
 - Force HTTPS redirects
 - HSTS headers
@@ -115,6 +129,7 @@ https://sk8.quest/charity
 ### Email Setup (Future)
 
 **Professional Email Addresses:**
+
 - hello@sk8.quest
 - support@sk8.quest
 - partnerships@sk8.quest
@@ -122,11 +137,13 @@ https://sk8.quest/charity
 - invest@sk8.quest
 
 **Or using short domain:**
+
 - hello@sk8.quest
 - team@sk8.quest
 - help@sk8.quest
 
 **Recommended Provider:**
+
 - Google Workspace ($6/user/mo)
 - Zoho Mail ($1/user/mo, budget option)
 - ProtonMail (privacy-focused)
@@ -134,11 +151,13 @@ https://sk8.quest/charity
 ### Branding Consistency
 
 **Always use:**
+
 - **Written**: sk8.quest (lowercase, period)
 - **Spoken**: "skate quest" or "s-k-eight-quest"
 - **Displayed**: SkateQuest (logo/branding)
 
 **Examples:**
+
 - ✅ "Visit sk8.quest to join the movement"
 - ✅ "Download SkateQuest at sk8.quest"
 - ❌ "Visit sk8.quest" (use primary sk8.quest or short sk8.quest)
@@ -153,6 +172,7 @@ https://sk8.quest/charity
 **Auto-Renew:** [Yes/No]
 
 **IMPORTANT:**
+
 - Set calendar reminder 60 days before expiration
 - Enable auto-renewal to prevent losing domain
 - Keep registrar account credentials secure
@@ -163,6 +183,7 @@ https://sk8.quest/charity
 ## Analytics & Tracking
 
 **Google Analytics 4:**
+
 ```javascript
 <!-- Add to index.html -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
@@ -178,6 +199,7 @@ https://sk8.quest/charity
 ```
 
 **Track both domains but consolidate reporting:**
+
 - Set up cross-domain tracking
 - Use same GA property for both
 - Filter views by hostname if needed
@@ -187,6 +209,7 @@ https://sk8.quest/charity
 ## Security
 
 **Domain Protection:**
+
 - ✅ Enable domain privacy/WHOIS protection
 - ✅ Enable registrar transfer lock
 - ✅ Use strong, unique registrar password
@@ -194,6 +217,7 @@ https://sk8.quest/charity
 - ✅ Monitor domain status monthly
 
 **DNS Security:**
+
 - Use Cloudflare for DDoS protection (free tier)
 - Enable DNSSEC
 - Set up CAA records to prevent unauthorized SSL certs
@@ -203,12 +227,14 @@ https://sk8.quest/charity
 ## SEO Configuration
 
 **Primary Domain (sk8.quest):**
+
 ```html
 <link rel="canonical" href="https://sk8.quest/" />
 <meta property="og:url" content="https://sk8.quest/" />
 ```
 
 **All alternate domains redirect with 301:**
+
 - Preserves SEO juice
 - Consolidates link equity
 - Clear primary domain for search engines
@@ -217,4 +243,4 @@ https://sk8.quest/charity
 
 **Domain Status: ✅ ACTIVE & CONFIGURED**
 
-*Last Updated: November 30, 2024*
+_Last Updated: November 30, 2024_

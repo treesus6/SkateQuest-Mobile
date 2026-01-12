@@ -30,11 +30,13 @@ supabase db push
 ## Migrations
 
 ### 001_add_sponsor_fields.sql
+
 - Adds sponsor fields to `skate_spots` table (sponsor_name, sponsor_url, sponsor_logo_url)
 - Sets Portal Dimension as sponsor for Newport Skate Park
 - Creates index for faster sponsor queries
 
 ### 002_create_nearby_spots_function.sql
+
 - Creates `get_nearby_spots()` PostgreSQL function
 - Uses PostGIS to find spots within a radius
 - Returns spots sorted by distance

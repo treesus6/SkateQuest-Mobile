@@ -7,16 +7,19 @@ Your SkateQuest app now has proper environment management! This guide shows you 
 ## What Was Set Up
 
 ✅ **Environment Files Created:**
+
 - `.env.development` - Development configuration (with your current credentials)
 - `.env.production` - Production configuration (with your current credentials)
 - `.env.example` - Template file for team members (safe to commit to Git)
 - `switch-env.sh` - Automated environment switcher script
 
 ✅ **Git Configuration:**
+
 - `.env`, `.env.development`, and `.env.production` are now gitignored (won't be committed)
 - `.env.example` is tracked in Git (safe for sharing)
 
 ✅ **Documentation:**
+
 - `ENVIRONMENT_SETUP.md` - Complete environment management guide
 - `ENV_QUICK_REFERENCE.md` - Quick reference card
 - `README.md` - Updated with setup instructions
@@ -28,11 +31,13 @@ Your SkateQuest app now has proper environment management! This guide shows you 
 The easiest way is to use the provided `switch-env.sh` script:
 
 #### Switch to Development:
+
 ```bash
 ./switch-env.sh development
 ```
 
 Output:
+
 ```
 ✅ Switched to development environment
 Environment variables loaded from: .env.development
@@ -47,11 +52,13 @@ Environment variables loaded from: .env.development
 ```
 
 #### Switch to Production:
+
 ```bash
 ./switch-env.sh production
 ```
 
 Output:
+
 ```
 ✅ Switched to production environment
 Environment variables loaded from: .env.production
@@ -66,6 +73,7 @@ Environment variables loaded from: .env.production
 ```
 
 #### Important: Always Restart After Switching!
+
 ```bash
 # Stop your current server (Ctrl+C), then:
 expo start -c
@@ -157,16 +165,19 @@ expo start -c
 ## Verifying Which Environment Is Active
 
 ### Check the Active Environment File:
+
 ```bash
 head -n 5 .env
 ```
 
 ### Check Loaded Variables:
+
 ```bash
 grep EXPO_PUBLIC .env
 ```
 
 ### In the App:
+
 Add this to any screen to see which environment is active:
 
 ```typescript
@@ -186,6 +197,7 @@ For production apps, you should use different Supabase projects for dev and prod
    - It's okay if data gets messy or deleted
 
 2. **Production Project** (to create):
+
    ```bash
    # Create a new Supabase project for production
    # Then update .env.production:
@@ -193,6 +205,7 @@ For production apps, you should use different Supabase projects for dev and prod
    ```
 
    Update with new production values:
+
    ```env
    EXPO_PUBLIC_SUPABASE_URL=https://your-prod-project.supabase.co
    EXPO_PUBLIC_SUPABASE_KEY=your_prod_anon_key
@@ -209,16 +222,17 @@ For production apps, you should use different Supabase projects for dev and prod
 
 ### Current Variables in Your App
 
-| Variable | Development | Production | Purpose |
-|----------|-------------|------------|---------|
-| `EXPO_PUBLIC_SUPABASE_URL` | ✅ Set | ✅ Set | Database connection |
-| `EXPO_PUBLIC_SUPABASE_KEY` | ✅ Set | ✅ Set | Database auth |
-| `EXPO_PUBLIC_SENTRY_DSN` | ✅ Set | ✅ Set | Error tracking |
-| `EXPO_PUBLIC_OPENAI_API_KEY` | ❌ Optional | ❌ Optional | AI features |
+| Variable                     | Development | Production  | Purpose             |
+| ---------------------------- | ----------- | ----------- | ------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`   | ✅ Set      | ✅ Set      | Database connection |
+| `EXPO_PUBLIC_SUPABASE_KEY`   | ✅ Set      | ✅ Set      | Database auth       |
+| `EXPO_PUBLIC_SENTRY_DSN`     | ✅ Set      | ✅ Set      | Error tracking      |
+| `EXPO_PUBLIC_OPENAI_API_KEY` | ❌ Optional | ❌ Optional | AI features         |
 
 ### Adding New Environment Variables
 
 1. **Add to both environment files:**
+
    ```bash
    # Add to development
    echo "EXPO_PUBLIC_NEW_VAR=dev_value" >> .env.development
@@ -231,6 +245,7 @@ For production apps, you should use different Supabase projects for dev and prod
    ```
 
 2. **Use in your code:**
+
    ```typescript
    const newVar = process.env.EXPO_PUBLIC_NEW_VAR;
    ```
@@ -245,6 +260,7 @@ For production apps, you should use different Supabase projects for dev and prod
 ### Problem: Environment variables not loading
 
 **Solution:**
+
 ```bash
 # Always clear cache when changing environment
 expo start -c
@@ -263,6 +279,7 @@ expo start -c
 ### Problem: Wrong environment is active
 
 **Solution:**
+
 ```bash
 # Check which environment is active
 cat .env | head -n 3
@@ -275,6 +292,7 @@ expo start -c
 ### Problem: Script won't run
 
 **Solution:**
+
 ```bash
 # Make sure script is executable
 chmod +x switch-env.sh
@@ -286,6 +304,7 @@ chmod +x switch-env.sh
 ### Problem: Can't connect to Supabase
 
 **Solution:**
+
 ```bash
 # 1. Verify your Supabase URL is correct
 grep SUPABASE_URL .env
@@ -300,16 +319,19 @@ curl $(grep EXPO_PUBLIC_SUPABASE_URL .env | cut -d'=' -f2)
 ## Git Workflow
 
 ### What Gets Committed:
+
 ✅ `.env.example` - Template with placeholders
 ✅ `switch-env.sh` - Environment switcher script
 ✅ Documentation files
 
 ### What Stays Local:
+
 🔒 `.env` - Active environment
 🔒 `.env.development` - Development secrets
 🔒 `.env.production` - Production secrets
 
 ### Before Committing:
+
 ```bash
 # Verify sensitive files aren't staged
 git status
@@ -325,12 +347,14 @@ git status
 When a new developer joins:
 
 1. **They clone the repo:**
+
    ```bash
    git clone <repo-url>
    cd SkateQuest-Mobile
    ```
 
 2. **They create their environment file:**
+
    ```bash
    cp .env.example .env.development
    ```
@@ -349,6 +373,7 @@ When a new developer joins:
 ## Quick Reference
 
 ### Daily Commands
+
 ```bash
 # Start development
 ./switch-env.sh development && expo start -c
@@ -364,6 +389,7 @@ cat .env
 ```
 
 ### Emergency Commands
+
 ```bash
 # Reset to development
 cp .env.development .env
@@ -383,6 +409,7 @@ expo start -c
 ✅ The app automatically uses the right configuration
 
 **Most Important Commands:**
+
 ```bash
 ./switch-env.sh development  # Switch to dev
 ./switch-env.sh production   # Switch to prod
@@ -390,6 +417,7 @@ expo start -c                # Always restart with cache clear!
 ```
 
 For more details, see:
+
 - `ENVIRONMENT_SETUP.md` - Complete guide
 - `ENV_QUICK_REFERENCE.md` - Quick reference card
 - `README.md` - Project setup instructions

@@ -57,7 +57,7 @@ export async function analyzeWithOpenAI(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4-vision-preview',
@@ -206,16 +206,16 @@ export async function saveAnalysisResult(
 /**
  * Get leaderboard of best trick scores
  */
-export async function getTrickLeaderboard(
-  trickName?: string
-): Promise<any[]> {
+export async function getTrickLeaderboard(trickName?: string): Promise<any[]> {
   try {
     let query = supabase
       .from('media')
-      .select(`
+      .select(
+        `
         *,
         user:users(id, username, level)
-      `)
+      `
+      )
       .eq('type', 'video')
       .not('trick_name', 'is', null)
       .order('created_at', { ascending: false })

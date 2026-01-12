@@ -5,6 +5,7 @@ This guide explains how to integrate OpenAI's Vision API for enhanced AI trick a
 ## Features
 
 The AI Trick Analyzer can:
+
 - **Identify tricks** from video footage
 - **Score execution quality** (0-100)
 - **Analyze technique elements** (pop, rotation, landing, style)
@@ -35,6 +36,7 @@ EXPO_PUBLIC_OPENAI_API_KEY=sk-...your-api-key...
 ```
 
 **Important:**
+
 - Keep your API key secret
 - Add `.env` to `.gitignore`
 - Never commit API keys to version control
@@ -56,11 +58,11 @@ import { quickAnalyzeTrick } from '../lib/aiAnalyzer';
 const analysis = await quickAnalyzeTrick(videoUri, true);
 
 // Results:
-console.log(analysis.trickName);      // "Kickflip"
-console.log(analysis.score);          // 85
-console.log(analysis.feedback);       // "Great execution! Your..."
-console.log(analysis.elements);       // { pop: 8, rotation: 9, ... }
-console.log(analysis.suggestions);    // ["Try to...", "Keep..."]
+console.log(analysis.trickName); // "Kickflip"
+console.log(analysis.score); // 85
+console.log(analysis.feedback); // "Great execution! Your..."
+console.log(analysis.elements); // { pop: 8, rotation: 9, ... }
+console.log(analysis.suggestions); // ["Try to...", "Keep..."]
 ```
 
 ### Standalone Analysis
@@ -132,6 +134,7 @@ const result = analyzeTrickHeuristic();
 ### Budget Management
 
 For a typical user base:
+
 - 100 analyses/day = ~$1-3/day
 - 1,000 analyses/day = ~$10-30/day
 - 10,000 analyses/day = ~$100-300/day
@@ -156,19 +159,21 @@ For production, call OpenAI from a Supabase Edge Function instead:
 // supabase/functions/analyze-trick/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-serve(async (req) => {
+serve(async req => {
   const { videoUrl } = await req.json();
 
   // Call OpenAI API server-side
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+      Authorization: `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: 'gpt-4-vision-preview',
-      messages: [/* ... */],
+      messages: [
+        /* ... */
+      ],
     }),
   });
 
@@ -202,6 +207,7 @@ For a completely free solution, consider:
 3. **Custom trained models** for trick classification
 
 This requires more development but has:
+
 - ✅ No API costs
 - ✅ Works offline
 - ✅ Faster response

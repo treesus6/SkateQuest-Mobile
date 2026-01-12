@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -52,8 +45,10 @@ export default function ProfileScreen() {
 
         // Load level progress
         if (data && data.xp !== undefined) {
-          const { data: progressData, error: progressError } = await supabase
-            .rpc('get_level_progress', { user_xp: data.xp });
+          const { data: progressData, error: progressError } = await supabase.rpc(
+            'get_level_progress',
+            { user_xp: data.xp }
+          );
 
           if (!progressError && progressData) {
             setLevelProgress(progressData);
@@ -81,11 +76,7 @@ export default function ProfileScreen() {
       badges: {},
     };
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert([newProfile])
-      .select()
-      .single();
+    const { data, error } = await supabase.from('profiles').insert([newProfile]).select().single();
 
     if (error) {
       console.error('Error creating profile:', error);
@@ -136,9 +127,7 @@ export default function ProfileScreen() {
           <Text style={styles.statLabel}>Spots</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>
-            {profile?.challenges_completed?.length || 0}
-          </Text>
+          <Text style={styles.statValue}>{profile?.challenges_completed?.length || 0}</Text>
           <Text style={styles.statLabel}>Challenges</Text>
         </View>
       </View>
@@ -151,7 +140,8 @@ export default function ProfileScreen() {
               Level {levelProgress.current_level} → {levelProgress.current_level + 1}
             </Text>
             <Text style={styles.levelProgressXP}>
-              {levelProgress.xp_progress} / {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
+              {levelProgress.xp_progress} /{' '}
+              {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
@@ -170,9 +160,7 @@ export default function ProfileScreen() {
 
       {profile?.streak && profile.streak > 0 && (
         <View style={styles.streakContainer}>
-          <Text style={styles.streakText}>
-            🔥 {profile.streak} Day Streak
-          </Text>
+          <Text style={styles.streakText}>🔥 {profile.streak} Day Streak</Text>
         </View>
       )}
 

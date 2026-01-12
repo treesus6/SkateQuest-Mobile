@@ -3,6 +3,7 @@
 This guide will help you set up the Supabase database for the SkateQuest mobile app.
 
 ## Prerequisites
+
 - Supabase account
 - Project already created (you have the credentials in `.env`)
 
@@ -11,6 +12,7 @@ This guide will help you set up the Supabase database for the SkateQuest mobile 
 Go to your Supabase dashboard → SQL Editor and run these queries:
 
 ### Create Users Table
+
 ```sql
 CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -44,6 +46,7 @@ CREATE POLICY "Users can insert own profile"
 ```
 
 ### Create Skate Spots Table
+
 ```sql
 CREATE TABLE skate_spots (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -86,6 +89,7 @@ CREATE POLICY "Users can delete own spots"
 ```
 
 ### Create Challenges Table
+
 ```sql
 CREATE TABLE challenges (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -125,6 +129,7 @@ CREATE POLICY "Authenticated users can complete challenges"
 ```
 
 ### Create Shops Table
+
 ```sql
 CREATE TABLE shops (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -157,6 +162,7 @@ CREATE POLICY "Authenticated users can add shops"
 ```
 
 ### Create Crews Table
+
 ```sql
 CREATE TABLE crews (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -188,6 +194,7 @@ CREATE POLICY "Creator can update crew"
 ```
 
 ### Create Crew Members Table
+
 ```sql
 CREATE TABLE crew_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -217,6 +224,7 @@ CREATE POLICY "Users can leave crews"
 ```
 
 ### Create Events Table
+
 ```sql
 CREATE TABLE events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -253,6 +261,7 @@ CREATE POLICY "Creator can update events"
 ```
 
 ### Create Event RSVPs Table
+
 ```sql
 CREATE TABLE event_rsvps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -289,6 +298,7 @@ For image and video uploads:
 2. Create a new bucket called `spot-media`
 3. Set it to public
 4. Add policy:
+
 ```sql
 -- Allow authenticated users to upload
 CREATE POLICY "Authenticated users can upload"
@@ -307,6 +317,7 @@ CREATE POLICY "Anyone can view media"
 ## Step 3: Create Helper Functions (Optional)
 
 ### Function to get nearby skateparks
+
 ```sql
 CREATE OR REPLACE FUNCTION nearby_skateparks(
   lat FLOAT8,
@@ -363,20 +374,25 @@ SELECT 'shops', COUNT(*) FROM shops;
 ## Troubleshooting
 
 ### Error: "uuid_generate_v4 does not exist"
+
 Run this to enable UUID extension:
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ```
 
 ### Error: "relation auth.users does not exist"
+
 This means Supabase Auth isn't enabled. Go to Authentication → Settings and make sure Auth is enabled.
 
 ### Error: "permission denied for schema"
+
 Make sure you're running queries as the postgres user or service role, not the anon key.
 
 ## Next Steps
 
 After setting up the database:
+
 1. Test the mobile app authentication
 2. Try creating a spot
 3. Create and complete a challenge

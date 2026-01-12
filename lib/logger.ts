@@ -148,11 +148,14 @@ export const Logger = {
   error: (message: string, error?: Error | any, data?: any) => {
     const errorData = {
       ...sanitizeData(data),
-      error: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      } : error,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error,
     };
     log.error(message, errorData);
   },

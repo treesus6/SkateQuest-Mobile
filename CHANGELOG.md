@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the first official production release of SkateQuest - a Progressive Web App helping skateboarders discover, share, and track local skating spots.
 
 #### Features
+
 - **Interactive Map**: Discover skate spots worldwide with Leaflet.js mapping
 - **Click to Add Spots**: Simply click anywhere on the map to add a new skate spot at that location
 - **Challenges System**: Complete skate challenges to earn XP and unlock achievements
@@ -22,6 +23,7 @@ This is the first official production release of SkateQuest - a Progressive Web 
 - **Leaderboard**: Compete with other skaters in the community
 
 #### Technical Stack
+
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Backend**: Firebase (Firestore, Authentication, Storage, Functions)
 - **Hosting**: Netlify primary, Firebase Hosting supplementary
@@ -29,22 +31,26 @@ This is the first official production release of SkateQuest - a Progressive Web 
 - **Mapping**: Leaflet.js for interactive maps
 
 #### Security
+
 - Firebase Authentication with anonymous sign-in
 - Firestore security rules to protect user data
 - Storage rules with file size and type validation
 - Secure API endpoints via Netlify Functions
 
 #### Deployment
+
 - Automated CI/CD via GitHub Actions
 - Deploy to both Netlify and Firebase Hosting
 - Automated health checks after deployment
 - Firebase rules deployment included
 
 ### Production URLs
+
 - **Primary**: https://sk8.quest
 - **Netlify**: https://skatequest.netlify.app
 
 ### Notes
+
 - Cleaned up development and test files
 - Updated SEO metadata and sitemap
 - Production-ready Firebase configuration

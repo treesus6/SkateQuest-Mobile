@@ -43,11 +43,13 @@ This will extract the archive to the specified output directory (e.g., `~/target
 This is the default method, or can be explicitly set using the `EAS_NO_VCS` environment variable.
 
 **How it works:**
+
 - Approximates `git clone --depth 1 ...`
 - Allows building with a dirty git working tree
 - Uses EAS CLI's own packaging algorithm
 
 **Limitations:**
+
 - Multiple `.gitignore` files are applied in isolation starting from the root
   - Example: If you have `test/example` in parent `.gitignore` and `!example/example1` in `test/.gitignore`, the entire `example` directory will still be ignored
 - `node_modules` directory is always ignored
@@ -70,6 +72,7 @@ Enable this method by setting in your `eas.json`:
 ```
 
 **How it works:**
+
 - Uses `git clone --depth 1 ...` to create a shallow clone
 - Project uploaded to EAS Build is **exactly** the same as in Git
 - Includes Git metadata: branch, commit hash, etc.
@@ -110,6 +113,7 @@ To completely bypass Git:
    - Use if your project root differs from the location of `eas.json`
 
 **Important:**
+
 - When using `EAS_NO_VCS=1` with `.easignore`:
   - Place `.easignore` in the directory pointed to by `EAS_PROJECT_ROOT` (if set)
   - Otherwise, place it in the same directory as your `eas.json`

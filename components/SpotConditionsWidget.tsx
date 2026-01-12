@@ -122,7 +122,7 @@ export default function SpotConditionsWidget({
         <Text style={styles.headerText}>🔴 Live Conditions</Text>
         <Text style={styles.countBadge}>{conditions.length}</Text>
       </View>
-      {conditions.map((condition) => (
+      {conditions.map(condition => (
         <View
           key={condition.id}
           style={[styles.conditionRow, { borderLeftColor: getConditionColor(condition.condition) }]}

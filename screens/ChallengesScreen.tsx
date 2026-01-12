@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Challenge } from '../types';
@@ -73,10 +66,7 @@ export default function ChallengesScreen() {
 
               if (userError) throw userError;
 
-              const updatedChallenges = [
-                ...(userData.challenges_completed || []),
-                challenge.id,
-              ];
+              const updatedChallenges = [...(userData.challenges_completed || []), challenge.id];
 
               await supabase
                 .from('profiles')
@@ -99,18 +89,11 @@ export default function ChallengesScreen() {
 
   const renderChallenge = ({ item }: { item: Challenge }) => (
     <View style={styles.challengeCard}>
-      <Text style={styles.challengeTitle}>
-        {item.title || item.trick}
-      </Text>
-      {item.description && (
-        <Text style={styles.challengeDescription}>{item.description}</Text>
-      )}
+      <Text style={styles.challengeTitle}>{item.title || item.trick}</Text>
+      {item.description && <Text style={styles.challengeDescription}>{item.description}</Text>}
       <View style={styles.challengeFooter}>
         <Text style={styles.xpText}>+{item.xp_reward} XP</Text>
-        <TouchableOpacity
-          style={styles.completeButton}
-          onPress={() => completeChallenge(item)}
-        >
+        <TouchableOpacity style={styles.completeButton} onPress={() => completeChallenge(item)}>
           <Text style={styles.completeButtonText}>Complete</Text>
         </TouchableOpacity>
       </View>
@@ -123,7 +106,7 @@ export default function ChallengesScreen() {
       <FlatList
         data={challenges}
         renderItem={renderChallenge}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadChallenges}

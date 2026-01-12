@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 
 import CrewScreen from '../screens/CrewScreen';
@@ -9,7 +17,6 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
 import LevelUpModal from './LevelUpModal';
-
 
 /* ---------------------------------------------------------
    SCREENS
@@ -23,7 +30,9 @@ function HomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <Text style={styles.title}>SkateQuest</Text>
-      <Text style={styles.subtitle}>Level {level} · {xp} XP</Text>
+      <Text style={styles.subtitle}>
+        Level {level} · {xp} XP
+      </Text>
       <Text style={styles.text}>
         Completed challenges: {completedCount} / {challenges.length}
       </Text>
@@ -32,7 +41,10 @@ function HomeScreen({ navigation }: any) {
         <Text style={styles.buttonText}>View Challenges</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('SpotsTab')}>
+      <TouchableOpacity
+        style={styles.buttonSecondary}
+        onPress={() => navigation.navigate('SpotsTab')}
+      >
         <Text style={styles.buttonText}>Explore Spots</Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -57,7 +69,7 @@ function ChallengeListScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList data={challenges} keyExtractor={(i) => i.id} renderItem={renderItem} />
+      <FlatList data={challenges} keyExtractor={i => i.id} renderItem={renderItem} />
     </SafeAreaView>
   );
 }
@@ -108,8 +120,16 @@ const Tab = createBottomTabNavigator();
 function ChallengesStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="ChallengeList" component={ChallengeListScreen} options={{ title: 'Challenges' }} />
-      <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} options={{ title: 'Challenge' }} />
+      <Stack.Screen
+        name="ChallengeList"
+        component={ChallengeListScreen}
+        options={{ title: 'Challenges' }}
+      />
+      <Stack.Screen
+        name="ChallengeDetail"
+        component={ChallengeDetailScreen}
+        options={{ title: 'Challenge' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -126,7 +146,11 @@ function Tabs() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="HomeTab" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="ChallengesTab" component={ChallengesStack} options={{ title: 'Challenges' }} />
+      <Tab.Screen
+        name="ChallengesTab"
+        component={ChallengesStack}
+        options={{ title: 'Challenges' }}
+      />
       <Tab.Screen name="SpotsTab" component={SpotsScreenFromFile} options={{ title: 'Spots' }} />
       <Tab.Screen name="CrewTab" component={CrewScreen} options={{ title: 'Crew' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />

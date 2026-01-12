@@ -18,29 +18,30 @@ export default function HomeScreen({ navigation }: any) {
       <View style={styles.xpBarBackground}>
         <View style={[styles.xpBarFill, { width: `${progressPercent * 100}%` }]} />
       </View>
-      <Text style={styles.xpText}>{progress} / {xpForNextLevel} XP</Text>
+      <Text style={styles.xpText}>
+        {progress} / {xpForNextLevel} XP
+      </Text>
 
       {/* STREAK */}
       <Text style={styles.streak}>🔥 Streak: {streakDays} day(s)</Text>
 
       {/* DAILY CHALLENGES */}
       <Text style={styles.sectionTitle}>Today’s Challenges</Text>
-      {dailyChallenges.map((ch) => (
+      {dailyChallenges.map(ch => (
         <TouchableOpacity
           key={ch.id}
           style={styles.card}
           onPress={() => navigation.navigate('ChallengeDetail', { id: ch.id })}
         >
           <Text style={styles.cardTitle}>{ch.title}</Text>
-          <Text style={styles.cardSubtitle}>{ch.xp} XP · {ch.difficulty}</Text>
+          <Text style={styles.cardSubtitle}>
+            {ch.xp} XP · {ch.difficulty}
+          </Text>
         </TouchableOpacity>
       ))}
 
       {/* CTA */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('ChallengesTab')}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('ChallengesTab')}>
         <Text style={styles.buttonText}>View All Challenges</Text>
       </TouchableOpacity>
     </View>

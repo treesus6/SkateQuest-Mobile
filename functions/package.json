@@ -1,7 +1,9 @@
 {
   "name": "skatequest-functions",
   "version": "0.1.0",
-  "engines": { "node": "18" },
+  "engines": {
+    "node": "18"
+  },
   "main": "index.js",
   "license": "MIT",
   "dependencies": {

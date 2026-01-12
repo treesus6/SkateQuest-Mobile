@@ -1,11 +1,13 @@
 # 🛹 SkateQuest - Production Deployment Guide
 
 ## 🚀 Live Site
+
 **URL**: https://skatequest.netlify.app
 
 ## ✅ Production Checklist
 
 ### Current Status
+
 - ✅ Service Worker enabled (cache v8) for offline functionality
 - ✅ PWA installable on mobile devices
 - ✅ Firebase Authentication (anonymous sign-in)
@@ -19,23 +21,23 @@
 ### Manual Steps Required
 
 #### 1. Deploy Firebase Security Rules
+
 Since Firebase CLI is not configured locally, deploy rules manually:
 
 1. Go to [Firebase Console](https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID})
 
-(Replace ${FIREBASE_PROJECT_ID} with your actual Firebase project ID)
-2. Navigate to **Firestore Database** → **Rules**
-3. Copy contents from `firestore.rules` and deploy
-4. Navigate to **Storage** → **Rules**  
+(Replace ${FIREBASE_PROJECT_ID} with your actual Firebase project ID) 2. Navigate to **Firestore Database** → **Rules** 3. Copy contents from `firestore.rules` and deploy 4. Navigate to **Storage** → **Rules**  
 5. Copy contents from `storage.rules` and deploy
 
 #### 2. Monitor Netlify Deployment
+
 1. Go to [Netlify Dashboard](https://app.netlify.com)
 2. Find your SkateQuest site
 3. Verify the latest deployment succeeded
 4. Check deployment logs for any errors
 
 #### 3. Test Production Features
+
 - ✅ Map loads with Leaflet tiles
 - ✅ All 5 navigation buttons work (Discover, Add Spot, Challenges, Profile, Legal)
 - ✅ Anonymous authentication works
@@ -49,6 +51,7 @@ Since Firebase CLI is not configured locally, deploy rules manually:
 ## 🔧 Configuration
 
 ### Environment
+
 - **Hosting**: Netlify (static site)
 - **Database**: Firebase Firestore
 - **Auth**: Firebase Anonymous Auth
@@ -57,6 +60,7 @@ Since Firebase CLI is not configured locally, deploy rules manually:
 - **CDN**: Firebase CDN for JS libraries
 
 ### Firebase Project
+
 - **Project ID**: Your Firebase project ID (e.g., skatequest-666)
 - **Auth Domain**: ${your-project-id}.firebaseapp.com
 - **Storage Bucket**: ${your-project-id}.firebasestorage.app
@@ -64,6 +68,7 @@ Since Firebase CLI is not configured locally, deploy rules manually:
 Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configure for automated deploys.
 
 ### Key Files
+
 - `index.html` - Main app entry point
 - `app.js` - Core application logic (376 lines)
 - `style.css` - All styles
@@ -76,6 +81,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 📊 Growth Features
 
 ### User Engagement
+
 - **XP System**: Users earn points for completing challenges
 - **Streak System**: Daily check-in rewards
 - **Badges**: Achievement system for milestones
@@ -83,6 +89,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 - **Social**: Share spots and challenges with community
 
 ### Content Growth
+
 - **User-Generated Spots**: Anyone can add skate spots
 - **Photo/Video Uploads**: Rich media for each spot
 - **Challenge Creation**: Users create and share tricks
@@ -90,6 +97,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 - **Comments**: Community discussion on spots
 
 ### Viral Features
+
 - **Share Button**: Share spots on social media
 - **Open Graph Tags**: Rich previews when shared
 - **PWA Install**: Add to home screen for app-like experience
@@ -99,12 +107,14 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 🔐 Security
 
 ### Firestore Rules
+
 - ✅ Authenticated users can create/update own content
 - ✅ Public read access for all spots and challenges
 - ✅ Users can only update their own profile
 - ✅ XP updates validated (should move to server-side in future)
 
 ### Storage Rules
+
 - ✅ Max 5MB for images
 - ✅ Max 60MB for videos
 - ✅ Only image/video MIME types allowed
@@ -112,6 +122,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 - ✅ Public read access for all uploaded content
 
 ### API Security
+
 - Anonymous auth prevents spam (users need Firebase UID)
 - Rate limiting via Netlify (built-in)
 - CORS properly configured
@@ -119,6 +130,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 📈 Analytics & Monitoring
 
 ### Firebase Analytics
+
 - Enabled: `getAnalytics(app)`
 - Tracks: Page views, user engagement, conversions
 - View: [Firebase Analytics Dashboard](https://console.firebase.google.com/project/${FIREBASE_PROJECT_ID}/analytics)
@@ -126,18 +138,21 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 (Replace ${FIREBASE_PROJECT_ID} with your actual Firebase project ID)
 
 ### Netlify Analytics
+
 - Track: Traffic, geographic distribution, popular pages
 - Monitor: Function invocations, error rates
 
 ## 🐛 Known Issues & Future Improvements
 
 ### Current Limitations
+
 - XP updates happen client-side (should be Cloud Functions)
 - No rate limiting on spot creation (could add Firestore rules)
 - Challenge completion validation is client-side
 - No spam protection on user-generated content
 
 ### Roadmap
+
 1. **Server-side XP calculation** via Cloud Functions
 2. **Admin dashboard** for moderating content
 3. **Advanced search** by location, difficulty, features
@@ -150,18 +165,21 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 🚀 Scaling Considerations
 
 ### Current Capacity
+
 - Firestore: 50K reads/day (free tier)
 - Storage: 5GB storage, 1GB download/day (free tier)
 - Netlify: 100GB bandwidth/month (free tier)
 - Functions: 125K invocations/month (free tier)
 
 ### When to Upgrade
+
 - **1,000+ daily users**: Consider Firebase Blaze plan
 - **Heavy video uploads**: Upgrade Storage plan
 - **High API usage**: Upgrade Netlify Pro
 - **International users**: Add Firebase CDN regions
 
 ### Performance Optimization
+
 - Service worker caches all static assets
 - Firebase SDK lazy-loaded via CDN
 - Images should be compressed (add in future)
@@ -170,12 +188,14 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 🎯 Marketing & Growth
 
 ### Target Audience
+
 - Skateboarders looking for local spots
 - Communities sharing trick challenges
 - Beginners learning new tricks
 - Content creators documenting spots
 
 ### Growth Channels
+
 1. **Reddit**: r/skateboarding, r/NewSkaters
 2. **Instagram**: Skateboarding hashtags, local skate shops
 3. **TikTok**: Spot reviews, challenge videos
@@ -185,6 +205,7 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 7. **Events**: Demo at skate competitions
 
 ### Sponsorship Pitch
+
 - "Help skateboarders discover and share spots"
 - "Community-driven platform, not corporate"
 - "Growing user base documenting authentic skating culture"
@@ -194,12 +215,15 @@ Set FIREBASE_PROJECT_ID in GitHub Actions → Settings → Variables to configur
 ## 📞 Support & Contact
 
 ### Report Issues
+
 - GitHub Issues: Create issue in repository
 - Email: (Add support email)
 - Twitter: (Add social handle)
 
 ### Contributing
+
 This is an open platform! Ideas for contribution:
+
 - Report bugs and UX issues
 - Suggest new features
 - Help moderate content

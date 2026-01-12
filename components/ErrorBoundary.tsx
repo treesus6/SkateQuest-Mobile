@@ -56,14 +56,10 @@ class ErrorBoundary extends Component<Props, State> {
         <View style={styles.container}>
           <View style={styles.content}>
             <Text style={styles.title}>Oops! Something went wrong</Text>
-            <Text style={styles.message}>
-              We've been notified and are working on a fix.
-            </Text>
+            <Text style={styles.message}>We've been notified and are working on a fix.</Text>
             {__DEV__ && this.state.error && (
               <View style={styles.errorDetails}>
-                <Text style={styles.errorText}>
-                  {this.state.error.toString()}
-                </Text>
+                <Text style={styles.errorText}>{this.state.error.toString()}</Text>
               </View>
             )}
             <TouchableOpacity style={styles.button} onPress={this.handleReset}>

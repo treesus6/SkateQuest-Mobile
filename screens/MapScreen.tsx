@@ -44,11 +44,12 @@ export default function MapScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert(
-          'Location Permission',
-          'Please enable location to find nearby skate spots',
-          [{ text: 'OK', onPress: () => loadSpots(INITIAL_REGION.latitude, INITIAL_REGION.longitude) }]
-        );
+        Alert.alert('Location Permission', 'Please enable location to find nearby skate spots', [
+          {
+            text: 'OK',
+            onPress: () => loadSpots(INITIAL_REGION.latitude, INITIAL_REGION.longitude),
+          },
+        ]);
         setLoading(false);
         return;
       }
@@ -145,7 +146,7 @@ export default function MapScreen() {
         showsUserLocation
         showsMyLocationButton={false}
       >
-        {spots.map((spot) => (
+        {spots.map(spot => (
           <Marker
             key={spot.id}
             coordinate={{
@@ -166,10 +167,7 @@ export default function MapScreen() {
 
       {/* User location button */}
       {userLocation && (
-        <TouchableOpacity
-          style={styles.locationButton}
-          onPress={goToUserLocation}
-        >
+        <TouchableOpacity style={styles.locationButton} onPress={goToUserLocation}>
           <Text style={styles.locationButtonText}>📍</Text>
         </TouchableOpacity>
       )}
@@ -180,10 +178,7 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.featuresGrid}>
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Feed')}
-        >
+        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Feed')}>
           <Text style={styles.featureIcon}>🌟</Text>
           <Text style={styles.featureText}>Feed</Text>
         </TouchableOpacity>
@@ -236,26 +231,17 @@ export default function MapScreen() {
           <Text style={styles.featureText}>Playlists</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Shops')}
-        >
+        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Shops')}>
           <Text style={styles.featureIcon}>🛒</Text>
           <Text style={styles.featureText}>Shops</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Crews')}
-        >
+        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Crews')}>
           <Text style={styles.featureIcon}>👥</Text>
           <Text style={styles.featureText}>Crews</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Events')}
-        >
+        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Events')}>
           <Text style={styles.featureIcon}>📅</Text>
           <Text style={styles.featureText}>Events</Text>
         </TouchableOpacity>
@@ -270,17 +256,11 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Map')}
-        >
+        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Map')}>
           <Text style={styles.navButtonText}>🗺️ Map</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigation.navigate('Profile')}
-        >
+        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.navButtonText}>👤 Profile</Text>
         </TouchableOpacity>
       </View>

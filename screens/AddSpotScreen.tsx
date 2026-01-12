@@ -23,15 +23,11 @@ export default function AddSpotScreen() {
   const { user } = useAuth();
 
   const [name, setName] = useState('');
-  const [latitude, setLatitude] = useState(
-    route.params?.latitude?.toString() || ''
+  const [latitude, setLatitude] = useState(route.params?.latitude?.toString() || '');
+  const [longitude, setLongitude] = useState(route.params?.longitude?.toString() || '');
+  const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>(
+    'Beginner'
   );
-  const [longitude, setLongitude] = useState(
-    route.params?.longitude?.toString() || ''
-  );
-  const [difficulty, setDifficulty] = useState<
-    'Beginner' | 'Intermediate' | 'Advanced'
-  >('Beginner');
   const [tricks, setTricks] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,9 +48,7 @@ export default function AddSpotScreen() {
     setSubmitting(true);
 
     try {
-      const tricksArray = tricks
-        ? tricks.split(',').map((t) => t.trim())
-        : [];
+      const tricksArray = tricks ? tricks.split(',').map(t => t.trim()) : [];
 
       const { error } = await supabase.from('skate_spots').insert([
         {
@@ -133,7 +127,7 @@ export default function AddSpotScreen() {
 
         <Text style={styles.label}>Difficulty</Text>
         <View style={styles.difficultyContainer}>
-          {(['Beginner', 'Intermediate', 'Advanced'] as const).map((level) => (
+          {(['Beginner', 'Intermediate', 'Advanced'] as const).map(level => (
             <TouchableOpacity
               key={level}
               style={[

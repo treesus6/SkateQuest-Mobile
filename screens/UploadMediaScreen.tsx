@@ -108,9 +108,10 @@ export default function UploadMediaScreen({ navigation }: any) {
         {
           user_id: user.id,
           activity_type: 'media_uploaded',
-          title: trickName || analysis?.trickName
-            ? `Landed a ${trickName || analysis?.trickName}!`
-            : `Posted a new ${mediaType}`,
+          title:
+            trickName || analysis?.trickName
+              ? `Landed a ${trickName || analysis?.trickName}!`
+              : `Posted a new ${mediaType}`,
           description: caption || analysis?.feedback || undefined,
           media_id: media.id,
         },
@@ -133,10 +134,7 @@ export default function UploadMediaScreen({ navigation }: any) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Upload Media</Text>
@@ -147,34 +145,22 @@ export default function UploadMediaScreen({ navigation }: any) {
         <View style={styles.pickContainer}>
           <Text style={styles.sectionTitle}>Choose Media Type</Text>
 
-          <TouchableOpacity
-            style={styles.pickButton}
-            onPress={() => handlePickImage(false)}
-          >
+          <TouchableOpacity style={styles.pickButton} onPress={() => handlePickImage(false)}>
             <Text style={styles.pickButtonIcon}>📷</Text>
             <Text style={styles.pickButtonText}>Photo from Gallery</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.pickButton}
-            onPress={() => handlePickImage(true)}
-          >
+          <TouchableOpacity style={styles.pickButton} onPress={() => handlePickImage(true)}>
             <Text style={styles.pickButtonIcon}>📸</Text>
             <Text style={styles.pickButtonText}>Take Photo</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.pickButton}
-            onPress={() => handlePickVideo(false)}
-          >
+          <TouchableOpacity style={styles.pickButton} onPress={() => handlePickVideo(false)}>
             <Text style={styles.pickButtonIcon}>🎬</Text>
             <Text style={styles.pickButtonText}>Video from Gallery</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.pickButton}
-            onPress={() => handlePickVideo(true)}
-          >
+          <TouchableOpacity style={styles.pickButton} onPress={() => handlePickVideo(true)}>
             <Text style={styles.pickButtonIcon}>🎥</Text>
             <Text style={styles.pickButtonText}>Record Video</Text>
           </TouchableOpacity>
@@ -214,7 +200,7 @@ export default function UploadMediaScreen({ navigation }: any) {
               {analyzing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.analyzeButtonText}>  Analyzing...</Text>
+                  <Text style={styles.analyzeButtonText}> Analyzing...</Text>
                 </>
               ) : (
                 <>
@@ -231,9 +217,7 @@ export default function UploadMediaScreen({ navigation }: any) {
               <Text style={styles.analysisDetected}>
                 Detected: <Text style={styles.analysisTrick}>{analysis.trickName}</Text>
               </Text>
-              <Text style={styles.analysisScore}>
-                Score: {analysis.score}/100
-              </Text>
+              <Text style={styles.analysisScore}>Score: {analysis.score}/100</Text>
               <Text style={styles.analysisFeedback}>{analysis.feedback}</Text>
               {analysis.detectedElements.length > 0 && (
                 <View style={styles.elementsContainer}>

@@ -1,0 +1,21 @@
+name: Preview Build
+
+on:
+  pull_request:
+    branches: ['main']
+
+jobs:
+  build_preview:
+    name: Build Preview
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  publish_update:
+    name: Publish Preview Update
+    type: update
+    needs: build_preview
+    params:
+      branch: ${{ github.head_ref }}
+      message: "Preview for PR #${{ github.event.number }}"

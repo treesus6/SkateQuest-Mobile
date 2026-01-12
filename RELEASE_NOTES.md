@@ -7,15 +7,17 @@ We're excited to announce the official production release of SkateQuest - your g
 ## 🌟 What's New in v1.0.0
 
 ### Core Features
+
 ✅ **Interactive Map** - Discover skate spots worldwide using Leaflet.js  
 ✅ **Click to Add Spots** - Simply click on the map to add new locations  
 ✅ **Challenges System** - Complete challenges to earn XP and badges  
 ✅ **Video Recording** - Record and share your best tricks  
 ✅ **Community Features** - Share spots with other skaters  
 ✅ **PWA Ready** - Install on mobile devices for app-like experience  
-✅ **Offline Support** - Service worker ensures functionality without internet  
+✅ **Offline Support** - Service worker ensures functionality without internet
 
 ### Technical Highlights
+
 - **Modern Stack**: Vanilla JS, Firebase, Netlify
 - **Fast & Responsive**: Service worker caching (v9)
 - **Secure**: Firebase Auth and comprehensive security rules
@@ -27,6 +29,7 @@ We're excited to announce the official production release of SkateQuest - your g
 Visit **https://sk8.quest** and start exploring!
 
 ### How to Use
+
 1. **Discover** - Browse the map to find skate spots near you
 2. **Add Spots** - Click "Add Spot" then click anywhere on the map
 3. **Join Challenges** - Complete challenges to earn XP and badges
@@ -36,12 +39,14 @@ Visit **https://sk8.quest** and start exploring!
 ## 📱 Installation
 
 ### iOS
+
 1. Open Safari and navigate to https://sk8.quest
 2. Tap the Share button
 3. Select "Add to Home Screen"
 4. Enjoy the app experience!
 
 ### Android
+
 1. Open Chrome and navigate to https://sk8.quest
 2. Tap the menu (three dots)
 3. Select "Install app" or "Add to Home screen"
@@ -57,10 +62,12 @@ Visit **https://sk8.quest** and start exploring!
 ## 🌐 Production Deployment
 
 ### Live Sites
+
 - **Primary**: https://sk8.quest
 - **Netlify**: https://skatequest.netlify.app
 
 ### Infrastructure
+
 - **Hosting**: Netlify (primary), Firebase Hosting (supplementary)
 - **Database**: Firebase Firestore
 - **Storage**: Firebase Cloud Storage
@@ -72,18 +79,21 @@ Visit **https://sk8.quest** and start exploring!
 We're just getting started! Here's what's on the roadmap:
 
 ### Phase 2 (Q1 2026)
+
 - Advanced search by location, difficulty, and features
 - Social features: follow users, like spots, comments
 - Push notifications for challenges and events
 - Geolocation auto-detect
 
 ### Phase 3 (Q2 2026)
+
 - Admin dashboard for content moderation
 - Map clustering for dense areas
 - Export user data and contributions
 - Enhanced analytics and insights
 
 ### Community Requests
+
 Have ideas? We'd love to hear them! Create an issue on our GitHub repository.
 
 ## 🐛 Known Issues
@@ -104,4 +114,4 @@ Thank you for being part of the SkateQuest community! This app is built for skat
 
 ---
 
-*SkateQuest v1.0.0 - November 17, 2025*
+_SkateQuest v1.0.0 - November 17, 2025_

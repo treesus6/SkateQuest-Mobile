@@ -35,7 +35,8 @@
   // Service worker registration for PWA functionality
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
+      navigator.serviceWorker
+        .register('/service-worker.js')
         .then(reg => {
           console.log('✓ Service Worker registered', reg.scope);
           // Check for updates periodically
@@ -48,7 +49,7 @@
   }
 
   // beforeinstallprompt handling
-  window.addEventListener('beforeinstallprompt', (e) => {
+  window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
     // Show our custom install button
@@ -62,5 +63,4 @@
     if (b) b.remove();
     console.log('App installed');
   });
-
 })();

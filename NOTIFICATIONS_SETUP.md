@@ -5,11 +5,13 @@ This guide explains how to set up push notifications for SkateQuest Mobile, spec
 ## Installation
 
 1. Install the expo-notifications package:
+
 ```bash
 npm install expo-notifications expo-device
 ```
 
 2. Update app.json to include notification settings:
+
 ```json
 {
   "expo": {
@@ -68,7 +70,7 @@ import { addNotificationResponseListener } from './lib/notifications';
 import { useEffect } from 'react';
 
 useEffect(() => {
-  const subscription = addNotificationResponseListener((response) => {
+  const subscription = addNotificationResponseListener(response => {
     const data = response.notification.request.content.data;
 
     if (data.type === 'game_turn' || data.type === 'game_challenge') {
@@ -108,10 +110,13 @@ For production, you'll need to:
 
 2. **Update notification.ts**
    Replace `'your-expo-project-id'` with your actual project ID:
+
    ```typescript
-   const token = (await Notifications.getExpoPushTokenAsync({
-     projectId: 'your-actual-project-id',
-   })).data;
+   const token = (
+     await Notifications.getExpoPushTokenAsync({
+       projectId: 'your-actual-project-id',
+     })
+   ).data;
    ```
 
 3. **Server-Side Notifications (Optional)**
@@ -122,7 +127,7 @@ For production, you'll need to:
    // supabase/functions/send-game-notification/index.ts
    import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-   serve(async (req) => {
+   serve(async req => {
      const { pushToken, title, body, data } = await req.json();
 
      const message = {
@@ -137,7 +142,7 @@ For production, you'll need to:
        method: 'POST',
        headers: {
          'Content-Type': 'application/json',
-         'Accept': 'application/json',
+         Accept: 'application/json',
        },
        body: JSON.stringify(message),
      });
@@ -208,11 +213,7 @@ For production, you'll need to:
 // Test notification immediately
 import { sendLocalNotification } from './lib/notifications';
 
-await sendLocalNotification(
-  'Test Notification',
-  'This is a test from SkateQuest!',
-  { test: true }
-);
+await sendLocalNotification('Test Notification', 'This is a test from SkateQuest!', { test: true });
 ```
 
 ### Debug Issues
@@ -234,12 +235,12 @@ console.log('Push token:', token);
 
 ## Notification Types in SkateQuest
 
-| Type | Trigger | Action |
-|------|---------|--------|
-| `game_turn` | Opponent posts trick | Navigate to GameDetail |
-| `game_challenge` | New game invitation | Navigate to GameDetail |
-| `game_won` | Game completed (you won) | Navigate to GameDetail |
-| `game_lost` | Game completed (you lost) | Navigate to GameDetail |
+| Type             | Trigger                   | Action                 |
+| ---------------- | ------------------------- | ---------------------- |
+| `game_turn`      | Opponent posts trick      | Navigate to GameDetail |
+| `game_challenge` | New game invitation       | Navigate to GameDetail |
+| `game_won`       | Game completed (you won)  | Navigate to GameDetail |
+| `game_lost`      | Game completed (you lost) | Navigate to GameDetail |
 
 ## Best Practices
 
@@ -284,6 +285,7 @@ console.log('Push token:', token);
 **Your SkateQuest app now has push notifications!** 🛹🔔
 
 Users will be notified instantly when:
+
 - It's their turn in a SKATE game
 - They receive a new game challenge
 - A game is completed (win/loss)

@@ -31,13 +31,15 @@ export default function SkateGameScreen({ navigation }: any) {
 
   const loadGames = async () => {
     try {
-      const { data, error} = await supabase
+      const { data, error } = await supabase
         .from('skate_games')
-        .select(`
+        .select(
+          `
           *,
           challenger:challenger_id(id, username, level, xp),
           opponent:opponent_id(id, username, level, xp)
-        `)
+        `
+        )
         .or(`challenger_id.eq.${user?.id},opponent_id.eq.${user?.id}`)
         .order('created_at', { ascending: false });
 
@@ -180,10 +182,7 @@ export default function SkateGameScreen({ navigation }: any) {
           <Text style={styles.headerTitle}>🏆 SKATE Game</Text>
           <Text style={styles.headerSubtitle}>Challenge your friends!</Text>
         </View>
-        <TouchableOpacity
-          style={styles.newGameButton}
-          onPress={() => setShowNewGameModal(true)}
-        >
+        <TouchableOpacity style={styles.newGameButton} onPress={() => setShowNewGameModal(true)}>
           <Text style={styles.newGameButtonText}>+ New</Text>
         </TouchableOpacity>
       </View>
@@ -201,7 +200,7 @@ export default function SkateGameScreen({ navigation }: any) {
       <FlatList
         data={games}
         renderItem={renderGame}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -220,9 +219,7 @@ export default function SkateGameScreen({ navigation }: any) {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New SKATE Game</Text>
-            <Text style={styles.modalSubtitle}>
-              Challenge another skater to a game!
-            </Text>
+            <Text style={styles.modalSubtitle}>Challenge another skater to a game!</Text>
 
             <TextInput
               style={styles.input}

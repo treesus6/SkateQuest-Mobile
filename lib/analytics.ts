@@ -26,7 +26,6 @@ export async function initializeAnalytics(): Promise<void> {
     posthog = new PostHog(apiKey, {
       host,
       captureAppLifecycleEvents: true,
-      captureDeepLinks: true,
     });
 
     // Set initial device properties
@@ -54,10 +53,7 @@ export async function initializeAnalytics(): Promise<void> {
 /**
  * Track user event
  */
-export function trackEvent(
-  eventName: string,
-  properties?: Record<string, any>
-): void {
+export function trackEvent(eventName: string, properties?: Record<string, any>): void {
   if (!posthog) return;
 
   try {
@@ -72,10 +68,7 @@ export function trackEvent(
 /**
  * Identify user for analytics
  */
-export function identifyUser(
-  userId: string,
-  properties?: Record<string, any>
-): void {
+export function identifyUser(userId: string, properties?: Record<string, any>): void {
   if (!posthog) return;
 
   try {
@@ -90,10 +83,7 @@ export function identifyUser(
 /**
  * Track screen view
  */
-export function trackScreenView(
-  screenName: string,
-  properties?: Record<string, any>
-): void {
+export function trackScreenView(screenName: string, properties?: Record<string, any>): void {
   trackEvent('screen_view', {
     screen_name: screenName,
     ...properties,

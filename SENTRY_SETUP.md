@@ -5,6 +5,7 @@ This guide explains how to configure Sentry error tracking for your SkateQuest m
 ## Overview
 
 Sentry has been integrated into your Expo app with:
+
 - ✅ Automatic error capture and reporting
 - ✅ Error boundaries around critical components
 - ✅ Performance monitoring and tracing
@@ -71,8 +72,8 @@ Open `app.json` and update the Sentry configuration:
         {
           "file": "sentry-expo/upload-sourcemaps",
           "config": {
-            "organization": "your-org-slug",      // ← Your org name
-            "project": "skatequest-mobile"        // ← Your project name
+            "organization": "your-org-slug", // ← Your org name
+            "project": "skatequest-mobile" // ← Your project name
           }
         }
       ]
@@ -102,6 +103,7 @@ To upload source maps automatically, you need an auth token:
 Add the auth token to your environment:
 
 **Option A: Using .env file (recommended)**
+
 ```bash
 # Create .env file in project root
 echo "SENTRY_AUTH_TOKEN=your_auth_token_here" >> .env
@@ -109,6 +111,7 @@ echo ".env" >> .gitignore  # Don't commit this!
 ```
 
 **Option B: Export in shell**
+
 ```bash
 export SENTRY_AUTH_TOKEN=your_auth_token_here
 ```
@@ -129,7 +132,6 @@ expo start
 2. Navigate to the **Profile** screen
 3. Scroll down to see the **"🔧 Sentry Debug Tools"** section (only visible in dev mode)
 4. Try each test button:
-
    - **Test JS Crash**: Triggers a JavaScript error
      - Should show error boundary screen
      - Error should appear in Sentry dashboard
@@ -205,11 +207,13 @@ Sentry.init({
 ### Best Practices
 
 1. **Lower sample rate in production:**
+
    ```typescript
    tracesSampleRate: __DEV__ ? 1.0 : 0.1,
    ```
 
 2. **Add user context:**
+
    ```typescript
    Sentry.setUser({
      id: user.id,
@@ -219,6 +223,7 @@ Sentry.init({
    ```
 
 3. **Add custom tags:**
+
    ```typescript
    Sentry.setTag('platform', Platform.OS);
    Sentry.setTag('app_version', '1.0.0');
@@ -255,6 +260,7 @@ Sentry.init({
 ### Build errors after adding Sentry?
 
 1. **Clear cache and reinstall:**
+
    ```bash
    rm -rf node_modules
    npm install
@@ -269,6 +275,7 @@ Sentry.init({
 ## File Overview
 
 ### Modified Files:
+
 - **App.tsx** - Sentry initialization and app wrapper
 - **components/ErrorBoundary.tsx** - Error boundary component (new file)
 - **navigation/AppNavigator.tsx** - Error boundary wrapper around navigation
@@ -276,6 +283,7 @@ Sentry.init({
 - **app.json** - Source map upload configuration
 
 ### Configuration Files:
+
 - **.env** - Sentry auth token (create this, don't commit!)
 
 ## Support & Resources

@@ -3,30 +3,33 @@
 ## 🚀 Quick Commands
 
 ### Switch to Development
+
 ```bash
 ./switch-env.sh development
 expo start -c
 ```
 
 ### Switch to Production
+
 ```bash
 ./switch-env.sh production
 expo start -c
 ```
 
 ### View Current Environment
+
 ```bash
 cat .env | head -n 5
 ```
 
 ## 📋 Environment Variables
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `EXPO_PUBLIC_SUPABASE_URL` | ✅ Yes | Supabase project URL |
-| `EXPO_PUBLIC_SUPABASE_KEY` | ✅ Yes | Supabase anon key |
-| `EXPO_PUBLIC_SENTRY_DSN` | ❌ No | Error tracking (Sentry) |
-| `EXPO_PUBLIC_OPENAI_API_KEY` | ❌ No | AI trick analysis |
+| Variable                     | Required | Purpose                 |
+| ---------------------------- | -------- | ----------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`   | ✅ Yes   | Supabase project URL    |
+| `EXPO_PUBLIC_SUPABASE_KEY`   | ✅ Yes   | Supabase anon key       |
+| `EXPO_PUBLIC_SENTRY_DSN`     | ❌ No    | Error tracking (Sentry) |
+| `EXPO_PUBLIC_OPENAI_API_KEY` | ❌ No    | AI trick analysis       |
 
 ## 📁 File Structure
 
@@ -41,6 +44,7 @@ cat .env | head -n 5
 ## 🔧 Common Tasks
 
 ### Initial Setup
+
 ```bash
 # 1. Copy template
 cp .env.example .env.development
@@ -53,6 +57,7 @@ nano .env.development
 ```
 
 ### Add Production Environment
+
 ```bash
 # 1. Copy template
 cp .env.example .env.production
@@ -65,6 +70,7 @@ nano .env.production
 ```
 
 ### Troubleshooting
+
 ```bash
 # Clear cache and restart
 expo start -c
@@ -79,11 +85,13 @@ curl $(grep SUPABASE_URL .env | cut -d'=' -f2)
 ## ⚡ Tips
 
 1. **Always restart with cache clear** after switching environments:
+
    ```bash
    expo start -c
    ```
 
 2. **Check which environment is active**:
+
    ```bash
    head -n 1 .env
    ```

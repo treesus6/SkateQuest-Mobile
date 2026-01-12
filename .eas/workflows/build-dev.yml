@@ -1,0 +1,20 @@
+name: Development Build
+
+on:
+  push:
+    branches: ['develop']
+
+jobs:
+  build_android_dev:
+    name: Build Android Development
+    type: build
+    params:
+      platform: android
+      profile: development
+
+  build_ios_dev:
+    name: Build iOS Development
+    type: build
+    params:
+      platform: ios
+      profile: development

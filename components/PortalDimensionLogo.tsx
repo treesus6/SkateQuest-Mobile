@@ -41,16 +41,8 @@ export const PortalDimensionLogo: React.FC<PortalDimensionLogoProps> = ({ skatep
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Community Love 🛹</Text>
-      <TouchableOpacity
-        onPress={handlePress}
-        style={styles.button}
-        activeOpacity={0.7}
-      >
-        <Image
-          source={PORTAL_DIMENSION.logo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <TouchableOpacity onPress={handlePress} style={styles.button} activeOpacity={0.7}>
+        <Image source={PORTAL_DIMENSION.logo} style={styles.logo} resizeMode="contain" />
       </TouchableOpacity>
       <Text style={styles.location}>{PORTAL_DIMENSION.location}</Text>
       <Text style={styles.vibe}>Helping each other for the love of skateboarding</Text>

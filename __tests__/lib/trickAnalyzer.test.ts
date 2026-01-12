@@ -1,4 +1,8 @@
-import { analyzeTrickVideo, saveAnalysisResult, TrickAnalysisResult } from '../../lib/trickAnalyzer';
+import {
+  analyzeTrickVideo,
+  saveAnalysisResult,
+  TrickAnalysisResult,
+} from '../../lib/trickAnalyzer';
 import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system';
 

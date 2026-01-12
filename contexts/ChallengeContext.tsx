@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  ReactNode,
-} from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
 
 export type ChallengeDifficulty = 'easy' | 'medium' | 'hard' | 'insane';
 
@@ -32,9 +25,7 @@ type ChallengeContextValue = {
   resetDailyChallenges: () => void;
 };
 
-const ChallengeContext = createContext<ChallengeContextValue | undefined>(
-  undefined
-);
+const ChallengeContext = createContext<ChallengeContextValue | undefined>(undefined);
 
 const BASE_CHALLENGES: Challenge[] = [
   {
@@ -64,8 +55,7 @@ const BASE_CHALLENGES: Challenge[] = [
   {
     id: 'ch_park_line',
     title: 'Park line',
-    description:
-      'Hit three obstacles in one line at a park you haven’t skated this week.',
+    description: 'Hit three obstacles in one line at a park you haven’t skated this week.',
     xp: 300,
     difficulty: 'hard',
     completed: false,
@@ -82,7 +72,7 @@ const BASE_CHALLENGES: Challenge[] = [
 
 function pickDailyChallenges(all: Challenge[], count: number): Challenge[] {
   const shuffled = [...all].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map((c) => ({
+  return shuffled.slice(0, count).map(c => ({
     ...c,
     isDaily: true,
     completed: false,
@@ -100,9 +90,7 @@ export function ChallengeProvider({ children }: ProviderProps) {
   const [xp, setXp] = useState(0);
   const [level, setLevel] = useState(1);
   const [streakDays, setStreakDays] = useState(0);
-  const [lastCompletedDate, setLastCompletedDate] = useState<string | null>(
-    null
-  );
+  const [lastCompletedDate, setLastCompletedDate] = useState<string | null>(null);
 
   const recomputeLevel = useCallback((newXp: number) => {
     const newLevel = 1 + Math.floor(newXp / 500);
@@ -127,7 +115,7 @@ export function ChallengeProvider({ children }: ProviderProps) {
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 1) {
-      setStreakDays((prev) => prev + 1);
+      setStreakDays(prev => prev + 1);
     } else {
       setStreakDays(1);
     }
@@ -137,13 +125,13 @@ export function ChallengeProvider({ children }: ProviderProps) {
 
   const completeChallenge = useCallback(
     (id: string) => {
-      setChallenges((prev) => {
-        const updated = prev.map((c) =>
+      setChallenges(prev => {
+        const updated = prev.map(c =>
           c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
         );
-        const completed = updated.find((c) => c.id === id);
+        const completed = updated.find(c => c.id === id);
         if (completed) {
-          setXp((prevXp) => {
+          setXp(prevXp => {
             const gained = completed.xp;
             const newXp = prevXp + gained;
             recomputeLevel(newXp);
@@ -154,8 +142,8 @@ export function ChallengeProvider({ children }: ProviderProps) {
         return updated;
       });
 
-      setDailyChallenges((prev) =>
-        prev.map((c) =>
+      setDailyChallenges(prev =>
+        prev.map(c =>
           c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
         )
       );
@@ -180,11 +168,7 @@ export function ChallengeProvider({ children }: ProviderProps) {
     [challenges, dailyChallenges, xp, level, streakDays, completeChallenge, resetDailyChallenges]
   );
 
-  return (
-    <ChallengeContext.Provider value={value}>
-      {children}
-    </ChallengeContext.Provider>
-  );
+  return <ChallengeContext.Provider value={value}>{children}</ChallengeContext.Provider>;
 }
 
 export function useChallenges() {

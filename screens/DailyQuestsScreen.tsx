@@ -8,11 +8,9 @@ export default function DailyQuestsScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Daily Quests</Text>
-      <Text style={styles.subtitle}>
-        Fresh missions to keep you rolling every session.
-      </Text>
+      <Text style={styles.subtitle}>Fresh missions to keep you rolling every session.</Text>
 
-      {dailyChallenges.map((ch) => (
+      {dailyChallenges.map(ch => (
         <TouchableOpacity
           key={ch.id}
           style={styles.card}

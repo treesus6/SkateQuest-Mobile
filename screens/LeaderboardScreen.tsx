@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 
@@ -62,10 +56,7 @@ export default function LeaderboardScreen() {
     const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
 
     return (
-      <View style={[
-        styles.leaderCard,
-        rank <= 3 && styles.topThreeCard
-      ]}>
+      <View style={[styles.leaderCard, rank <= 3 && styles.topThreeCard]}>
         <Text style={styles.rank}>{medal || `#${rank}`}</Text>
         <View style={styles.leaderInfo}>
           <Text style={styles.username}>{item.username}</Text>
@@ -87,11 +78,9 @@ export default function LeaderboardScreen() {
       <FlatList
         data={leaders}
         renderItem={renderLeader}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={loadLeaderboard} />
-        }
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadLeaderboard} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No skaters yet</Text>
