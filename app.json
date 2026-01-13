@@ -31,6 +31,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#d2673d"
       },
+      "navigationBar": {
+        "backgroundColor": "#d2673d",
+        "barStyle": "light-content"
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -45,6 +49,7 @@
       ]
     },
     "plugins": [
+      "expo-system-ui",
       [
         "expo-camera",
         {
@@ -57,6 +62,13 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow SkateQuest to use your location to find nearby skate spots."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "sk.eyJ1IjoidHJlZXN1cyIsImEiOiJjbWtjbXFkdmkwMnFvM2NwbmoxYnZ0cWNiIn0.EXYaPFrKbCIiN2Cug1QESg",
+          "RNMapboxMapsVersion": "11.0.0"
         }
       ]
     ],

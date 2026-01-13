@@ -9,7 +9,7 @@ export interface EnvConfig {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SENTRY_DSN: string;
-  GOOGLE_MAPS_API_KEY?: string;
+  MAPBOX_ACCESS_TOKEN: string;
   POSTHOG_API_KEY?: string;
   POSTHOG_HOST?: string;
   ENV?: 'development' | 'staging' | 'production';
@@ -19,10 +19,10 @@ const REQUIRED_VARS = [
   'EXPO_PUBLIC_SUPABASE_URL',
   'EXPO_PUBLIC_SUPABASE_ANON_KEY',
   'EXPO_PUBLIC_SENTRY_DSN',
+  'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
 ];
 
 const OPTIONAL_VARS = [
-  'EXPO_PUBLIC_GOOGLE_MAPS_API_KEY',
   'EXPO_PUBLIC_POSTHOG_API_KEY',
   'EXPO_PUBLIC_POSTHOG_HOST',
 ];
@@ -82,7 +82,7 @@ export function validateEnvironment(): EnvConfig {
     SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL!,
     SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
     SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN!,
-    GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    MAPBOX_ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!,
     POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
     POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
     ENV: (process.env.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'development',
@@ -90,7 +90,7 @@ export function validateEnvironment(): EnvConfig {
 
   Logger.info(`Environment validated successfully (${config.ENV})`);
   Logger.info(`Supabase URL: ${config.SUPABASE_URL}`);
-  Logger.info(`Maps API: ${config.GOOGLE_MAPS_API_KEY ? 'configured' : 'not configured'}`);
+  Logger.info(`Mapbox: ${config.MAPBOX_ACCESS_TOKEN ? 'configured' : 'not configured'}`);
   Logger.info(`PostHog: ${config.POSTHOG_API_KEY ? 'configured' : 'not configured'}`);
 
   return config;

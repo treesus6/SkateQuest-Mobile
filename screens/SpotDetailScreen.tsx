@@ -12,6 +12,7 @@ import {
   Modal,
   Linking,
 } from 'react-native';
+import Mapbox from '@rnmapbox/maps';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
@@ -305,6 +306,45 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
             <Text style={styles.sponsorArrow}>→</Text>
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Map Preview */}
+      <View style={styles.mapCard}>
+        <Text style={styles.cardTitle}>📍 Location</Text>
+        <TouchableOpacity
+          style={styles.mapContainer}
+          onPress={() => navigation.navigate('Map')}
+        >
+          <Mapbox.MapView
+            style={styles.map}
+            styleURL={Mapbox.StyleURL.Street}
+            scrollEnabled={false}
+            pitchEnabled={false}
+            rotateEnabled={false}
+            zoomEnabled={false}
+          >
+            <Mapbox.Camera
+              zoomLevel={14}
+              centerCoordinate={[spot.longitude, spot.latitude]}
+            />
+            <Mapbox.PointAnnotation
+              id="spot-location"
+              coordinate={[spot.longitude, spot.latitude]}
+            >
+              <View style={styles.mapMarker}>
+                <Text style={styles.mapMarkerText}>📍</Text>
+              </View>
+            </Mapbox.PointAnnotation>
+          </Mapbox.MapView>
+          <View style={styles.mapOverlay}>
+            <Text style={styles.mapOverlayText}>Tap to view on map</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={styles.coordinatesContainer}>
+          <Text style={styles.coordinatesText}>
+            📐 {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
+          </Text>
+        </View>
       </View>
 
       {/* Portal Dimension Community Support */}
@@ -774,6 +814,60 @@ const styles = StyleSheet.create({
     color: '#333',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  mapCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 15,
+    marginVertical: 10,
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mapContainer: {
+    height: 200,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 10,
+    position: 'relative',
+  },
+  map: {
+    flex: 1,
+  },
+  mapMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapMarkerText: {
+    fontSize: 32,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 10,
+    alignItems: 'center',
+  },
+  mapOverlayText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  coordinatesContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f5f0ea',
+    borderRadius: 8,
+  },
+  coordinatesText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
   },
 });
 
