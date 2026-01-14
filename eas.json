@@ -16,8 +16,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hreeuqdgrwvnxquxohod.supabase.co",
         "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632",
-        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoidHJlZXN1cyIsImEiOiJjbWtlaTZ6cjcwN3RsM2RvZnhrNnZtajM0In0.FIAvM6zm-IQiBNmUQI9pfw"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632"
       }
     },
     "production": {
@@ -28,8 +27,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hreeuqdgrwvnxquxohod.supabase.co",
         "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632",
-        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoidHJlZXN1cyIsImEiOiJjbWtlaTZ6cjcwN3RsM2RvZnhrNnZtajM0In0.FIAvM6zm-IQiBNmUQI9pfw"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632"
       }
     },
     "production-store": {
@@ -40,8 +38,7 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hreeuqdgrwvnxquxohod.supabase.co",
         "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632",
-        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "sk.eyJ1IjoidHJlZXN1cyIsImEiOiJjbWtlaTZ6cjcwN3RsM2RvZnhrNnZtajM0In0.FIAvM6zm-IQiBNmUQI9pfw"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632"
       }
     }
   },
