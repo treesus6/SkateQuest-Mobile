@@ -74,7 +74,8 @@
     "extra": {
       "eas": {
         "projectId": "09a104b9-9e22-4ae0-9836-2701e366d8e5"
-      }
+      },
+      "mapboxAccessToken": "pk.eyJ1IjoidHJlZXN1cyIsImEiOiJja3VtaHBqNDEwaWk5Mm9veGQycm5xdjcyIn0.v14C80FeOwVNzQlkvick6A"
     }
   }
 }
