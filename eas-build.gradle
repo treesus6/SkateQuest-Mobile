@@ -1,0 +1,14 @@
+allprojects {
+  repositories {
+    maven {
+      url 'https://api.mapbox.com/downloads/v2/releases/maven'
+      authentication {
+        basic(BasicAuthentication)
+      }
+      credentials {
+        username = 'mapbox'
+        password = System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
+      }
+    }
+  }
+}
