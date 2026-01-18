@@ -49,6 +49,9 @@
       ]
     },
     "plugins": [
+  "./plugins/withMapboxRepo.js",
+  "@rnmapbox/maps"
+]"
       "expo-system-ui",
       [
         "expo-camera",
