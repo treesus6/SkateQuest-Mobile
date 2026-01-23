@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 
 import ChallengeApp from './components/ChallengeApp';
-import AuthProvider from './contexts/AuthContext';
+import AuthProvider, { useAuth } from './contexts/AuthContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -28,10 +28,64 @@ Mapbox.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+// Root Navigator that handles auth state
+function RootNavigator() {
+  const { user, loading } = useAuth();
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const status = await AsyncStorage.getItem('onboarding_completed');
+        setIsOnboardingComplete(status === 'true');
+      } catch (error) {
+        Logger.error('Failed to check onboarding status:', error);
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setIsOnboardingComplete(true);
+  };
+
+  // Show nothing while checking onboarding or auth status
+  if (isCheckingOnboarding || loading) {
+    return null;
+  }
+
+  // Show onboarding if not completed
+  if (!isOnboardingComplete) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  // Show main app if user is logged in
+  if (user) {
+    return (
+      <NavigationContainer>
+        <ChallengeApp />
+      </NavigationContainer>
+    );
+  }
+
+  // Show auth screens if not logged in
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName="Login"
+      >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
   useEffect(() => {
     // Initialize app
     const initializeApp = async () => {
@@ -40,19 +94,12 @@ export default function App() {
         validateEnvironment();
 
         // Configure system UI to match brand colors
-        // Set root background color to brand color
         await SystemUI.setBackgroundColorAsync('#d2673d');
 
-        // Check if onboarding has been completed
-        const onboardingStatus = await AsyncStorage.getItem('onboarding_completed');
-        setIsOnboardingComplete(onboardingStatus === 'true');
-
-        Logger.info('SkateQuest Mobile app initialized with system UI configured');
+        Logger.info('SkateQuest Mobile app initialized');
       } catch (error) {
         Logger.error('App initialization failed:', error);
         throw error;
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -63,14 +110,6 @@ export default function App() {
     initializeApp();
   }, []);
 
-  const handleOnboardingComplete = () => {
-    setIsOnboardingComplete(true);
-  };
-
-  if (isLoading) {
-    return null; // or a loading screen
-  }
-
   return (
     <ErrorBoundary>
       <NetworkProvider>
@@ -79,21 +118,7 @@ export default function App() {
           <OfflineIndicator />
           <PortalDimensionLogo />
           <Toast />
-
-          {!isOnboardingComplete ? (
-            <Onboarding onComplete={handleOnboardingComplete} />
-          ) : (
-            <NavigationContainer>
-              <Stack.Navigator
-                screenOptions={{ headerShown: false }}
-                initialRouteName="Login"
-              >
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="Signup" component={SignupScreen} />
-                <Stack.Screen name="Main" component={ChallengeApp} />
-              </Stack.Navigator>
-            </NavigationContainer>
-          )}
+          <RootNavigator />
         </AuthProvider>
       </NetworkProvider>
     </ErrorBoundary>
