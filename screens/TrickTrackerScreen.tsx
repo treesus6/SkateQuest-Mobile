@@ -113,7 +113,7 @@ const TrickTrackerScreen = memo(() => {
       updates.first_landed_at = new Date().toISOString();
 
       // Create activity for landing a trick
-      await supabase.from('activities').insert([
+      const { error: activityError } = await supabase.from('activities').insert([
         {
           user_id: user?.id,
           activity_type: 'trick_landed',
@@ -122,18 +122,34 @@ const TrickTrackerScreen = memo(() => {
         },
       ]);
 
-      // Award XP
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('xp')
-        .eq('id', user?.id)
-        .single();
+      if (activityError) {
+        console.warn('Failed to create activity:', activityError);
+      }
 
-      if (userData) {
-        await supabase
-          .from('profiles')
-          .update({ xp: userData.xp + 25 })
-          .eq('id', user?.id);
+      // Award XP using RPC function for atomicity
+      try {
+        const { error: xpError } = await supabase.rpc('increment_xp', {
+          user_id: user?.id,
+          amount: 25,
+        });
+
+        if (xpError) {
+          // Fallback to manual update if RPC not available
+          const { data: userData, error: fetchError } = await supabase
+            .from('profiles')
+            .select('xp')
+            .eq('id', user?.id)
+            .single();
+
+          if (!fetchError && userData) {
+            await supabase
+              .from('profiles')
+              .update({ xp: userData.xp + 25 })
+              .eq('id', user?.id);
+          }
+        }
+      } catch (xpErr) {
+        console.warn('Failed to award XP:', xpErr);
       }
     }
 

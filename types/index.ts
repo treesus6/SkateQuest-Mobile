@@ -31,17 +31,22 @@ export interface CallOut {
   id: string;
   challenger_id: string;
   challenged_id: string;
+  challenged_user_id?: string; // Alias for challenged_id used in some places
+  target_id?: string; // Also used as alias in database
   spot_id?: string;
   trick_name: string;
+  trick?: string; // Database uses 'trick' column
   message?: string;
   xp_reward: number;
   status: 'pending' | 'accepted' | 'completed' | 'declined' | 'failed';
   created_at: string;
   completed_at?: string;
   proof_media_id?: string;
+  proof_video_url?: string;
   challenger?: UserProfile;
   challenged?: UserProfile;
   challenged_user?: UserProfile;
+  target?: UserProfile;
   spot?: SkateSpot;
 }
 
@@ -103,7 +108,9 @@ export interface Activity {
     | 'trick_landed'
     | 'level_up'
     | 'media_uploaded'
-    | 'skate_game_won';
+    | 'skate_game_won'
+    | 'qr_code_found'
+    | 'qr_code_hidden';
   title: string;
   description?: string;
   xp_earned: number;
