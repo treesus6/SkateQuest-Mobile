@@ -39,9 +39,15 @@ export default function AddSpotScreen() {
   const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>(
     'Beginner'
   );
+  const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
+  const [obstacles, setObstacles] = useState<string[]>([]);
+  const [bustRisk, setBustRisk] = useState<'low' | 'medium' | 'high'>('low');
+  const [hasQR, setHasQR] = useState(false);
   const [tricks, setTricks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+
+  const OBSTACLES = ['Stairs', 'Handrail', 'Flatbar', 'Ledge', 'Hubba', 'Manual Pad', 'Quarterpipe', 'Bowl', 'Gap', 'Wallride'];
 
   useEffect(() => {
     getUserLocation();
@@ -103,6 +109,10 @@ export default function AddSpotScreen() {
           latitude: lat,
           longitude: lng,
           difficulty,
+          spot_type: spotType,
+          obstacles,
+          bust_risk: spotType === 'street' ? bustRisk : null,
+          has_qr: hasQR,
           tricks: tricksArray,
           added_by: user?.id,
         },
@@ -226,6 +236,98 @@ export default function AddSpotScreen() {
           keyboardType="numeric"
           editable={!submitting}
         />
+
+        <Text style={styles.label}>Spot Type *</Text>
+        <View style={styles.typeContainer}>
+          {(['park', 'street', 'diy', 'quest', 'shop'] as const).map(type => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.typeButton,
+                spotType === type && styles.typeButtonActive,
+              ]}
+              onPress={() => setSpotType(type)}
+              disabled={submitting}
+            >
+              <Text style={[styles.typeText, spotType === type && styles.typeTextActive]}>
+                {type === 'park' && '🛹'}
+                {type === 'street' && '🏙️'}
+                {type === 'diy' && '🔨'}
+                {type === 'quest' && '📱'}
+                {type === 'shop' && '🛒'}
+              </Text>
+              <Text style={[styles.typeLabel, spotType === type && styles.typeLabelActive]}>
+                {type.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>Obstacles</Text>
+        <View style={styles.obstaclesContainer}>
+          {OBSTACLES.map(obstacle => {
+            const isSelected = obstacles.includes(obstacle);
+            return (
+              <TouchableOpacity
+                key={obstacle}
+                style={[styles.obstacleChip, isSelected && styles.obstacleChipActive]}
+                onPress={() => {
+                  if (isSelected) {
+                    setObstacles(obstacles.filter(o => o !== obstacle));
+                  } else {
+                    setObstacles([...obstacles, obstacle]);
+                  }
+                }}
+                disabled={submitting}
+              >
+                <Text style={[styles.obstacleText, isSelected && styles.obstacleTextActive]}>
+                  {obstacle}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {spotType === 'street' && (
+          <>
+            <Text style={styles.label}>Bust Risk</Text>
+            <View style={styles.bustContainer}>
+              {(['low', 'medium', 'high'] as const).map(risk => (
+                <TouchableOpacity
+                  key={risk}
+                  style={[
+                    styles.bustButton,
+                    bustRisk === risk && styles.bustButtonActive,
+                    risk === 'low' && styles.bustLow,
+                    risk === 'medium' && styles.bustMedium,
+                    risk === 'high' && styles.bustHigh,
+                  ]}
+                  onPress={() => setBustRisk(risk)}
+                  disabled={submitting}
+                >
+                  <Text style={[styles.bustText, bustRisk === risk && styles.bustTextActive]}>
+                    {risk === 'low' && '😎 Chill'}
+                    {risk === 'medium' && '👀 Watch Out'}
+                    {risk === 'high' && '🚨 Immediate Bust'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {spotType === 'quest' && (
+          <View style={styles.qrContainer}>
+            <TouchableOpacity
+              style={styles.qrToggle}
+              onPress={() => setHasQR(!hasQR)}
+              disabled={submitting}
+            >
+              <Text style={styles.qrCheckbox}>{hasQR ? '☑️' : '⬜'}</Text>
+              <Text style={styles.qrLabel}>This spot has a physical QR code</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Text style={styles.label}>Difficulty</Text>
         <View style={styles.difficultyContainer}>
@@ -372,5 +474,119 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  typeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  typeButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    marginHorizontal: 3,
+    alignItems: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: '#d2673d',
+    borderColor: '#d2673d',
+  },
+  typeText: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  typeLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '600',
+  },
+  typeLabelActive: {
+    color: '#fff',
+  },
+  typeTextActive: {
+    opacity: 1,
+  },
+  obstaclesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  obstacleChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  obstacleChipActive: {
+    backgroundColor: '#d2673d',
+    borderColor: '#d2673d',
+  },
+  obstacleText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  obstacleTextActive: {
+    color: '#fff',
+  },
+  bustContainer: {
+    gap: 8,
+    marginBottom: 10,
+  },
+  bustButton: {
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  bustButtonActive: {
+    borderWidth: 3,
+  },
+  bustLow: {
+    borderColor: '#10b981',
+    backgroundColor: '#f0fdf4',
+  },
+  bustMedium: {
+    borderColor: '#f59e0b',
+    backgroundColor: '#fffbeb',
+  },
+  bustHigh: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  bustText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  bustTextActive: {
+    fontWeight: 'bold',
+  },
+  qrContainer: {
+    marginBottom: 10,
+  },
+  qrToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  qrCheckbox: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  qrLabel: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
   },
 });
