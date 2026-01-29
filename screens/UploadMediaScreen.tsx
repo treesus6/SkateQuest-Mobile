@@ -104,7 +104,7 @@ export default function UploadMediaScreen({ navigation }: any) {
       }
 
       // Create activity
-      await supabase.from('activities').insert([
+      const { error: activityError } = await supabase.from('activities').insert([
         {
           user_id: user.id,
           activity_type: 'media_uploaded',
@@ -116,6 +116,11 @@ export default function UploadMediaScreen({ navigation }: any) {
           media_id: media.id,
         },
       ]);
+
+      if (activityError) {
+        console.warn('Failed to create activity:', activityError);
+        // Don't fail the upload, activity creation is non-critical
+      }
 
       Alert.alert('Success', 'Media uploaded!', [
         {

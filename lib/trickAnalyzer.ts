@@ -213,7 +213,7 @@ export async function getTrickLeaderboard(trickName?: string): Promise<any[]> {
       .select(
         `
         *,
-        user:users(id, username, level)
+        user:profiles(id, username, level)
       `
       )
       .eq('type', 'video')
