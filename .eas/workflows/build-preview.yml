@@ -1,3 +1,4 @@
+build-preview.yml
 name: Preview Build
 
 on:
@@ -15,7 +16,7 @@ jobs:
   publish_update:
     name: Publish Preview Update
     type: update
-    needs: build_preview
+    needs: [build_preview]
     params:
       branch: ${{ github.head_ref }}
       message: "Preview for PR #${{ github.event.number }}"
