@@ -1,4 +1,5 @@
 import * as yup from 'yup';
+import sanitizeHtmlLib from 'sanitize-html';
 
 /**
  * Input validation schemas using Yup
@@ -150,9 +151,13 @@ export function sanitizeInput(input: string): string {
  * Sanitize HTML content
  */
 export function sanitizeHtml(html: string): string {
-  // For now, just strip all HTML tags
-  // In production, you might want to use a library like DOMPurify
-  return html.replace(/<[^>]*>/g, '').trim();
+  if (typeof html !== 'string') {
+    return '';
+  }
+
+  // Use a robust HTML sanitizer to remove potentially dangerous content
+  const sanitized = sanitizeHtmlLib(html);
+  return sanitized.trim();
 }
 
 /**
