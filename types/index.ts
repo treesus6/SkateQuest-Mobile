@@ -228,3 +228,227 @@ export interface CharityStats {
   total_kids_helped: number;
   last_updated: string;
 }
+
+// Global Activity Feed - the "hype" stream
+export interface ActivityFeedItem {
+  id: string;
+  user_id: string;
+  username?: string;
+  user_level?: number;
+  activity_type: 'achievement' | 'spot_claim' | 'shop_redeem' | 'level_up' | 'first_blood';
+  message: string;
+  metadata: {
+    achievement_id?: string;
+    achievement_name?: string;
+    achievement_icon?: string;
+    rarity?: 'common' | 'rare' | 'epic' | 'legendary';
+    spot_id?: string;
+    spot_name?: string;
+    item_name?: string;
+    item_type?: string;
+    new_level?: number;
+    previous_level?: number;
+    [key: string]: unknown;
+  };
+  created_at: string;
+}
+
+// ============================================================================
+// SKATEQUEST ENGINE TYPES
+// ============================================================================
+
+// Spot Types for the master map
+export type SkateSpotType = 'PARK' | 'STREET' | 'DIY' | 'QUEST' | 'SHOP';
+
+export interface SpotTypeConfig {
+  label: string;
+  icon: string;
+  color: string;
+  type: 'official' | 'raw' | 'community' | 'geocache' | 'business';
+}
+
+// Obstacles available at spots
+export type Obstacle =
+  | 'Stairs'
+  | 'Handrail'
+  | 'Flatbar'
+  | 'Ledge'
+  | 'Hubba'
+  | 'Manual Pad'
+  | 'Quarterpipe'
+  | 'Bowl'
+  | 'Gap'
+  | 'Wallride'
+  | 'Bank'
+  | 'Pyramid'
+  | 'Fun Box'
+  | 'Jersey Barrier';
+
+// Bust risk levels for street spots
+export type BustRiskLevel = 'LOW' | 'MED' | 'HIGH';
+
+export interface BustRiskConfig {
+  label: string;
+  level: number;
+  emoji: string;
+}
+
+// Spot status for real-time conditions
+export type SpotStatusType = 'BONDO_NEEDED' | 'SECURITY_ACTIVE' | 'DRY' | 'WET';
+
+export interface SpotStatusConfig {
+  label: string;
+  icon: string;
+  color: string;
+}
+
+// QR Code data for geocaching
+export interface QRScanData {
+  spotId: string;
+  code: string;
+  timestamp: number;
+}
+
+// Crew stats for territory control
+export interface CrewStats {
+  crewId: string;
+  crewName: string;
+  points: number;
+  color: string;
+}
+
+// Spot King (current owner of a spot)
+export interface SpotKing {
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  trick: string;
+  points: number;
+  videoUrl: string;
+  claimedAt: string;
+}
+
+// Challenge submission for Judge's Booth
+export interface ChallengeSubmission {
+  id?: string;
+  challengeId: string;
+  userId: string;
+  videoUrl: string;
+  spotId?: string;
+  stompedVotes: number;
+  bailVotes: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt?: string;
+  approvedAt?: string;
+}
+
+// Daily challenge
+export interface DailyChallenge {
+  id: string;
+  title: string;
+  xp: number;
+  difficulty: number;
+  expires: Date;
+  type: 'DAILY';
+}
+
+// Enhanced Challenge type for the new system
+export interface EnhancedChallenge {
+  id: string;
+  title: string;
+  description?: string;
+  xpReward: number;
+  difficulty: number;
+  challengeType: 'DAILY' | 'SPOT_SPECIFIC' | 'USER_ISSUED' | 'WEEKLY' | 'BOUNTY';
+  spotId?: string;
+  issuedByUserId?: string;
+  bountyMultiplier?: number;
+  lastBountyIncrease?: string;
+  active: boolean;
+  startsAt: string;
+  expiresAt?: string;
+  createdAt: string;
+}
+
+// Spot claim for King of the Hill
+export interface SpotClaim {
+  id: string;
+  spotId: string;
+  userId: string;
+  crewId?: string;
+  trickName: string;
+  videoUrl: string;
+  points: number;
+  verified: boolean;
+  claimedAt: string;
+}
+
+// Skate shop for shop hub feature
+export interface SkateShop {
+  id: string;
+  spotId: string;
+  shopName: string;
+  description?: string;
+  websiteUrl?: string;
+  phone?: string;
+  discountCode?: string;
+  discountPercentage?: number;
+  createdAt: string;
+}
+
+// Shop event
+export interface ShopEvent {
+  id: string;
+  shopId: string;
+  eventName: string;
+  description?: string;
+  eventDate: string;
+  createdAt: string;
+}
+
+// Ghost clip (unlockable video at spots)
+export interface GhostClip {
+  id: string;
+  spotId: string;
+  createdByUserId?: string;
+  videoUrl: string;
+  trickName?: string;
+  description?: string;
+  requiresQrScan: boolean;
+  views: number;
+  likes: number;
+  createdAt: string;
+}
+
+// Crew territory
+export interface CrewTerritory {
+  id: string;
+  spotId: string;
+  crewId: string;
+  totalPoints: number;
+  claimCount: number;
+  capturedAt: string;
+  lastActivity: string;
+}
+
+// Proximity verification result
+export interface ProximityResult {
+  success: boolean;
+  distance: number;
+  message: string;
+}
+
+// QR verification result
+export interface QRVerificationResult {
+  success: boolean;
+  message: string;
+  unlocks?: string;
+  xp?: number;
+}
+
+// Vote result
+export interface VoteResult {
+  success: boolean;
+  message: string;
+  approved?: boolean;
+}

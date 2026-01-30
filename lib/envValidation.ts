@@ -7,42 +7,33 @@ import { Logger } from './logger';
 
 export interface EnvConfig {
   SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SENTRY_DSN: string;
+  SUPABASE_KEY: string;
+  SENTRY_DSN?: string;
   MAPBOX_ACCESS_TOKEN: string;
   POSTHOG_API_KEY?: string;
   POSTHOG_HOST?: string;
   ENV?: 'development' | 'staging' | 'production';
 }
 
-const REQUIRED_VARS = [
-  'EXPO_PUBLIC_SUPABASE_URL',
-  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
-  'EXPO_PUBLIC_SENTRY_DSN',
-  'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
-];
-
-const OPTIONAL_VARS = [
-  'EXPO_PUBLIC_POSTHOG_API_KEY',
-  'EXPO_PUBLIC_POSTHOG_HOST',
-];
-
 /**
  * Validate all required environment variables
  */
 export function validateEnvironment(): EnvConfig {
   const missing: string[] = [];
-  const invalid: string[] = [];
 
-  // Check required variables
-  for (const varName of REQUIRED_VARS) {
-    const value = process.env[varName];
+  // Check required variables using static access (Expo requirement)
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY;
+  const mapboxToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-    if (!value) {
-      missing.push(varName);
-    } else if (value.trim() === '') {
-      invalid.push(varName);
-    }
+  if (!supabaseUrl || supabaseUrl.trim() === '') {
+    missing.push('EXPO_PUBLIC_SUPABASE_URL');
+  }
+  if (!supabaseKey || supabaseKey.trim() === '') {
+    missing.push('EXPO_PUBLIC_SUPABASE_KEY');
+  }
+  if (!mapboxToken || mapboxToken.trim() === '') {
+    missing.push('EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN');
   }
 
   // Report errors
@@ -52,45 +43,46 @@ export function validateEnvironment(): EnvConfig {
     throw new Error(errorMsg);
   }
 
-  if (invalid.length > 0) {
-    const errorMsg = `Invalid (empty) environment variables: ${invalid.join(', ')}`;
-    Logger.error(errorMsg);
-    throw new Error(errorMsg);
-  }
-
   // Validate URL formats
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
   if (!isValidUrl(supabaseUrl)) {
     throw new Error(`Invalid EXPO_PUBLIC_SUPABASE_URL format: ${supabaseUrl}`);
   }
 
-  const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN!;
-  if (!isValidUrl(sentryDsn)) {
-    throw new Error(`Invalid EXPO_PUBLIC_SENTRY_DSN format: ${sentryDsn}`);
+  // Optional variables - validate format only if provided
+  const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+  const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+  const posthogHost = process.env.EXPO_PUBLIC_POSTHOG_HOST;
+
+  if (sentryDsn && !isValidUrl(sentryDsn)) {
+    Logger.warn(`Invalid EXPO_PUBLIC_SENTRY_DSN format: ${sentryDsn}`);
   }
 
   // Log optional variables status
-  for (const varName of OPTIONAL_VARS) {
-    const value = process.env[varName];
-    if (!value) {
-      Logger.warn(`Optional environment variable not set: ${varName}`);
-    }
+  if (!sentryDsn) {
+    Logger.warn('Optional environment variable not set: EXPO_PUBLIC_SENTRY_DSN');
+  }
+  if (!posthogApiKey) {
+    Logger.warn('Optional environment variable not set: EXPO_PUBLIC_POSTHOG_API_KEY');
+  }
+  if (!posthogHost) {
+    Logger.warn('Optional environment variable not set: EXPO_PUBLIC_POSTHOG_HOST');
   }
 
   // Return validated config
   const config: EnvConfig = {
-    SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL!,
-    SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
-    SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN!,
-    MAPBOX_ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN!,
-    POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
-    POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
+    SUPABASE_URL: supabaseUrl,
+    SUPABASE_KEY: supabaseKey,
+    SENTRY_DSN: sentryDsn,
+    MAPBOX_ACCESS_TOKEN: mapboxToken,
+    POSTHOG_API_KEY: posthogApiKey,
+    POSTHOG_HOST: posthogHost,
     ENV: (process.env.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'development',
   };
 
   Logger.info(`Environment validated successfully (${config.ENV})`);
   Logger.info(`Supabase URL: ${config.SUPABASE_URL}`);
   Logger.info(`Mapbox: ${config.MAPBOX_ACCESS_TOKEN ? 'configured' : 'not configured'}`);
+  Logger.info(`Sentry: ${config.SENTRY_DSN ? 'configured' : 'not configured (optional)'}`);
   Logger.info(`PostHog: ${config.POSTHOG_API_KEY ? 'configured' : 'not configured'}`);
 
   return config;

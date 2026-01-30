@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  Switch,
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
@@ -16,6 +17,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { SPOT_TYPES, OBSTACLES, BUST_RISK } from '../lib/skateQuestEngine';
+import type { SkateSpotType, Obstacle, BustRiskLevel } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddSpot'>;
 type AddSpotRouteProp = RouteProp<RootStackParamList, 'AddSpot'>;
@@ -42,6 +45,13 @@ export default function AddSpotScreen() {
   const [tricks, setTricks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+
+  // New SkateQuest Engine fields
+  const [spotType, setSpotType] = useState<SkateSpotType>('PARK');
+  const [selectedObstacles, setSelectedObstacles] = useState<Obstacle[]>([]);
+  const [bustRisk, setBustRisk] = useState<BustRiskLevel>('LOW');
+  const [hasQR, setHasQR] = useState(false);
+  const [description, setDescription] = useState('');
 
   useEffect(() => {
     getUserLocation();
@@ -78,6 +88,14 @@ export default function AddSpotScreen() {
     }
   };
 
+  const toggleObstacle = (obstacle: Obstacle) => {
+    if (selectedObstacles.includes(obstacle)) {
+      setSelectedObstacles(selectedObstacles.filter(o => o !== obstacle));
+    } else {
+      setSelectedObstacles([...selectedObstacles, obstacle]);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name || !latitude || !longitude) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -100,11 +118,17 @@ export default function AddSpotScreen() {
       const { error } = await supabase.from('skate_spots').insert([
         {
           name,
+          description: description || null,
           latitude: lat,
           longitude: lng,
           difficulty,
           tricks: tricksArray,
           added_by: user?.id,
+          // New SkateQuest Engine fields
+          spot_type: spotType,
+          obstacles: selectedObstacles,
+          bust_risk: spotType === 'STREET' ? bustRisk : null,
+          has_qr: hasQR,
         },
       ]);
 
@@ -162,19 +186,11 @@ export default function AddSpotScreen() {
           />
 
           {/* User location */}
-          {userLocation && (
-            <Mapbox.UserLocation
-              visible={true}
-              showsUserHeadingIndicator={true}
-            />
-          )}
+          {userLocation && <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />}
 
           {/* Selected location marker */}
           {selectedCoordinates && (
-            <Mapbox.PointAnnotation
-              id="selected-spot"
-              coordinate={selectedCoordinates}
-            >
+            <Mapbox.PointAnnotation id="selected-spot" coordinate={selectedCoordinates}>
               <View style={styles.marker}>
                 <Text style={styles.markerText}>📍</Text>
               </View>
@@ -197,7 +213,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={latitude}
-          onChangeText={(text) => {
+          onChangeText={text => {
             setLatitude(text);
             const lat = parseFloat(text);
             const lng = parseFloat(longitude);
@@ -214,7 +230,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={longitude}
-          onChangeText={(text) => {
+          onChangeText={text => {
             setLongitude(text);
             const lat = parseFloat(latitude);
             const lng = parseFloat(text);
@@ -224,6 +240,40 @@ export default function AddSpotScreen() {
           }}
           placeholder="-122.4194"
           keyboardType="numeric"
+          editable={!submitting}
+        />
+
+        <Text style={styles.label}>Spot Type</Text>
+        <View style={styles.spotTypeContainer}>
+          {(Object.keys(SPOT_TYPES) as SkateSpotType[]).map(type => {
+            const config = SPOT_TYPES[type];
+            return (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.spotTypeButton,
+                  spotType === type && { backgroundColor: config.color, borderColor: config.color },
+                ]}
+                onPress={() => setSpotType(type)}
+                disabled={submitting}
+              >
+                <Text style={styles.spotTypeIcon}>{config.icon}</Text>
+                <Text style={[styles.spotTypeText, spotType === type && styles.spotTypeTextActive]}>
+                  {config.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <Text style={styles.label}>Description (Optional)</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Tell us about this spot..."
+          multiline
+          numberOfLines={3}
           editable={!submitting}
         />
 
@@ -249,6 +299,75 @@ export default function AddSpotScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <Text style={styles.label}>Obstacles (Select all that apply)</Text>
+        <View style={styles.obstaclesContainer}>
+          {OBSTACLES.map(obstacle => (
+            <TouchableOpacity
+              key={obstacle}
+              style={[
+                styles.obstacleTag,
+                selectedObstacles.includes(obstacle) && styles.obstacleTagActive,
+              ]}
+              onPress={() => toggleObstacle(obstacle)}
+              disabled={submitting}
+            >
+              <Text
+                style={[
+                  styles.obstacleTagText,
+                  selectedObstacles.includes(obstacle) && styles.obstacleTagTextActive,
+                ]}
+              >
+                {obstacle}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {spotType === 'STREET' && (
+          <>
+            <Text style={styles.label}>Bust Risk</Text>
+            <View style={styles.difficultyContainer}>
+              {(Object.keys(BUST_RISK) as BustRiskLevel[]).map(level => {
+                const config = BUST_RISK[level];
+                return (
+                  <TouchableOpacity
+                    key={level}
+                    style={[
+                      styles.difficultyButton,
+                      bustRisk === level && styles.difficultyButtonActive,
+                    ]}
+                    onPress={() => setBustRisk(level)}
+                    disabled={submitting}
+                  >
+                    <Text
+                      style={[
+                        styles.difficultyButtonText,
+                        bustRisk === level && styles.difficultyButtonTextActive,
+                      ]}
+                    >
+                      {config.emoji} {config.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
+
+        <View style={styles.switchRow}>
+          <View>
+            <Text style={styles.label}>QR Quest (Skate-O-Caching)</Text>
+            <Text style={styles.sublabel}>I've hidden a QR code at this spot</Text>
+          </View>
+          <Switch
+            value={hasQR}
+            onValueChange={setHasQR}
+            trackColor={{ false: '#ddd', true: '#d2673d' }}
+            thumbColor={hasQR ? '#fff' : '#f4f3f4'}
+            disabled={submitting}
+          />
         </View>
 
         <Text style={styles.label}>Tricks (comma separated)</Text>
@@ -372,5 +491,71 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // New styles for SkateQuest Engine fields
+  spotTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  spotTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    gap: 6,
+  },
+  spotTypeIcon: {
+    fontSize: 18,
+  },
+  spotTypeText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  spotTypeTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  obstaclesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 15,
+  },
+  obstacleTag: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  obstacleTagActive: {
+    backgroundColor: '#d2673d',
+    borderColor: '#d2673d',
+  },
+  obstacleTagText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  obstacleTagTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 15,
+  },
+  sublabel: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
   },
 });

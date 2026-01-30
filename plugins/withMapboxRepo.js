@@ -1,7 +1,7 @@
-const { withProjectBuildGradle } = require('@expo/config-plugins');
+const { withProjectBuildGradle } = require('expo/config-plugins');
 
 module.exports = function withMapboxRepo(config) {
-  return withProjectBuildGradle(config, (config) => {
+  return withProjectBuildGradle(config, config => {
     if (config.modResults.language === 'groovy') {
       config.modResults.contents = config.modResults.contents.replace(
         /allprojects\s*{/,
@@ -14,7 +14,7 @@ module.exports = function withMapboxRepo(config) {
             }
             credentials {
                 username = 'mapbox'
-                password = System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
+                password = System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN") ?: System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: ""
             }
         }
     }`

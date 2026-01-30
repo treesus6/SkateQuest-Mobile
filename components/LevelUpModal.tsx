@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 type Props = {
   visible: boolean;
@@ -8,9 +9,28 @@ type Props = {
 };
 
 export default function LevelUpModal({ visible, level, onClose }: Props) {
+  const confettiRef = useRef<ConfettiCannon>(null);
+
+  useEffect(() => {
+    if (visible && confettiRef.current) {
+      confettiRef.current.start();
+    }
+  }, [visible]);
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
+        {visible && (
+          <ConfettiCannon
+            ref={confettiRef}
+            count={150}
+            origin={{ x: -10, y: 0 }}
+            autoStart={true}
+            fadeOut={true}
+            fallSpeed={3000}
+            colors={['#d2673d', '#f39c12', '#2ecc71', '#3498db', '#9b59b6', '#FF5A3C']}
+          />
+        )}
         <View style={styles.card}>
           <Text style={styles.title}>Level Up!</Text>
           <Text style={styles.level}>Level {level}</Text>

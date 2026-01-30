@@ -25,6 +25,13 @@ import GameDetailScreen from '../screens/GameDetailScreen';
 import SpotDetailScreen from '../screens/SpotDetailScreen';
 import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
 
+// New City War screens
+import CrewLeaderboardScreen from '../src/screens/CrewLeaderboardScreen';
+import JudgesBooth from '../src/screens/JudgesBooth';
+import Achievements from '../src/screens/Achievements';
+import ShopMarketplace from '../src/screens/ShopMarketplace';
+import GlobalFeedScreen from '../src/screens/GlobalFeedScreen';
+
 export type RootStackParamList = {
   Auth: undefined;
   Map: undefined;
@@ -43,6 +50,12 @@ export type RootStackParamList = {
   GameDetail: { gameId: string };
   SpotDetail: { spotId: string };
   QRScanner: undefined;
+  // City War screens
+  CrewLeaderboard: undefined;
+  JudgesBooth: undefined;
+  Achievements: undefined;
+  ShopMarketplace: undefined;
+  GlobalFeed: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -144,6 +157,32 @@ export default function AppNavigator() {
                 <Stack.Screen
                   name="QRScanner"
                   component={QRCodeScannerScreen}
+                  options={{ headerShown: false }}
+                />
+                {/* City War screens */}
+                <Stack.Screen
+                  name="CrewLeaderboard"
+                  component={CrewLeaderboardScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="JudgesBooth"
+                  component={JudgesBooth}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Achievements"
+                  component={Achievements}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="ShopMarketplace"
+                  component={ShopMarketplace}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="GlobalFeed"
+                  component={GlobalFeedScreen}
                   options={{ headerShown: false }}
                 />
               </>
