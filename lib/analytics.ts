@@ -1,4 +1,4 @@
-import PostHog from 'posthog-react-native';
+import posthog from 'posthog-js';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 
@@ -7,7 +7,7 @@ import * as Device from 'expo-device';
  * Free, privacy-focused, self-hostable analytics
  */
 
-let posthog: PostHog | null = null;
+let isInitialized = false;
 
 export async function initializeAnalytics(): Promise<void> {
   try {
@@ -23,9 +23,11 @@ export async function initializeAnalytics(): Promise<void> {
     }
 
     // Initialize PostHog
-    posthog = new PostHog(apiKey, {
-      host,
-      captureAppLifecycleEvents: true,
+    posthog.init(apiKey, {
+      api_host: host,
+      autocapture: false,
+      capture_pageview: false,
+      persistence: 'localStorage',
     });
 
     // Set initial device properties
@@ -39,6 +41,7 @@ export async function initializeAnalytics(): Promise<void> {
     };
 
     posthog.register(deviceInfo);
+    isInitialized = true;
 
     if (__DEV__) {
       console.log('Analytics initialized successfully');
@@ -54,7 +57,7 @@ export async function initializeAnalytics(): Promise<void> {
  * Track user event
  */
 export function trackEvent(eventName: string, properties?: Record<string, any>): void {
-  if (!posthog) return;
+  if (!isInitialized) return;
 
   try {
     posthog.capture(eventName, properties);
@@ -69,7 +72,7 @@ export function trackEvent(eventName: string, properties?: Record<string, any>):
  * Identify user for analytics
  */
 export function identifyUser(userId: string, properties?: Record<string, any>): void {
-  if (!posthog) return;
+  if (!isInitialized) return;
 
   try {
     posthog.identify(userId, properties);
@@ -94,7 +97,7 @@ export function trackScreenView(screenName: string, properties?: Record<string, 
  * Track user properties
  */
 export function setUserProperties(properties: Record<string, any>): void {
-  if (!posthog) return;
+  if (!isInitialized) return;
 
   try {
     posthog.register(properties);
@@ -109,7 +112,7 @@ export function setUserProperties(properties: Record<string, any>): void {
  * Reset analytics (on logout)
  */
 export function resetAnalytics(): void {
-  if (!posthog) return;
+  if (!isInitialized) return;
 
   try {
     posthog.reset();

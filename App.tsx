@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 
 import ChallengeApp from './components/ChallengeApp';
-import AuthProvider from './contexts/AuthContext';
+import AuthProvider, { useAuth } from './contexts/AuthContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -27,6 +28,63 @@ Mapbox.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 const Stack = createNativeStackNavigator();
 
+// Root Navigator that handles auth state
+function RootNavigator() {
+  const { user, loading } = useAuth();
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const status = await AsyncStorage.getItem('onboarding_completed');
+        setIsOnboardingComplete(status === 'true');
+      } catch (error) {
+        Logger.error('Failed to check onboarding status:', error);
+      } finally {
+        setIsCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setIsOnboardingComplete(true);
+  };
+
+  // Show nothing while checking onboarding or auth status
+  if (isCheckingOnboarding || loading) {
+    return null;
+  }
+
+  // Show onboarding if not completed
+  if (!isOnboardingComplete) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  // Show main app if user is logged in
+  if (user) {
+    return (
+      <NavigationContainer>
+        <ChallengeApp />
+      </NavigationContainer>
+    );
+  }
+
+  // Show auth screens if not logged in
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName="Login"
+      >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Signup" component={SignupScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     // Initialize app
@@ -36,10 +94,9 @@ export default function App() {
         validateEnvironment();
 
         // Configure system UI to match brand colors
-        // Set root background color to brand color
         await SystemUI.setBackgroundColorAsync('#d2673d');
 
-        Logger.info('SkateQuest Mobile app initialized with system UI configured');
+        Logger.info('SkateQuest Mobile app initialized');
       } catch (error) {
         Logger.error('App initialization failed:', error);
         throw error;
@@ -57,19 +114,11 @@ export default function App() {
     <ErrorBoundary>
       <NetworkProvider>
         <AuthProvider>
-          <NavigationContainer>
-            <StatusBar style="light" />
-            <OfflineIndicator />
-            <PortalDimensionLogo />
-            <Toast />
-
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Onboarding" component={Onboarding} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Signup" component={SignupScreen} />
-              <Stack.Screen name="Main" component={ChallengeApp} />
-            </Stack.Navigator>
-          </NavigationContainer>
+          <StatusBar style="light" />
+          <OfflineIndicator />
+          <PortalDimensionLogo />
+          <Toast />
+          <RootNavigator />
         </AuthProvider>
       </NetworkProvider>
     </ErrorBoundary>
