@@ -9,6 +9,7 @@ import Mapbox from '@rnmapbox/maps';
 
 import ChallengeApp from './components/ChallengeApp';
 import AuthProvider, { useAuth } from './contexts/AuthContext';
+import { ChallengeProvider } from './contexts/ChallengeContext';
 import { NetworkProvider } from './contexts/NetworkContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -119,11 +120,13 @@ export default function App() {
     <ErrorBoundary>
       <NetworkProvider>
         <AuthProvider>
-          <StatusBar style="light" />
-          <OfflineIndicator />
-          <PortalDimensionLogo />
-          <Toast />
-          <RootNavigator />
+          <ChallengeProvider>
+            <StatusBar style="light" />
+            <OfflineIndicator />
+            <PortalDimensionLogo />
+            <Toast />
+            <RootNavigator />
+          </ChallengeProvider>
         </AuthProvider>
       </NetworkProvider>
     </ErrorBoundary>

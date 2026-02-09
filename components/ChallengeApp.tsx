@@ -10,46 +10,39 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
+import { useChallenges } from '../contexts/ChallengeContext';
 
+// Components
+import HomeScreen from './HomeScreen';
+import LevelUpModal from './LevelUpModal';
+
+// Screens already wired into tabs
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
-import LevelUpModal from './LevelUpModal';
+
+// Previously orphaned screens — now accessible via stack navigation
+import MapScreen from '../screens/MapScreen';
+import FeedScreen from '../screens/FeedScreen';
+import ShopsScreen from '../screens/ShopsScreen';
+import EventsScreen from '../screens/EventsScreen';
+import PlaylistsScreen from '../screens/PlaylistsScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import UploadMediaScreen from '../screens/UploadMediaScreen';
+import TrickTrackerScreen from '../screens/TrickTrackerScreen';
+import SkateGameScreen from '../screens/SkateGameScreen';
+import GameDetailScreen from '../screens/GameDetailScreen';
+import AddSpotScreen from '../screens/AddSpotScreen';
+import SpotDetailScreen from '../screens/SpotDetailScreen';
+import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
+import CallOutsScreen from '../screens/CallOutsScreen';
+import JudgesBoothScreen from '../screens/JudgesBoothScreen';
+import ChallengesScreen from '../screens/ChallengesScreen';
 
 /* ---------------------------------------------------------
-   SCREENS
+   INLINE SCREENS (challenge list/detail — tightly coupled to nav)
 --------------------------------------------------------- */
-
-function HomeScreen({ navigation }: any) {
-  const { xp, level, challenges } = useChallenges();
-  const completedCount = challenges.filter((c: any) => c.completed).length;
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <Text style={styles.title}>SkateQuest</Text>
-      <Text style={styles.subtitle}>
-        Level {level} · {xp} XP
-      </Text>
-      <Text style={styles.text}>
-        Completed challenges: {completedCount} / {challenges.length}
-      </Text>
-
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('ChallengesTab')}>
-        <Text style={styles.buttonText}>View Challenges</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.buttonSecondary}
-        onPress={() => navigation.navigate('SpotsTab')}
-      >
-        <Text style={styles.buttonText}>Explore Spots</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
 
 function ChallengeListScreen({ navigation }: any) {
   const { challenges } = useChallenges();
@@ -177,17 +170,29 @@ function InnerApp() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+        <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Feed" component={FeedScreen} />
+        <Stack.Screen name="Shops" component={ShopsScreen} />
+        <Stack.Screen name="Events" component={EventsScreen} />
+        <Stack.Screen name="Playlists" component={PlaylistsScreen} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+        <Stack.Screen name="UploadMedia" component={UploadMediaScreen} />
+        <Stack.Screen name="TrickTracker" component={TrickTrackerScreen} />
+        <Stack.Screen name="SkateGame" component={SkateGameScreen} />
+        <Stack.Screen name="GameDetail" component={GameDetailScreen} />
+        <Stack.Screen name="AddSpot" component={AddSpotScreen} />
+        <Stack.Screen name="SpotDetail" component={SpotDetailScreen} />
+        <Stack.Screen name="QRScanner" component={QRCodeScannerScreen} />
+        <Stack.Screen name="CallOuts" component={CallOutsScreen} />
+        <Stack.Screen name="JudgesBooth" component={JudgesBoothScreen} />
+        <Stack.Screen name="Challenges" component={ChallengesScreen} />
       </Stack.Navigator>
     </>
   );
 }
 
 export default function ChallengeApp() {
-  return (
-    <ChallengeProvider>
-      <InnerApp />
-    </ChallengeProvider>
-  );
+  return <InnerApp />;
 }
 
 /* ---------------------------------------------------------
