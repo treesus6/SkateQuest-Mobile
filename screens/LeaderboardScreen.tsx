@@ -1,51 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
+import { getLeaderboard } from '../services/leaderboard';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 export default function LeaderboardScreen() {
   const [leaders, setLeaders] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useRealtimeSubscription([{
+    channel: 'leaderboard-changes',
+    table: 'profiles',
+    onPayload: () => loadLeaderboard(),
+  }]);
+
   useEffect(() => {
     loadLeaderboard();
-
-    // Real-time subscription
-    const subscription = supabase
-      .channel('leaderboard-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles',
-        },
-        () => {
-          loadLeaderboard();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const loadLeaderboard = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('xp', { ascending: false })
-        .limit(100);
-
-      if (error) {
-        console.error('Error loading leaderboard:', error);
-      } else {
-        setLeaders(data || []);
-      }
+      const data = await getLeaderboard();
+      setLeaders(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading leaderboard:', error);
     } finally {
       setLoading(false);
     }

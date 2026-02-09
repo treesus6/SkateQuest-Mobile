@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { Activity } from '../types';
+import { getFeedActivities } from '../services/activities';
+import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
 const { width } = Dimensions.get('window');
 
@@ -21,51 +22,22 @@ export default function FeedScreen({ navigation }: any) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useRealtimeSubscription([{
+    channel: 'feed-updates',
+    table: 'activities',
+    onPayload: () => loadFeed(),
+  }]);
+
   useEffect(() => {
     loadFeed();
-
-    // Real-time subscription
-    const subscription = supabase
-      .channel('feed-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'activities',
-        },
-        () => {
-          loadFeed();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const loadFeed = async () => {
     try {
-      const { data, error } = await supabase
-        .from('activities')
-        .select(
-          `
-          *,
-          user:users(id, username, level, xp),
-          media(*)
-        `
-        )
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Error loading feed:', error);
-      } else {
-        setActivities(data || []);
-      }
+      const data = await getFeedActivities();
+      setActivities(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading feed:', error);
     } finally {
       setLoading(false);
     }

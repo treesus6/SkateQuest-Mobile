@@ -10,7 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import * as crewService from '../services/crews';
 
 interface Crew {
   id: string;
@@ -36,42 +36,23 @@ export default function CrewsScreen() {
 
   const loadCrews = async () => {
     try {
-      const { data, error } = await supabase
-        .from('crews')
-        .select('*')
-        .order('total_xp', { ascending: false });
-
-      if (error) {
-        console.error('Error loading crews:', error);
-      } else {
-        setCrews(data || []);
-      }
+      const data = await crewService.getCrews();
+      setCrews(data as Crew[]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading crews:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const createCrew = async () => {
-    if (!newCrewName.trim()) {
+    if (!newCrewName.trim() || !user) {
       Alert.alert('Error', 'Please enter a crew name');
       return;
     }
 
     try {
-      const { error } = await supabase.from('crews').insert([
-        {
-          name: newCrewName.trim(),
-          description: newCrewDescription.trim(),
-          created_by: user?.id,
-          member_count: 1,
-          total_xp: 0,
-        },
-      ]);
-
-      if (error) throw error;
-
+      await crewService.createCrew(newCrewName.trim(), newCrewDescription.trim(), user.id);
       setNewCrewName('');
       setNewCrewDescription('');
       setShowCreateModal(false);
@@ -88,16 +69,9 @@ export default function CrewsScreen() {
       {
         text: 'Join',
         onPress: async () => {
+          if (!user) return;
           try {
-            const { error } = await supabase.from('crew_members').insert([
-              {
-                crew_id: crewId,
-                user_id: user?.id,
-              },
-            ]);
-
-            if (error) throw error;
-
+            await crewService.joinCrew(crewId, user.id);
             Alert.alert('Success', 'Joined crew!');
             loadCrews();
           } catch (error: any) {

@@ -11,8 +11,8 @@ import {
   Linking,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { Playlist } from '../types';
+import * as playlistService from '../services/playlists';
 
 export default function PlaylistsScreen() {
   const { user } = useAuth();
@@ -33,24 +33,10 @@ export default function PlaylistsScreen() {
 
   const loadPlaylists = async () => {
     try {
-      const { data, error } = await supabase
-        .from('playlists')
-        .select(
-          `
-          *,
-          user:users(id, username, level)
-        `
-        )
-        .eq('is_public', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading playlists:', error);
-      } else {
-        setPlaylists(data || []);
-      }
+      const data = await playlistService.getPublicPlaylists();
+      setPlaylists(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading playlists:', error);
     } finally {
       setLoading(false);
     }
@@ -65,21 +51,14 @@ export default function PlaylistsScreen() {
     }
 
     try {
-      const { error } = await supabase.from('playlists').insert([
-        {
-          user_id: user.id,
-          name: newPlaylist.name.trim(),
-          description: newPlaylist.description.trim() || null,
-          spotify_url: newPlaylist.spotifyUrl.trim() || null,
-          apple_music_url: newPlaylist.appleMusicUrl.trim() || null,
-          youtube_url: newPlaylist.youtubeUrl.trim() || null,
-          is_public: true,
-        },
-      ]);
-
-      if (error) {
-        throw error;
-      }
+      await playlistService.createPlaylist({
+        userId: user.id,
+        name: newPlaylist.name.trim(),
+        description: newPlaylist.description.trim(),
+        spotifyUrl: newPlaylist.spotifyUrl.trim(),
+        appleMusicUrl: newPlaylist.appleMusicUrl.trim(),
+        youtubeUrl: newPlaylist.youtubeUrl.trim(),
+      });
 
       Alert.alert('Success', 'Playlist shared!');
       setShowModal(false);
@@ -100,26 +79,7 @@ export default function PlaylistsScreen() {
     if (!user) return;
 
     try {
-      const { error } = await supabase.from('playlist_likes').insert([
-        {
-          playlist_id: playlistId,
-          user_id: user.id,
-        },
-      ]);
-
-      if (error) {
-        if (error.code === '23505') {
-          // Already liked, unlike it
-          await supabase
-            .from('playlist_likes')
-            .delete()
-            .eq('playlist_id', playlistId)
-            .eq('user_id', user.id);
-        } else {
-          throw error;
-        }
-      }
-
+      await playlistService.togglePlaylistLike(playlistId, user.id);
       loadPlaylists();
     } catch (error: any) {
       console.error('Error:', error);

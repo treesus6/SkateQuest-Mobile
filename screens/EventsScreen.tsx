@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  date: string;
-  time: string;
-  created_by: string;
-  attendee_count: number;
-}
+import { getUpcomingEvents, rsvpToEvent, type Event } from '../services/events';
 
 export default function EventsScreen() {
   const { user } = useAuth();
@@ -25,20 +14,10 @@ export default function EventsScreen() {
 
   const loadEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .gte('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: true })
-        .order('time', { ascending: true });
-
-      if (error) {
-        console.error('Error loading events:', error);
-      } else {
-        setEvents(data || []);
-      }
+      const data = await getUpcomingEvents();
+      setEvents(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading events:', error);
     } finally {
       setLoading(false);
     }
@@ -50,26 +29,17 @@ export default function EventsScreen() {
       {
         text: 'RSVP',
         onPress: async () => {
+          if (!user) return;
           try {
-            const { error } = await supabase.from('event_rsvps').insert([
-              {
-                event_id: eventId,
-                user_id: user?.id,
-              },
-            ]);
-
-            if (error) {
-              if (error.code === '23505') {
-                Alert.alert('Already registered', 'You already RSVPed to this event!');
-              } else {
-                throw error;
-              }
-            } else {
-              Alert.alert('Success', 'RSVP confirmed!');
-              loadEvents();
-            }
+            await rsvpToEvent(eventId, user.id);
+            Alert.alert('Success', 'RSVP confirmed!');
+            loadEvents();
           } catch (error: any) {
-            Alert.alert('Error', error.message);
+            if (error.code === '23505') {
+              Alert.alert('Already registered', 'You already RSVPed to this event!');
+            } else {
+              Alert.alert('Error', error.message);
+            }
           }
         },
       },

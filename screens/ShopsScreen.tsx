@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { Shop } from '../types';
+import { getShops } from '../services/shops';
 
 export default function ShopsScreen() {
   const [shops, setShops] = useState<Shop[]>([]);
@@ -13,19 +13,10 @@ export default function ShopsScreen() {
 
   const loadShops = async () => {
     try {
-      const { data, error } = await supabase
-        .from('shops')
-        .select('*')
-        .order('verified', { ascending: false })
-        .order('name');
-
-      if (error) {
-        console.error('Error loading shops:', error);
-      } else {
-        setShops(data || []);
-      }
+      const data = await getShops();
+      setShops(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading shops:', error);
     } finally {
       setLoading(false);
     }

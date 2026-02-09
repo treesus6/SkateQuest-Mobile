@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { Challenge } from '../types';
+import * as challengeService from '../services/challenges';
 
 export default function ChallengesScreen() {
   const { user } = useAuth();
@@ -15,19 +15,10 @@ export default function ChallengesScreen() {
 
   const loadChallenges = async () => {
     try {
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading challenges:', error);
-      } else {
-        setChallenges(data || []);
-      }
+      const data = await challengeService.getActiveChallenges();
+      setChallenges(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading challenges:', error);
     } finally {
       setLoading(false);
     }
@@ -45,39 +36,9 @@ export default function ChallengesScreen() {
           text: 'Complete',
           onPress: async () => {
             try {
-              // Update challenge status
-              const { error: challengeError } = await supabase
-                .from('challenges')
-                .update({
-                  status: 'completed',
-                  completed_by: user.id,
-                  completed_at: new Date().toISOString(),
-                })
-                .eq('id', challenge.id);
-
-              if (challengeError) throw challengeError;
-
-              // Update user XP
-              const { data: userData, error: userError } = await supabase
-                .from('profiles')
-                .select('xp, challenges_completed')
-                .eq('id', user.id)
-                .single();
-
-              if (userError) throw userError;
-
-              const updatedChallenges = [...(userData.challenges_completed || []), challenge.id];
-
-              await supabase
-                .from('profiles')
-                .update({
-                  xp: (userData.xp || 0) + challenge.xp_reward,
-                  challenges_completed: updatedChallenges,
-                })
-                .eq('id', user.id);
-
+              await challengeService.completeChallenge(challenge.id, user.id, challenge.xp_reward);
               Alert.alert('Success', `You earned ${challenge.xp_reward} XP!`);
-              loadChallenges(); // Reload challenges
+              loadChallenges();
             } catch (error: any) {
               Alert.alert('Error', error.message);
             }
