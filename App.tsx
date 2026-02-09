@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -52,9 +53,13 @@ function RootNavigator() {
     setIsOnboardingComplete(true);
   };
 
-  // Show nothing while checking onboarding or auth status
+  // Show loading indicator while checking onboarding or auth status
   if (isCheckingOnboarding || loading) {
-    return null;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#d2673d' }}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
   }
 
   // Show onboarding if not completed

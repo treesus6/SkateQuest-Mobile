@@ -27,7 +27,7 @@ export async function initializeAnalytics(): Promise<void> {
       api_host: host,
       autocapture: false,
       capture_pageview: false,
-      persistence: 'localStorage',
+      persistence: 'memory',
     });
 
     // Set initial device properties

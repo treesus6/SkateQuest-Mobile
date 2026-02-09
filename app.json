@@ -64,12 +64,6 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow SkateQuest to use your location to find nearby skate spots."
         }
-      ],
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsVersion": "11.0.0"
-        }
       ]
     ],
 
