@@ -1,9 +1,6 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-
-const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -19,62 +16,23 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.icon}>🛹</Text>
-        <Text style={styles.title}>Welcome to SkateQuest</Text>
-        <Text style={styles.description}>
+    <View className="flex-1 bg-brand-dark justify-between p-5">
+      <View className="flex-1 justify-center items-center px-5">
+        <Text className="text-[120px] mb-10">🛹</Text>
+        <Text className="text-3xl font-bold text-text-primary text-center mb-5">
+          Welcome to SkateQuest
+        </Text>
+        <Text className="text-base text-text-secondary text-center leading-6 max-w-[320px]">
           Find skateparks, track tricks, complete challenges, and connect with skaters worldwide.
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
-        <Text style={styles.buttonText}>Let's Go!</Text>
+      <TouchableOpacity
+        className="bg-brand-orange rounded-xl py-4 items-center"
+        onPress={handleGetStarted}
+      >
+        <Text className="text-white text-lg font-bold">Let's Go!</Text>
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'space-between',
-    padding: 20,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  icon: {
-    fontSize: 120,
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 24,
-    maxWidth: 320,
-  },
-  button: {
-    backgroundColor: '#d2673d',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
