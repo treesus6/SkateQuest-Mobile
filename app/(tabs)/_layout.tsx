@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useChallenges } from '../../contexts/ChallengeContext';
 import LevelUpModal from '../../components/LevelUpModal';
-
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
-  return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
-}
 
 export default function TabLayout() {
   const { level } = useChallenges();
@@ -31,12 +27,12 @@ export default function TabLayout() {
           tabBarStyle: { backgroundColor: '#05070B', borderTopColor: '#1F2A3C' },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} /> }} />
-        <Tabs.Screen name="challenges" options={{ title: 'Challenges', tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" focused={focused} /> }} />
-        <Tabs.Screen name="spots" options={{ title: 'Spots', tabBarIcon: ({ focused }) => <TabIcon emoji="📍" focused={focused} /> }} />
-        <Tabs.Screen name="crew" options={{ title: 'Crew', tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} /> }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ focused }) => <TabIcon emoji="🛹" focused={focused} /> }} />
-        <Tabs.Screen name="daily" options={{ title: 'Daily', tabBarIcon: ({ focused }) => <TabIcon emoji="🔥" focused={focused} /> }} />
+        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }} />
+        <Tabs.Screen name="challenges" options={{ title: 'Challenges', tabBarIcon: ({ color, size }) => <Ionicons name="trophy" size={size} color={color} /> }} />
+        <Tabs.Screen name="spots" options={{ title: 'Spots', tabBarIcon: ({ color, size }) => <Ionicons name="location" size={size} color={color} /> }} />
+        <Tabs.Screen name="crew" options={{ title: 'Crew', tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
+        <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }} />
+        <Tabs.Screen name="daily" options={{ title: 'Daily', tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} /> }} />
       </Tabs>
     </>
   );
