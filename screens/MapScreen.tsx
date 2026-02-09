@@ -11,7 +11,7 @@ import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../types/navigation';
 import { supabase } from '../lib/supabase';
 import { SkateSpot } from '../types';
 import MapStyleSelector from '../components/MapStyleSelector';
