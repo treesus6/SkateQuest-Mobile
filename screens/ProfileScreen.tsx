@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
+import * as profileService from '../services/profiles';
 
 interface LevelProgress {
   current_level: number;
@@ -28,60 +28,28 @@ export default function ProfileScreen() {
   }, [user]);
 
   const loadProfile = async () => {
+    if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
+      let data = await profileService.getProfile(user.id);
 
-      if (error && error.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        await createProfile();
-      } else if (error) {
-        console.error('Error loading profile:', error);
-      } else {
-        setProfile(data);
+      if (!data) {
+        data = await profileService.createProfile(user.id);
+      }
 
-        // Load level progress
-        if (data && data.xp !== undefined) {
-          const { data: progressData, error: progressError } = await supabase.rpc(
-            'get_level_progress',
-            { user_xp: data.xp }
-          );
+      setProfile(data);
 
-          if (!progressError && progressData) {
-            setLevelProgress(progressData);
-          }
+      if (data && data.xp !== undefined) {
+        try {
+          const progressData = await profileService.getLevelProgress(data.xp);
+          if (progressData) setLevelProgress(progressData);
+        } catch {
+          // Level progress RPC may not exist yet
         }
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const createProfile = async () => {
-    if (!user) return;
-
-    const newProfile: Partial<UserProfile> = {
-      id: user.id,
-      username: `Skater${Math.floor(Math.random() * 10000)}`,
-      level: 1,
-      xp: 0,
-      spots_added: 0,
-      challenges_completed: [],
-      streak: 0,
-      badges: {},
-    };
-
-    const { data, error } = await supabase.from('profiles').insert([newProfile]).select().single();
-
-    if (error) {
-      console.error('Error creating profile:', error);
-    } else {
-      setProfile(data);
     }
   };
 

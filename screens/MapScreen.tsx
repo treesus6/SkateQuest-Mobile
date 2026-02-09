@@ -12,8 +12,8 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { supabase } from '../lib/supabase';
 import { SkateSpot } from '../types';
+import { getNearbySpots } from '../services/spots';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 
@@ -73,33 +73,10 @@ export default function MapScreen() {
 
   const loadSpots = async (lat: number, lng: number) => {
     try {
-      // Use PostGIS to query spots within radius
-      const radiusMeters = SEARCH_RADIUS_KM * 1000;
-
-      const { data, error } = await supabase.rpc('get_nearby_spots', {
-        lat,
-        lng,
-        radius_meters: radiusMeters,
-      });
-
-      if (error) {
-        console.error('Error loading nearby spots:', error);
-        // Fallback: load all spots if the RPC function doesn't exist
-        const { data: allData, error: allError } = await supabase
-          .from('skate_spots')
-          .select('*')
-          .limit(500);
-
-        if (allError) {
-          console.error('Error loading spots:', allError);
-        } else {
-          setSpots(allData || []);
-        }
-      } else {
-        setSpots(data || []);
-      }
+      const data = await getNearbySpots(lat, lng, SEARCH_RADIUS_KM);
+      setSpots(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading spots:', error);
     } finally {
       setLoading(false);
     }

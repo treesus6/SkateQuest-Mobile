@@ -15,7 +15,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { createSpot } from '../services/spots';
+import { incrementSpotsAdded } from '../services/profiles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddSpot'>;
 type AddSpotRouteProp = RouteProp<RootStackParamList, 'AddSpot'>;
@@ -103,38 +104,21 @@ export default function AddSpotScreen() {
     try {
       const tricksArray = tricks ? tricks.split(',').map(t => t.trim()) : [];
 
-      const { error } = await supabase.from('skate_spots').insert([
-        {
-          name,
-          latitude: lat,
-          longitude: lng,
-          difficulty,
-          spot_type: spotType,
-          obstacles,
-          bust_risk: spotType === 'street' ? bustRisk : null,
-          has_qr: hasQR,
-          tricks: tricksArray,
-          added_by: user?.id,
-        },
-      ]);
+      await createSpot({
+        name,
+        latitude: lat,
+        longitude: lng,
+        difficulty,
+        spot_type: spotType,
+        obstacles,
+        bust_risk: spotType === 'street' ? bustRisk : null,
+        has_qr: hasQR,
+        tricks: tricksArray,
+        added_by: user?.id || '',
+      });
 
-      if (error) throw error;
-
-      // Update user's spots_added count
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('spots_added, xp')
-        .eq('id', user?.id)
-        .single();
-
-      if (userData) {
-        await supabase
-          .from('profiles')
-          .update({
-            spots_added: (userData.spots_added || 0) + 1,
-            xp: (userData.xp || 0) + 100,
-          })
-          .eq('id', user?.id);
+      if (user) {
+        await incrementSpotsAdded(user.id);
       }
 
       Alert.alert('Success', 'Spot added! You earned 100 XP!', [

@@ -10,8 +10,10 @@ import {
   Modal,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { UserTrick } from '../types';
+import * as trickService from '../services/tricks';
+import * as profileService from '../services/profiles';
+import { logActivity } from '../services/activities';
 
 const COMMON_TRICKS = [
   'Ollie',
@@ -48,20 +50,12 @@ const TrickTrackerScreen = memo(() => {
   }, [user]);
 
   const loadTricks = async () => {
+    if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('user_tricks')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading tricks:', error);
-      } else {
-        setTricks(data || []);
-      }
+      const data = await trickService.getUserTricks(user.id);
+      setTricks(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading tricks:', error);
     } finally {
       setLoading(false);
     }
@@ -71,32 +65,16 @@ const TrickTrackerScreen = memo(() => {
     if (!newTrickName.trim() || !user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_tricks')
-        .insert([
-          {
-            user_id: user.id,
-            trick_name: newTrickName.trim(),
-            status: 'trying',
-            attempts: 0,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === '23505') {
-          Alert.alert('Error', 'You already have this trick in your list');
-        } else {
-          throw error;
-        }
-      } else {
-        setTricks([data, ...tricks]);
-        setNewTrickName('');
-        setShowAddModal(false);
-      }
+      const data = await trickService.addTrick(user.id, newTrickName.trim());
+      setTricks([data, ...tricks]);
+      setNewTrickName('');
+      setShowAddModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (error.code === '23505') {
+        Alert.alert('Error', 'You already have this trick in your list');
+      } else {
+        Alert.alert('Error', error.message);
+      }
     }
   };
 
@@ -104,78 +82,39 @@ const TrickTrackerScreen = memo(() => {
     trick: UserTrick,
     newStatus: 'trying' | 'landed' | 'consistent'
   ) => {
-    const updates: any = {
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (newStatus === 'landed' && trick.status === 'trying') {
-      updates.first_landed_at = new Date().toISOString();
-
-      // Create activity for landing a trick
-      const { error: activityError } = await supabase.from('activities').insert([
-        {
-          user_id: user?.id,
-          activity_type: 'trick_landed',
+    try {
+      if (newStatus === 'landed' && trick.status === 'trying' && user) {
+        await logActivity({
+          userId: user.id,
+          type: 'trick_landed',
           title: `Landed a ${trick.trick_name}!`,
-          xp_earned: 25,
-        },
-      ]);
-
-      if (activityError) {
-        console.warn('Failed to create activity:', activityError);
-      }
-
-      // Award XP using RPC function for atomicity
-      try {
-        const { error: xpError } = await supabase.rpc('increment_xp', {
-          user_id: user?.id,
-          amount: 25,
+          xpEarned: 25,
         });
 
-        if (xpError) {
-          // Fallback to manual update if RPC not available
-          const { data: userData, error: fetchError } = await supabase
-            .from('profiles')
-            .select('xp')
-            .eq('id', user?.id)
-            .single();
-
-          if (!fetchError && userData) {
-            await supabase
-              .from('profiles')
-              .update({ xp: userData.xp + 25 })
-              .eq('id', user?.id);
-          }
+        try {
+          await profileService.awardXP(user.id, 25);
+        } catch (xpErr) {
+          console.warn('Failed to award XP:', xpErr);
         }
-      } catch (xpErr) {
-        console.warn('Failed to award XP:', xpErr);
       }
-    }
 
-    const { error } = await supabase.from('user_tricks').update(updates).eq('id', trick.id);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
+      await trickService.updateTrickStatus(trick.id, newStatus);
       loadTricks();
+
       if (newStatus === 'landed' && trick.status === 'trying') {
         Alert.alert('🎉 Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
       }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   };
 
   const incrementAttempts = async (trick: UserTrick) => {
-    const { error } = await supabase
-      .from('user_tricks')
-      .update({
-        attempts: trick.attempts + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', trick.id);
-
-    if (!error) {
+    try {
+      await trickService.incrementAttempts(trick.id, trick.attempts);
       loadTricks();
+    } catch (error) {
+      console.error('Error incrementing attempts:', error);
     }
   };
 
@@ -186,10 +125,11 @@ const TrickTrackerScreen = memo(() => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase.from('user_tricks').delete().eq('id', trick.id);
-
-          if (!error) {
+          try {
+            await trickService.deleteTrick(trick.id);
             loadTricks();
+          } catch (error) {
+            console.error('Error deleting trick:', error);
           }
         },
       },
