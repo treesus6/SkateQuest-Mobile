@@ -3,6 +3,7 @@
     "name": "SkateQuest",
     "slug": "skatequest",
     "version": "1.0.0",
+    "scheme": "skatequest",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "description": "The ultimate skateboarding companion app. Find skate spots with an interactive map, track your trick progression, compete in SKATE games, complete challenges for XP, and level up your skating journey. Features AI trick analysis, social feed, crew system, and a comprehensive database of 27,000+ skateparks worldwide.",
