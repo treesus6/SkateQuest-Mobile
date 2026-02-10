@@ -57,7 +57,7 @@ module.exports = (() => {
     // Video files (some may already be in defaults)
     'mp4',
     'mov',
-    'avi'
+    'avi',
   ];
 
   // Keep default source extensions to maintain compatibility

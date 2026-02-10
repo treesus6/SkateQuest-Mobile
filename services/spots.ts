@@ -25,11 +25,7 @@ export async function getNearbySpots(lat: number, lng: number, radiusKm = 50) {
 }
 
 export async function getSpotById(spotId: string) {
-  const { data, error } = await supabase
-    .from('skate_spots')
-    .select('*')
-    .eq('id', spotId)
-    .single();
+  const { data, error } = await supabase.from('skate_spots').select('*').eq('id', spotId).single();
 
   if (error) throw error;
   return data as SkateSpot;
@@ -90,21 +86,30 @@ export async function createSpot(spot: {
 }
 
 export async function reportCondition(spotId: string, userId: string, condition: string) {
-  const { error } = await supabase.from('spot_conditions').insert([{
-    spot_id: spotId,
-    reported_by: userId,
-    condition,
-    expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-  }]);
+  const { error } = await supabase.from('spot_conditions').insert([
+    {
+      spot_id: spotId,
+      reported_by: userId,
+      condition,
+      expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+    },
+  ]);
   if (error) throw error;
 }
 
-export async function addSpotPhoto(spotId: string, mediaId: string, userId: string, isPrimary: boolean) {
-  const { error } = await supabase.from('spot_photos').insert([{
-    spot_id: spotId,
-    media_id: mediaId,
-    uploaded_by: userId,
-    is_primary: isPrimary,
-  }]);
+export async function addSpotPhoto(
+  spotId: string,
+  mediaId: string,
+  userId: string,
+  isPrimary: boolean
+) {
+  const { error } = await supabase.from('spot_photos').insert([
+    {
+      spot_id: spotId,
+      media_id: mediaId,
+      uploaded_by: userId,
+      is_primary: isPrimary,
+    },
+  ]);
   if (error) throw error;
 }

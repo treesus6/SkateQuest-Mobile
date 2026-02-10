@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useChallenges } from '../contexts/ChallengeContext';
+import { Challenge } from '../state/challengeStore';
 
 export default function HomeScreen({ navigation }: any) {
   const { xp, level, streakDays, dailyChallenges } = useChallenges();
@@ -27,7 +28,7 @@ export default function HomeScreen({ navigation }: any) {
 
       {/* DAILY CHALLENGES */}
       <Text style={styles.sectionTitle}>Today’s Challenges</Text>
-      {dailyChallenges.map(ch => (
+      {dailyChallenges.map((ch: Challenge) => (
         <TouchableOpacity
           key={ch.id}
           style={styles.card}

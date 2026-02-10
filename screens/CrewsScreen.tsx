@@ -11,16 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import * as crewService from '../services/crews';
-
-interface Crew {
-  id: string;
-  name: string;
-  description: string;
-  member_count: number;
-  total_xp: number;
-  created_by: string;
-  created_at: string;
-}
+import { Crew } from '../services/crews';
 
 export default function CrewsScreen() {
   const { user } = useAuth();
@@ -37,7 +28,7 @@ export default function CrewsScreen() {
   const loadCrews = async () => {
     try {
       const data = await crewService.getCrews();
-      setCrews(data as Crew[]);
+      setCrews(data);
     } catch (error) {
       console.error('Error loading crews:', error);
     } finally {
@@ -110,7 +101,7 @@ export default function CrewsScreen() {
       <FlatList
         data={crews}
         renderItem={renderCrew}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Crew) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadCrews}

@@ -67,7 +67,7 @@ export default function ChallengesScreen() {
       <FlatList
         data={challenges}
         renderItem={renderChallenge}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Challenge) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadChallenges}

@@ -17,7 +17,7 @@ import * as playlistService from '../services/playlists';
 export default function PlaylistsScreen() {
   const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newPlaylist, setNewPlaylist] = useState({
     name: '',
@@ -151,7 +151,7 @@ export default function PlaylistsScreen() {
       <FlatList
         data={playlists}
         renderItem={renderPlaylist}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Playlist) => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -175,14 +175,14 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="Playlist name *"
               value={newPlaylist.name}
-              onChangeText={text => setNewPlaylist({ ...newPlaylist, name: text })}
+              onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, name: text })}
             />
 
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Description (optional)"
               value={newPlaylist.description}
-              onChangeText={text => setNewPlaylist({ ...newPlaylist, description: text })}
+              onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, description: text })}
               multiline
               numberOfLines={2}
             />
@@ -192,7 +192,7 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://open.spotify.com/playlist/..."
               value={newPlaylist.spotifyUrl}
-              onChangeText={text => setNewPlaylist({ ...newPlaylist, spotifyUrl: text })}
+              onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, spotifyUrl: text })}
               autoCapitalize="none"
             />
 
@@ -201,7 +201,9 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://music.apple.com/..."
               value={newPlaylist.appleMusicUrl}
-              onChangeText={text => setNewPlaylist({ ...newPlaylist, appleMusicUrl: text })}
+              onChangeText={(text: string) =>
+                setNewPlaylist({ ...newPlaylist, appleMusicUrl: text })
+              }
               autoCapitalize="none"
             />
 
@@ -210,7 +212,7 @@ export default function PlaylistsScreen() {
               style={styles.input}
               placeholder="https://youtube.com/playlist?list=..."
               value={newPlaylist.youtubeUrl}
-              onChangeText={text => setNewPlaylist({ ...newPlaylist, youtubeUrl: text })}
+              onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, youtubeUrl: text })}
               autoCapitalize="none"
             />
 

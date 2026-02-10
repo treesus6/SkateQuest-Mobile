@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking } from 'react-native';
 import { Shop } from '../types';
 import { getShops } from '../services/shops';
 
@@ -33,7 +33,7 @@ export default function ShopsScreen() {
     Linking.openURL(url);
   };
 
-  const openMaps = (lat: number, lng: number, name: string) => {
+  const openMaps = (lat: number, lng: number, _name: string) => {
     const url = `https://maps.google.com/?q=${lat},${lng}`;
     Linking.openURL(url);
   };
@@ -89,7 +89,7 @@ export default function ShopsScreen() {
       <FlatList
         data={shops}
         renderItem={renderShop}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Shop) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadShops}

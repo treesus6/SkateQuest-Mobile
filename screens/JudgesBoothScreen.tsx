@@ -44,22 +44,25 @@ export default function JudgesBoothScreen() {
     try {
       const { data, error } = await supabase
         .from('challenge_submissions')
-        .select(`
+        .select(
+          `
           *,
           profiles!challenge_submissions_user_id_fkey(username),
           challenges!challenge_submissions_challenge_id_fkey(description)
-        `)
+        `
+        )
         .eq('status', 'pending')
         .order('created_at', { ascending: true })
         .limit(20);
 
       if (error) throw error;
 
-      const formatted = data?.map((item: any) => ({
-        ...item,
-        username: item.profiles?.username || 'Unknown',
-        challenge_description: item.challenges?.description,
-      })) || [];
+      const formatted =
+        data?.map((item: any) => ({
+          ...item,
+          username: item.profiles?.username || 'Unknown',
+          challenge_description: item.challenges?.description,
+        })) || [];
 
       setSubmissions(formatted);
     } catch (error) {
@@ -90,7 +93,8 @@ export default function JudgesBoothScreen() {
       if (voteError) throw voteError;
 
       // Update vote counts
-      const newStomped = vote === 'stomped' ? submission.stomped_votes + 1 : submission.stomped_votes;
+      const newStomped =
+        vote === 'stomped' ? submission.stomped_votes + 1 : submission.stomped_votes;
       const newBail = vote === 'bail' ? submission.bail_votes + 1 : submission.bail_votes;
 
       // Check auto-approve/reject
@@ -136,9 +140,11 @@ export default function JudgesBoothScreen() {
       if (currentIndex < submissions.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
-        Alert.alert('All Done!', `You've reviewed all submissions!\n\nTotal XP earned: ${xpEarned + totalXP}`, [
-          { text: 'Awesome!', onPress: () => fetchPendingSubmissions() },
-        ]);
+        Alert.alert(
+          'All Done!',
+          `You've reviewed all submissions!\n\nTotal XP earned: ${xpEarned + totalXP}`,
+          [{ text: 'Awesome!', onPress: () => fetchPendingSubmissions() }]
+        );
       }
     } catch (error: any) {
       console.error('Error voting:', error);

@@ -36,12 +36,9 @@ const COMMON_TRICKS = [
 const TrickTrackerScreen = memo(() => {
   const { user } = useAuth();
   const [tricks, setTricks] = useState<UserTrick[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTrickName, setNewTrickName] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'trying' | 'landed' | 'consistent'>(
-    'trying'
-  );
 
   useEffect(() => {
     if (user) {
@@ -227,7 +224,7 @@ const TrickTrackerScreen = memo(() => {
       <FlatList
         data={tricks}
         renderItem={renderTrick}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: UserTrick) => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

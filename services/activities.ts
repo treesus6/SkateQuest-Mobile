@@ -13,16 +13,18 @@ export async function logActivity(params: {
   spotId?: string;
   challengeId?: string;
 }) {
-  const { error } = await supabase.from('activities').insert([{
-    user_id: params.userId,
-    activity_type: params.type,
-    title: params.title,
-    description: params.description,
-    xp_earned: params.xpEarned || 0,
-    media_id: params.mediaId,
-    spot_id: params.spotId,
-    challenge_id: params.challengeId,
-  }]);
+  const { error } = await supabase.from('activities').insert([
+    {
+      user_id: params.userId,
+      activity_type: params.type,
+      title: params.title,
+      description: params.description,
+      xp_earned: params.xpEarned || 0,
+      media_id: params.mediaId,
+      spot_id: params.spotId,
+      challenge_id: params.challengeId,
+    },
+  ]);
 
   if (error) {
     console.warn('Failed to log activity:', error);

@@ -2,18 +2,14 @@ import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 
 export async function getProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
   if (error && error.code === 'PGRST116') return null; // Not found
   if (error) throw error;
   return data as UserProfile;
 }
 
-export async function createProfile(userId: string, email?: string): Promise<UserProfile> {
+export async function createProfile(userId: string, _email?: string): Promise<UserProfile> {
   const newProfile: Partial<UserProfile> = {
     id: userId,
     username: `Skater${Math.floor(Math.random() * 10000)}`,
@@ -25,11 +21,7 @@ export async function createProfile(userId: string, email?: string): Promise<Use
     badges: {},
   };
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert([newProfile])
-    .select()
-    .single();
+  const { data, error } = await supabase.from('profiles').insert([newProfile]).select().single();
 
   if (error) throw error;
   return data as UserProfile;

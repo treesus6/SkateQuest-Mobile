@@ -15,12 +15,14 @@ export async function getUserTricks(userId: string) {
 export async function addTrick(userId: string, trickName: string) {
   const { data, error } = await supabase
     .from('user_tricks')
-    .insert([{
-      user_id: userId,
-      trick_name: trickName,
-      status: 'trying',
-      attempts: 0,
-    }])
+    .insert([
+      {
+        user_id: userId,
+        trick_name: trickName,
+        status: 'trying',
+        attempts: 0,
+      },
+    ])
     .select()
     .single();
 
@@ -41,10 +43,7 @@ export async function updateTrickStatus(
     updates.first_landed_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
-    .from('user_tricks')
-    .update(updates)
-    .eq('id', trickId);
+  const { error } = await supabase.from('user_tricks').update(updates).eq('id', trickId);
 
   if (error) throw error;
 }
@@ -62,10 +61,7 @@ export async function incrementAttempts(trickId: string, currentAttempts: number
 }
 
 export async function deleteTrick(trickId: string) {
-  const { error } = await supabase
-    .from('user_tricks')
-    .delete()
-    .eq('id', trickId);
+  const { error } = await supabase.from('user_tricks').delete().eq('id', trickId);
 
   if (error) throw error;
 }

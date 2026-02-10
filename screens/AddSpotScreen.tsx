@@ -48,7 +48,18 @@ export default function AddSpotScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
 
-  const OBSTACLES = ['Stairs', 'Handrail', 'Flatbar', 'Ledge', 'Hubba', 'Manual Pad', 'Quarterpipe', 'Bowl', 'Gap', 'Wallride'];
+  const OBSTACLES = [
+    'Stairs',
+    'Handrail',
+    'Flatbar',
+    'Ledge',
+    'Hubba',
+    'Manual Pad',
+    'Quarterpipe',
+    'Bowl',
+    'Gap',
+    'Wallride',
+  ];
 
   useEffect(() => {
     getUserLocation();
@@ -156,19 +167,11 @@ export default function AddSpotScreen() {
           />
 
           {/* User location */}
-          {userLocation && (
-            <Mapbox.UserLocation
-              visible={true}
-              showsUserHeadingIndicator={true}
-            />
-          )}
+          {userLocation && <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />}
 
           {/* Selected location marker */}
           {selectedCoordinates && (
-            <Mapbox.PointAnnotation
-              id="selected-spot"
-              coordinate={selectedCoordinates}
-            >
+            <Mapbox.PointAnnotation id="selected-spot" coordinate={selectedCoordinates}>
               <View style={styles.marker}>
                 <Text style={styles.markerText}>📍</Text>
               </View>
@@ -191,7 +194,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={latitude}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setLatitude(text);
             const lat = parseFloat(text);
             const lng = parseFloat(longitude);
@@ -208,7 +211,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={longitude}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setLongitude(text);
             const lat = parseFloat(latitude);
             const lng = parseFloat(text);
@@ -226,10 +229,7 @@ export default function AddSpotScreen() {
           {(['park', 'street', 'diy', 'quest', 'shop'] as const).map(type => (
             <TouchableOpacity
               key={type}
-              style={[
-                styles.typeButton,
-                spotType === type && styles.typeButtonActive,
-              ]}
+              style={[styles.typeButton, spotType === type && styles.typeButtonActive]}
               onPress={() => setSpotType(type)}
               disabled={submitting}
             >

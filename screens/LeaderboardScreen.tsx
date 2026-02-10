@@ -8,11 +8,13 @@ export default function LeaderboardScreen() {
   const [leaders, setLeaders] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useRealtimeSubscription([{
-    channel: 'leaderboard-changes',
-    table: 'profiles',
-    onPayload: () => loadLeaderboard(),
-  }]);
+  useRealtimeSubscription([
+    {
+      channel: 'leaderboard-changes',
+      table: 'profiles',
+      onPayload: () => loadLeaderboard(),
+    },
+  ]);
 
   useEffect(() => {
     loadLeaderboard();
@@ -56,7 +58,7 @@ export default function LeaderboardScreen() {
       <FlatList
         data={leaders}
         renderItem={renderLeader}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: UserProfile) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadLeaderboard} />}
         ListEmptyComponent={

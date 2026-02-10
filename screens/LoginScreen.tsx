@@ -14,7 +14,9 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <View className="flex-1 p-5 bg-brand-dark">
       <Text className="text-[32px] font-black text-text-primary mb-2">Welcome Back</Text>
-      <Text className="text-base text-text-secondary mb-5">Sign in to continue your SkateQuest</Text>
+      <Text className="text-base text-text-secondary mb-5">
+        Sign in to continue your SkateQuest
+      </Text>
 
       <TextInput
         className="bg-brand-card text-text-primary p-3 rounded-lg mb-3"
@@ -45,9 +47,7 @@ export default function LoginScreen({ navigation }: any) {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-        <Text className="text-brand-red mt-4 text-center">
-          Don't have an account? Sign up
-        </Text>
+        <Text className="text-brand-red mt-4 text-center">Don't have an account? Sign up</Text>
       </TouchableOpacity>
     </View>
   );

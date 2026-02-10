@@ -41,20 +41,14 @@ interface MapStyleSelectorProps {
   onStyleChange: (styleUrl: string) => void;
 }
 
-export default function MapStyleSelector({
-  currentStyle,
-  onStyleChange,
-}: MapStyleSelectorProps) {
+export default function MapStyleSelector({ currentStyle, onStyleChange }: MapStyleSelectorProps) {
   const [modalVisible, setModalVisible] = useState(false);
 
   const currentStyleInfo = MAP_STYLES.find(style => style.url === currentStyle) || MAP_STYLES[0];
 
   return (
     <>
-      <TouchableOpacity
-        style={styles.styleButton}
-        onPress={() => setModalVisible(true)}
-      >
+      <TouchableOpacity style={styles.styleButton} onPress={() => setModalVisible(true)}>
         <Text style={styles.styleButtonText}>{currentStyleInfo.icon}</Text>
       </TouchableOpacity>
 
@@ -71,10 +65,7 @@ export default function MapStyleSelector({
             {MAP_STYLES.map(style => (
               <TouchableOpacity
                 key={style.url}
-                style={[
-                  styles.styleOption,
-                  currentStyle === style.url && styles.styleOptionActive,
-                ]}
+                style={[styles.styleOption, currentStyle === style.url && styles.styleOptionActive]}
                 onPress={() => {
                   onStyleChange(style.url);
                   setModalVisible(false);
@@ -82,23 +73,15 @@ export default function MapStyleSelector({
               >
                 <Text style={styles.styleIcon}>{style.icon}</Text>
                 <Text
-                  style={[
-                    styles.styleName,
-                    currentStyle === style.url && styles.styleNameActive,
-                  ]}
+                  style={[styles.styleName, currentStyle === style.url && styles.styleNameActive]}
                 >
                   {style.name}
                 </Text>
-                {currentStyle === style.url && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
+                {currentStyle === style.url && <Text style={styles.checkmark}>✓</Text>}
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>

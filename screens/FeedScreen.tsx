@@ -7,26 +7,23 @@ import {
   Image,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
 import { Activity } from '../types';
 import { getFeedActivities } from '../services/activities';
 import { useRealtimeSubscription } from '../hooks/useRealtimeSubscription';
 
-const { width } = Dimensions.get('window');
-
 export default function FeedScreen({ navigation }: any) {
-  const { user } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useRealtimeSubscription([{
-    channel: 'feed-updates',
-    table: 'activities',
-    onPayload: () => loadFeed(),
-  }]);
+  useRealtimeSubscription([
+    {
+      channel: 'feed-updates',
+      table: 'activities',
+      onPayload: () => loadFeed(),
+    },
+  ]);
 
   useEffect(() => {
     loadFeed();
@@ -120,7 +117,7 @@ export default function FeedScreen({ navigation }: any) {
       <FlatList
         data={activities}
         renderItem={renderActivity}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Activity) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadFeed} />}
         ListEmptyComponent={

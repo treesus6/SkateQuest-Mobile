@@ -27,12 +27,60 @@ export default function TabLayout() {
           tabBarStyle: { backgroundColor: '#05070B', borderTopColor: '#1F2A3C' },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }} />
-        <Tabs.Screen name="challenges" options={{ title: 'Challenges', tabBarIcon: ({ color, size }) => <Ionicons name="trophy" size={size} color={color} /> }} />
-        <Tabs.Screen name="spots" options={{ title: 'Spots', tabBarIcon: ({ color, size }) => <Ionicons name="location" size={size} color={color} /> }} />
-        <Tabs.Screen name="crew" options={{ title: 'Crew', tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
-        <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }} />
-        <Tabs.Screen name="daily" options={{ title: 'Daily', tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} /> }} />
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="challenges"
+          options={{
+            title: 'Challenges',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="trophy" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="spots"
+          options={{
+            title: 'Spots',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="location" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="crew"
+          options={{
+            title: 'Crew',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="people" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="person" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="daily"
+          options={{
+            title: 'Daily',
+            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+              <Ionicons name="flame" size={size} color={color} />
+            ),
+          }}
+        />
       </Tabs>
     </>
   );

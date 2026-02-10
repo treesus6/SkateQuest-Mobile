@@ -154,7 +154,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e => {
+              onMomentumScrollEnd={(e: any) => {
                 const index = Math.round(e.nativeEvent.contentOffset.x / width);
                 setActivePhotoIndex(index);
               }}
@@ -248,10 +248,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       {/* Map Preview */}
       <View style={styles.mapCard}>
         <Text style={styles.cardTitle}>📍 Location</Text>
-        <TouchableOpacity
-          style={styles.mapContainer}
-          onPress={() => navigation.navigate('Map')}
-        >
+        <TouchableOpacity style={styles.mapContainer} onPress={() => navigation.navigate('Map')}>
           <Mapbox.MapView
             style={styles.map}
             styleURL={Mapbox.StyleURL.Street}
@@ -260,14 +257,8 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
             rotateEnabled={false}
             zoomEnabled={false}
           >
-            <Mapbox.Camera
-              zoomLevel={14}
-              centerCoordinate={[spot.longitude, spot.latitude]}
-            />
-            <Mapbox.PointAnnotation
-              id="spot-location"
-              coordinate={[spot.longitude, spot.latitude]}
-            >
+            <Mapbox.Camera zoomLevel={14} centerCoordinate={[spot.longitude, spot.latitude]} />
+            <Mapbox.PointAnnotation id="spot-location" coordinate={[spot.longitude, spot.latitude]}>
               <View style={styles.mapMarker}>
                 <Text style={styles.mapMarkerText}>📍</Text>
               </View>

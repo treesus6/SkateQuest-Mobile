@@ -54,7 +54,7 @@ const BASE_CHALLENGES: Challenge[] = [
   {
     id: 'ch_park_line',
     title: 'Park line',
-    description: 'Hit three obstacles in one line at a park you haven\'t skated this week.',
+    description: "Hit three obstacles in one line at a park you haven't skated this week.",
     xp: 300,
     difficulty: 'hard',
     completed: false,
@@ -79,49 +79,51 @@ function pickDailyChallenges(all: Challenge[], count: number): Challenge[] {
   }));
 }
 
-export const useChallengeStore = create<ChallengeState>((set, get) => ({
-  challenges: BASE_CHALLENGES,
-  dailyChallenges: pickDailyChallenges(BASE_CHALLENGES, 3),
-  xp: 0,
-  level: 1,
-  streakDays: 0,
-  lastCompletedDate: null,
+export const useChallengeStore = create<ChallengeState>(
+  (set: (partial: Partial<ChallengeState>) => void, get: () => ChallengeState) => ({
+    challenges: BASE_CHALLENGES,
+    dailyChallenges: pickDailyChallenges(BASE_CHALLENGES, 3),
+    xp: 0,
+    level: 1,
+    streakDays: 0,
+    lastCompletedDate: null,
 
-  completeChallenge: (id: string) => {
-    const state = get();
-    const challenge = state.challenges.find(c => c.id === id);
-    if (!challenge || challenge.completed) return;
+    completeChallenge: (id: string) => {
+      const state = get();
+      const challenge = state.challenges.find((c: Challenge) => c.id === id);
+      if (!challenge || challenge.completed) return;
 
-    const newXp = state.xp + challenge.xp;
-    const newLevel = 1 + Math.floor(newXp / 500);
+      const newXp = state.xp + challenge.xp;
+      const newLevel = 1 + Math.floor(newXp / 500);
 
-    // Update streak
-    const today = new Date().toISOString().slice(0, 10);
-    let newStreak = state.streakDays;
-    if (!state.lastCompletedDate) {
-      newStreak = 1;
-    } else if (state.lastCompletedDate !== today) {
-      const last = new Date(state.lastCompletedDate);
-      const current = new Date(today);
-      const diffDays = Math.round((current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-      newStreak = diffDays === 1 ? newStreak + 1 : 1;
-    }
+      // Update streak
+      const today = new Date().toISOString().slice(0, 10);
+      let newStreak = state.streakDays;
+      if (!state.lastCompletedDate) {
+        newStreak = 1;
+      } else if (state.lastCompletedDate !== today) {
+        const last = new Date(state.lastCompletedDate);
+        const current = new Date(today);
+        const diffDays = Math.round((current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+        newStreak = diffDays === 1 ? newStreak + 1 : 1;
+      }
 
-    set({
-      challenges: state.challenges.map(c =>
-        c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
-      ),
-      dailyChallenges: state.dailyChallenges.map(c =>
-        c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
-      ),
-      xp: newXp,
-      level: newLevel,
-      streakDays: newStreak,
-      lastCompletedDate: today,
-    });
-  },
+      set({
+        challenges: state.challenges.map((c: Challenge) =>
+          c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
+        ),
+        dailyChallenges: state.dailyChallenges.map((c: Challenge) =>
+          c.id === id ? { ...c, completed: true, completedAt: new Date().toISOString() } : c
+        ),
+        xp: newXp,
+        level: newLevel,
+        streakDays: newStreak,
+        lastCompletedDate: today,
+      });
+    },
 
-  resetDailyChallenges: () => {
-    set({ dailyChallenges: pickDailyChallenges(BASE_CHALLENGES, 3) });
-  },
-}));
+    resetDailyChallenges: () => {
+      set({ dailyChallenges: pickDailyChallenges(BASE_CHALLENGES, 3) });
+    },
+  })
+);

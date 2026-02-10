@@ -51,7 +51,7 @@ export default function CrewScreen() {
 
       <FlatList
         data={MOCK_CREW}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: CrewMember) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingVertical: 8 }}
       />

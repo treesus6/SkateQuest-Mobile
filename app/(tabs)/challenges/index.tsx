@@ -1,12 +1,13 @@
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useChallenges } from '../../../contexts/ChallengeContext';
+import { Challenge } from '../../../state/challengeStore';
 
 export default function ChallengeListScreen() {
   const { challenges } = useChallenges();
   const router = useRouter();
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({ item }: { item: Challenge }) => (
     <TouchableOpacity
       style={[styles.card, item.completed && styles.cardCompleted]}
       onPress={() => router.push(`/(tabs)/challenges/${item.id}`)}
@@ -21,7 +22,7 @@ export default function ChallengeListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList data={challenges} keyExtractor={i => i.id} renderItem={renderItem} />
+      <FlatList data={challenges} keyExtractor={(i: Challenge) => i.id} renderItem={renderItem} />
     </SafeAreaView>
   );
 }

@@ -20,10 +20,7 @@ interface SubscriptionConfig {
  * @param configs - Array of subscription configs (supports multiple per channel)
  * @param enabled - Whether subscriptions are active
  */
-export function useRealtimeSubscription(
-  configs: SubscriptionConfig[],
-  enabled = true
-) {
+export function useRealtimeSubscription(configs: SubscriptionConfig[], enabled = true) {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {

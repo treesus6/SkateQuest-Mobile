@@ -68,12 +68,7 @@ export default function MapFilters({ visible, onClose, filters, onFilterChange }
                   <Text style={styles.filterEmoji}>{emoji}</Text>
                   <Text style={styles.filterLabel}>{label}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.checkbox,
-                    localFilters[key] && { backgroundColor: color },
-                  ]}
-                >
+                <View style={[styles.checkbox, localFilters[key] && { backgroundColor: color }]}>
                   {localFilters[key] && <Text style={styles.checkmark}>✓</Text>}
                 </View>
               </TouchableOpacity>

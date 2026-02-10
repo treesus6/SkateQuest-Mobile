@@ -49,7 +49,9 @@ export default function QRGeocacheScanner({
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         setLocationPermission(true);
-        const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
         setUserLocation(location);
 
         const dist = calculateDistance(
@@ -171,7 +173,7 @@ export default function QRGeocacheScanner({
         .eq('spot_id', spotId)
         .single();
 
-      let ghostClipUrl;
+      let ghostClipUrl: string | undefined;
       if (ghostClip) {
         // Unlock ghost clip for user
         await supabase.from('user_unlocks').insert({
@@ -212,7 +214,10 @@ export default function QRGeocacheScanner({
         <TouchableOpacity style={styles.button} onPress={requestPermission}>
           <Text style={styles.buttonText}>Grant Permission</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, { marginTop: 10, backgroundColor: '#666' }]} onPress={onCancel}>
+        <TouchableOpacity
+          style={[styles.button, { marginTop: 10, backgroundColor: '#666' }]}
+          onPress={onCancel}
+        >
           <Text style={styles.buttonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -232,7 +237,12 @@ export default function QRGeocacheScanner({
             <Text style={styles.title}>Scan QR Geocache</Text>
             <Text style={styles.subtitle}>Must be within 15 meters!</Text>
             {distance !== null && (
-              <Text style={[styles.distance, distance <= PROXIMITY_THRESHOLD ? styles.distanceGood : styles.distanceBad]}>
+              <Text
+                style={[
+                  styles.distance,
+                  distance <= PROXIMITY_THRESHOLD ? styles.distanceGood : styles.distanceBad,
+                ]}
+              >
                 {Math.round(distance)}m away
               </Text>
             )}

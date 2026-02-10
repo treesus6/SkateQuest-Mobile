@@ -24,10 +24,12 @@ export async function getUpcomingEvents() {
 }
 
 export async function rsvpToEvent(eventId: string, userId: string) {
-  const { error } = await supabase.from('event_rsvps').insert([{
-    event_id: eventId,
-    user_id: userId,
-  }]);
+  const { error } = await supabase.from('event_rsvps').insert([
+    {
+      event_id: eventId,
+      user_id: userId,
+    },
+  ]);
 
   if (error) throw error;
 }

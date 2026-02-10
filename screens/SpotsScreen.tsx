@@ -35,7 +35,7 @@ export default function SpotsScreen() {
 
       <FlatList
         data={data}
-        keyExtractor={item => item.id || item.name}
+        keyExtractor={(item: Park) => item.id || item.name}
         renderItem={renderItem}
         contentContainerStyle={{ paddingVertical: 8 }}
       />

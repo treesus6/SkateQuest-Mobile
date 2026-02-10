@@ -85,7 +85,7 @@ export default function EventsScreen() {
       <FlatList
         data={events}
         renderItem={renderEvent}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: Event) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadEvents}

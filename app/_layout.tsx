@@ -26,9 +26,8 @@ const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 if (SENTRY_DSN) {
   Sentry.init({
     dsn: SENTRY_DSN,
-    enableInExpoDevelopment: false,
     debug: __DEV__,
-  });
+  } as Parameters<typeof Sentry.init>[0]);
 }
 
 // Initialize Mapbox
@@ -73,7 +72,14 @@ function RootLayoutNav() {
 
   if (isCheckingOnboarding || loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#d2673d' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#d2673d',
+        }}
+      >
         <ActivityIndicator size="large" color="#fff" />
       </View>
     );

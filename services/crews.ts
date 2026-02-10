@@ -5,7 +5,9 @@ export interface Crew {
   name: string;
   description?: string;
   xp: number;
+  total_xp: number;
   member_count?: number;
+  created_by?: string;
   created_at: string;
 }
 
@@ -29,21 +31,25 @@ export async function createCrew(name: string, description: string, creatorId: s
   if (error) throw error;
 
   // Auto-join creator
-  await supabase.from('crew_members').insert([{
-    crew_id: data.id,
-    user_id: creatorId,
-    role: 'leader',
-  }]);
+  await supabase.from('crew_members').insert([
+    {
+      crew_id: data.id,
+      user_id: creatorId,
+      role: 'leader',
+    },
+  ]);
 
   return data as Crew;
 }
 
 export async function joinCrew(crewId: string, userId: string) {
-  const { error } = await supabase.from('crew_members').insert([{
-    crew_id: crewId,
-    user_id: userId,
-    role: 'member',
-  }]);
+  const { error } = await supabase.from('crew_members').insert([
+    {
+      crew_id: crewId,
+      user_id: userId,
+      role: 'member',
+    },
+  ]);
 
   if (error) throw error;
 }

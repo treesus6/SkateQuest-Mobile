@@ -9,18 +9,15 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { SkateGame, SkateGameTurn, UserProfile } from '../types';
-import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
+import { SkateGame } from '../types';
 
 export default function SkateGameScreen({ navigation }: any) {
   const { user } = useAuth();
   const [games, setGames] = useState<SkateGame[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showNewGameModal, setShowNewGameModal] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<SkateGame | null>(null);
   const [opponentUsername, setOpponentUsername] = useState('');
 
   useEffect(() => {
@@ -77,7 +74,7 @@ export default function SkateGameScreen({ navigation }: any) {
       }
 
       // Create game
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('skate_games')
         .insert([
           {
@@ -106,10 +103,6 @@ export default function SkateGameScreen({ navigation }: any) {
   };
 
   const getGameStatus = (game: SkateGame) => {
-    const isChallenger = game.challenger_id === user?.id;
-    const myLetters = isChallenger ? game.challenger_letters : game.opponent_letters;
-    const opponentLetters = isChallenger ? game.opponent_letters : game.challenger_letters;
-
     if (game.status === 'completed') {
       if (game.winner_id === user?.id) {
         return '🏆 YOU WON!';
@@ -200,7 +193,7 @@ export default function SkateGameScreen({ navigation }: any) {
       <FlatList
         data={games}
         renderItem={renderGame}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: SkateGame) => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

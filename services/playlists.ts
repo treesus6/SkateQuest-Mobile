@@ -20,24 +20,28 @@ export async function createPlaylist(params: {
   appleMusicUrl?: string;
   youtubeUrl?: string;
 }) {
-  const { error } = await supabase.from('playlists').insert([{
-    user_id: params.userId,
-    name: params.name,
-    description: params.description || null,
-    spotify_url: params.spotifyUrl || null,
-    apple_music_url: params.appleMusicUrl || null,
-    youtube_url: params.youtubeUrl || null,
-    is_public: true,
-  }]);
+  const { error } = await supabase.from('playlists').insert([
+    {
+      user_id: params.userId,
+      name: params.name,
+      description: params.description || null,
+      spotify_url: params.spotifyUrl || null,
+      apple_music_url: params.appleMusicUrl || null,
+      youtube_url: params.youtubeUrl || null,
+      is_public: true,
+    },
+  ]);
 
   if (error) throw error;
 }
 
 export async function togglePlaylistLike(playlistId: string, userId: string) {
-  const { error } = await supabase.from('playlist_likes').insert([{
-    playlist_id: playlistId,
-    user_id: userId,
-  }]);
+  const { error } = await supabase.from('playlist_likes').insert([
+    {
+      playlist_id: playlistId,
+      user_id: userId,
+    },
+  ]);
 
   if (error) {
     if (error.code === '23505') {
