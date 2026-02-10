@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { Logger } from './logger';
+import { ServiceError } from './serviceError';
 
 export interface Crew {
   id: string;
@@ -12,30 +14,57 @@ export interface Crew {
 
 export const crewsService = {
   async getAll() {
-    return supabase
-      .from('crews')
-      .select('*')
-      .order('total_xp', { ascending: false });
+    try {
+      return await supabase
+        .from('crews')
+        .select('*')
+        .order('total_xp', { ascending: false });
+    } catch (error) {
+      Logger.error('crewsService.getAll failed', error);
+      throw new ServiceError(
+        'Failed to fetch crews',
+        'CREWS_GET_ALL_FAILED',
+        error
+      );
+    }
   },
 
   async create(crew: { name: string; description: string; created_by: string }) {
-    return supabase.from('crews').insert([
-      {
-        name: crew.name,
-        description: crew.description,
-        created_by: crew.created_by,
-        member_count: 1,
-        total_xp: 0,
-      },
-    ]);
+    try {
+      return await supabase.from('crews').insert([
+        {
+          name: crew.name,
+          description: crew.description,
+          created_by: crew.created_by,
+          member_count: 1,
+          total_xp: 0,
+        },
+      ]);
+    } catch (error) {
+      Logger.error('crewsService.create failed', error);
+      throw new ServiceError(
+        'Failed to create crew',
+        'CREWS_CREATE_FAILED',
+        error
+      );
+    }
   },
 
   async join(crewId: string, userId: string) {
-    return supabase.from('crew_members').insert([
-      {
-        crew_id: crewId,
-        user_id: userId,
-      },
-    ]);
+    try {
+      return await supabase.from('crew_members').insert([
+        {
+          crew_id: crewId,
+          user_id: userId,
+        },
+      ]);
+    } catch (error) {
+      Logger.error('crewsService.join failed', error);
+      throw new ServiceError(
+        'Failed to join crew',
+        'CREWS_JOIN_FAILED',
+        error
+      );
+    }
   },
 };
