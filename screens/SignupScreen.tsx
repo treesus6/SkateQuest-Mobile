@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function SignupScreen({ navigation }: any) {
-  const { signUp, loading } = useAuth();
+  const { signUp, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 

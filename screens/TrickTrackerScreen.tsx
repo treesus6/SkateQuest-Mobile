@@ -9,7 +9,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { UserTrick } from '../types';
 
@@ -32,7 +32,7 @@ const COMMON_TRICKS = [
 ];
 
 const TrickTrackerScreen = memo(() => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [tricks, setTricks] = useState<UserTrick[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);

@@ -11,7 +11,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 const PROXIMITY_THRESHOLD = 15; // 15 meters
@@ -31,7 +31,7 @@ export default function QRGeocacheScanner({
   onSuccess,
   onCancel,
 }: QRGeocacheScannerProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [permission, requestPermission] = useCameraPermissions();
   const [locationPermission, setLocationPermission] = useState(false);
   const [scanned, setScanned] = useState(false);

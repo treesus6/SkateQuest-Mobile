@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 interface TerritoryControlProps {
   spotId: string;
@@ -16,7 +16,7 @@ interface Territory {
 }
 
 export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [territory, setTerritory] = useState<Territory | null>(null);
   const [userCrew, setUserCrew] = useState<any>(null);
   const [loading, setLoading] = useState(true);

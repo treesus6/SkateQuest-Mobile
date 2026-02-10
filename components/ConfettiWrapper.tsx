@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // Optional confetti import - install with: bun add react-native-confetti-cannon
 let ConfettiCannon: any = null;
@@ -12,7 +12,7 @@ try {
 }
 
 export default function ConfettiWrapper({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const confettiRef = useRef<any>(null);
   const [shouldFireConfetti, setShouldFireConfetti] = useState(false);
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import * as Sentry from '@sentry/react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 
@@ -16,7 +16,7 @@ interface LevelProgress {
 }
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);

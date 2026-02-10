@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import {
   pickImage,
@@ -23,7 +23,7 @@ import {
 import { analyzeTrickVideo, saveAnalysisResult, TrickAnalysisResult } from '../lib/trickAnalyzer';
 
 export default function UploadMediaScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
   const [caption, setCaption] = useState('');

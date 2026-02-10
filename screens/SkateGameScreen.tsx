@@ -10,13 +10,13 @@ import {
   TextInput,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { SkateGame, SkateGameTurn, UserProfile } from '../types';
 import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
 
 export default function SkateGameScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [games, setGames] = useState<SkateGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewGameModal, setShowNewGameModal] = useState(false);

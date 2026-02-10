@@ -1,39 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useNetwork } from '../contexts/NetworkContext';
+import { View, Text } from 'react-native';
+import { useNetworkStore } from '../stores/useNetworkStore';
 
 const OfflineIndicator: React.FC = () => {
-  const { isConnected } = useNetwork();
+  const isConnected = useNetworkStore(s => s.isConnected);
 
   if (isConnected) {
     return null;
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>⚠️ No Internet Connection</Text>
-      <Text style={styles.subtext}>Some features may be limited</Text>
+    <View className="bg-red-400 py-2 px-4 items-center">
+      <Text className="text-white text-sm font-bold">No Internet Connection</Text>
+      <Text className="text-white text-xs mt-0.5">Some features may be limited</Text>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ff6b6b',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  text: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  subtext: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 2,
-  },
-});
 
 export default OfflineIndicator;

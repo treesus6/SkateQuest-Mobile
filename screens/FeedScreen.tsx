@@ -10,14 +10,14 @@ import {
   Dimensions,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { Activity } from '../types';
 
 const { width } = Dimensions.get('window');
 
 export default function FeedScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 

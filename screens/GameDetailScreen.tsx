@@ -11,14 +11,14 @@ import {
   TextInput,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { SkateGame, SkateGameTurn } from '../types';
 import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
 
 const GameDetailScreen = memo(({ route, navigation }: any) => {
   const { gameId } = route.params;
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [game, setGame] = useState<SkateGame | null>(null);
   const [turns, setTurns] = useState<SkateGameTurn[]>([]);
   const [loading, setLoading] = useState(true);

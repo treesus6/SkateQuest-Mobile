@@ -10,14 +10,14 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { CallOut, UserProfile, SkateSpot } from '../types';
 
 type TabType = 'received' | 'sent';
 
 const CallOutsScreen = memo(() => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [callOuts, setCallOuts] = useState<CallOut[]>([]);
   const [loading, setLoading] = useState(true);

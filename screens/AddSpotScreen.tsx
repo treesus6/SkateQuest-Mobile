@@ -14,7 +14,7 @@ import * as Location from 'expo-location';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddSpot'>;
@@ -25,7 +25,7 @@ const { height } = Dimensions.get('window');
 export default function AddSpotScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<AddSpotRouteProp>();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const cameraRef = useRef<Mapbox.Camera>(null);
 
   const [name, setName] = useState('');

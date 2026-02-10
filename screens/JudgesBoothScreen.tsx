@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,7 +27,7 @@ interface Submission {
 }
 
 export default function JudgesBoothScreen() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);

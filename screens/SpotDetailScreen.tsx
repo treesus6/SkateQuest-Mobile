@@ -13,7 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
@@ -23,7 +23,7 @@ const { width } = Dimensions.get('window');
 
 const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const { spotId } = route.params;
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [spot, setSpot] = useState<SkateSpot | null>(null);
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
   const [conditions, setConditions] = useState<SpotCondition[]>([]);

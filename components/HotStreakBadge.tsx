@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function HotStreakBadge() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
   const flameAnim = useRef(new Animated.Value(1)).current;

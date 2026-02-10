@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigation } from '@react-navigation/native';
 
 interface KingOfTheHillProps {
@@ -27,7 +27,7 @@ interface King {
 }
 
 export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const navigation = useNavigation();
   const [king, setKing] = useState<King | null>(null);
   const [loading, setLoading] = useState(true);

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
 
@@ -48,7 +48,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthStore();
 
   if (loading) {
     return (

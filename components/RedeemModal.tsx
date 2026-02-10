@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // Optional QR code import - install with: bun add react-native-qrcode-svg
 let QRCode: any = null;
@@ -27,7 +27,7 @@ interface RedeemModalProps {
 }
 
 export default function RedeemModal({ visible, dealId, dealTitle, onClose }: RedeemModalProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [redeemCode, setRedeemCode] = useState<string | null>(null);
 

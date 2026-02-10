@@ -9,14 +9,14 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 interface GhostClipViewerProps {
   spotId: string;
 }
 
 export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [ghostClip, setGhostClip] = useState<any>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [loading, setLoading] = useState(true);
