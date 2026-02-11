@@ -21,11 +21,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: 🏗 Setup Expo
+  uses: expo/expo-github-action@v8
+  with:
+    eas-version: latest
+    expo-version: latest
+    token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
@@ -45,3 +46,4 @@ jobs:
               repo: context.repo.repo,
               body: '## 📱 Expo Preview Build Ready!\n\nThe preview build has been created. To test:\n\n1. Install Expo Go on your device\n2. Run `npm start` locally\n3. Scan QR code to test changes\n\n**Commit**: ' + context.sha.substring(0, 7)
             })
+
