@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Sentry from '@sentry/react-native';
 import { Logger } from '../lib/logger';
 import { ServiceError } from '../lib/serviceError';
 import { useNetworkStore } from './useNetworkStore';
+import { logOfflineMutation } from '../lib/sentryUtils';
 
 const QUEUE_STORAGE_KEY = 'offline_mutation_queue';
 
@@ -70,12 +70,7 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
     await persistQueue(updated);
 
     Logger.info('Mutation queued for offline sync', { type, table, id: mutation.id });
-    Sentry.addBreadcrumb({
-      category: 'offline',
-      message: `Queued ${type} on ${table}`,
-      level: 'info',
-      data: { mutationId: mutation.id },
-    });
+    logOfflineMutation(type, table, mutation.id);
   },
 
   dequeue: async (id) => {
@@ -137,6 +132,10 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
 
   clear: async () => {
     set({ queue: [] });
-    await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
+    try {
+      await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
+    } catch (err) {
+      Logger.error('Failed to clear mutation queue storage', err);
+    }
   },
 }));

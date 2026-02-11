@@ -10,11 +10,12 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { AnimatedListItem, ScreenFadeIn, ShimmerSkeleton } from '../components/ui';
 import { EmptyStates } from '../components/EmptyState';
+import RetryBanner from '../components/RetryBanner';
 import { Haptics } from '../lib/haptics';
 
 export default function ChallengesScreen() {
   const { user } = useAuthStore();
-  const { data: challenges, loading, refetch } = useSupabaseQuery<Challenge[]>(
+  const { data: challenges, loading, error, refetch } = useSupabaseQuery<Challenge[]>(
     () => challengesService.getActive(),
     [],
     { cacheKey: 'challenges-active' }
@@ -98,6 +99,7 @@ export default function ChallengesScreen() {
           <Text className="text-2xl font-bold text-white text-center">Challenges</Text>
           <Text className="text-sm text-white/90 text-center mt-1">Complete challenges to earn XP</Text>
         </View>
+        <RetryBanner error={error} onRetry={refetch} loading={loading} />
         <FlatList
           data={challenges ?? []}
           renderItem={renderChallenge}

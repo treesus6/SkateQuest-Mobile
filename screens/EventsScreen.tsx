@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
 import { EmptyStates } from '../components/EmptyState';
+import RetryBanner from '../components/RetryBanner';
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -19,7 +20,7 @@ const formatDate = (dateString: string) => {
 
 export default function EventsScreen() {
   const user = useAuthStore(s => s.user);
-  const { data: events, loading, refetch } = useSupabaseQuery<Event[]>(
+  const { data: events, loading, error: queryError, refetch } = useSupabaseQuery<Event[]>(
     () => eventsService.getUpcoming(),
     []
   );
@@ -63,8 +64,8 @@ export default function EventsScreen() {
         {item.description ? (
           <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">{item.description}</Text>
         ) : null}
-        <Text className="text-sm text-gray-400 mb-1">{item.location}</Text>
-        <Text className="text-xs text-gray-300">{item.attendee_count} attending</Text>
+        <Text className="text-sm text-gray-400 dark:text-gray-500 mb-1">{item.location}</Text>
+        <Text className="text-xs text-gray-300 dark:text-gray-500">{item.attendee_count} attending</Text>
       </View>
 
       <View className="self-start ml-2">
@@ -82,6 +83,7 @@ export default function EventsScreen() {
           <Text className="text-sm text-white/90 text-center mt-1">Upcoming skate sessions</Text>
         </View>
 
+        <RetryBanner error={queryError} onRetry={refetch} loading={loading} />
         <FlatList
           data={events ?? []}
           renderItem={renderEvent}

@@ -1,9 +1,8 @@
-import * as Sentry from '@sentry/react-native';
 import { Logger } from './logger';
-import { ServiceError } from './serviceError';
 import { PersistentCache } from './persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
+import { logSyncEvent } from './sentryUtils';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 let syncTimer: ReturnType<typeof setInterval> | null = null;
@@ -14,16 +13,16 @@ export interface SyncDataSource {
 }
 
 /**
- * Execute a queued offline mutation against the backend.
- * Override this by passing a custom executor to processQueue.
+ * Default no-op executor that safely skips mutations and logs a warning.
+ * Consumers should provide a real executor that routes mutations
+ * to the appropriate service method.
  */
-async function defaultMutationExecutor(_mutation: OfflineMutation): Promise<void> {
-  // No-op default — consumers should provide their own executor
-  // that routes mutations to the appropriate service method.
-  throw new ServiceError(
-    'No mutation executor configured',
-    'SYNC_NO_EXECUTOR',
-  );
+async function defaultMutationExecutor(mutation: OfflineMutation): Promise<void> {
+  Logger.warn('No mutation executor configured — skipping mutation', {
+    id: mutation.id,
+    type: mutation.type,
+    table: mutation.table,
+  });
 }
 
 /**
@@ -64,12 +63,7 @@ export async function runSync(
   }
 
   const startTime = Date.now();
-
-  Sentry.addBreadcrumb({
-    category: 'sync',
-    message: 'Background sync started',
-    level: 'info',
-  });
+  logSyncEvent('start');
 
   try {
     // 1. Process offline mutation queue
@@ -80,10 +74,11 @@ export async function runSync(
     await refreshDataSources(dataSources);
 
     const duration = Date.now() - startTime;
+    logSyncEvent('complete', { duration });
     Logger.info(`Background sync completed in ${duration}ms`);
   } catch (err) {
+    logSyncEvent('fail', { error: String(err) });
     Logger.error('Background sync failed', err);
-    Sentry.captureException(err);
   }
 }
 
