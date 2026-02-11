@@ -1,17 +1,10 @@
 import React, { useState, useEffect, memo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Modal,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { UserTrick } from '../types';
+import * as trickService from '../services/tricks';
+import * as profileService from '../services/profiles';
+import { logActivity } from '../services/activities';
 
 const COMMON_TRICKS = [
   'Ollie',
@@ -34,12 +27,9 @@ const COMMON_TRICKS = [
 const TrickTrackerScreen = memo(() => {
   const { user } = useAuth();
   const [tricks, setTricks] = useState<UserTrick[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTrickName, setNewTrickName] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'trying' | 'landed' | 'consistent'>(
-    'trying'
-  );
 
   useEffect(() => {
     if (user) {
@@ -48,20 +38,12 @@ const TrickTrackerScreen = memo(() => {
   }, [user]);
 
   const loadTricks = async () => {
+    if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('user_tricks')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading tricks:', error);
-      } else {
-        setTricks(data || []);
-      }
+      const data = await trickService.getUserTricks(user.id);
+      setTricks(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading tricks:', error);
     } finally {
       setLoading(false);
     }
@@ -71,32 +53,16 @@ const TrickTrackerScreen = memo(() => {
     if (!newTrickName.trim() || !user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('user_tricks')
-        .insert([
-          {
-            user_id: user.id,
-            trick_name: newTrickName.trim(),
-            status: 'trying',
-            attempts: 0,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        if (error.code === '23505') {
-          Alert.alert('Error', 'You already have this trick in your list');
-        } else {
-          throw error;
-        }
-      } else {
-        setTricks([data, ...tricks]);
-        setNewTrickName('');
-        setShowAddModal(false);
-      }
+      const data = await trickService.addTrick(user.id, newTrickName.trim());
+      setTricks([data, ...tricks]);
+      setNewTrickName('');
+      setShowAddModal(false);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (error.code === '23505') {
+        Alert.alert('Error', 'You already have this trick in your list');
+      } else {
+        Alert.alert('Error', error.message);
+      }
     }
   };
 
@@ -104,78 +70,39 @@ const TrickTrackerScreen = memo(() => {
     trick: UserTrick,
     newStatus: 'trying' | 'landed' | 'consistent'
   ) => {
-    const updates: any = {
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (newStatus === 'landed' && trick.status === 'trying') {
-      updates.first_landed_at = new Date().toISOString();
-
-      // Create activity for landing a trick
-      const { error: activityError } = await supabase.from('activities').insert([
-        {
-          user_id: user?.id,
-          activity_type: 'trick_landed',
+    try {
+      if (newStatus === 'landed' && trick.status === 'trying' && user) {
+        await logActivity({
+          userId: user.id,
+          type: 'trick_landed',
           title: `Landed a ${trick.trick_name}!`,
-          xp_earned: 25,
-        },
-      ]);
-
-      if (activityError) {
-        console.warn('Failed to create activity:', activityError);
-      }
-
-      // Award XP using RPC function for atomicity
-      try {
-        const { error: xpError } = await supabase.rpc('increment_xp', {
-          user_id: user?.id,
-          amount: 25,
+          xpEarned: 25,
         });
 
-        if (xpError) {
-          // Fallback to manual update if RPC not available
-          const { data: userData, error: fetchError } = await supabase
-            .from('profiles')
-            .select('xp')
-            .eq('id', user?.id)
-            .single();
-
-          if (!fetchError && userData) {
-            await supabase
-              .from('profiles')
-              .update({ xp: userData.xp + 25 })
-              .eq('id', user?.id);
-          }
+        try {
+          await profileService.awardXP(user.id, 25);
+        } catch (xpErr) {
+          console.warn('Failed to award XP:', xpErr);
         }
-      } catch (xpErr) {
-        console.warn('Failed to award XP:', xpErr);
       }
-    }
 
-    const { error } = await supabase.from('user_tricks').update(updates).eq('id', trick.id);
-
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
+      await trickService.updateTrickStatus(trick.id, newStatus);
       loadTricks();
+
       if (newStatus === 'landed' && trick.status === 'trying') {
         Alert.alert('🎉 Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
       }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   };
 
   const incrementAttempts = async (trick: UserTrick) => {
-    const { error } = await supabase
-      .from('user_tricks')
-      .update({
-        attempts: trick.attempts + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', trick.id);
-
-    if (!error) {
+    try {
+      await trickService.incrementAttempts(trick.id, trick.attempts);
       loadTricks();
+    } catch (error) {
+      console.error('Error incrementing attempts:', error);
     }
   };
 
@@ -186,10 +113,11 @@ const TrickTrackerScreen = memo(() => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const { error } = await supabase.from('user_tricks').delete().eq('id', trick.id);
-
-          if (!error) {
+          try {
+            await trickService.deleteTrick(trick.id);
             loadTricks();
+          } catch (error) {
+            console.error('Error deleting trick:', error);
           }
         },
       },
@@ -227,48 +155,51 @@ const TrickTrackerScreen = memo(() => {
     const statusEmoji = getStatusEmoji(item.status);
 
     return (
-      <View style={styles.trickCard}>
-        <View style={styles.trickHeader}>
-          <Text style={styles.trickEmoji}>{statusEmoji}</Text>
-          <View style={styles.trickInfo}>
-            <Text style={styles.trickName}>{item.trick_name}</Text>
-            <View style={styles.trickMeta}>
-              <Text style={[styles.trickStatus, { color: statusColor }]}>
+      <View className="bg-white rounded-xl p-[15px] mb-3 shadow-md">
+        <View className="flex-row items-center mb-3">
+          <Text className="text-[32px] mr-3">{statusEmoji}</Text>
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-[#333] mb-1">{item.trick_name}</Text>
+            <View className="flex-row gap-[10px]">
+              <Text className="text-xs font-bold" style={{ color: statusColor }}>
                 {item.status.toUpperCase()}
               </Text>
-              <Text style={styles.attempts}>{item.attempts} attempts</Text>
+              <Text className="text-xs text-[#666]">{item.attempts} attempts</Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.trickActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => incrementAttempts(item)}>
-            <Text style={styles.actionButtonText}>+1 Try</Text>
+        <View className="flex-row gap-2">
+          <TouchableOpacity
+            className="flex-1 bg-brand-orange py-[10px] rounded-lg items-center"
+            onPress={() => incrementAttempts(item)}
+          >
+            <Text className="text-white text-[13px] font-bold">+1 Try</Text>
           </TouchableOpacity>
 
           {item.status === 'trying' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+              className="flex-1 bg-[#4CAF50] py-[10px] rounded-lg items-center"
               onPress={() => updateTrickStatus(item, 'landed')}
             >
-              <Text style={styles.actionButtonText}>Landed!</Text>
+              <Text className="text-white text-[13px] font-bold">Landed!</Text>
             </TouchableOpacity>
           )}
 
           {item.status === 'landed' && (
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#2196F3' }]}
+              className="flex-1 bg-[#2196F3] py-[10px] rounded-lg items-center"
               onPress={() => updateTrickStatus(item, 'consistent')}
             >
-              <Text style={styles.actionButtonText}>Consistent</Text>
+              <Text className="text-white text-[13px] font-bold">Consistent</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
+            className="flex-[0.3] bg-[#ff3b30] py-[10px] rounded-lg items-center"
             onPress={() => deleteTrick(item)}
           >
-            <Text style={styles.actionButtonText}>🗑️</Text>
+            <Text className="text-white text-[13px] font-bold">🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -276,23 +207,26 @@ const TrickTrackerScreen = memo(() => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛹 Trick Tracker</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-          <Text style={styles.addButtonText}>+ Add Trick</Text>
+    <View className="flex-1 bg-[#f5f0ea]">
+      <View className="flex-row justify-between items-center bg-brand-orange p-[15px] rounded-bl-[15px] rounded-br-[15px]">
+        <Text className="text-2xl font-bold text-white">🛹 Trick Tracker</Text>
+        <TouchableOpacity
+          className="bg-white px-[15px] py-2 rounded-[20px]"
+          onPress={() => setShowAddModal(true)}
+        >
+          <Text className="text-brand-orange font-bold text-sm">+ Add Trick</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={tricks}
         renderItem={renderTrick}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        keyExtractor={(item: UserTrick) => item.id}
+        contentContainerStyle={{ padding: 15 }}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No tricks yet</Text>
-            <Text style={styles.emptySubtext}>Add a trick you're working on!</Text>
+          <View className="items-center mt-[100px]">
+            <Text className="text-lg font-bold text-[#999]">No tricks yet</Text>
+            <Text className="text-sm text-[#aaa] mt-[5px]">Add a trick you're working on!</Text>
           </View>
         }
       />
@@ -303,47 +237,47 @@ const TrickTrackerScreen = memo(() => {
         animationType="slide"
         onRequestClose={() => setShowAddModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Trick</Text>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-tl-[20px] rounded-tr-[20px] p-5 max-h-[80%]">
+            <Text className="text-[22px] font-bold text-[#333] mb-[15px]">Add New Trick</Text>
 
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-[15px]"
               placeholder="Trick name"
               value={newTrickName}
               onChangeText={setNewTrickName}
               autoFocus
             />
 
-            <Text style={styles.suggestionsTitle}>Common Tricks:</Text>
-            <View style={styles.suggestionsContainer}>
+            <Text className="text-sm font-semibold text-[#666] mb-[10px]">Common Tricks:</Text>
+            <View className="flex-row flex-wrap gap-2 mb-5">
               {COMMON_TRICKS.map(trick => (
                 <TouchableOpacity
                   key={trick}
-                  style={styles.suggestionChip}
+                  className="bg-[#e0e0e0] px-3 py-[6px] rounded-[16px]"
                   onPress={() => setNewTrickName(trick)}
                 >
-                  <Text style={styles.suggestionText}>{trick}</Text>
+                  <Text className="text-[13px] text-[#333]">{trick}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <View style={styles.modalActions}>
+            <View className="flex-row gap-[10px]">
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-[#e0e0e0]"
                 onPress={() => {
                   setShowAddModal(false);
                   setNewTrickName('');
                 }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text className="text-[#333] text-base font-bold">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-[#4CAF50]"
                 onPress={addTrick}
                 disabled={!newTrickName.trim()}
               >
-                <Text style={styles.saveButtonText}>Add</Text>
+                <Text className="text-white text-base font-bold">Add</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -351,189 +285,6 @@ const TrickTrackerScreen = memo(() => {
       </Modal>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#d2673d',
-    padding: 15,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  addButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  addButtonText: {
-    color: '#d2673d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  trickCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  trickHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  trickEmoji: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  trickInfo: {
-    flex: 1,
-  },
-  trickName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  trickMeta: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  trickStatus: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  attempts: {
-    fontSize: 12,
-    color: '#666',
-  },
-  trickActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#d2673d',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    flex: 0.3,
-    backgroundColor: '#ff3b30',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 10,
-  },
-  suggestionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 20,
-  },
-  suggestionChip: {
-    backgroundColor: '#e0e0e0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: '#333',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e0e0e0',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
 });
 
 export default TrickTrackerScreen;

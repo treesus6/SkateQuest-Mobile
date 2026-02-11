@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,7 +22,7 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
   const fetchGhostClip = async () => {
     try {
       // Get ghost clip for this spot
-      const { data: clip, error: clipError } = await supabase
+      const { data: clip } = await supabase
         .from('ghost_clips')
         .select('*')
         .eq('spot_id', spotId)

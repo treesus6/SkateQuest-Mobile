@@ -1,26 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-} from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { View, Text, FlatList, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { SkateGame, SkateGameTurn, UserProfile } from '../types';
-import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
+import { SkateGame } from '../types';
 
 export default function SkateGameScreen({ navigation }: any) {
   const { user } = useAuth();
   const [games, setGames] = useState<SkateGame[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showNewGameModal, setShowNewGameModal] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<SkateGame | null>(null);
   const [opponentUsername, setOpponentUsername] = useState('');
 
   useEffect(() => {
@@ -77,7 +65,7 @@ export default function SkateGameScreen({ navigation }: any) {
       }
 
       // Create game
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('skate_games')
         .insert([
           {
@@ -106,10 +94,6 @@ export default function SkateGameScreen({ navigation }: any) {
   };
 
   const getGameStatus = (game: SkateGame) => {
-    const isChallenger = game.challenger_id === user?.id;
-    const myLetters = isChallenger ? game.challenger_letters : game.opponent_letters;
-    const opponentLetters = isChallenger ? game.opponent_letters : game.challenger_letters;
-
     if (game.status === 'completed') {
       if (game.winner_id === user?.id) {
         return '🏆 YOU WON!';
@@ -147,28 +131,32 @@ export default function SkateGameScreen({ navigation }: any) {
 
     return (
       <TouchableOpacity
-        style={styles.gameCard}
+        className="bg-white rounded-xl p-[15px] mb-3 shadow-md"
         onPress={() => navigation.navigate('GameDetail', { gameId: item.id })}
       >
-        <View style={styles.gameHeader}>
-          <Text style={styles.opponentName}>vs {opponent?.username}</Text>
-          <Text style={styles.gameStatus}>{getGameStatus(item)}</Text>
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-lg font-bold text-[#333]">vs {opponent?.username}</Text>
+          <Text className="text-sm font-bold text-brand-orange">{getGameStatus(item)}</Text>
         </View>
 
-        <View style={styles.lettersContainer}>
-          <View style={styles.lettersRow}>
-            <Text style={styles.lettersLabel}>You:</Text>
-            <Text style={styles.letters}>{getLettersDisplay(myLetters)}</Text>
+        <View className="gap-2 mb-3">
+          <View className="flex-row items-center">
+            <Text className="text-sm text-[#666] w-[60px]">You:</Text>
+            <Text className="text-2xl font-bold text-[#333] font-mono tracking-[8px]">
+              {getLettersDisplay(myLetters)}
+            </Text>
           </View>
-          <View style={styles.lettersRow}>
-            <Text style={styles.lettersLabel}>Them:</Text>
-            <Text style={styles.letters}>{getLettersDisplay(opponentLetters)}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-sm text-[#666] w-[60px]">Them:</Text>
+            <Text className="text-2xl font-bold text-[#333] font-mono tracking-[8px]">
+              {getLettersDisplay(opponentLetters)}
+            </Text>
           </View>
         </View>
 
         {item.status === 'active' && item.current_turn === user?.id && (
-          <TouchableOpacity style={styles.playButton}>
-            <Text style={styles.playButtonText}>🎬 Record Trick</Text>
+          <TouchableOpacity className="bg-[#4CAF50] py-3 rounded-lg items-center">
+            <Text className="text-white text-base font-bold">🎬 Record Trick</Text>
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -176,20 +164,23 @@ export default function SkateGameScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View className="flex-1 bg-[#f5f0ea]">
+      <View className="flex-row justify-between items-center bg-brand-orange p-[15px] rounded-bl-[15px] rounded-br-[15px]">
         <View>
-          <Text style={styles.headerTitle}>🏆 SKATE Game</Text>
-          <Text style={styles.headerSubtitle}>Challenge your friends!</Text>
+          <Text className="text-2xl font-bold text-white">🏆 SKATE Game</Text>
+          <Text className="text-[13px] text-white opacity-90">Challenge your friends!</Text>
         </View>
-        <TouchableOpacity style={styles.newGameButton} onPress={() => setShowNewGameModal(true)}>
-          <Text style={styles.newGameButtonText}>+ New</Text>
+        <TouchableOpacity
+          className="bg-white px-[15px] py-2 rounded-[20px]"
+          onPress={() => setShowNewGameModal(true)}
+        >
+          <Text className="text-brand-orange font-bold text-sm">+ New</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.rulesCard}>
-        <Text style={styles.rulesTitle}>How to Play:</Text>
-        <Text style={styles.rulesText}>
+      <View className="bg-white m-[15px] p-[15px] rounded-xl shadow-md">
+        <Text className="text-base font-bold text-[#333] mb-2">How to Play:</Text>
+        <Text className="text-[13px] text-[#666] leading-[20px]">
           1. Challenge a skater to a game of SKATE{'\n'}
           2. Take turns posting trick videos{'\n'}
           3. If you can't match their trick, you get a letter{'\n'}
@@ -200,12 +191,12 @@ export default function SkateGameScreen({ navigation }: any) {
       <FlatList
         data={games}
         renderItem={renderGame}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        keyExtractor={(item: SkateGame) => item.id}
+        contentContainerStyle={{ padding: 15, paddingTop: 0 }}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No games yet</Text>
-            <Text style={styles.emptySubtext}>Challenge someone to SKATE!</Text>
+          <View className="items-center mt-[50px]">
+            <Text className="text-lg font-bold text-[#999]">No games yet</Text>
+            <Text className="text-sm text-[#aaa] mt-[5px]">Challenge someone to SKATE!</Text>
           </View>
         }
       />
@@ -216,13 +207,13 @@ export default function SkateGameScreen({ navigation }: any) {
         animationType="slide"
         onRequestClose={() => setShowNewGameModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New SKATE Game</Text>
-            <Text style={styles.modalSubtitle}>Challenge another skater to a game!</Text>
+        <View className="flex-1 bg-black/50 justify-center p-5">
+          <View className="bg-white rounded-[20px] p-5">
+            <Text className="text-[22px] font-bold text-[#333] mb-[5px]">New SKATE Game</Text>
+            <Text className="text-sm text-[#666] mb-5">Challenge another skater to a game!</Text>
 
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-5"
               placeholder="Opponent's username"
               value={opponentUsername}
               onChangeText={setOpponentUsername}
@@ -230,22 +221,22 @@ export default function SkateGameScreen({ navigation }: any) {
               autoCapitalize="none"
             />
 
-            <View style={styles.modalActions}>
+            <View className="flex-row gap-[10px]">
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-[#e0e0e0]"
                 onPress={() => {
                   setShowNewGameModal(false);
                   setOpponentUsername('');
                 }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text className="text-[#333] text-base font-bold">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.createButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-brand-orange"
                 onPress={createGame}
                 disabled={!opponentUsername.trim()}
               >
-                <Text style={styles.createButtonText}>Challenge</Text>
+                <Text className="text-white text-base font-bold">Challenge</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -254,194 +245,3 @@ export default function SkateGameScreen({ navigation }: any) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#d2673d',
-    padding: 15,
-    paddingTop: 15,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  newGameButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  newGameButtonText: {
-    color: '#d2673d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  rulesCard: {
-    backgroundColor: '#fff',
-    margin: 15,
-    padding: 15,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  rulesTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  rulesText: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 20,
-  },
-  listContainer: {
-    padding: 15,
-    paddingTop: 0,
-  },
-  gameCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  gameHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  opponentName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  gameStatus: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#d2673d',
-  },
-  lettersContainer: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  lettersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  lettersLabel: {
-    fontSize: 14,
-    color: '#666',
-    width: 60,
-  },
-  letters: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    fontFamily: 'monospace',
-    letterSpacing: 8,
-  },
-  playButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  playButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e0e0e0',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  createButton: {
-    backgroundColor: '#d2673d',
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});

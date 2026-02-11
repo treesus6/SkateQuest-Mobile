@@ -346,7 +346,7 @@ const CallOutsScreen = memo(() => {
       <FlatList
         data={callOuts}
         renderItem={renderCallOut}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: CallOut) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadCallOuts}

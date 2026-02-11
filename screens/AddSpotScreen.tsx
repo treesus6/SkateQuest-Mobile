@@ -13,9 +13,10 @@ import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { createSpot } from '../services/spots';
+import { incrementSpotsAdded } from '../services/profiles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddSpot'>;
 type AddSpotRouteProp = RouteProp<RootStackParamList, 'AddSpot'>;
@@ -47,7 +48,18 @@ export default function AddSpotScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
 
-  const OBSTACLES = ['Stairs', 'Handrail', 'Flatbar', 'Ledge', 'Hubba', 'Manual Pad', 'Quarterpipe', 'Bowl', 'Gap', 'Wallride'];
+  const OBSTACLES = [
+    'Stairs',
+    'Handrail',
+    'Flatbar',
+    'Ledge',
+    'Hubba',
+    'Manual Pad',
+    'Quarterpipe',
+    'Bowl',
+    'Gap',
+    'Wallride',
+  ];
 
   useEffect(() => {
     getUserLocation();
@@ -103,38 +115,21 @@ export default function AddSpotScreen() {
     try {
       const tricksArray = tricks ? tricks.split(',').map(t => t.trim()) : [];
 
-      const { error } = await supabase.from('skate_spots').insert([
-        {
-          name,
-          latitude: lat,
-          longitude: lng,
-          difficulty,
-          spot_type: spotType,
-          obstacles,
-          bust_risk: spotType === 'street' ? bustRisk : null,
-          has_qr: hasQR,
-          tricks: tricksArray,
-          added_by: user?.id,
-        },
-      ]);
+      await createSpot({
+        name,
+        latitude: lat,
+        longitude: lng,
+        difficulty,
+        spot_type: spotType,
+        obstacles,
+        bust_risk: spotType === 'street' ? bustRisk : null,
+        has_qr: hasQR,
+        tricks: tricksArray,
+        added_by: user?.id || '',
+      });
 
-      if (error) throw error;
-
-      // Update user's spots_added count
-      const { data: userData } = await supabase
-        .from('profiles')
-        .select('spots_added, xp')
-        .eq('id', user?.id)
-        .single();
-
-      if (userData) {
-        await supabase
-          .from('profiles')
-          .update({
-            spots_added: (userData.spots_added || 0) + 1,
-            xp: (userData.xp || 0) + 100,
-          })
-          .eq('id', user?.id);
+      if (user) {
+        await incrementSpotsAdded(user.id);
       }
 
       Alert.alert('Success', 'Spot added! You earned 100 XP!', [
@@ -172,19 +167,11 @@ export default function AddSpotScreen() {
           />
 
           {/* User location */}
-          {userLocation && (
-            <Mapbox.UserLocation
-              visible={true}
-              showsUserHeadingIndicator={true}
-            />
-          )}
+          {userLocation && <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />}
 
           {/* Selected location marker */}
           {selectedCoordinates && (
-            <Mapbox.PointAnnotation
-              id="selected-spot"
-              coordinate={selectedCoordinates}
-            >
+            <Mapbox.PointAnnotation id="selected-spot" coordinate={selectedCoordinates}>
               <View style={styles.marker}>
                 <Text style={styles.markerText}>📍</Text>
               </View>
@@ -207,7 +194,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={latitude}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setLatitude(text);
             const lat = parseFloat(text);
             const lng = parseFloat(longitude);
@@ -224,7 +211,7 @@ export default function AddSpotScreen() {
         <TextInput
           style={styles.input}
           value={longitude}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setLongitude(text);
             const lat = parseFloat(latitude);
             const lng = parseFloat(text);
@@ -242,10 +229,7 @@ export default function AddSpotScreen() {
           {(['park', 'street', 'diy', 'quest', 'shop'] as const).map(type => (
             <TouchableOpacity
               key={type}
-              style={[
-                styles.typeButton,
-                spotType === type && styles.typeButtonActive,
-              ]}
+              style={[styles.typeButton, spotType === type && styles.typeButtonActive]}
               onPress={() => setSpotType(type)}
               disabled={submitting}
             >

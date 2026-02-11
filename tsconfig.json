@@ -10,5 +10,7 @@
     "jsx": "react-native",
     "lib": ["ES2015", "ES2020"],
     "skipLibCheck": true
-  }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "types/global.d.ts"],
+  "exclude": ["node_modules", ".expo", "coverage", "dist", "android", "ios"]
 }

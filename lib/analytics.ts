@@ -1,17 +1,16 @@
-import posthog from 'posthog-js';
+import PostHog from 'posthog-react-native';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 
 /**
- * Analytics setup using PostHog
+ * Analytics setup using PostHog (React Native SDK)
  * Free, privacy-focused, self-hostable analytics
  */
 
-let isInitialized = false;
+let posthog: PostHog | null = null;
 
 export async function initializeAnalytics(): Promise<void> {
   try {
-    // Only initialize if PostHog API key is provided
     const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
     const host = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
 
@@ -22,16 +21,10 @@ export async function initializeAnalytics(): Promise<void> {
       return;
     }
 
-    // Initialize PostHog
-    posthog.init(apiKey, {
-      api_host: host,
-      autocapture: false,
-      capture_pageview: false,
-      persistence: 'localStorage',
-    });
+    posthog = new PostHog(apiKey, { host });
 
     // Set initial device properties
-    const deviceInfo = {
+    const deviceInfo: Record<string, any> = {
       device_model: Device.modelName,
       device_brand: Device.brand,
       device_os: Device.osName,
@@ -41,7 +34,6 @@ export async function initializeAnalytics(): Promise<void> {
     };
 
     posthog.register(deviceInfo);
-    isInitialized = true;
 
     if (__DEV__) {
       console.log('Analytics initialized successfully');
@@ -57,7 +49,7 @@ export async function initializeAnalytics(): Promise<void> {
  * Track user event
  */
 export function trackEvent(eventName: string, properties?: Record<string, any>): void {
-  if (!isInitialized) return;
+  if (!posthog) return;
 
   try {
     posthog.capture(eventName, properties);
@@ -72,7 +64,7 @@ export function trackEvent(eventName: string, properties?: Record<string, any>):
  * Identify user for analytics
  */
 export function identifyUser(userId: string, properties?: Record<string, any>): void {
-  if (!isInitialized) return;
+  if (!posthog) return;
 
   try {
     posthog.identify(userId, properties);
@@ -97,7 +89,7 @@ export function trackScreenView(screenName: string, properties?: Record<string, 
  * Track user properties
  */
 export function setUserProperties(properties: Record<string, any>): void {
-  if (!isInitialized) return;
+  if (!posthog) return;
 
   try {
     posthog.register(properties);
@@ -112,7 +104,7 @@ export function setUserProperties(properties: Record<string, any>): void {
  * Reset analytics (on logout)
  */
 export function resetAnalytics(): void {
-  if (!isInitialized) return;
+  if (!posthog) return;
 
   try {
     posthog.reset();

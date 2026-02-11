@@ -23,20 +23,23 @@ export default function ActivityFeed() {
     try {
       const { data, error } = await supabase
         .from('activity_feed')
-        .select(`
+        .select(
+          `
           *,
           profiles!activity_feed_user_id_fkey(username, avatar_url)
-        `)
+        `
+        )
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      const formatted = data?.map((item: any) => ({
-        ...item,
-        username: item.profiles?.username || 'Unknown',
-        avatar_url: item.profiles?.avatar_url,
-      })) || [];
+      const formatted =
+        data?.map((item: any) => ({
+          ...item,
+          username: item.profiles?.username || 'Unknown',
+          avatar_url: item.profiles?.avatar_url,
+        })) || [];
 
       setActivities(formatted);
     } catch (error) {
@@ -84,9 +87,7 @@ export default function ActivityFeed() {
             {item.description && <Text style={styles.description}>{item.description}</Text>}
             <View style={styles.footer}>
               <Text style={styles.time}>{timeAgo}</Text>
-              {item.xp_earned > 0 && (
-                <Text style={styles.xp}>+{item.xp_earned} XP</Text>
-              )}
+              {item.xp_earned > 0 && <Text style={styles.xp}>+{item.xp_earned} XP</Text>}
             </View>
           </View>
         </View>
@@ -105,9 +106,11 @@ export default function ActivityFeed() {
   return (
     <FlatList
       data={activities}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item: Activity) => item.id}
       renderItem={renderActivity}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d2673d" />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d2673d" />
+      }
       contentContainerStyle={styles.listContainer}
       ListEmptyComponent={
         <View style={styles.emptyContainer}>

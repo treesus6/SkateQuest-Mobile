@@ -26,7 +26,7 @@ interface King {
   claimed_at: string;
 }
 
-export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) {
+export default function KingOfTheHill({ spotId, onUpdate: _onUpdate }: KingOfTheHillProps) {
   const { user } = useAuth();
   const navigation = useNavigation();
   const [king, setKing] = useState<King | null>(null);
@@ -39,15 +39,17 @@ export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) 
 
   const fetchKing = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from('spot_claims')
-        .select(`
+        .select(
+          `
           user_id,
           video_url,
           trick_description,
           claimed_at,
           profiles!spot_claims_user_id_fkey(username)
-        `)
+        `
+        )
         .eq('spot_id', spotId)
         .eq('status', 'active')
         .order('claimed_at', { ascending: false })
@@ -71,23 +73,19 @@ export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) 
   };
 
   const handleChallenge = () => {
-    Alert.alert(
-      'Challenge the King!',
-      'Record a trick video to dethrone the current king!',
-      [
-        {
-          text: 'Record Video',
-          onPress: () => {
-            // Navigate to upload media with spot context
-            (navigation as any).navigate('UploadMedia', {
-              spotId,
-              challengeType: 'king_of_hill',
-            });
-          },
+    Alert.alert('Challenge the King!', 'Record a trick video to dethrone the current king!', [
+      {
+        text: 'Record Video',
+        onPress: () => {
+          // Navigate to upload media with spot context
+          (navigation as any).navigate('UploadMedia', {
+            spotId,
+            challengeType: 'king_of_hill',
+          });
         },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   if (loading) {
@@ -108,9 +106,7 @@ export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) 
             <View style={styles.kingInfo}>
               <Text style={styles.kingName}>@{king.username}</Text>
               <Text style={styles.trickText}>{king.trick_description}</Text>
-              <Text style={styles.timeText}>
-                {new Date(king.claimed_at).toLocaleDateString()}
-              </Text>
+              <Text style={styles.timeText}>{new Date(king.claimed_at).toLocaleDateString()}</Text>
             </View>
             <Text style={styles.crown}>👑</Text>
           </View>
@@ -128,7 +124,11 @@ export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) 
           </View>
 
           {/* Video Modal */}
-          <Modal visible={showVideo} animationType="slide" onRequestClose={() => setShowVideo(false)}>
+          <Modal
+            visible={showVideo}
+            animationType="slide"
+            onRequestClose={() => setShowVideo(false)}
+          >
             <View style={styles.videoModal}>
               <Video
                 source={{ uri: king.video_url }}

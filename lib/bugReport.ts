@@ -39,7 +39,7 @@ export async function getDeviceInfo(): Promise<DeviceInfo> {
     brand: Device.brand || 'Unknown',
     osName: Device.osName || 'Unknown',
     osVersion: Device.osVersion || 'Unknown',
-    totalMemory: Device.totalMemory,
+    totalMemory: Device.totalMemory ?? undefined,
   };
 }
 
@@ -58,18 +58,11 @@ export function getAppInfo(): AppInfo {
  */
 export async function submitBugReport(
   description: string,
-  screenshot?: string
+  _screenshot?: string
 ): Promise<{ success: boolean; ticketId?: string }> {
   try {
     const deviceInfo = await getDeviceInfo();
     const appInfo = getAppInfo();
-
-    const report: BugReport = {
-      description,
-      screenshot,
-      deviceInfo,
-      appInfo,
-    };
 
     // Log to Sentry
     Sentry.captureMessage(`Bug Report: ${description}`, {
@@ -122,7 +115,7 @@ function generateTicketId(): string {
  * Shake to report feature detector
  * Returns cleanup function
  */
-export function enableShakeToReport(onShake: () => void): () => void {
+export function enableShakeToReport(_onShake: () => void): () => void {
   // This would use react-native-shake or accelerometer
   // For now, this is a placeholder
   Logger.info('Shake to report enabled');

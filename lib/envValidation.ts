@@ -22,10 +22,7 @@ const REQUIRED_VARS = [
   'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
 ];
 
-const OPTIONAL_VARS = [
-  'EXPO_PUBLIC_POSTHOG_API_KEY',
-  'EXPO_PUBLIC_POSTHOG_HOST',
-];
+const OPTIONAL_VARS = ['EXPO_PUBLIC_POSTHOG_API_KEY', 'EXPO_PUBLIC_POSTHOG_HOST'];
 
 /**
  * Validate all required environment variables

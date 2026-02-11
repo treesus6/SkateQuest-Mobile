@@ -30,7 +30,7 @@ export default function ConfettiWrapper({ children }: { children: React.ReactNod
           table: 'user_achievements',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => {
+        payload => {
           console.log('🎉 Achievement unlocked:', payload.new);
           fireConfetti();
         }

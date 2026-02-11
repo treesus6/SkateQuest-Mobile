@@ -29,13 +29,15 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
   const fetchTerritory = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('crew_territories')
-        .select(`
+        .select(
+          `
           crew_id,
           total_points,
           crews!crew_territories_crew_id_fkey(name, color_hex)
-        `)
+        `
+        )
         .eq('spot_id', spotId)
         .order('total_points', { ascending: false })
         .limit(1)
@@ -60,12 +62,14 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
     if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('crew_members')
-        .select(`
+        .select(
+          `
           crew_id,
           crews!crew_members_crew_id_fkey(name, color_hex)
-        `)
+        `
+        )
         .eq('user_id', user.id)
         .single();
 
@@ -193,15 +197,13 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
             {capturing
               ? 'Fighting...'
               : territory?.crew_id === userCrew.id
-              ? 'Defend Territory (-100 XP)'
-              : 'Capture Territory (-100 XP)'}
+                ? 'Defend Territory (-100 XP)'
+                : 'Capture Territory (-100 XP)'}
           </Text>
         </TouchableOpacity>
       )}
 
-      {!userCrew && (
-        <Text style={styles.hint}>Join a crew to capture territory!</Text>
-      )}
+      {!userCrew && <Text style={styles.hint}>Join a crew to capture territory!</Text>}
     </View>
   );
 }

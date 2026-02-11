@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
+import * as spotService from '../services/spots';
 import PortalDimensionLogo from '../components/PortalDimensionLogo';
 
 const { width } = Dimensions.get('window');
@@ -39,60 +39,18 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
   const loadSpotData = async () => {
     try {
-      // Load spot
-      const { data: spotData, error: spotError } = await supabase
-        .from('skate_spots')
-        .select('*')
-        .eq('id', spotId)
-        .single();
-
-      if (spotError) throw spotError;
+      const spotData = await spotService.getSpotById(spotId);
       setSpot(spotData);
 
-      // Load photos
-      const { data: photosData, error: photosError } = await supabase
-        .from('spot_photos')
-        .select(
-          `
-          *,
-          media:media_id(*)
-        `
-        )
-        .eq('spot_id', spotId)
-        .order('is_primary', { ascending: false })
-        .order('created_at', { ascending: false });
+      const [photosData, conditionsData, challengesData] = await Promise.all([
+        spotService.getSpotPhotos(spotId),
+        spotService.getSpotConditions(spotId),
+        spotService.getSpotChallenges(spotId),
+      ]);
 
-      if (photosError) throw photosError;
-      setPhotos(photosData || []);
-
-      // Load active conditions (not expired)
-      const { data: conditionsData, error: conditionsError } = await supabase
-        .from('spot_conditions')
-        .select(
-          `
-          *,
-          reporter:reported_by(username)
-        `
-        )
-        .eq('spot_id', spotId)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (conditionsError) throw conditionsError;
-      setConditions(conditionsData || []);
-
-      // Load challenges
-      const { data: challengesData, error: challengesError } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('spot_id', spotId)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (challengesError) throw challengesError;
-      setChallenges(challengesData || []);
+      setPhotos(photosData);
+      setConditions(conditionsData);
+      setChallenges(challengesData);
     } catch (error: any) {
       console.error('Error loading spot:', error);
       Alert.alert('Error', error.message);
@@ -111,23 +69,12 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
       const photoResult = await uploadImage(result.uri, 'spot_photos', user.id);
 
-      // Save to media table
       const media = await saveMediaToDatabase(user.id, photoResult, {
         caption: `Photo of ${spot?.name}`,
         spotId,
       });
 
-      // Link to spot_photos
-      const { error } = await supabase.from('spot_photos').insert([
-        {
-          spot_id: spotId,
-          media_id: media.id,
-          uploaded_by: user.id,
-          is_primary: photos.length === 0, // First photo is primary
-        },
-      ]);
-
-      if (error) throw error;
+      await spotService.addSpotPhoto(spotId, media.id, user.id, photos.length === 0);
 
       Alert.alert('Success', 'Photo uploaded!');
       loadSpotData();
@@ -142,17 +89,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     if (!user) return;
 
     try {
-      const { error } = await supabase.from('spot_conditions').insert([
-        {
-          spot_id: spotId,
-          reported_by: user.id,
-          condition,
-          expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // 6 hours
-        },
-      ]);
-
-      if (error) throw error;
-
+      await spotService.reportCondition(spotId, user.id, condition);
       Alert.alert('Success', 'Condition reported!');
       setShowConditionsModal(false);
       loadSpotData();
@@ -217,7 +154,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e => {
+              onMomentumScrollEnd={(e: any) => {
                 const index = Math.round(e.nativeEvent.contentOffset.x / width);
                 setActivePhotoIndex(index);
               }}
@@ -311,10 +248,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       {/* Map Preview */}
       <View style={styles.mapCard}>
         <Text style={styles.cardTitle}>📍 Location</Text>
-        <TouchableOpacity
-          style={styles.mapContainer}
-          onPress={() => navigation.navigate('Map')}
-        >
+        <TouchableOpacity style={styles.mapContainer} onPress={() => navigation.navigate('Map')}>
           <Mapbox.MapView
             style={styles.map}
             styleURL={Mapbox.StyleURL.Street}
@@ -323,14 +257,8 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
             rotateEnabled={false}
             zoomEnabled={false}
           >
-            <Mapbox.Camera
-              zoomLevel={14}
-              centerCoordinate={[spot.longitude, spot.latitude]}
-            />
-            <Mapbox.PointAnnotation
-              id="spot-location"
-              coordinate={[spot.longitude, spot.latitude]}
-            >
+            <Mapbox.Camera zoomLevel={14} centerCoordinate={[spot.longitude, spot.latitude]} />
+            <Mapbox.PointAnnotation id="spot-location" coordinate={[spot.longitude, spot.latitude]}>
               <View style={styles.mapMarker}>
                 <Text style={styles.mapMarkerText}>📍</Text>
               </View>

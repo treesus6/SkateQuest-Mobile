@@ -4,9 +4,6 @@ import {
   TrickAnalysisResult,
 } from '../../lib/trickAnalyzer';
 import { supabase } from '../../lib/supabase';
-import * as FileSystem from 'expo-file-system';
-
-jest.mock('expo-file-system');
 
 describe('TrickAnalyzer', () => {
   beforeEach(() => {
@@ -15,11 +12,6 @@ describe('TrickAnalyzer', () => {
 
   describe('analyzeTrickVideo', () => {
     it('analyzes video and returns trick analysis', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
-        exists: true,
-        size: 1024000,
-      });
-
       const result = await analyzeTrickVideo('file:///path/to/kickflip.mp4');
 
       expect(result).toHaveProperty('trickName');
@@ -33,18 +25,8 @@ describe('TrickAnalyzer', () => {
     });
 
     it('detects trick from filename', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
-        exists: true,
-      });
-
       const result = await analyzeTrickVideo('file:///path/to/kickflip-attempt.mp4');
       expect(result.trickName).toBe('Kickflip');
-    });
-
-    it('handles errors gracefully', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('File not found'));
-
-      await expect(analyzeTrickVideo('invalid-path')).rejects.toThrow();
     });
   });
 

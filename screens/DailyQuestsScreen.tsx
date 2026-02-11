@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useChallenges } from '../contexts/ChallengeContext';
+import { Challenge } from '../state/challengeStore';
 
 export default function DailyQuestsScreen({ navigation }: any) {
   const { dailyChallenges, resetDailyChallenges } = useChallenges();
@@ -10,7 +11,7 @@ export default function DailyQuestsScreen({ navigation }: any) {
       <Text style={styles.title}>Daily Quests</Text>
       <Text style={styles.subtitle}>Fresh missions to keep you rolling every session.</Text>
 
-      {dailyChallenges.map(ch => (
+      {dailyChallenges.map((ch: Challenge) => (
         <TouchableOpacity
           key={ch.id}
           style={styles.card}

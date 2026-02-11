@@ -423,7 +423,7 @@ const GameDetailScreen = memo(({ route, navigation }: any) => {
       <FlatList
         data={turns}
         renderItem={renderTurn}
-        keyExtractor={item => item.id}
+        keyExtractor={(item: SkateGameTurn) => item.id}
         contentContainerStyle={styles.turnsList}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

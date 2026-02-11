@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { supabase } from '../lib/supabase';
+import { RootStackParamList } from '../types/navigation';
 import { SkateSpot } from '../types';
+import { getNearbySpots } from '../services/spots';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 
@@ -29,7 +22,9 @@ export default function MapScreen() {
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(INITIAL_COORDINATES as [number, number]);
+  const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(
+    INITIAL_COORDINATES as [number, number]
+  );
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -56,10 +51,7 @@ export default function MapScreen() {
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation(location);
 
-      const coordinates: [number, number] = [
-        location.coords.longitude,
-        location.coords.latitude,
-      ];
+      const coordinates: [number, number] = [location.coords.longitude, location.coords.latitude];
       setCenterCoordinates(coordinates);
 
       loadSpots(location.coords.latitude, location.coords.longitude);
@@ -73,33 +65,10 @@ export default function MapScreen() {
 
   const loadSpots = async (lat: number, lng: number) => {
     try {
-      // Use PostGIS to query spots within radius
-      const radiusMeters = SEARCH_RADIUS_KM * 1000;
-
-      const { data, error } = await supabase.rpc('get_nearby_spots', {
-        lat,
-        lng,
-        radius_meters: radiusMeters,
-      });
-
-      if (error) {
-        console.error('Error loading nearby spots:', error);
-        // Fallback: load all spots if the RPC function doesn't exist
-        const { data: allData, error: allError } = await supabase
-          .from('skate_spots')
-          .select('*')
-          .limit(500);
-
-        if (allError) {
-          console.error('Error loading spots:', allError);
-        } else {
-          setSpots(allData || []);
-        }
-      } else {
-        setSpots(data || []);
-      }
+      const data = await getNearbySpots(lat, lng, SEARCH_RADIUS_KM);
+      setSpots(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading spots:', error);
     } finally {
       setLoading(false);
     }
@@ -151,12 +120,7 @@ export default function MapScreen() {
         />
 
         {/* User location */}
-        {userLocation && (
-          <Mapbox.UserLocation
-            visible={true}
-            showsUserHeadingIndicator={true}
-          />
-        )}
+        {userLocation && <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />}
 
         {/* Skate spot markers with clustering */}
         <Mapbox.ShapeSource
@@ -180,10 +144,10 @@ export default function MapScreen() {
               },
             })),
           }}
-          onPress={(event) => {
+          onPress={event => {
             const feature = event.features[0];
-            if (feature && feature.properties && !feature.properties.cluster) {
-              const spot = spots.find(s => s.id === feature.properties.spotId);
+            if (feature?.properties && !feature.properties.cluster) {
+              const spot = spots.find(s => s.id === feature.properties?.spotId);
               if (spot) {
                 setSelectedSpot(spot);
               }
@@ -196,15 +160,7 @@ export default function MapScreen() {
             filter={['has', 'point_count']}
             style={{
               circleColor: '#d2673d',
-              circleRadius: [
-                'step',
-                ['get', 'point_count'],
-                20,
-                10,
-                30,
-                50,
-                40,
-              ],
+              circleRadius: ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
               circleOpacity: 0.8,
             }}
           />
@@ -248,10 +204,7 @@ export default function MapScreen() {
       </Mapbox.MapView>
 
       {/* Map Style Selector */}
-      <MapStyleSelector
-        currentStyle={mapStyle}
-        onStyleChange={setMapStyle}
-      />
+      <MapStyleSelector currentStyle={mapStyle} onStyleChange={setMapStyle} />
 
       {/* User location button */}
       {userLocation && (
@@ -275,10 +228,7 @@ export default function MapScreen() {
                 Difficulty: {selectedSpot.difficulty || 'Unknown'}
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.closeSpotButton}
-              onPress={() => setSelectedSpot(null)}
-            >
+            <TouchableOpacity style={styles.closeSpotButton} onPress={() => setSelectedSpot(null)}>
               <Text style={styles.closeSpotButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
