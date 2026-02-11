@@ -4,7 +4,6 @@ import { Trophy, Gamepad2, Plus } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { skateGameService } from '../lib/skateGameService';
-import { supabase } from '../lib/supabase';
 import { SkateGame } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -14,7 +13,7 @@ export default function SkateGameScreen({ navigation }: any) {
   const [showNewGameModal, setShowNewGameModal] = useState(false);
   const [opponentUsername, setOpponentUsername] = useState('');
 
-  const { data: games, loading, refetch } = useSupabaseQuery<SkateGame[]>(
+  const { data: games, refetch } = useSupabaseQuery<SkateGame[]>(
     () => skateGameService.getAll(user?.id || ''),
     [user?.id],
     { cacheKey: `skate-games-${user?.id}`, enabled: !!user }

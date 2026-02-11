@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Flame, Award, LogOut, Bug } from 'lucide-react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
+import { Flame, Award, Bug } from 'lucide-react-native';
 import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { profilesService } from '../lib/profilesService';

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Sun, Droplets, Users, Sparkles, ShieldAlert, CheckCircle, AlertTriangle, MapPin, Circle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
 import { SpotCondition } from '../types';
 
 interface SpotConditionsWidgetProps {

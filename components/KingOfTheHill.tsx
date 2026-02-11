@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, Alert, ActivityIndicator, Modal } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { Crown, Play, Swords } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { Crown } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigation } from '@react-navigation/native';
 import Card from './ui/Card';
@@ -21,7 +20,7 @@ interface King {
   claimed_at: string;
 }
 
-export default function KingOfTheHill({ spotId, onUpdate }: KingOfTheHillProps) {
+export default function KingOfTheHill({ spotId }: KingOfTheHillProps) {
   const { user } = useAuthStore();
   const navigation = useNavigation();
   const [king, setKing] = useState<King | null>(null);

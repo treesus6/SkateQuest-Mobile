@@ -57,6 +57,15 @@ export const profilesService = {
     }
   },
 
+  async incrementXp(userId: string, amount: number) {
+    try {
+      return await supabase.rpc('increment_xp', { user_id: userId, amount });
+    } catch (error) {
+      Logger.error('profilesService.incrementXp failed', error);
+      throw new ServiceError('Failed to increment XP', 'PROFILES_INCREMENT_XP_FAILED', error);
+    }
+  },
+
   async getLeaderboard(limit: number = 50) {
     try {
       return await supabase

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { MapPin, Target, Zap, ArrowUpCircle, Camera, Trophy, Sparkles, Upload } from 'lucide-react-native';
-import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { feedService } from '../lib/feedService';
 import { Activity } from '../types';
@@ -18,7 +17,6 @@ const ACTIVITY_ICONS: Record<string, { icon: typeof MapPin; color: string }> = {
 };
 
 export default function FeedScreen({ navigation }: any) {
-  const { user } = useAuthStore();
   const { data: activities, loading, refetch } = useSupabaseQuery<Activity[]>(
     () => feedService.getRecent(50),
     [],

@@ -35,6 +35,65 @@ export const qrCodeService = {
     }
   },
 
+  async getScan(spotId: string, qrCode: string) {
+    try {
+      return await supabase
+        .from('qr_scans')
+        .select('*, skate_spots(*), ghost_clips(*)')
+        .eq('qr_code', qrCode)
+        .eq('spot_id', spotId)
+        .single();
+    } catch (error) {
+      Logger.error('qrCodeService.getScan failed', error);
+      throw new ServiceError('Failed to fetch QR scan', 'QR_GET_SCAN_FAILED', error);
+    }
+  },
+
+  async getUserScan(spotId: string, userId: string) {
+    try {
+      return await supabase
+        .from('qr_scans')
+        .select('*')
+        .eq('spot_id', spotId)
+        .eq('user_id', userId)
+        .single();
+    } catch (error) {
+      Logger.error('qrCodeService.getUserScan failed', error);
+      throw new ServiceError('Failed to fetch user scan', 'QR_USER_SCAN_FAILED', error);
+    }
+  },
+
+  async recordScan(scan: { spot_id: string; user_id: string; qr_code: string; latitude: number; longitude: number; distance_from_spot: number }) {
+    try {
+      return await supabase.from('qr_scans').insert(scan);
+    } catch (error) {
+      Logger.error('qrCodeService.recordScan failed', error);
+      throw new ServiceError('Failed to record QR scan', 'QR_RECORD_SCAN_FAILED', error);
+    }
+  },
+
+  async getGhostClip(spotId: string) {
+    try {
+      return await supabase
+        .from('ghost_clips')
+        .select('*')
+        .eq('spot_id', spotId)
+        .single();
+    } catch (error) {
+      Logger.error('qrCodeService.getGhostClip failed', error);
+      throw new ServiceError('Failed to fetch ghost clip', 'QR_GHOST_CLIP_FAILED', error);
+    }
+  },
+
+  async unlockGhostClip(userId: string, ghostClipId: string) {
+    try {
+      return await supabase.from('user_unlocks').insert({ user_id: userId, ghost_clip_id: ghostClipId });
+    } catch (error) {
+      Logger.error('qrCodeService.unlockGhostClip failed', error);
+      throw new ServiceError('Failed to unlock ghost clip', 'QR_UNLOCK_GHOST_CLIP_FAILED', error);
+    }
+  },
+
   async getCharityStats() {
     try {
       return await supabase

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { ThumbsUp, ThumbsDown } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { challengesService } from '../lib/challengesService';
 import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
@@ -66,7 +66,7 @@ export default function JudgesBoothScreen() {
 
     setVoting(true);
     try {
-      const { error: voteError } = await supabase.from('submission_votes').insert({ submission_id: submission.id, voter_id: user.id, vote_type: vote });
+      const { error: voteError } = await challengesService.vote(submission.id, user.id, vote);
       if (voteError) throw voteError;
 
       const newStomped = vote === 'stomped' ? submission.stomped_votes + 1 : submission.stomped_votes;
@@ -76,7 +76,7 @@ export default function JudgesBoothScreen() {
       if (newStomped >= 10) newStatus = 'approved';
       if (newBail >= 3) newStatus = 'rejected';
 
-      await supabase.from('challenge_submissions').update({ stomped_votes: newStomped, bail_votes: newBail, status: newStatus }).eq('id', submission.id);
+      await challengesService.updateSubmission(submission.id, { stomped_votes: newStomped, bail_votes: newBail, status: newStatus });
 
       const newVoteCount = votesThisSession + 1;
       const bonusXP = newVoteCount % 5 === 0 ? 50 : 0;

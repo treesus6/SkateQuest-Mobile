@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { MapPin, Target, Zap, ArrowUpCircle, Users, Flag, Trophy, Crosshair, Star } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
 import LoadingSkeleton from './ui/LoadingSkeleton';
 
 interface Activity {

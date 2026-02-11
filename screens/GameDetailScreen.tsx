@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, memo } from 'react';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { Trophy, Play, ThumbsUp, ThumbsDown } from 'lucide-react-native';
+import { Trophy } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { skateGameService } from '../lib/skateGameService';
-import { supabase } from '../lib/supabase';
 import { SkateGame, SkateGameTurn } from '../types';
 import { pickVideo, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
-const GameDetailScreen = memo(({ route, navigation }: any) => {
+const GameDetailScreen = memo(({ route }: any) => {
   const { gameId } = route.params;
   const { user } = useAuthStore();
-  const videoRef = useRef<Video>(null);
   const [uploading, setUploading] = useState(false);
 
   const { data: game, loading: gameLoading, refetch: refetchGame } = useSupabaseQuery<SkateGame>(
@@ -159,7 +157,7 @@ const GameDetailScreen = memo(({ route, navigation }: any) => {
       {turns && turns.length > 0 && (
         <Card className="mx-4">
           <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Turn History</Text>
-          {turns.map((turn, index) => (
+          {turns.map((turn) => (
             <View key={turn.id} className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="text-base font-bold text-brand-terracotta">

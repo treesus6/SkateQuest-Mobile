@@ -36,7 +36,6 @@ export default function AddSpotScreen() {
   const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
   const [obstacles, setObstacles] = useState<string[]>([]);
   const [bustRisk, setBustRisk] = useState<'low' | 'medium' | 'high'>('low');
-  const [hasQR, setHasQR] = useState(false);
   const [tricks, setTricks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);

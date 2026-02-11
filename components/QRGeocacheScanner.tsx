@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
-import { supabase } from '../lib/supabase';
+import { qrCodeService } from '../lib/qrCodeService';
 import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
 import Button from './ui/Button';
@@ -70,12 +70,7 @@ export default function QRGeocacheScanner({ spotId, spotLat, spotLng, onSuccess,
         return;
       }
 
-      const { data: qrScan, error } = await supabase
-        .from('qr_scans')
-        .select('*, skate_spots(*), ghost_clips(*)')
-        .eq('qr_code', data)
-        .eq('spot_id', spotId)
-        .single();
+      const { data: qrScan, error } = await qrCodeService.getScan(spotId, data);
 
       if (error || !qrScan) {
         Alert.alert('Invalid QR Code', 'This QR code does not belong to this spot.', [{ text: 'Try Again', onPress: () => setScanned(false) }]);
@@ -83,12 +78,7 @@ export default function QRGeocacheScanner({ spotId, spotLat, spotLng, onSuccess,
         return;
       }
 
-      const { data: existingScan } = await supabase
-        .from('qr_scans')
-        .select('*')
-        .eq('spot_id', spotId)
-        .eq('user_id', user?.id)
-        .single();
+      const { data: existingScan } = await qrCodeService.getUserScan(spotId, user?.id || '');
 
       if (existingScan) {
         Alert.alert('Already Scanned!', 'You have already found this QR code.', [{ text: 'OK', onPress: onCancel }]);
@@ -96,8 +86,8 @@ export default function QRGeocacheScanner({ spotId, spotLat, spotLng, onSuccess,
         return;
       }
 
-      await supabase.from('qr_scans').insert({
-        spot_id: spotId, user_id: user?.id, qr_code: data,
+      await qrCodeService.recordScan({
+        spot_id: spotId, user_id: user?.id || '', qr_code: data,
         latitude: userLocation.coords.latitude, longitude: userLocation.coords.longitude,
         distance_from_spot: distance,
       });
@@ -108,10 +98,10 @@ export default function QRGeocacheScanner({ spotId, spotLat, spotLng, onSuccess,
         await profilesService.update(user?.id || '', { xp: (profile.xp || 0) + xpReward });
       }
 
-      const { data: ghostClip } = await supabase.from('ghost_clips').select('*').eq('spot_id', spotId).single();
-      let ghostClipUrl;
+      const { data: ghostClip } = await qrCodeService.getGhostClip(spotId);
+      let ghostClipUrl: string | undefined;
       if (ghostClip) {
-        await supabase.from('user_unlocks').insert({ user_id: user?.id, ghost_clip_id: ghostClip.id });
+        await qrCodeService.unlockGhostClip(user?.id || '', ghostClip.id);
         ghostClipUrl = ghostClip.video_url;
       }
 

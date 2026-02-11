@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { Flag, Swords } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { View, Text, Alert, ActivityIndicator } from 'react-native';
+import { Flag } from 'lucide-react-native';
+import { crewsService } from '../lib/crewsService';
 import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
 import Card from './ui/Card';
@@ -33,13 +33,7 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
   const fetchTerritory = async () => {
     try {
-      const { data } = await supabase
-        .from('crew_territories')
-        .select(`crew_id, total_points, crews!crew_territories_crew_id_fkey(name, color_hex)`)
-        .eq('spot_id', spotId)
-        .order('total_points', { ascending: false })
-        .limit(1)
-        .single();
+      const { data } = await crewsService.getTerritoryForSpot(spotId);
 
       if (data) {
         setTerritory({
@@ -59,11 +53,7 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
   const fetchUserCrew = async () => {
     if (!user?.id) return;
     try {
-      const { data } = await supabase
-        .from('crew_members')
-        .select(`crew_id, crews!crew_members_crew_id_fkey(name, color_hex)`)
-        .eq('user_id', user.id)
-        .single();
+      const { data } = await crewsService.getUserCrew(user.id);
 
       if (data) {
         setUserCrew({
@@ -94,19 +84,12 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
         return;
       }
 
-      const { data: existing } = await supabase
-        .from('crew_territories')
-        .select('*')
-        .eq('spot_id', spotId)
-        .eq('crew_id', userCrew.id)
-        .single();
+      const { data: existing } = await crewsService.getCrewTerritory(spotId, userCrew.id);
 
       if (existing) {
-        await supabase.from('crew_territories')
-          .update({ total_points: existing.total_points + captureXP, last_activity: new Date().toISOString() })
-          .eq('id', existing.id);
+        await crewsService.updateTerritory(existing.id, { total_points: existing.total_points + captureXP, last_activity: new Date().toISOString() });
       } else {
-        await supabase.from('crew_territories').insert({ spot_id: spotId, crew_id: userCrew.id, total_points: captureXP });
+        await crewsService.createTerritory({ spot_id: spotId, crew_id: userCrew.id, total_points: captureXP });
       }
 
       await profilesService.update(user?.id || '', { xp: profile.xp - captureXP });

@@ -1,5 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
+import { Crown, Users } from 'lucide-react-native';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 
 type CrewMember = {
   id: string;
@@ -35,19 +38,25 @@ const MOCK_CREW: CrewMember[] = [
 
 export default function CrewScreen() {
   const renderItem = ({ item }: { item: CrewMember }) => (
-    <View style={styles.card}>
-      <Text style={styles.name}>
-        {item.name} {item.role === 'owner' ? '👑' : ''}
-      </Text>
-      <Text style={styles.meta}>Sessions: {item.sessions}</Text>
-      <Text style={styles.meta}>Joined: {item.joinedAt}</Text>
-    </View>
+    <Card>
+      <View className="flex-row items-center gap-2">
+        <Text className="text-lg font-bold text-gray-100">
+          {item.name}
+        </Text>
+        {item.role === 'owner' && <Crown color="#FFD700" size={16} />}
+      </View>
+      <Text className="text-sm text-gray-400">Sessions: {item.sessions}</Text>
+      <Text className="text-sm text-gray-400">Joined: {item.joinedAt}</Text>
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Crew</Text>
-      <Text style={styles.subtitle}>Session homies, shared challenges, crew energy.</Text>
+    <View className="flex-1 p-4 bg-gray-950">
+      <View className="flex-row items-center gap-2 mb-1">
+        <Users color="#F5F5F5" size={24} />
+        <Text className="text-3xl font-extrabold text-gray-100">Your Crew</Text>
+      </View>
+      <Text className="text-base text-gray-400 mb-4">Session homies, shared challenges, crew energy.</Text>
 
       <FlatList
         data={MOCK_CREW}
@@ -56,54 +65,7 @@ export default function CrewScreen() {
         contentContainerStyle={{ paddingVertical: 8 }}
       />
 
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Invite a homie (coming soon)</Text>
-      </TouchableOpacity>
+      <Button title="Invite a homie (coming soon)" variant="primary" />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#05070B',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#F5F5F5',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#C7CED9',
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: '#121826',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-  },
-  name: {
-    fontSize: 18,
-    color: '#F5F5F5',
-    fontWeight: '700',
-  },
-  meta: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  button: {
-    marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#FF5A3C',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#F5F5F5',
-    fontWeight: '700',
-  },
-});

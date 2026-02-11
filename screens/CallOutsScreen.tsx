@@ -5,11 +5,9 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { callOutsService } from '../lib/callOutsService';
 import { profilesService } from '../lib/profilesService';
-import { supabase } from '../lib/supabase';
 import { CallOut, UserProfile, SkateSpot } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 type TabType = 'received' | 'sent';
 

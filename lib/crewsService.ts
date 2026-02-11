@@ -50,6 +50,69 @@ export const crewsService = {
     }
   },
 
+  async getTerritoryForSpot(spotId: string) {
+    try {
+      return await supabase
+        .from('crew_territories')
+        .select('crew_id, total_points, crews!crew_territories_crew_id_fkey(name, color_hex)')
+        .eq('spot_id', spotId)
+        .order('total_points', { ascending: false })
+        .limit(1)
+        .single();
+    } catch (error) {
+      Logger.error('crewsService.getTerritoryForSpot failed', error);
+      throw new ServiceError('Failed to fetch territory', 'CREWS_TERRITORY_GET_FAILED', error);
+    }
+  },
+
+  async getCrewTerritory(spotId: string, crewId: string) {
+    try {
+      return await supabase
+        .from('crew_territories')
+        .select('*')
+        .eq('spot_id', spotId)
+        .eq('crew_id', crewId)
+        .single();
+    } catch (error) {
+      Logger.error('crewsService.getCrewTerritory failed', error);
+      throw new ServiceError('Failed to fetch crew territory', 'CREWS_TERRITORY_CREW_GET_FAILED', error);
+    }
+  },
+
+  async updateTerritory(territoryId: string, updates: { total_points: number; last_activity: string }) {
+    try {
+      return await supabase
+        .from('crew_territories')
+        .update(updates)
+        .eq('id', territoryId);
+    } catch (error) {
+      Logger.error('crewsService.updateTerritory failed', error);
+      throw new ServiceError('Failed to update territory', 'CREWS_TERRITORY_UPDATE_FAILED', error);
+    }
+  },
+
+  async createTerritory(territory: { spot_id: string; crew_id: string; total_points: number }) {
+    try {
+      return await supabase.from('crew_territories').insert(territory);
+    } catch (error) {
+      Logger.error('crewsService.createTerritory failed', error);
+      throw new ServiceError('Failed to create territory', 'CREWS_TERRITORY_CREATE_FAILED', error);
+    }
+  },
+
+  async getUserCrew(userId: string) {
+    try {
+      return await supabase
+        .from('crew_members')
+        .select('crew_id, crews!crew_members_crew_id_fkey(name, color_hex)')
+        .eq('user_id', userId)
+        .single();
+    } catch (error) {
+      Logger.error('crewsService.getUserCrew failed', error);
+      throw new ServiceError('Failed to fetch user crew', 'CREWS_USER_CREW_GET_FAILED', error);
+    }
+  },
+
   async join(crewId: string, userId: string) {
     try {
       return await supabase.from('crew_members').insert([

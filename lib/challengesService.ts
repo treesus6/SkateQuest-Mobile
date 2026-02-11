@@ -47,6 +47,31 @@ export const challengesService = {
     }
   },
 
+  async vote(submissionId: string, voterId: string, voteType: string) {
+    try {
+      return await supabase.from('submission_votes').insert({
+        submission_id: submissionId,
+        voter_id: voterId,
+        vote_type: voteType,
+      });
+    } catch (error) {
+      Logger.error('challengesService.vote failed', error);
+      throw new ServiceError('Failed to submit vote', 'CHALLENGES_VOTE_FAILED', error);
+    }
+  },
+
+  async updateSubmission(submissionId: string, updates: Record<string, any>) {
+    try {
+      return await supabase
+        .from('challenge_submissions')
+        .update(updates)
+        .eq('id', submissionId);
+    } catch (error) {
+      Logger.error('challengesService.updateSubmission failed', error);
+      throw new ServiceError('Failed to update submission', 'CHALLENGES_UPDATE_SUBMISSION_FAILED', error);
+    }
+  },
+
   async getForSpot(spotId: string) {
     try {
       return await supabase

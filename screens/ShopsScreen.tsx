@@ -5,7 +5,6 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { shopsService } from '../lib/shopsService';
 import { Shop } from '../types';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
 
 export default function ShopsScreen() {
   const { data: shops, loading, refetch } = useSupabaseQuery<Shop[]>(

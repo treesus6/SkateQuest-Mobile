@@ -1,8 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { RefreshCw } from 'lucide-react-native';
 import { useChallenges } from '../contexts/ChallengeContext';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 export default function DailyQuestsScreen({ navigation }: any) {

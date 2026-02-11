@@ -6,7 +6,7 @@ type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
   title: string;
-  onPress: () => void;
+  onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   disabled?: boolean;

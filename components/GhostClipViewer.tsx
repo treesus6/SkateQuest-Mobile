@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Ghost, Film, Lock, Play } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import Card from './ui/Card';
 import Button from './ui/Button';

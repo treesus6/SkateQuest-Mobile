@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, ActivityIndicator, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { shopsService } from '../lib/shopsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import Button from './ui/Button';
 
@@ -31,10 +31,7 @@ export default function RedeemModal({ visible, dealId, dealTitle, onClose }: Red
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('redeem_shop_deal', {
-        p_user_id: user.id,
-        p_deal_id: dealId,
-      });
+      const { data, error } = await shopsService.redeemDeal(user.id, dealId);
 
       if (error) throw error;
       if (data && data.code) {

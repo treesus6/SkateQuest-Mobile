@@ -15,6 +15,18 @@ export const shopsService = {
     }
   },
 
+  async redeemDeal(userId: string, dealId: string) {
+    try {
+      return await supabase.rpc('redeem_shop_deal', {
+        p_user_id: userId,
+        p_deal_id: dealId,
+      });
+    } catch (error) {
+      Logger.error('shopsService.redeemDeal failed', error);
+      throw new ServiceError('Failed to redeem deal', 'SHOPS_REDEEM_DEAL_FAILED', error);
+    }
+  },
+
   async getNearby(lat: number, lng: number, radiusKm: number = 10) {
     try {
       return await supabase.rpc('get_nearby_shops', {

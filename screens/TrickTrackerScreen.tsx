@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
 import { Target, Star, Zap, Plus, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -6,11 +6,9 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';
 import { feedService } from '../lib/feedService';
 import { profilesService } from '../lib/profilesService';
-import { supabase } from '../lib/supabase';
 import { UserTrick } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 const COMMON_TRICKS = [
   'Ollie', 'Kickflip', 'Heelflip', 'Pop Shove-it', 'Frontside 180',
@@ -29,7 +27,7 @@ export default function TrickTrackerScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTrickName, setNewTrickName] = useState('');
 
-  const { data: tricks, loading, refetch } = useSupabaseQuery<UserTrick[]>(
+  const { data: tricks, refetch } = useSupabaseQuery<UserTrick[]>(
     () => userTricksService.getAll(user?.id || ''),
     [user?.id],
     { cacheKey: `tricks-${user?.id}`, enabled: !!user }
@@ -75,7 +73,7 @@ export default function TrickTrackerScreen() {
         });
 
         try {
-          await supabase.rpc('increment_xp', { user_id: user?.id, amount: 25 });
+          await profilesService.incrementXp(user?.id || '', 25);
         } catch {
           const { data: userData } = await profilesService.getById(user?.id || '');
           if (userData) {
@@ -94,10 +92,7 @@ export default function TrickTrackerScreen() {
 
   const incrementAttempts = async (trick: UserTrick) => {
     try {
-      await supabase
-        .from('user_tricks')
-        .update({ attempts: trick.attempts + 1, updated_at: new Date().toISOString() })
-        .eq('id', trick.id);
+      await userTricksService.update(trick.id, { attempts: trick.attempts + 1, updated_at: new Date().toISOString() });
       refetch();
     } catch {}
   };

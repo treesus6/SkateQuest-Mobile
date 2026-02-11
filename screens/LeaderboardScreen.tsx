@@ -3,7 +3,6 @@ import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Trophy } from 'lucide-react-native';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { profilesService } from '../lib/profilesService';
-import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
 import Card from '../components/ui/Card';
 

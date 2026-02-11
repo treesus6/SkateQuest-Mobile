@@ -51,6 +51,18 @@ export const userTricksService = {
     }
   },
 
+  async update(trickId: string, updates: Record<string, any>) {
+    try {
+      return await supabase
+        .from('user_tricks')
+        .update(updates)
+        .eq('id', trickId);
+    } catch (error) {
+      Logger.error('userTricksService.update failed', error);
+      throw new ServiceError('Failed to update trick', 'USER_TRICKS_UPDATE_FAILED', error);
+    }
+  },
+
   async delete(trickId: string) {
     try {
       return await supabase
