@@ -1,37 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import React from 'react';
+import { View, Text, FlatList, Alert } from 'react-native';
+import { Target } from 'lucide-react-native';
+import { useAuthStore } from '../stores/useAuthStore';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { challengesService } from '../lib/challengesService';
+import { profilesService } from '../lib/profilesService';
 import { Challenge } from '../types';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 export default function ChallengesScreen() {
-  const { user } = useAuth();
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadChallenges();
-  }, []);
-
-  const loadChallenges = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading challenges:', error);
-      } else {
-        setChallenges(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user } = useAuthStore();
+  const { data: challenges, loading, refetch } = useSupabaseQuery<Challenge[]>(
+    () => challengesService.getActive(),
+    [],
+    { cacheKey: 'challenges-active' }
+  );
 
   const completeChallenge = async (challenge: Challenge) => {
     if (!user) return;
@@ -45,39 +30,20 @@ export default function ChallengesScreen() {
           text: 'Complete',
           onPress: async () => {
             try {
-              // Update challenge status
-              const { error: challengeError } = await supabase
-                .from('challenges')
-                .update({
-                  status: 'completed',
-                  completed_by: user.id,
-                  completed_at: new Date().toISOString(),
-                })
-                .eq('id', challenge.id);
-
+              const { error: challengeError } = await challengesService.complete(challenge.id, user.id);
               if (challengeError) throw challengeError;
 
-              // Update user XP
-              const { data: userData, error: userError } = await supabase
-                .from('profiles')
-                .select('xp, challenges_completed')
-                .eq('id', user.id)
-                .single();
-
-              if (userError) throw userError;
-
-              const updatedChallenges = [...(userData.challenges_completed || []), challenge.id];
-
-              await supabase
-                .from('profiles')
-                .update({
+              const { data: userData } = await profilesService.getById(user.id);
+              if (userData) {
+                const updatedChallenges = [...(userData.challenges_completed || []), challenge.id];
+                await profilesService.update(user.id, {
                   xp: (userData.xp || 0) + challenge.xp_reward,
                   challenges_completed: updatedChallenges,
-                })
-                .eq('id', user.id);
+                });
+              }
 
               Alert.alert('Success', `You earned ${challenge.xp_reward} XP!`);
-              loadChallenges(); // Reload challenges
+              refetch();
             } catch (error: any) {
               Alert.alert('Error', error.message);
             }
@@ -88,105 +54,56 @@ export default function ChallengesScreen() {
   };
 
   const renderChallenge = ({ item }: { item: Challenge }) => (
-    <View style={styles.challengeCard}>
-      <Text style={styles.challengeTitle}>{item.title || item.trick}</Text>
-      {item.description && <Text style={styles.challengeDescription}>{item.description}</Text>}
-      <View style={styles.challengeFooter}>
-        <Text style={styles.xpText}>+{item.xp_reward} XP</Text>
-        <TouchableOpacity style={styles.completeButton} onPress={() => completeChallenge(item)}>
-          <Text style={styles.completeButtonText}>Complete</Text>
-        </TouchableOpacity>
+    <Card>
+      <View className="flex-row items-start gap-3">
+        <Target color="#d2673d" size={22} />
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            {item.title || item.trick}
+          </Text>
+          {item.description ? (
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</Text>
+          ) : null}
+        </View>
       </View>
-    </View>
+      <View className="flex-row justify-between items-center mt-3">
+        <Text className="text-base font-bold text-brand-terracotta">+{item.xp_reward} XP</Text>
+        <Button title="Complete" onPress={() => completeChallenge(item)} variant="primary" size="sm" className="bg-brand-green" />
+      </View>
+    </Card>
   );
 
+  if (loading) {
+    return (
+      <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
+        <LoadingSkeleton height={60} className="mb-3" />
+        <LoadingSkeleton height={80} className="mb-3" />
+        <LoadingSkeleton height={80} className="mb-3" />
+        <LoadingSkeleton height={80} className="mb-3" />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Pending Challenges</Text>
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View className="bg-brand-terracotta p-5 rounded-b-2xl">
+        <Text className="text-2xl font-bold text-white text-center">Challenges</Text>
+        <Text className="text-sm text-white/90 text-center mt-1">Complete challenges to earn XP</Text>
+      </View>
       <FlatList
-        data={challenges}
+        data={challenges ?? []}
         renderItem={renderChallenge}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 16 }}
         refreshing={loading}
-        onRefresh={loadChallenges}
+        onRefresh={refetch}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No challenges available</Text>
+          <View className="items-center mt-24">
+            <Text className="text-lg font-bold text-gray-400">No challenges available</Text>
+            <Text className="text-sm text-gray-300 mt-1">Check back later!</Text>
           </View>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    padding: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  listContainer: {
-    padding: 15,
-  },
-  challengeCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  challengeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  challengeDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  challengeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  xpText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#d2673d',
-  },
-  completeButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  completeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-  },
-});

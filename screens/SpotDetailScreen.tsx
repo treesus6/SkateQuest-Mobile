@@ -1,29 +1,28 @@
 import React, { useState, useEffect, memo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Modal,
-  Linking,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Dimensions, Image, Modal, Linking } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { Camera, MapPin, Star, Target, AlertTriangle } from 'lucide-react-native';
+import { useAuthStore } from '../stores/useAuthStore';
+import { spotsService } from '../lib/spotsService';
+import { challengesService } from '../lib/challengesService';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
 import PortalDimensionLogo from '../components/PortalDimensionLogo';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 const { width } = Dimensions.get('window');
 
+const CONDITION_OPTIONS = [
+  { value: 'dry', label: 'Dry' }, { value: 'wet', label: 'Wet' }, { value: 'crowded', label: 'Crowded' },
+  { value: 'empty', label: 'Empty' }, { value: 'cops', label: 'Cops' }, { value: 'clear', label: 'Clear' },
+  { value: 'under_construction', label: 'Construction' },
+];
+
 const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const { spotId } = route.params;
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [spot, setSpot] = useState<SkateSpot | null>(null);
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
   const [conditions, setConditions] = useState<SpotCondition[]>([]);
@@ -33,428 +32,172 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const [uploading, setUploading] = useState(false);
   const [showConditionsModal, setShowConditionsModal] = useState(false);
 
-  useEffect(() => {
-    loadSpotData();
-  }, [spotId]);
+  useEffect(() => { loadSpotData(); }, [spotId]);
 
   const loadSpotData = async () => {
     try {
-      // Load spot
-      const { data: spotData, error: spotError } = await supabase
-        .from('skate_spots')
-        .select('*')
-        .eq('id', spotId)
-        .single();
-
+      const { data: spotData, error: spotError } = await spotsService.getById(spotId);
       if (spotError) throw spotError;
       setSpot(spotData);
+      setPhotos(spotData?.spot_photos || []);
+      setConditions(spotData?.spot_conditions?.filter((c: any) => new Date(c.expires_at) > new Date()) || []);
 
-      // Load photos
-      const { data: photosData, error: photosError } = await supabase
-        .from('spot_photos')
-        .select(
-          `
-          *,
-          media:media_id(*)
-        `
-        )
-        .eq('spot_id', spotId)
-        .order('is_primary', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (photosError) throw photosError;
-      setPhotos(photosData || []);
-
-      // Load active conditions (not expired)
-      const { data: conditionsData, error: conditionsError } = await supabase
-        .from('spot_conditions')
-        .select(
-          `
-          *,
-          reporter:reported_by(username)
-        `
-        )
-        .eq('spot_id', spotId)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-      if (conditionsError) throw conditionsError;
-      setConditions(conditionsData || []);
-
-      // Load challenges
-      const { data: challengesData, error: challengesError } = await supabase
-        .from('challenges')
-        .select('*')
-        .eq('spot_id', spotId)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (challengesError) throw challengesError;
+      const { data: challengesData } = await challengesService.getForSpot(spotId);
       setChallenges(challengesData || []);
     } catch (error: any) {
       console.error('Error loading spot:', error);
       Alert.alert('Error', error.message);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const uploadSpotPhoto = async () => {
     if (!user) return;
-
     try {
       setUploading(true);
       const result = await pickImage();
       if (!result) return;
-
       const photoResult = await uploadImage(result.uri, 'spot_photos', user.id);
-
-      // Save to media table
-      const media = await saveMediaToDatabase(user.id, photoResult, {
-        caption: `Photo of ${spot?.name}`,
-        spotId,
-      });
-
-      // Link to spot_photos
-      const { error } = await supabase.from('spot_photos').insert([
-        {
-          spot_id: spotId,
-          media_id: media.id,
-          uploaded_by: user.id,
-          is_primary: photos.length === 0, // First photo is primary
-        },
-      ]);
-
-      if (error) throw error;
-
+      const media = await saveMediaToDatabase(user.id, photoResult, { caption: `Photo of ${spot?.name}`, spotId });
+      await spotsService.uploadPhoto(spotId, media.id, user.id, photos.length === 0);
       Alert.alert('Success', 'Photo uploaded!');
       loadSpotData();
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setUploading(false);
-    }
+    } catch (error: any) { Alert.alert('Error', error.message); }
+    finally { setUploading(false); }
   };
 
   const reportCondition = async (condition: string) => {
     if (!user) return;
-
     try {
-      const { error } = await supabase.from('spot_conditions').insert([
-        {
-          spot_id: spotId,
-          reported_by: user.id,
-          condition,
-          expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // 6 hours
-        },
-      ]);
-
+      const { error } = await spotsService.reportCondition(spotId, user.id, condition);
       if (error) throw error;
-
       Alert.alert('Success', 'Condition reported!');
       setShowConditionsModal(false);
       loadSpotData();
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    }
+    } catch (error: any) { Alert.alert('Error', error.message); }
   };
 
   const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty) {
-      case 'Beginner':
-        return '#4CAF50';
-      case 'Intermediate':
-        return '#FF9800';
-      case 'Advanced':
-        return '#f44336';
-      default:
-        return '#999';
-    }
+    switch (difficulty) { case 'Beginner': return '#4CAF50'; case 'Intermediate': return '#FF9800'; case 'Advanced': return '#f44336'; default: return '#999'; }
   };
 
-  const getConditionIcon = (condition: string) => {
-    const icons: Record<string, string> = {
-      dry: '☀️',
-      wet: '💧',
-      crowded: '👥',
-      empty: '✨',
-      cops: '👮',
-      clear: '✅',
-      under_construction: '🚧',
-    };
-    return icons[condition] || '📍';
-  };
-
-  const getConditionLabel = (condition: string) => {
-    return condition.replace('_', ' ').toUpperCase();
-  };
+  const getConditionLabel = (condition: string) => condition.replace('_', ' ').toUpperCase();
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d2673d" />
-      </View>
-    );
+    return (<View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4"><LoadingSkeleton height={300} className="mb-4" /><LoadingSkeleton height={100} className="mb-4" /><LoadingSkeleton height={80} className="mb-4" /></View>);
   }
 
   if (!spot) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Spot not found</Text>
-      </View>
-    );
+    return (<View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center"><Text className="text-lg text-gray-400">Spot not found</Text></View>);
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Photo Carousel */}
-      <View style={styles.carouselContainer}>
+    <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View style={{ height: 300 }} className="bg-black relative">
         {photos.length > 0 ? (
           <>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / width);
-                setActivePhotoIndex(index);
-              }}
-            >
-              {photos.map(photo => (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.media?.url }}
-                  style={styles.carouselImage}
-                  resizeMode="cover"
-                />
-              ))}
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={e => setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width))}>
+              {photos.map(photo => (<Image key={photo.id} source={{ uri: photo.media?.url }} style={{ width, height: 300 }} resizeMode="cover" />))}
             </ScrollView>
-            <View style={styles.photoIndicators}>
-              {photos.map((_, index) => (
-                <View
-                  key={index}
-                  style={[styles.indicator, index === activePhotoIndex && styles.activeIndicator]}
-                />
-              ))}
+            <View className="absolute bottom-[60px] left-0 right-0 flex-row justify-center gap-1.5">
+              {photos.map((_, index) => (<View key={index} className={`w-2 h-2 rounded-full ${index === activePhotoIndex ? 'bg-white' : 'bg-white/50'}`} />))}
             </View>
           </>
         ) : (
-          <View style={styles.noPhotosContainer}>
-            <Text style={styles.noPhotosText}>No photos yet</Text>
-            <Text style={styles.noPhotosSubtext}>Be the first to add one!</Text>
+          <View className="flex-1 justify-center items-center bg-gray-800">
+            <Text className="text-lg font-bold text-white">No photos yet</Text>
+            <Text className="text-sm text-gray-400 mt-1">Be the first to add one!</Text>
           </View>
         )}
-
-        <TouchableOpacity
-          style={styles.addPhotoButton}
-          onPress={uploadSpotPhoto}
-          disabled={uploading}
-        >
-          {uploading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.addPhotoButtonText}>📸 Add Photo</Text>
-          )}
+        <TouchableOpacity className="absolute bottom-4 right-4 bg-brand-terracotta px-5 py-2.5 rounded-full shadow-lg flex-row items-center gap-1.5" onPress={uploadSpotPhoto} disabled={uploading}>
+          {uploading ? <ActivityIndicator color="#fff" size="small" /> : (<><Camera color="#fff" size={14} /><Text className="text-white text-sm font-bold">Add Photo</Text></>)}
         </TouchableOpacity>
       </View>
 
-      {/* Spot Info */}
-      <View style={styles.infoCard}>
-        <Text style={styles.spotName}>{spot.name}</Text>
-
-        <View style={styles.metaRow}>
-          <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: getDifficultyColor(spot.difficulty) },
-            ]}
-          >
-            <Text style={styles.difficultyText}>{spot.difficulty || 'Unknown'}</Text>
+      <View className="bg-white dark:bg-gray-800 p-5 -mt-5 rounded-t-2xl">
+        <Text className="text-[28px] font-bold text-gray-800 dark:text-gray-100 mb-3">{spot.name}</Text>
+        <View className="flex-row items-center gap-3 mb-4">
+          <View className="px-3 py-1.5 rounded-xl" style={{ backgroundColor: getDifficultyColor(spot.difficulty) }}>
+            <Text className="text-white text-xs font-bold">{spot.difficulty || 'Unknown'}</Text>
           </View>
-          {spot.rating && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingText}>⭐ {spot.rating.toFixed(1)}</Text>
-            </View>
-          )}
+          {spot.rating && (<View className="flex-row items-center gap-1"><Star color="#FFD700" size={16} /><Text className="text-sm font-bold text-gray-800 dark:text-gray-100">{spot.rating.toFixed(1)}</Text></View>)}
         </View>
-
         {spot.tricks && spot.tricks.length > 0 && (
-          <View style={styles.tricksSection}>
-            <Text style={styles.sectionTitle}>Popular Tricks:</Text>
-            <View style={styles.tricksContainer}>
-              {spot.tricks.map((trick, index) => (
-                <View key={index} style={styles.trickTag}>
-                  <Text style={styles.trickText}>{trick}</Text>
-                </View>
-              ))}
+          <View className="mt-2.5">
+            <Text className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">Popular Tricks:</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {spot.tricks.map((trick, index) => (<View key={index} className="bg-brand-beige dark:bg-gray-700 px-3 py-1.5 rounded-xl"><Text className="text-sm text-brand-terracotta font-semibold">{trick}</Text></View>))}
             </View>
           </View>
         )}
-
-        {/* Sponsor Link */}
         {spot.sponsor_name && spot.sponsor_url && (
-          <TouchableOpacity
-            style={styles.sponsorCard}
-            onPress={() => Linking.openURL(spot.sponsor_url!)}
-          >
-            <View style={styles.sponsorContent}>
-              <Text style={styles.sponsorLabel}>Supported by</Text>
-              <Text style={styles.sponsorName}>{spot.sponsor_name}</Text>
-            </View>
-            <Text style={styles.sponsorArrow}>→</Text>
+          <TouchableOpacity className="mt-4 p-4 bg-brand-terracotta rounded-xl flex-row items-center justify-between" onPress={() => Linking.openURL(spot.sponsor_url!)}>
+            <View className="flex-1"><Text className="text-[11px] text-white/80 font-semibold mb-1">Supported by</Text><Text className="text-base text-white font-bold">{spot.sponsor_name}</Text></View>
+            <Text className="text-2xl text-white ml-2.5">→</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Map Preview */}
-      <View style={styles.mapCard}>
-        <Text style={styles.cardTitle}>📍 Location</Text>
-        <TouchableOpacity
-          style={styles.mapContainer}
-          onPress={() => navigation.navigate('Map')}
-        >
-          <Mapbox.MapView
-            style={styles.map}
-            styleURL={Mapbox.StyleURL.Street}
-            scrollEnabled={false}
-            pitchEnabled={false}
-            rotateEnabled={false}
-            zoomEnabled={false}
-          >
-            <Mapbox.Camera
-              zoomLevel={14}
-              centerCoordinate={[spot.longitude, spot.latitude]}
-            />
-            <Mapbox.PointAnnotation
-              id="spot-location"
-              coordinate={[spot.longitude, spot.latitude]}
-            >
-              <View style={styles.mapMarker}>
-                <Text style={styles.mapMarkerText}>📍</Text>
-              </View>
+      <Card className="mx-4">
+        <View className="flex-row items-center gap-2 mb-2.5"><MapPin color="#d2673d" size={18} /><Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Location</Text></View>
+        <TouchableOpacity style={{ height: 200, borderRadius: 10, overflow: 'hidden' }} onPress={() => navigation.navigate('Map')}>
+          <Mapbox.MapView style={{ flex: 1 }} styleURL={Mapbox.StyleURL.Street} scrollEnabled={false} pitchEnabled={false} rotateEnabled={false} zoomEnabled={false}>
+            <Mapbox.Camera zoomLevel={14} centerCoordinate={[spot.longitude, spot.latitude]} />
+            <Mapbox.PointAnnotation id="spot-location" coordinate={[spot.longitude, spot.latitude]}>
+              <View className="items-center justify-center"><MapPin color="#d2673d" size={32} /></View>
             </Mapbox.PointAnnotation>
           </Mapbox.MapView>
-          <View style={styles.mapOverlay}>
-            <Text style={styles.mapOverlayText}>Tap to view on map</Text>
-          </View>
+          <View className="absolute bottom-0 left-0 right-0 bg-black/60 p-2.5 items-center"><Text className="text-white text-sm font-semibold">Tap to view on map</Text></View>
         </TouchableOpacity>
-        <View style={styles.coordinatesContainer}>
-          <Text style={styles.coordinatesText}>
-            📐 {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
-          </Text>
+        <View className="mt-2.5 p-2.5 bg-brand-beige dark:bg-gray-700 rounded-lg">
+          <Text className="text-xs text-gray-500 dark:text-gray-400 font-mono">{spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}</Text>
         </View>
-      </View>
+      </Card>
 
-      {/* Portal Dimension Community Support */}
       <PortalDimensionLogo skateparkName={spot.name} />
 
-      {/* Live Conditions */}
-      {conditions.length > 0 && (
-        <View style={styles.conditionsCard}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>🔴 Live Conditions</Text>
-            <Text style={styles.cardSubtitle}>Updated recently</Text>
-          </View>
-          {conditions.map(condition => (
-            <View key={condition.id} style={styles.conditionRow}>
-              <Text style={styles.conditionIcon}>{getConditionIcon(condition.condition)}</Text>
-              <View style={styles.conditionInfo}>
-                <Text style={styles.conditionText}>{getConditionLabel(condition.condition)}</Text>
-                <Text style={styles.conditionMeta}>
-                  by {condition.reporter?.username} • {getTimeAgo(condition.created_at)}
-                </Text>
-              </View>
+      <Card className="mx-4">
+        <View className="flex-row items-center gap-2 mb-3"><AlertTriangle color="#ef4444" size={18} /><Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Live Conditions</Text></View>
+        {conditions.length > 0 ? conditions.map(c => (
+          <View key={c.id} className="flex-row items-center py-2.5 border-b border-gray-100 dark:border-gray-700">
+            <View className="flex-1 ml-3">
+              <Text className="text-[15px] font-bold text-gray-800 dark:text-gray-100">{getConditionLabel(c.condition)}</Text>
+              <Text className="text-xs text-gray-400 mt-0.5">by {c.reporter?.username} · {getTimeAgo(c.created_at)}</Text>
             </View>
-          ))}
-          <TouchableOpacity
-            style={styles.reportButton}
-            onPress={() => setShowConditionsModal(true)}
-          >
-            <Text style={styles.reportButtonText}>+ Report Condition</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+          </View>
+        )) : <Text className="text-sm text-gray-400 text-center mb-3">No recent conditions reported</Text>}
+        <Button title="+ Report Condition" onPress={() => setShowConditionsModal(true)} variant="primary" size="sm" className="bg-brand-green mt-2.5" />
+      </Card>
 
-      {conditions.length === 0 && (
-        <View style={styles.conditionsCard}>
-          <Text style={styles.noConditionsText}>No recent conditions reported</Text>
-          <TouchableOpacity
-            style={styles.reportButton}
-            onPress={() => setShowConditionsModal(true)}
-          >
-            <Text style={styles.reportButtonText}>+ Report Condition</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Active Challenges */}
       {challenges.length > 0 && (
-        <View style={styles.challengesCard}>
-          <Text style={styles.cardTitle}>🎯 Active Challenges</Text>
-          {challenges.map(challenge => (
-            <TouchableOpacity
-              key={challenge.id}
-              style={styles.challengeRow}
-              onPress={() => navigation.navigate('Challenges')}
-            >
-              <Text style={styles.challengeTrick}>{challenge.trick}</Text>
-              <Text style={styles.challengeXP}>+{challenge.xp_reward} XP</Text>
+        <Card className="mx-4">
+          <View className="flex-row items-center gap-2 mb-3"><Target color="#d2673d" size={18} /><Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Active Challenges</Text></View>
+          {challenges.map(ch => (
+            <TouchableOpacity key={ch.id} className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700" onPress={() => navigation.navigate('Challenges')}>
+              <Text className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">{ch.trick}</Text>
+              <Text className="text-sm font-bold text-brand-terracotta">+{ch.xp_reward} XP</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </Card>
       )}
 
-      {/* Actions */}
-      <View style={styles.actionsCard}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Challenges', { spotId: spot.id })}
-        >
-          <Text style={styles.actionButtonText}>🎯 View All Challenges</Text>
-        </TouchableOpacity>
+      <View className="px-4 pb-8">
+        <Button title="View All Challenges" onPress={() => navigation.navigate('Challenges', { spotId: spot.id })} variant="primary" size="lg" />
       </View>
 
-      {/* Report Conditions Modal */}
-      <Modal
-        visible={showConditionsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowConditionsModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Report Condition</Text>
-            <Text style={styles.modalSubtitle}>What's the spot like right now?</Text>
-
-            <View style={styles.conditionsGrid}>
-              {[
-                { value: 'dry', label: 'Dry', icon: '☀️' },
-                { value: 'wet', label: 'Wet', icon: '💧' },
-                { value: 'crowded', label: 'Crowded', icon: '👥' },
-                { value: 'empty', label: 'Empty', icon: '✨' },
-                { value: 'cops', label: 'Cops', icon: '👮' },
-                { value: 'clear', label: 'Clear', icon: '✅' },
-                { value: 'under_construction', label: 'Construction', icon: '🚧' },
-              ].map(option => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={styles.conditionOption}
-                  onPress={() => reportCondition(option.value)}
-                >
-                  <Text style={styles.conditionOptionIcon}>{option.icon}</Text>
-                  <Text style={styles.conditionOptionText}>{option.label}</Text>
+      <Modal visible={showConditionsModal} transparent animationType="slide" onRequestClose={() => setShowConditionsModal(false)}>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white dark:bg-gray-800 rounded-t-2xl p-5 pb-10">
+            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-1">Report Condition</Text>
+            <Text className="text-sm text-gray-500 mb-5">What's the spot like right now?</Text>
+            <View className="flex-row flex-wrap gap-2.5 mb-5">
+              {CONDITION_OPTIONS.map(option => (
+                <TouchableOpacity key={option.value} className="w-[31%] bg-gray-100 dark:bg-gray-700 p-4 rounded-xl items-center" onPress={() => reportCondition(option.value)}>
+                  <Text className="text-[11px] text-gray-800 dark:text-gray-100 font-semibold text-center mt-1">{option.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowConditionsModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            <Button title="Cancel" onPress={() => setShowConditionsModal(false)} variant="secondary" size="lg" />
           </View>
         </View>
       </Modal>
@@ -463,412 +206,11 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 });
 
 function getTimeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
+  const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
   if (seconds < 60) return 'just now';
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f0ea',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f0ea',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#999',
-  },
-  carouselContainer: {
-    height: 300,
-    backgroundColor: '#000',
-    position: 'relative',
-  },
-  carouselImage: {
-    width,
-    height: 300,
-  },
-  noPhotosContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#333',
-  },
-  noPhotosText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  noPhotosSubtext: {
-    fontSize: 14,
-    color: '#ccc',
-    marginTop: 5,
-  },
-  photoIndicators: {
-    position: 'absolute',
-    bottom: 60,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
-  activeIndicator: {
-    backgroundColor: '#fff',
-  },
-  addPhotoButton: {
-    position: 'absolute',
-    bottom: 15,
-    right: 15,
-    backgroundColor: '#d2673d',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  addPhotoButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  infoCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginTop: -20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  spotName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 15,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  tricksSection: {
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 8,
-  },
-  tricksContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  trickTag: {
-    backgroundColor: '#f5f0ea',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  trickText: {
-    fontSize: 13,
-    color: '#d2673d',
-    fontWeight: '600',
-  },
-  sponsorCard: {
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: '#d2673d',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sponsorContent: {
-    flex: 1,
-  },
-  sponsorLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  sponsorName: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  sponsorArrow: {
-    fontSize: 24,
-    color: '#fff',
-    marginLeft: 10,
-  },
-  conditionsCard: {
-    backgroundColor: '#fff',
-    margin: 15,
-    padding: 15,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  conditionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  conditionIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  conditionInfo: {
-    flex: 1,
-  },
-  conditionText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  conditionMeta: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  noConditionsText: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  reportButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  reportButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  challengesCard: {
-    backgroundColor: '#fff',
-    margin: 15,
-    marginTop: 0,
-    padding: 15,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  challengeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  challengeTrick: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-  },
-  challengeXP: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#d2673d',
-  },
-  actionsCard: {
-    padding: 15,
-    paddingBottom: 30,
-  },
-  actionButton: {
-    backgroundColor: '#d2673d',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 40,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
-  conditionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
-  },
-  conditionOption: {
-    width: '31%',
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  conditionOptionIcon: {
-    fontSize: 28,
-    marginBottom: 5,
-  },
-  conditionOptionText: {
-    fontSize: 11,
-    color: '#333',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e0e0e0',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  mapCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 15,
-    marginVertical: 10,
-    borderRadius: 12,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 10,
-    overflow: 'hidden',
-    marginTop: 10,
-    position: 'relative',
-  },
-  map: {
-    flex: 1,
-  },
-  mapMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapMarkerText: {
-    fontSize: 32,
-  },
-  mapOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 10,
-    alignItems: 'center',
-  },
-  mapOverlayText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  coordinatesContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#f5f0ea',
-    borderRadius: 8,
-  },
-  coordinatesText: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'monospace',
-  },
-});
 
 export default SpotDetailScreen;

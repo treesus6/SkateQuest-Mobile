@@ -1,6 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
+import { MapPin } from 'lucide-react-native';
 import parks from '../data/parks.json';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 
 type Park = {
   id: string;
@@ -14,76 +17,35 @@ export default function SpotsScreen() {
   const data: Park[] = (parks as any) || [];
 
   const renderItem = ({ item }: { item: Park }) => (
-    <View style={styles.card}>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.meta}>
-        {item.city || ''}
-        {item.city && item.state ? ', ' : ''}
-        {item.state || ''}
-      </Text>
-      {item.difficulty && <Text style={styles.meta}>Park level: {item.difficulty}</Text>}
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>View spot challenges (soon)</Text>
-      </TouchableOpacity>
-    </View>
+    <Card>
+      <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{item.name}</Text>
+      <View className="flex-row items-center gap-1 mt-1">
+        <MapPin color="#888" size={14} />
+        <Text className="text-sm text-gray-500 dark:text-gray-400">
+          {item.city || ''}{item.city && item.state ? ', ' : ''}{item.state || ''}
+        </Text>
+      </View>
+      {item.difficulty ? (
+        <Text className="text-sm text-gray-400 mt-1">Park level: {item.difficulty}</Text>
+      ) : null}
+      <View className="mt-2">
+        <Button title="View spot challenges (soon)" variant="primary" size="sm" />
+      </View>
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Spots</Text>
-      <Text style={styles.subtitle}>Parks nearby and mission hubs.</Text>
-
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View className="bg-brand-terracotta p-5 rounded-b-2xl">
+        <Text className="text-2xl font-bold text-white text-center">Spots</Text>
+        <Text className="text-sm text-white/90 text-center mt-1">Parks nearby and mission hubs.</Text>
+      </View>
       <FlatList
         data={data}
         keyExtractor={item => item.id || item.name}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingVertical: 8 }}
+        contentContainerStyle={{ padding: 16 }}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#05070B',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#F5F5F5',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#C7CED9',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#121826',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 10,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F5F5F5',
-  },
-  meta: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  button: {
-    marginTop: 8,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#FF5A3C',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#F5F5F5',
-    fontWeight: '600',
-  },
-});

@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
+import { Navigation, X } from 'lucide-react-native';
 
 interface MapDirectionsProps {
-  from: [number, number]; // [longitude, latitude]
-  to: [number, number]; // [longitude, latitude]
+  from: [number, number];
+  to: [number, number];
   onClose: () => void;
 }
 
 interface RouteData {
   coordinates: number[][];
-  distance: number; // in meters
-  duration: number; // in seconds
+  distance: number;
+  duration: number;
 }
 
 export default function MapDirections({ from, to, onClose }: MapDirectionsProps) {
@@ -19,15 +20,12 @@ export default function MapDirections({ from, to, onClose }: MapDirectionsProps)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchRoute();
-  }, [from, to]);
+  useEffect(() => { fetchRoute(); }, [from, to]);
 
   const fetchRoute = async () => {
     try {
       setLoading(true);
       setError(null);
-
       const accessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${from[0]},${from[1]};${to[0]},${to[1]}?geometries=geojson&access_token=${accessToken}`;
 
@@ -53,37 +51,32 @@ export default function MapDirections({ from, to, onClose }: MapDirectionsProps)
   };
 
   const formatDistance = (meters: number): string => {
-    if (meters < 1000) {
-      return `${Math.round(meters)}m`;
-    }
+    if (meters < 1000) return `${Math.round(meters)}m`;
     return `${(meters / 1000).toFixed(1)}km`;
   };
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.round(seconds / 60);
-    if (minutes < 60) {
-      return `${minutes} min`;
-    }
+    if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
+    return `${hours}h ${minutes % 60}m`;
   };
 
   if (loading) {
     return (
-      <View style={styles.infoContainer}>
+      <View className="absolute bottom-5 left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 flex-row items-center shadow-lg">
         <ActivityIndicator size="small" color="#d2673d" />
-        <Text style={styles.infoText}>Loading route...</Text>
+        <Text className="text-sm text-gray-500 dark:text-gray-400 ml-2.5">Loading route...</Text>
       </View>
     );
   }
 
   if (error || !route) {
     return (
-      <View style={styles.infoContainer}>
-        <Text style={styles.errorText}>{error || 'No route available'}</Text>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>Close</Text>
+      <View className="absolute bottom-5 left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 flex-row items-center shadow-lg">
+        <Text className="text-sm text-red-500 flex-1">{error || 'No route available'}</Text>
+        <TouchableOpacity onPress={onClose} className="p-1">
+          <X color="#666" size={20} />
         </TouchableOpacity>
       </View>
     );
@@ -91,96 +84,30 @@ export default function MapDirections({ from, to, onClose }: MapDirectionsProps)
 
   return (
     <>
-      {/* Route info banner */}
-      <View style={styles.infoContainer}>
-        <View style={styles.routeInfo}>
-          <Text style={styles.routeLabel}>🚶 Walk</Text>
-          <Text style={styles.routeDistance}>{formatDistance(route.distance)}</Text>
-          <Text style={styles.routeDuration}>{formatDuration(route.duration)}</Text>
+      <View className="absolute bottom-5 left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 flex-row items-center shadow-lg">
+        <View className="flex-1 flex-row items-center">
+          <Navigation color="#d2673d" size={20} />
+          <Text className="text-lg font-bold text-brand-terracotta mx-2.5">{formatDistance(route.distance)}</Text>
+          <Text className="text-sm text-gray-500 dark:text-gray-400">{formatDuration(route.duration)}</Text>
         </View>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeButtonText}>✕</Text>
+        <TouchableOpacity onPress={onClose} className="p-1">
+          <X color="#666" size={20} />
         </TouchableOpacity>
       </View>
 
-      {/* Route line on map */}
       <Mapbox.ShapeSource
         id="routeSource"
         shape={{
           type: 'Feature',
           properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: route.coordinates,
-          },
+          geometry: { type: 'LineString', coordinates: route.coordinates },
         }}
       >
         <Mapbox.LineLayer
           id="routeLine"
-          style={{
-            lineColor: '#d2673d',
-            lineWidth: 4,
-            lineCap: 'round',
-            lineJoin: 'round',
-          }}
+          style={{ lineColor: '#d2673d', lineWidth: 4, lineCap: 'round', lineJoin: 'round' }}
         />
       </Mapbox.ShapeSource>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  infoContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  routeInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  routeLabel: {
-    fontSize: 16,
-    marginRight: 10,
-  },
-  routeDistance: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    marginRight: 10,
-  },
-  routeDuration: {
-    fontSize: 14,
-    color: '#666',
-  },
-  closeButton: {
-    padding: 5,
-  },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 10,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#d9534f',
-    flex: 1,
-  },
-});

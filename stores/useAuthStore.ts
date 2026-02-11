@@ -1,53 +1,54 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react-native';
 import { supabase } from '../lib/supabase';
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  initialize: () => () => void;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  session: null,
+  loading: true,
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    // Set a timeout to stop loading after 10 seconds if Supabase doesn't respond
+  initialize: () => {
     const timeout = setTimeout(() => {
-      setLoading(false);
+      set({ loading: false });
     }, 10000);
 
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
         clearTimeout(timeout);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        set({
+          session,
+          user: session?.user ?? null,
+          loading: false,
+        });
       })
-      .catch(error => {
+      .catch((error) => {
         clearTimeout(timeout);
         console.error('Supabase session error:', error);
-        setLoading(false);
+        set({ loading: false });
       });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      set({
+        session,
+        user: session?.user ?? null,
+        loading: false,
+      });
 
-      // Set Sentry user context for error tracking
       if (session?.user) {
         Sentry.setUser({
           id: session.user.id,
@@ -72,37 +73,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, []);
+  },
 
-  const signUp = async (email: string, password: string) => {
+  signUp: async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
     return { error };
-  };
+  },
 
-  const signIn = async (email: string, password: string) => {
+  signIn: async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
-  };
+  },
 
-  const signOut = async () => {
+  signOut: async () => {
     await supabase.auth.signOut();
-  };
+  },
 
-  const resetPassword = async (email: string) => {
+  resetPassword: async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     return { error };
-  };
-
-  const value = { user, session, loading, signUp, signIn, signOut, resetPassword };
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export default AuthProvider;
+  },
+}));

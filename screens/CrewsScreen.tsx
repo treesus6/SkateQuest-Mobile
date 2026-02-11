@@ -1,82 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   TextInput,
   Alert,
   Modal,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-
-interface Crew {
-  id: string;
-  name: string;
-  description: string;
-  member_count: number;
-  total_xp: number;
-  created_by: string;
-  created_at: string;
-}
+import { useAuthStore } from '../stores/useAuthStore';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { crewsService, Crew } from '../lib/crewsService';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 
 export default function CrewsScreen() {
-  const { user } = useAuth();
-  const [crews, setCrews] = useState<Crew[]>([]);
-  const [loading, setLoading] = useState(true);
+  const user = useAuthStore(s => s.user);
+  const { data: crews, loading, refetch } = useSupabaseQuery<Crew[]>(
+    () => crewsService.getAll(),
+    []
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCrewName, setNewCrewName] = useState('');
   const [newCrewDescription, setNewCrewDescription] = useState('');
-
-  useEffect(() => {
-    loadCrews();
-  }, []);
-
-  const loadCrews = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('crews')
-        .select('*')
-        .order('total_xp', { ascending: false });
-
-      if (error) {
-        console.error('Error loading crews:', error);
-      } else {
-        setCrews(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const createCrew = async () => {
     if (!newCrewName.trim()) {
       Alert.alert('Error', 'Please enter a crew name');
       return;
     }
-
     try {
-      const { error } = await supabase.from('crews').insert([
-        {
-          name: newCrewName.trim(),
-          description: newCrewDescription.trim(),
-          created_by: user?.id,
-          member_count: 1,
-          total_xp: 0,
-        },
-      ]);
-
+      const { error } = await crewsService.create({
+        name: newCrewName.trim(),
+        description: newCrewDescription.trim(),
+        created_by: user?.id ?? '',
+      });
       if (error) throw error;
-
       setNewCrewName('');
       setNewCrewDescription('');
       setShowCreateModal(false);
       Alert.alert('Success', 'Crew created!');
-      loadCrews();
+      refetch();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -89,17 +53,10 @@ export default function CrewsScreen() {
         text: 'Join',
         onPress: async () => {
           try {
-            const { error } = await supabase.from('crew_members').insert([
-              {
-                crew_id: crewId,
-                user_id: user?.id,
-              },
-            ]);
-
+            const { error } = await crewsService.join(crewId, user?.id ?? '');
             if (error) throw error;
-
             Alert.alert('Success', 'Joined crew!');
-            loadCrews();
+            refetch();
           } catch (error: any) {
             Alert.alert('Error', error.message);
           }
@@ -109,87 +66,91 @@ export default function CrewsScreen() {
   };
 
   const renderCrew = ({ item }: { item: Crew }) => (
-    <View style={styles.crewCard}>
-      <View style={styles.crewHeader}>
-        <Text style={styles.crewName}>{item.name}</Text>
-        <Text style={styles.crewXP}>{item.total_xp} XP</Text>
+    <Card>
+      <View className="flex-row justify-between items-center mb-2">
+        <Text className="text-xl font-bold text-gray-800 dark:text-gray-100 flex-1">{item.name}</Text>
+        <Text className="text-base font-bold text-brand-purple">{item.total_xp} XP</Text>
       </View>
-      {item.description && <Text style={styles.crewDescription}>{item.description}</Text>}
-      <View style={styles.crewFooter}>
-        <Text style={styles.memberCount}>👥 {item.member_count} members</Text>
-        <TouchableOpacity style={styles.joinButton} onPress={() => joinCrew(item.id)}>
-          <Text style={styles.joinButtonText}>Join Crew</Text>
-        </TouchableOpacity>
+      {item.description ? (
+        <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">{item.description}</Text>
+      ) : null}
+      <View className="flex-row justify-between items-center">
+        <Text className="text-sm text-gray-400">{item.member_count} members</Text>
+        <Button title="Join Crew" onPress={() => joinCrew(item.id)} variant="secondary" size="sm" />
       </View>
-    </View>
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>👥 Crews</Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setShowCreateModal(true)}>
-          <Text style={styles.createButtonText}>+ Create Crew</Text>
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View className="bg-brand-purple p-5 flex-row justify-between items-center">
+        <Text className="text-2xl font-bold text-white">Crews</Text>
+        <TouchableOpacity
+          className="bg-white px-4 py-2 rounded-full"
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Text className="text-brand-purple font-bold text-sm">+ Create Crew</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={crews}
+        data={crews ?? []}
         renderItem={renderCrew}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 16 }}
         refreshing={loading}
-        onRefresh={loadCrews}
+        onRefresh={refetch}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No crews yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to create one!</Text>
+          <View className="items-center mt-24">
+            <Text className="text-lg font-bold text-gray-400">No crews yet</Text>
+            <Text className="text-sm text-gray-300 mt-1">Be the first to create one!</Text>
           </View>
         }
       />
 
-      {/* Create Crew Modal */}
       <Modal
         visible={showCreateModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create New Crew</Text>
+        <View className="flex-1 bg-black/50 justify-center px-5">
+          <View className="bg-white dark:bg-gray-800 rounded-2xl p-6">
+            <Text className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">Create New Crew</Text>
 
             <TextInput
-              style={styles.input}
+              className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 text-gray-800 dark:text-gray-100"
               placeholder="Crew Name"
+              placeholderTextColor="#999"
               value={newCrewName}
               onChangeText={setNewCrewName}
               maxLength={30}
             />
 
             <TextInput
-              style={[styles.input, styles.textArea]}
+              className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 h-20 text-gray-800 dark:text-gray-100"
               placeholder="Description (optional)"
+              placeholderTextColor="#999"
               value={newCrewDescription}
               onChangeText={setNewCrewDescription}
               multiline
               numberOfLines={3}
               maxLength={200}
+              style={{ textAlignVertical: 'top' }}
             />
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowCreateModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.submitButton]}
-                onPress={createCrew}
-              >
-                <Text style={styles.submitButtonText}>Create</Text>
-              </TouchableOpacity>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Button
+                  title="Cancel"
+                  onPress={() => setShowCreateModal(false)}
+                  variant="ghost"
+                  size="lg"
+                />
+              </View>
+              <View className="flex-1">
+                <Button title="Create" onPress={createCrew} variant="secondary" size="lg" />
+              </View>
             </View>
           </View>
         </View>
@@ -197,155 +158,3 @@ export default function CrewsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    backgroundColor: '#6B4CE6',
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  createButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  createButtonText: {
-    color: '#6B4CE6',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  crewCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  crewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  crewName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-  },
-  crewXP: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#6B4CE6',
-  },
-  crewDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  crewFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  memberCount: {
-    fontSize: 14,
-    color: '#888',
-  },
-  joinButton: {
-    backgroundColor: '#6B4CE6',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  joinButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    backgroundColor: '#6B4CE6',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});

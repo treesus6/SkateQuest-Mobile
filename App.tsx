@@ -6,9 +6,11 @@ import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 
+import './global.css';
+
 import ChallengeApp from './components/ChallengeApp';
-import AuthProvider, { useAuth } from './contexts/AuthContext';
-import { NetworkProvider } from './contexts/NetworkContext';
+import { useAuthStore } from './stores/useAuthStore';
+import { useNetworkStore } from './stores/useNetworkStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import Onboarding from './components/Onboarding';
@@ -30,7 +32,7 @@ const Stack = createNativeStackNavigator();
 
 // Root Navigator that handles auth state
 function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthStore();
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
 
@@ -87,15 +89,15 @@ function RootNavigator() {
 
 export default function App() {
   useEffect(() => {
+    // Initialize stores
+    const cleanupAuth = useAuthStore.getState().initialize();
+    const cleanupNetwork = useNetworkStore.getState().initialize();
+
     // Initialize app
     const initializeApp = async () => {
       try {
-        // Validate environment variables on app startup
         validateEnvironment();
-
-        // Configure system UI to match brand colors
         await SystemUI.setBackgroundColorAsync('#d2673d');
-
         Logger.info('SkateQuest Mobile app initialized');
       } catch (error) {
         Logger.error('App initialization failed:', error);
@@ -103,24 +105,22 @@ export default function App() {
       }
     };
 
-    // Set up global error handler
     setupGlobalErrorHandler();
-
-    // Initialize app
     initializeApp();
+
+    return () => {
+      cleanupAuth();
+      cleanupNetwork();
+    };
   }, []);
 
   return (
     <ErrorBoundary>
-      <NetworkProvider>
-        <AuthProvider>
-          <StatusBar style="light" />
-          <OfflineIndicator />
-          <PortalDimensionLogo />
-          <Toast />
-          <RootNavigator />
-        </AuthProvider>
-      </NetworkProvider>
+      <StatusBar style="light" />
+      <OfflineIndicator />
+      <PortalDimensionLogo />
+      <Toast />
+      <RootNavigator />
     </ErrorBoundary>
   );
 }

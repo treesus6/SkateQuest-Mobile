@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { MapPin, Target, Zap, ArrowUpCircle, Users, Flag, Trophy, Crosshair, Star } from 'lucide-react-native';
+import LoadingSkeleton from './ui/LoadingSkeleton';
 
 interface Activity {
   id: string;
@@ -14,6 +15,18 @@ interface Activity {
   avatar_url?: string;
 }
 
+const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
+  qr_code_found: { icon: Crosshair, color: '#d2673d' },
+  spot_claimed: { icon: Trophy, color: '#f59e0b' },
+  challenge_completed: { icon: Target, color: '#4CAF50' },
+  level_up: { icon: ArrowUpCircle, color: '#3b82f6' },
+  crew_joined: { icon: Users, color: '#8b5cf6' },
+  territory_captured: { icon: Flag, color: '#ef4444' },
+  achievement_unlocked: { icon: Trophy, color: '#f59e0b' },
+  trick_landed: { icon: Zap, color: '#FF6B35' },
+  spot_added: { icon: MapPin, color: '#d2673d' },
+};
+
 export default function ActivityFeed() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +36,7 @@ export default function ActivityFeed() {
     try {
       const { data, error } = await supabase
         .from('activity_feed')
-        .select(`
-          *,
-          profiles!activity_feed_user_id_fkey(username, avatar_url)
-        `)
+        .select(`*, profiles!activity_feed_user_id_fkey(username, avatar_url)`)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -47,45 +57,31 @@ export default function ActivityFeed() {
     }
   };
 
-  useEffect(() => {
-    fetchActivities();
-  }, []);
+  useEffect(() => { fetchActivities(); }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchActivities();
   };
 
-  const getActivityEmoji = (type: string) => {
-    const emojiMap: Record<string, string> = {
-      qr_code_found: '📱',
-      spot_claimed: '👑',
-      challenge_completed: '✅',
-      level_up: '⬆️',
-      crew_joined: '🤝',
-      territory_captured: '🏴',
-      achievement_unlocked: '🏆',
-      trick_landed: '🛹',
-      spot_added: '📍',
-    };
-    return emojiMap[type] || '⭐';
-  };
-
   const renderActivity = ({ item }: { item: Activity }) => {
-    const timeAgo = getTimeAgo(item.created_at);
+    const iconData = ACTIVITY_ICONS[item.activity_type] || { icon: Star, color: '#d2673d' };
+    const IconComponent = iconData.icon;
 
     return (
-      <View style={styles.activityCard}>
-        <View style={styles.activityHeader}>
-          <Text style={styles.emoji}>{getActivityEmoji(item.activity_type)}</Text>
-          <View style={styles.activityContent}>
-            <Text style={styles.username}>{item.username}</Text>
-            <Text style={styles.title}>{item.title}</Text>
-            {item.description && <Text style={styles.description}>{item.description}</Text>}
-            <View style={styles.footer}>
-              <Text style={styles.time}>{timeAgo}</Text>
+      <View className="bg-gray-800 rounded-xl p-4 mb-3 border-l-[3px] border-l-brand-terracotta">
+        <View className="flex-row items-start">
+          <View className="mr-3 mt-1">
+            <IconComponent color={iconData.color} size={24} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-bold text-brand-terracotta mb-1">{item.username}</Text>
+            <Text className="text-base font-semibold text-white mb-1">{item.title}</Text>
+            {item.description && <Text className="text-sm text-gray-400 mb-2">{item.description}</Text>}
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xs text-gray-500">{getTimeAgo(item.created_at)}</Text>
               {item.xp_earned > 0 && (
-                <Text style={styles.xp}>+{item.xp_earned} XP</Text>
+                <Text className="text-xs font-bold text-green-400">+{item.xp_earned} XP</Text>
               )}
             </View>
           </View>
@@ -96,8 +92,10 @@ export default function ActivityFeed() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#d2673d" />
+      <View className="flex-1 bg-gray-900 p-3">
+        <LoadingSkeleton height={80} className="mb-3" />
+        <LoadingSkeleton height={80} className="mb-3" />
+        <LoadingSkeleton height={80} className="mb-3" />
       </View>
     );
   }
@@ -108,11 +106,12 @@ export default function ActivityFeed() {
       keyExtractor={(item) => item.id}
       renderItem={renderActivity}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d2673d" />}
-      contentContainerStyle={styles.listContainer}
+      contentContainerStyle={{ padding: 12 }}
+      className="bg-gray-900"
       ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No activity yet</Text>
-          <Text style={styles.emptySubtext}>Start skating to see updates!</Text>
+        <View className="items-center py-16">
+          <Text className="text-lg font-bold text-white mb-2">No activity yet</Text>
+          <Text className="text-sm text-gray-500">Start skating to see updates!</Text>
         </View>
       }
     />
@@ -120,9 +119,7 @@ export default function ActivityFeed() {
 }
 
 function getTimeAgo(dateString: string): string {
-  const now = new Date();
-  const past = new Date(dateString);
-  const diffMs = now.getTime() - past.getTime();
+  const diffMs = Date.now() - new Date(dateString).getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
@@ -131,82 +128,5 @@ function getTimeAgo(dateString: string): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return past.toLocaleDateString();
+  return new Date(dateString).toLocaleDateString();
 }
-
-const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-  },
-  listContainer: {
-    padding: 12,
-    backgroundColor: '#1a1a1a',
-  },
-  activityCard: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#d2673d',
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  emoji: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#aaa',
-    marginBottom: 8,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  time: {
-    fontSize: 12,
-    color: '#666',
-  },
-  xp: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#4ade80',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
-});

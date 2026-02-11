@@ -1,287 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  RefreshControl,
-  Dimensions,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { MapPin, Target, Zap, ArrowUpCircle, Camera, Trophy, Sparkles, Upload } from 'lucide-react-native';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { feedService } from '../lib/feedService';
 import { Activity } from '../types';
+import Card from '../components/ui/Card';
 
-const { width } = Dimensions.get('window');
+const ACTIVITY_ICONS: Record<string, { icon: typeof MapPin; color: string }> = {
+  spot_added: { icon: MapPin, color: '#d2673d' },
+  challenge_completed: { icon: Target, color: '#4CAF50' },
+  trick_landed: { icon: Zap, color: '#FF6B35' },
+  level_up: { icon: ArrowUpCircle, color: '#6B4CE6' },
+  media_uploaded: { icon: Camera, color: '#2196F3' },
+  skate_game_won: { icon: Trophy, color: '#FFD700' },
+};
 
 export default function FeedScreen({ navigation }: any) {
-  const { user } = useAuth();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: activities, loading, refetch } = useSupabaseQuery<Activity[]>(
+    () => feedService.getRecent(50),
+    [],
+    { cacheKey: 'feed-recent' }
+  );
 
   useEffect(() => {
-    loadFeed();
+    const subscription = feedService.subscribeToFeed(() => refetch());
+    return () => { subscription.unsubscribe(); };
+  }, [refetch]);
 
-    // Real-time subscription
-    const subscription = supabase
-      .channel('feed-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'activities',
-        },
-        () => {
-          loadFeed();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const loadFeed = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('activities')
-        .select(
-          `
-          *,
-          user:users(id, username, level, xp),
-          media(*)
-        `
-        )
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Error loading feed:', error);
-      } else {
-        setActivities(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+  const renderActivityIcon = (type: string) => {
+    const config = ACTIVITY_ICONS[type] || { icon: Sparkles, color: '#999' };
+    const Icon = config.icon;
+    return <Icon color={config.color} size={24} />;
   };
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'spot_added':
-        return '📍';
-      case 'challenge_completed':
-        return '🎯';
-      case 'trick_landed':
-        return '🛹';
-      case 'level_up':
-        return '⬆️';
-      case 'media_uploaded':
-        return '📹';
-      case 'skate_game_won':
-        return '🏆';
-      default:
-        return '✨';
-    }
-  };
-
-  const renderActivity = ({ item }: { item: Activity }) => {
-    const icon = getActivityIcon(item.activity_type);
-
-    return (
-      <View style={styles.activityCard}>
-        <View style={styles.activityHeader}>
-          <Text style={styles.activityIcon}>{icon}</Text>
-          <View style={styles.activityHeaderText}>
-            <Text style={styles.username}>{item.user?.username || 'Skater'}</Text>
-            <Text style={styles.activityTitle}>{item.title}</Text>
-            {item.description && <Text style={styles.activityDescription}>{item.description}</Text>}
-            <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleDateString()}</Text>
-          </View>
-          {item.xp_earned > 0 && (
-            <View style={styles.xpBadge}>
-              <Text style={styles.xpText}>+{item.xp_earned} XP</Text>
-            </View>
-          )}
+  const renderActivity = ({ item }: { item: Activity }) => (
+    <Card>
+      <View className="flex-row items-start">
+        <View className="mr-3 mt-0.5">
+          {renderActivityIcon(item.activity_type)}
         </View>
-
-        {item.media && (
-          <View style={styles.mediaContainer}>
-            {item.media.type === 'photo' ? (
-              <Image
-                source={{ uri: item.media.url }}
-                style={styles.mediaImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <Video
-                source={{ uri: item.media.url }}
-                style={styles.mediaVideo}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-              />
-            )}
-            {item.media.caption && <Text style={styles.mediaCaption}>{item.media.caption}</Text>}
+        <View className="flex-1">
+          <Text className="text-base font-bold text-brand-terracotta mb-0.5">
+            {item.user?.username || 'Skater'}
+          </Text>
+          <Text className="text-[15px] font-semibold text-gray-800 dark:text-gray-100 mb-1">
+            {item.title}
+          </Text>
+          {item.description ? (
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">{item.description}</Text>
+          ) : null}
+          <Text className="text-xs text-gray-400">
+            {new Date(item.created_at).toLocaleDateString()}
+          </Text>
+        </View>
+        {item.xp_earned > 0 && (
+          <View className="bg-brand-green px-2.5 py-1 rounded-full">
+            <Text className="text-white text-xs font-bold">+{item.xp_earned} XP</Text>
           </View>
         )}
       </View>
-    );
-  };
+
+      {item.media && (
+        <View className="mt-3 rounded-lg overflow-hidden">
+          {item.media.type === 'photo' ? (
+            <Image
+              source={{ uri: item.media.url }}
+              style={{ width: '100%', height: 250 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Video
+              source={{ uri: item.media.url }}
+              style={{ width: '100%', height: 250 }}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+            />
+          )}
+          {item.media.caption ? (
+            <Text className="text-sm text-gray-600 dark:text-gray-300 mt-2 italic">
+              {item.media.caption}
+            </Text>
+          ) : null}
+        </View>
+      )}
+    </Card>
+  );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌟 Feed</Text>
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View className="bg-brand-terracotta p-4 rounded-b-2xl flex-row justify-between items-center">
+        <Text className="text-2xl font-bold text-white">Feed</Text>
         <TouchableOpacity
-          style={styles.uploadButton}
+          className="bg-white px-4 py-2 rounded-full flex-row items-center gap-1.5"
           onPress={() => navigation.navigate('UploadMedia')}
         >
-          <Text style={styles.uploadButtonText}>+ Upload</Text>
+          <Upload color="#d2673d" size={14} />
+          <Text className="text-brand-terracotta font-bold text-sm">Upload</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={activities}
+        data={activities ?? []}
         renderItem={renderActivity}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadFeed} />}
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} />}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No activity yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to post!</Text>
+          <View className="items-center mt-24">
+            <Text className="text-lg font-bold text-gray-400">No activity yet</Text>
+            <Text className="text-sm text-gray-300 mt-1">Be the first to post!</Text>
           </View>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#d2673d',
-    padding: 15,
-    paddingTop: 15,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  uploadButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  uploadButtonText: {
-    color: '#d2673d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  activityCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  activityIcon: {
-    fontSize: 28,
-    marginRight: 10,
-  },
-  activityHeaderText: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    marginBottom: 2,
-  },
-  activityTitle: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
-    marginBottom: 3,
-  },
-  activityDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#999',
-  },
-  xpBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  xpText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  mediaContainer: {
-    marginTop: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  mediaImage: {
-    width: '100%',
-    height: 250,
-    borderRadius: 8,
-  },
-  mediaVideo: {
-    width: '100%',
-    height: 250,
-  },
-  mediaCaption: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-});

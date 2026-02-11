@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
+import { MapPin, Video, Trophy, Search, Users, Bell, Wifi } from 'lucide-react-native';
+import Button from './ui/Button';
 
 interface EmptyStateProps {
-  icon: string;
+  icon?: string;
+  iconComponent?: React.ReactNode;
   title: string;
   description: string;
   actionText?: string;
@@ -11,110 +14,74 @@ interface EmptyStateProps {
 
 const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
+  iconComponent,
   title,
   description,
   actionText,
   onAction,
 }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.description}>{description}</Text>
+    <View className="flex-1 justify-center items-center p-10">
+      {iconComponent ? (
+        <View className="mb-5">{iconComponent}</View>
+      ) : icon ? (
+        <Text className="text-[64px] mb-5">{icon}</Text>
+      ) : null}
+      <Text className="text-xl font-bold text-white mb-3 text-center">{title}</Text>
+      <Text className="text-sm text-gray-400 text-center leading-5 mb-6">{description}</Text>
       {actionText && onAction && (
-        <TouchableOpacity style={styles.button} onPress={onAction}>
-          <Text style={styles.buttonText}>{actionText}</Text>
-        </TouchableOpacity>
+        <Button title={actionText} onPress={onAction} variant="primary" size="md" />
       )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  icon: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: '#d2673d',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
-
-// Pre-made empty states
 export const EmptyStates = {
   NoSkateparks: () => (
     <EmptyState
-      icon="🛹"
+      iconComponent={<MapPin color="#d2673d" size={64} />}
       title="No Skateparks Nearby"
       description="Try expanding your search radius or add a new skatepark to the map."
     />
   ),
   NoTricks: () => (
     <EmptyState
-      icon="📹"
+      iconComponent={<Video color="#d2673d" size={64} />}
       title="No Tricks Yet"
       description="Start recording your tricks to build your portfolio and track your progress."
     />
   ),
   NoChallenges: () => (
     <EmptyState
-      icon="🏆"
+      iconComponent={<Trophy color="#d2673d" size={64} />}
       title="No Active Challenges"
       description="Check back later for new challenges, or create a custom challenge for yourself."
     />
   ),
   NoResults: () => (
     <EmptyState
-      icon="🔍"
+      iconComponent={<Search color="#d2673d" size={64} />}
       title="No Results Found"
       description="Try adjusting your search terms or filters."
     />
   ),
   NoFollowers: () => (
     <EmptyState
-      icon="👥"
+      iconComponent={<Users color="#d2673d" size={64} />}
       title="No Followers Yet"
       description="Share your best tricks to attract followers and build your skate community."
     />
   ),
   NoNotifications: () => (
     <EmptyState
-      icon="🔔"
+      iconComponent={<Bell color="#d2673d" size={64} />}
       title="No Notifications"
       description="You're all caught up! New notifications will appear here."
     />
   ),
   Offline: () => (
     <EmptyState
-      icon="📡"
+      iconComponent={<Wifi color="#d2673d" size={64} />}
       title="No Internet Connection"
       description="Connect to the internet to load fresh content."
     />
