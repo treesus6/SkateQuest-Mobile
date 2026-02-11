@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
+import { Sparkles } from 'lucide-react-native';
 import tricks from '../data/tricks.json';
+import Card from './ui/Card';
+import Button from './ui/Button';
 
 type Trick = string;
 
 const OBSTACLES = [
-  'flatground',
-  'curb',
-  'ledge',
-  'manual pad',
-  '3-stair',
-  '5-stair',
-  'bank',
-  'hip',
+  'flatground', 'curb', 'ledge', 'manual pad',
+  '3-stair', '5-stair', 'bank', 'hip',
 ];
 
 function randomItem<T>(arr: T[]): T {
@@ -26,68 +23,25 @@ export default function TrickCallout() {
     const trick = randomItem(tricks as Trick[]);
     const obstacle = randomItem(OBSTACLES);
     const stance = randomItem(['regular', 'switch', 'fakie', 'nollie']);
-
-    const text = `${stance} ${trick} on the ${obstacle}.`;
-    setPrompt(text);
+    setPrompt(`${stance} ${trick} on the ${obstacle}.`);
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Trick Callout</Text>
-      <Text style={styles.subtitle}>Hit a random mission right now.</Text>
+    <View className="mt-6">
+      <Text className="text-xl font-extrabold text-white">Trick Callout</Text>
+      <Text className="text-sm text-gray-400 mb-3">Hit a random mission right now.</Text>
 
-      <TouchableOpacity style={styles.button} onPress={generate}>
-        <Text style={styles.buttonText}>Call me out</Text>
-      </TouchableOpacity>
+      <Button title="Call me out" onPress={generate} variant="primary" size="md" />
 
       {prompt && (
-        <View style={styles.card}>
-          <Text style={styles.prompt}>{prompt}</Text>
-          <Text style={styles.note}>Film it. Land it. Claim it.</Text>
-        </View>
+        <Card className="mt-4">
+          <View className="flex-row items-center gap-2 mb-1">
+            <Sparkles color="#d2673d" size={16} />
+            <Text className="text-lg font-bold text-gray-800 dark:text-white">{prompt}</Text>
+          </View>
+          <Text className="text-xs text-gray-400">Film it. Land it. Claim it.</Text>
+        </Card>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 24,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#F5F5F5',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#C7CED9',
-    marginBottom: 12,
-  },
-  button: {
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#FF5A3C',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#F5F5F5',
-    fontWeight: '700',
-  },
-  card: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#121826',
-  },
-  prompt: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F5F5F5',
-    marginBottom: 4,
-  },
-  note: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-});

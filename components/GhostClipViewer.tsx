@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Modal,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import { Ghost, Film, Lock, Play } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import Card from './ui/Card';
+import Button from './ui/Button';
 
 interface GhostClipViewerProps {
   spotId: string;
@@ -22,14 +18,11 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
   const [loading, setLoading] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
 
-  useEffect(() => {
-    fetchGhostClip();
-  }, [spotId, user?.id]);
+  useEffect(() => { fetchGhostClip(); }, [spotId, user?.id]);
 
   const fetchGhostClip = async () => {
     try {
-      // Get ghost clip for this spot
-      const { data: clip, error: clipError } = await supabase
+      const { data: clip } = await supabase
         .from('ghost_clips')
         .select('*')
         .eq('spot_id', spotId)
@@ -37,8 +30,6 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
 
       if (clip) {
         setGhostClip(clip);
-
-        // Check if user has unlocked it
         if (user?.id) {
           const { data: unlock } = await supabase
             .from('user_unlocks')
@@ -46,7 +37,6 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
             .eq('user_id', user.id)
             .eq('ghost_clip_id', clip.id)
             .single();
-
           setUnlocked(!!unlock);
         }
       }
@@ -59,167 +49,66 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <Card className="mx-4">
         <ActivityIndicator size="small" color="#d2673d" />
-      </View>
+      </Card>
     );
   }
 
-  if (!ghostClip) {
-    return null;
-  }
+  if (!ghostClip) return null;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>👻 Ghost Clip</Text>
+    <Card className="mx-4">
+      <View className="flex-row items-center gap-2 mb-3">
+        <Ghost color="#8b5cf6" size={20} />
+        <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Ghost Clip</Text>
+      </View>
 
       {unlocked ? (
-        <TouchableOpacity style={styles.unlockedCard} onPress={() => setShowVideo(true)}>
-          <Text style={styles.unlockedEmoji}>🎬</Text>
-          <View style={styles.clipInfo}>
-            <Text style={styles.clipTitle}>{ghostClip.title || 'Secret Clip'}</Text>
-            <Text style={styles.clipDesc}>{ghostClip.description || 'Tap to watch'}</Text>
+        <TouchableOpacity
+          className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 flex-row items-center border-2 border-purple-500"
+          onPress={() => setShowVideo(true)}
+        >
+          <Film color="#8b5cf6" size={28} />
+          <View className="flex-1 ml-3">
+            <Text className="text-base font-bold text-gray-800 dark:text-gray-100">{ghostClip.title || 'Secret Clip'}</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">{ghostClip.description || 'Tap to watch'}</Text>
           </View>
-          <Text style={styles.playIcon}>▶️</Text>
+          <Play color="#8b5cf6" size={24} />
         </TouchableOpacity>
       ) : (
-        <View style={styles.lockedCard}>
-          <Text style={styles.lockedEmoji}>🔒</Text>
-          <View style={styles.lockInfo}>
-            <Text style={styles.lockTitle}>Secret Clip Locked</Text>
-            <Text style={styles.lockHint}>Scan the QR code at this spot to unlock!</Text>
+        <View className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 flex-row items-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <View className="opacity-50">
+            <Lock color="#666" size={28} />
+          </View>
+          <View className="flex-1 ml-3">
+            <Text className="text-sm font-bold text-gray-500 dark:text-gray-400">Secret Clip Locked</Text>
+            <Text className="text-xs text-gray-400 dark:text-gray-500 italic">Scan the QR code at this spot to unlock!</Text>
           </View>
         </View>
       )}
 
-      {/* Video Modal */}
       <Modal visible={showVideo} animationType="slide" onRequestClose={() => setShowVideo(false)}>
-        <View style={styles.videoModal}>
+        <View className="flex-1 bg-black">
           <Video
             source={{ uri: ghostClip.video_url }}
-            style={styles.video}
+            style={{ flex: 1 }}
             resizeMode={ResizeMode.CONTAIN}
             shouldPlay
             isLooping
             useNativeControls
           />
-          <View style={styles.videoOverlay}>
-            <Text style={styles.videoTitle}>{ghostClip.title || 'Ghost Clip'}</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setShowVideo(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+          <View className="absolute top-0 left-0 right-0 pt-[60px] px-5">
+            <Text
+              className="text-2xl font-bold text-white mb-3"
+              style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}
+            >
+              {ghostClip.title || 'Ghost Clip'}
+            </Text>
+            <Button title="Close" onPress={() => setShowVideo(false)} variant="primary" size="md" className="self-start" />
           </View>
         </View>
       </Modal>
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  unlockedCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#8b5cf6',
-  },
-  unlockedEmoji: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  clipInfo: {
-    flex: 1,
-  },
-  clipTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  clipDesc: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  playIcon: {
-    fontSize: 24,
-  },
-  lockedCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#444',
-    borderStyle: 'dashed',
-  },
-  lockedEmoji: {
-    fontSize: 32,
-    marginRight: 12,
-    opacity: 0.5,
-  },
-  lockInfo: {
-    flex: 1,
-  },
-  lockTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 4,
-  },
-  lockHint: {
-    fontSize: 12,
-    color: '#444',
-    fontStyle: 'italic',
-  },
-  videoModal: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  video: {
-    flex: 1,
-  },
-  videoOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-  },
-  videoTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  closeButton: {
-    backgroundColor: '#d2673d',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  closeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});

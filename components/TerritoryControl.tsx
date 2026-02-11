@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { Flag, Swords } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
+import Card from './ui/Card';
+import Button from './ui/Button';
 
 interface TerritoryControlProps {
   spotId: string;
@@ -29,13 +33,9 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
   const fetchTerritory = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('crew_territories')
-        .select(`
-          crew_id,
-          total_points,
-          crews!crew_territories_crew_id_fkey(name, color_hex)
-        `)
+        .select(`crew_id, total_points, crews!crew_territories_crew_id_fkey(name, color_hex)`)
         .eq('spot_id', spotId)
         .order('total_points', { ascending: false })
         .limit(1)
@@ -58,14 +58,10 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
   const fetchUserCrew = async () => {
     if (!user?.id) return;
-
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('crew_members')
-        .select(`
-          crew_id,
-          crews!crew_members_crew_id_fkey(name, color_hex)
-        `)
+        .select(`crew_id, crews!crew_members_crew_id_fkey(name, color_hex)`)
         .eq('user_id', user.id)
         .single();
 
@@ -89,21 +85,15 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
     setCapturing(true);
     try {
-      // Check if user has enough XP to challenge
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('xp')
-        .eq('id', user?.id)
-        .single();
-
       const captureXP = 100;
+      const { data: profile } = await profilesService.getById(user?.id || '');
+
       if (!profile || profile.xp < captureXP) {
         Alert.alert('Not Enough XP', `You need ${captureXP} XP to capture territory!`);
         setCapturing(false);
         return;
       }
 
-      // Add territory points for user's crew
       const { data: existing } = await supabase
         .from('crew_territories')
         .select('*')
@@ -112,35 +102,14 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
         .single();
 
       if (existing) {
-        await supabase
-          .from('crew_territories')
-          .update({
-            total_points: existing.total_points + captureXP,
-            last_activity: new Date().toISOString(),
-          })
+        await supabase.from('crew_territories')
+          .update({ total_points: existing.total_points + captureXP, last_activity: new Date().toISOString() })
           .eq('id', existing.id);
       } else {
-        await supabase.from('crew_territories').insert({
-          spot_id: spotId,
-          crew_id: userCrew.id,
-          total_points: captureXP,
-        });
+        await supabase.from('crew_territories').insert({ spot_id: spotId, crew_id: userCrew.id, total_points: captureXP });
       }
 
-      // Deduct XP from user
-      await supabase
-        .from('profiles')
-        .update({ xp: profile.xp - captureXP })
-        .eq('id', user?.id);
-
-      // Create activity
-      await supabase.from('activities').insert({
-        user_id: user?.id,
-        activity_type: 'territory_captured',
-        title: 'Territory Battle!',
-        description: `Added ${captureXP} points to ${userCrew.name}'s territory`,
-        xp_earned: 0,
-      });
+      await profilesService.update(user?.id || '', { xp: profile.xp - captureXP });
 
       Alert.alert('Success!', `Added ${captureXP} points to your crew's territory!`);
       fetchTerritory();
@@ -154,133 +123,47 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="small" color="#d2673d" />
-      </View>
-    );
+    return <Card className="mx-4"><ActivityIndicator size="small" color="#d2673d" /></Card>;
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🏴 Territory Control</Text>
+    <Card className="mx-4">
+      <View className="flex-row items-center gap-2 mb-3">
+        <Flag color="#d2673d" size={20} />
+        <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Territory Control</Text>
+      </View>
 
       {territory ? (
-        <View style={[styles.territoryCard, { borderLeftColor: territory.crew_color }]}>
-          <View style={styles.crewInfo}>
-            <Text style={styles.crewName}>{territory.crew_name}</Text>
-            <Text style={styles.points}>{territory.total_points} pts</Text>
+        <View
+          className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-3 flex-row justify-between items-center"
+          style={{ borderLeftWidth: 4, borderLeftColor: territory.crew_color }}
+        >
+          <View className="flex-1">
+            <Text className="text-base font-bold text-gray-800 dark:text-gray-100">{territory.crew_name}</Text>
+            <Text className="text-sm text-gray-500 dark:text-gray-400">{territory.total_points} pts</Text>
           </View>
-          <View style={[styles.colorBadge, { backgroundColor: territory.crew_color }]} />
+          <View className="w-10 h-10 rounded-full" style={{ backgroundColor: territory.crew_color }} />
         </View>
       ) : (
-        <View style={styles.unclaimedCard}>
-          <Text style={styles.unclaimedText}>No crew owns this spot yet!</Text>
+        <View className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-3 items-center">
+          <Text className="text-sm text-gray-500 italic">No crew owns this spot yet!</Text>
         </View>
       )}
 
       {userCrew && (
-        <TouchableOpacity
-          style={[
-            styles.captureButton,
-            capturing && styles.captureButtonDisabled,
-            territory?.crew_id === userCrew.id && styles.captureButtonOwned,
-          ]}
+        <Button
+          title={capturing ? 'Fighting...' : territory?.crew_id === userCrew.id ? 'Defend Territory (-100 XP)' : 'Capture Territory (-100 XP)'}
           onPress={handleCapture}
+          variant="primary"
+          size="lg"
+          className={territory?.crew_id === userCrew.id ? 'bg-emerald-500' : ''}
           disabled={capturing}
-        >
-          <Text style={styles.captureButtonText}>
-            {capturing
-              ? 'Fighting...'
-              : territory?.crew_id === userCrew.id
-              ? 'Defend Territory (-100 XP)'
-              : 'Capture Territory (-100 XP)'}
-          </Text>
-        </TouchableOpacity>
+        />
       )}
 
       {!userCrew && (
-        <Text style={styles.hint}>Join a crew to capture territory!</Text>
+        <Text className="text-xs text-gray-500 text-center mt-2 italic">Join a crew to capture territory!</Text>
       )}
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  territoryCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  crewInfo: {
-    flex: 1,
-  },
-  crewName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  points: {
-    fontSize: 14,
-    color: '#aaa',
-  },
-  colorBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  unclaimedCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  unclaimedText: {
-    fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  captureButton: {
-    backgroundColor: '#d2673d',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  captureButtonDisabled: {
-    opacity: 0.6,
-  },
-  captureButtonOwned: {
-    backgroundColor: '#10b981',
-  },
-  captureButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  hint: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-});

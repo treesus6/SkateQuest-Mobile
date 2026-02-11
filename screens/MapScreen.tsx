@@ -1,26 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { supabase } from '../lib/supabase';
+import { Crosshair, Navigation, Plus, Star, Trophy, QrCode, Gamepad2, Music, ShoppingBag, Users, Calendar, Zap, BarChart3, MapPin } from 'lucide-react-native';
+import { spotsService } from '../lib/spotsService';
 import { SkateSpot } from '../types';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const INITIAL_COORDINATES = [-122.4324, 37.78825]; // [longitude, latitude] - San Francisco
-const SEARCH_RADIUS_KM = 50; // Load spots within 50km radius
+const INITIAL_COORDINATES = [-122.4324, 37.78825];
+const SEARCH_RADIUS_KM = 50;
+
+const FEATURES = [
+  { key: 'Feed', icon: Star, color: '#d2673d', screen: 'Feed' },
+  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'Challenges' },
+  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
+  { key: 'Tricks', icon: Zap, color: '#FF6B35', screen: 'TrickTracker' },
+  { key: 'SKATE', icon: Gamepad2, color: '#6B4CE6', screen: 'SkateGame' },
+  { key: 'Leaderboard', icon: BarChart3, color: '#2196F3', screen: 'Leaderboard' },
+  { key: 'Playlists', icon: Music, color: '#E91E63', screen: 'Playlists' },
+  { key: 'Shops', icon: ShoppingBag, color: '#795548', screen: 'Shops' },
+  { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
+  { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
+  { key: 'Add Spot', icon: Plus, color: '#fff', screen: 'AddSpot', highlight: true },
+];
 
 export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -34,38 +43,24 @@ export default function MapScreen() {
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [showDirections, setShowDirections] = useState(false);
 
-  useEffect(() => {
-    requestLocationPermission();
-  }, []);
+  useEffect(() => { requestLocationPermission(); }, []);
 
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== 'granted') {
         Alert.alert('Location Permission', 'Please enable location to find nearby skate spots', [
-          {
-            text: 'OK',
-            onPress: () => loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]),
-          },
+          { text: 'OK', onPress: () => loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]) },
         ]);
         setLoading(false);
         return;
       }
-
       const location = await Location.getCurrentPositionAsync({});
       setUserLocation(location);
-
-      const coordinates: [number, number] = [
-        location.coords.longitude,
-        location.coords.latitude,
-      ];
-      setCenterCoordinates(coordinates);
-
+      setCenterCoordinates([location.coords.longitude, location.coords.latitude]);
       loadSpots(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get your location');
       loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]);
       setLoading(false);
     }
@@ -73,502 +68,114 @@ export default function MapScreen() {
 
   const loadSpots = async (lat: number, lng: number) => {
     try {
-      // Use PostGIS to query spots within radius
-      const radiusMeters = SEARCH_RADIUS_KM * 1000;
-
-      const { data, error } = await supabase.rpc('get_nearby_spots', {
-        lat,
-        lng,
-        radius_meters: radiusMeters,
-      });
-
+      const { data, error } = await spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000);
       if (error) {
-        console.error('Error loading nearby spots:', error);
-        // Fallback: load all spots if the RPC function doesn't exist
-        const { data: allData, error: allError } = await supabase
-          .from('skate_spots')
-          .select('*')
-          .limit(500);
-
-        if (allError) {
-          console.error('Error loading spots:', allError);
-        } else {
-          setSpots(allData || []);
-        }
+        const { data: allData } = await spotsService.getAll();
+        setSpots(allData || []);
       } else {
         setSpots(data || []);
       }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Error:', error); }
+    finally { setLoading(false); }
   };
 
   const onRegionDidChange = async () => {
     if (mapRef.current) {
       const center = await mapRef.current.getCenter();
-      if (center) {
-        // Reload spots for new region center
-        loadSpots(center[1], center[0]);
-      }
+      if (center) loadSpots(center[1], center[0]);
     }
   };
 
   const goToUserLocation = () => {
     if (userLocation && cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [userLocation.coords.longitude, userLocation.coords.latitude],
-        zoomLevel: 14,
-        animationDuration: 1000,
-      });
+      cameraRef.current.setCamera({ centerCoordinate: [userLocation.coords.longitude, userLocation.coords.latitude], zoomLevel: 14, animationDuration: 1000 });
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d2673d" />
-        <Text style={styles.loadingText}>Loading map...</Text>
+      <View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center">
+        <LoadingSkeleton height={200} className="mx-4 mb-4" />
+        <Text className="text-base text-gray-500 mt-2.5">Loading map...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Mapbox.MapView
-        ref={mapRef}
-        style={styles.map}
-        styleURL={mapStyle}
-        onRegionDidChange={onRegionDidChange}
-      >
-        <Mapbox.Camera
-          ref={cameraRef}
-          zoomLevel={12}
-          centerCoordinate={centerCoordinates}
-          animationMode="flyTo"
-          animationDuration={1000}
-        />
-
-        {/* User location */}
-        {userLocation && (
-          <Mapbox.UserLocation
-            visible={true}
-            showsUserHeadingIndicator={true}
-          />
-        )}
-
-        {/* Skate spot markers with clustering */}
-        <Mapbox.ShapeSource
-          id="skate-spots"
-          cluster
-          clusterRadius={50}
-          clusterMaxZoomLevel={14}
-          shape={{
-            type: 'FeatureCollection',
-            features: spots.map(spot => ({
-              type: 'Feature',
-              id: spot.id,
-              geometry: {
-                type: 'Point',
-                coordinates: [spot.longitude, spot.latitude],
-              },
-              properties: {
-                name: spot.name,
-                difficulty: spot.difficulty || 'Unknown',
-                spotId: spot.id,
-              },
-            })),
-          }}
-          onPress={(event) => {
-            const feature = event.features[0];
-            if (feature && feature.properties && !feature.properties.cluster) {
-              const spot = spots.find(s => s.id === feature.properties.spotId);
-              if (spot) {
-                setSelectedSpot(spot);
-              }
-            }
-          }}
-        >
-          {/* Clustered points */}
-          <Mapbox.CircleLayer
-            id="clusters"
-            filter={['has', 'point_count']}
-            style={{
-              circleColor: '#d2673d',
-              circleRadius: [
-                'step',
-                ['get', 'point_count'],
-                20,
-                10,
-                30,
-                50,
-                40,
-              ],
-              circleOpacity: 0.8,
-            }}
-          />
-
-          {/* Cluster count text */}
-          <Mapbox.SymbolLayer
-            id="cluster-count"
-            filter={['has', 'point_count']}
-            style={{
-              textField: ['get', 'point_count'],
-              textSize: 14,
-              textColor: '#ffffff',
-              textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-            }}
-          />
-
-          {/* Individual spot markers */}
-          <Mapbox.CircleLayer
-            id="unclustered-point"
-            filter={['!', ['has', 'point_count']]}
-            style={{
-              circleColor: '#d2673d',
-              circleRadius: 8,
-              circleStrokeWidth: 2,
-              circleStrokeColor: '#ffffff',
-            }}
-          />
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <Mapbox.MapView ref={mapRef} style={{ flex: 1 }} styleURL={mapStyle} onRegionDidChange={onRegionDidChange}>
+        <Mapbox.Camera ref={cameraRef} zoomLevel={12} centerCoordinate={centerCoordinates} animationMode="flyTo" animationDuration={1000} />
+        {userLocation && <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />}
+        <Mapbox.ShapeSource id="skate-spots" cluster clusterRadius={50} clusterMaxZoomLevel={14}
+          shape={{ type: 'FeatureCollection', features: spots.map(spot => ({ type: 'Feature', id: spot.id, geometry: { type: 'Point', coordinates: [spot.longitude, spot.latitude] }, properties: { name: spot.name, difficulty: spot.difficulty || 'Unknown', spotId: spot.id } })) }}
+          onPress={(event) => { const f = event.features[0]; if (f?.properties && !f.properties.cluster) { const s = spots.find(sp => sp.id === f.properties!.spotId); if (s) setSelectedSpot(s); } }}>
+          <Mapbox.CircleLayer id="clusters" filter={['has', 'point_count']} style={{ circleColor: '#d2673d', circleRadius: ['step', ['get', 'point_count'], 20, 10, 30, 50, 40], circleOpacity: 0.8 }} />
+          <Mapbox.SymbolLayer id="cluster-count" filter={['has', 'point_count']} style={{ textField: ['get', 'point_count'], textSize: 14, textColor: '#ffffff', textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'] }} />
+          <Mapbox.CircleLayer id="unclustered-point" filter={['!', ['has', 'point_count']]} style={{ circleColor: '#d2673d', circleRadius: 8, circleStrokeWidth: 2, circleStrokeColor: '#ffffff' }} />
         </Mapbox.ShapeSource>
-
-        {/* Show directions if enabled */}
         {showDirections && selectedSpot && userLocation && (
-          <MapDirections
-            from={[userLocation.coords.longitude, userLocation.coords.latitude]}
-            to={[selectedSpot.longitude, selectedSpot.latitude]}
-            onClose={() => {
-              setShowDirections(false);
-              setSelectedSpot(null);
-            }}
-          />
+          <MapDirections from={[userLocation.coords.longitude, userLocation.coords.latitude]} to={[selectedSpot.longitude, selectedSpot.latitude]} onClose={() => { setShowDirections(false); setSelectedSpot(null); }} />
         )}
       </Mapbox.MapView>
 
-      {/* Map Style Selector */}
-      <MapStyleSelector
-        currentStyle={mapStyle}
-        onStyleChange={setMapStyle}
-      />
+      <MapStyleSelector currentStyle={mapStyle} onStyleChange={setMapStyle} />
 
-      {/* User location button */}
       {userLocation && (
-        <TouchableOpacity style={styles.locationButton} onPress={goToUserLocation}>
-          <Text style={styles.locationButtonText}>📍</Text>
+        <TouchableOpacity className="absolute top-[50px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg" onPress={goToUserLocation}>
+          <Crosshair color="#d2673d" size={24} />
         </TouchableOpacity>
       )}
 
-      {/* Spots counter */}
-      <View style={styles.counterBadge}>
-        <Text style={styles.counterText}>{spots.length} spots nearby</Text>
+      <View className="absolute top-[50px] left-5 bg-brand-terracotta px-4 py-2 rounded-full shadow-lg">
+        <Text className="text-white font-bold text-sm">{spots.length} spots nearby</Text>
       </View>
 
-      {/* Selected spot info */}
       {selectedSpot && !showDirections && (
-        <View style={styles.spotInfoCard}>
-          <View style={styles.spotInfoHeader}>
-            <View style={styles.spotInfoContent}>
-              <Text style={styles.spotInfoName}>{selectedSpot.name}</Text>
-              <Text style={styles.spotInfoDifficulty}>
-                Difficulty: {selectedSpot.difficulty || 'Unknown'}
-              </Text>
+        <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+          <View className="flex-row justify-between items-start mb-2.5">
+            <View className="flex-1">
+              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">{selectedSpot.name}</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400">Difficulty: {selectedSpot.difficulty || 'Unknown'}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.closeSpotButton}
-              onPress={() => setSelectedSpot(null)}
-            >
-              <Text style={styles.closeSpotButtonText}>✕</Text>
+            <TouchableOpacity className="p-1" onPress={() => setSelectedSpot(null)}>
+              <Text className="text-xl text-gray-500">✕</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.spotInfoActions}>
-            <TouchableOpacity
-              style={styles.directionsButton}
-              onPress={() => setShowDirections(true)}
-            >
-              <Text style={styles.directionsButtonText}>🧭 Directions</Text>
+          <View className="flex-row gap-2.5">
+            <TouchableOpacity className="flex-1 bg-brand-terracotta p-3 rounded-lg items-center flex-row justify-center gap-1.5" onPress={() => setShowDirections(true)}>
+              <Navigation color="#fff" size={14} />
+              <Text className="text-white font-semibold text-sm">Directions</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.viewDetailsButton}
-              onPress={() => {
-                navigation.navigate('SpotDetail', { spotId: selectedSpot.id });
-                setSelectedSpot(null);
-              }}
-            >
-              <Text style={styles.viewDetailsButtonText}>View Details</Text>
+            <TouchableOpacity className="flex-1 bg-brand-beige dark:bg-gray-700 p-3 rounded-lg items-center" onPress={() => { navigation.navigate('SpotDetail', { spotId: selectedSpot.id }); setSelectedSpot(null); }}>
+              <Text className="text-gray-800 dark:text-gray-100 font-semibold text-sm">View Details</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <View style={styles.featuresGrid}>
-        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Feed')}>
-          <Text style={styles.featureIcon}>🌟</Text>
-          <Text style={styles.featureText}>Feed</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Challenges')}
-        >
-          <Text style={styles.featureIcon}>🏆</Text>
-          <Text style={styles.featureText}>Challenges</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.featureCard, styles.qrScannerCard]}
-          onPress={() => navigation.navigate('QRScanner')}
-        >
-          <Text style={styles.featureIcon}>📱</Text>
-          <Text style={styles.featureText}>Scan QR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('TrickTracker')}
-        >
-          <Text style={styles.featureIcon}>🛹</Text>
-          <Text style={styles.featureText}>Tricks</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('SkateGame')}
-        >
-          <Text style={styles.featureIcon}>🎮</Text>
-          <Text style={styles.featureText}>SKATE</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Leaderboard')}
-        >
-          <Text style={styles.featureIcon}>📊</Text>
-          <Text style={styles.featureText}>Leaderboard</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.featureCard}
-          onPress={() => navigation.navigate('Playlists')}
-        >
-          <Text style={styles.featureIcon}>🎧</Text>
-          <Text style={styles.featureText}>Playlists</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Shops')}>
-          <Text style={styles.featureIcon}>🛒</Text>
-          <Text style={styles.featureText}>Shops</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Crews')}>
-          <Text style={styles.featureIcon}>👥</Text>
-          <Text style={styles.featureText}>Crews</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Events')}>
-          <Text style={styles.featureIcon}>📅</Text>
-          <Text style={styles.featureText}>Events</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.featureCard, styles.addSpotCard]}
-          onPress={() => navigation.navigate('AddSpot', {})}
-        >
-          <Text style={styles.featureIcon}>➕</Text>
-          <Text style={styles.featureText}>Add Spot</Text>
-        </TouchableOpacity>
+      <View className="flex-row flex-wrap p-2.5 bg-brand-beige dark:bg-gray-900">
+        {FEATURES.map(feat => {
+          const Icon = feat.icon;
+          return (
+            <TouchableOpacity key={feat.key} className={`w-[30%] m-[1.5%] rounded-xl p-3.5 items-center shadow-sm ${feat.highlight ? 'bg-brand-terracotta' : 'bg-white dark:bg-gray-800'}`}
+              onPress={() => navigation.navigate(feat.screen as any, feat.screen === 'AddSpot' ? {} : undefined)}>
+              <Icon color={feat.highlight ? '#fff' : feat.color} size={28} />
+              <Text className={`text-xs font-semibold mt-1 text-center ${feat.highlight ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}>{feat.key}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Map')}>
-          <Text style={styles.navButtonText}>🗺️ Map</Text>
+      <View className="flex-row bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-3 px-1.5">
+        <TouchableOpacity className="flex-1 p-2.5 items-center" onPress={() => navigation.navigate('Map')}>
+          <MapPin color="#d2673d" size={20} />
+          <Text className="text-sm text-brand-terracotta font-semibold mt-0.5">Map</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navButton} onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.navButtonText}>👤 Profile</Text>
+        <TouchableOpacity className="flex-1 p-2.5 items-center" onPress={() => navigation.navigate('Profile')}>
+          <Users color="#d2673d" size={20} />
+          <Text className="text-sm text-brand-terracotta font-semibold mt-0.5">Profile</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f0ea',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  map: {
-    flex: 1,
-  },
-  locationButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  locationButtonText: {
-    fontSize: 24,
-  },
-  counterBadge: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    backgroundColor: '#d2673d',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  counterText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 10,
-    backgroundColor: '#f5f0ea',
-  },
-  featureCard: {
-    width: '30%',
-    margin: '1.5%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  addSpotCard: {
-    backgroundColor: '#d2673d',
-  },
-  qrScannerCard: {
-    backgroundColor: '#e8b44d',
-  },
-  featureIcon: {
-    fontSize: 32,
-    marginBottom: 5,
-  },
-  featureText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    paddingVertical: 12,
-    paddingHorizontal: 5,
-  },
-  navButton: {
-    flex: 1,
-    padding: 10,
-    alignItems: 'center',
-  },
-  navButtonText: {
-    fontSize: 14,
-    color: '#d2673d',
-    fontWeight: '600',
-  },
-  spotInfoCard: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  spotInfoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  spotInfoContent: {
-    flex: 1,
-  },
-  spotInfoName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  spotInfoDifficulty: {
-    fontSize: 14,
-    color: '#666',
-  },
-  closeSpotButton: {
-    padding: 5,
-  },
-  closeSpotButtonText: {
-    fontSize: 20,
-    color: '#666',
-  },
-  spotInfoActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  directionsButton: {
-    flex: 1,
-    backgroundColor: '#d2673d',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  directionsButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  viewDetailsButton: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewDetailsButtonText: {
-    color: '#333',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-});

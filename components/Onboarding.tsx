@@ -1,39 +1,42 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, Dimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Map, Zap, Trophy, Users } from 'lucide-react-native';
+import Button from './ui/Button';
 
 const { width } = Dimensions.get('window');
 
 interface OnboardingScreen {
   title: string;
   description: string;
-  icon: string;
+  icon: any;
+  color: string;
 }
 
 const screens: OnboardingScreen[] = [
   {
     title: 'Discover Skateparks',
-    description:
-      'Find skateparks near you or explore spots around the world. Get directions, see photos, and read reviews from other skaters.',
-    icon: '🗺️',
+    description: 'Find skateparks near you or explore spots around the world. Get directions, see photos, and read reviews from other skaters.',
+    icon: Map,
+    color: '#3b82f6',
   },
   {
     title: 'Share Your Tricks',
-    description:
-      'Upload videos and photos of your best tricks. Get AI-powered analysis and feedback to improve your skills.',
-    icon: '🛹',
+    description: 'Upload videos and photos of your best tricks. Get AI-powered analysis and feedback to improve your skills.',
+    icon: Zap,
+    color: '#FF6B35',
   },
   {
     title: 'Complete Challenges',
-    description:
-      'Take on daily and weekly challenges. Compete on leaderboards and earn rewards for landing new tricks.',
-    icon: '🏆',
+    description: 'Take on daily and weekly challenges. Compete on leaderboards and earn rewards for landing new tricks.',
+    icon: Trophy,
+    color: '#f59e0b',
   },
   {
     title: 'Connect with Skaters',
-    description:
-      'Follow your favorite skaters, join crews, and discover local skate events. Build your skate community.',
-    icon: '👥',
+    description: 'Follow your favorite skaters, join crews, and discover local skate events. Build your skate community.',
+    icon: Users,
+    color: '#8b5cf6',
   },
 ];
 
@@ -52,10 +55,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
-  const handleSkip = () => {
-    handleComplete();
-  };
-
   const handleComplete = async () => {
     try {
       await AsyncStorage.setItem('onboarding_completed', 'true');
@@ -68,104 +67,41 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const screen = screens[currentScreen];
   const isLastScreen = currentScreen === screens.length - 1;
+  const Icon = screen.icon;
 
   return (
-    <View style={styles.container}>
-      {/* Skip button */}
+    <View className="flex-1 bg-gray-900 justify-between p-5">
       {!isLastScreen && (
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+        <View className="self-end p-2.5">
+          <Button title="Skip" onPress={handleComplete} variant="secondary" size="sm" />
+        </View>
       )}
 
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={styles.icon}>{screen.icon}</Text>
-        <Text style={styles.title}>{screen.title}</Text>
-        <Text style={styles.description}>{screen.description}</Text>
+      <View className="flex-1 justify-center items-center px-5">
+        <View className="mb-10">
+          <Icon color={screen.color} size={100} />
+        </View>
+        <Text className="text-[28px] font-bold text-white text-center mb-5">{screen.title}</Text>
+        <Text className="text-base text-gray-300 text-center leading-6 max-w-[320px]">{screen.description}</Text>
       </View>
 
-      {/* Dots indicator */}
-      <View style={styles.dotsContainer}>
+      <View className="flex-row justify-center mb-10">
         {screens.map((_, index) => (
-          <View key={index} style={[styles.dot, index === currentScreen && styles.dotActive]} />
+          <View
+            key={index}
+            className={`h-2 rounded-full mx-1 ${index === currentScreen ? 'bg-brand-terracotta w-6' : 'bg-gray-600 w-2'}`}
+          />
         ))}
       </View>
 
-      {/* Next/Get Started button */}
-      <TouchableOpacity style={styles.button} onPress={handleNext}>
-        <Text style={styles.buttonText}>{isLastScreen ? "Let's Go!" : 'Next'}</Text>
-      </TouchableOpacity>
+      <Button
+        title={isLastScreen ? "Let's Go!" : 'Next'}
+        onPress={handleNext}
+        variant="primary"
+        size="lg"
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'space-between',
-    padding: 20,
-  },
-  skipButton: {
-    alignSelf: 'flex-end',
-    padding: 10,
-  },
-  skipText: {
-    color: '#888',
-    fontSize: 16,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  icon: {
-    fontSize: 120,
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  description: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 24,
-    maxWidth: 320,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 40,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#444',
-    marginHorizontal: 4,
-  },
-  dotActive: {
-    backgroundColor: '#d2673d',
-    width: 24,
-  },
-  button: {
-    backgroundColor: '#d2673d',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
 
 export default Onboarding;

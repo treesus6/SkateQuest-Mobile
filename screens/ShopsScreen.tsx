@@ -1,225 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Linking, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import React from 'react';
+import { View, Text, FlatList, TouchableOpacity, Linking } from 'react-native';
+import { MapPin, Phone, Globe, Navigation, ShieldCheck } from 'lucide-react-native';
+import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { shopsService } from '../lib/shopsService';
 import { Shop } from '../types';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 
 export default function ShopsScreen() {
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: shops, loading, refetch } = useSupabaseQuery<Shop[]>(
+    () => shopsService.getAll(),
+    [],
+    { cacheKey: 'shops-all' }
+  );
 
-  useEffect(() => {
-    loadShops();
-  }, []);
-
-  const loadShops = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('shops')
-        .select('*')
-        .order('verified', { ascending: false })
-        .order('name');
-
-      if (error) {
-        console.error('Error loading shops:', error);
-      } else {
-        setShops(data || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openPhone = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
-  };
-
-  const openWebsite = (url: string) => {
-    if (!url.startsWith('http')) {
-      url = 'https://' + url;
-    }
-    Linking.openURL(url);
-  };
-
-  const openMaps = (lat: number, lng: number, name: string) => {
-    const url = `https://maps.google.com/?q=${lat},${lng}`;
-    Linking.openURL(url);
-  };
+  const openMaps = (lat: number, lng: number) =>
+    Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`);
 
   const renderShop = ({ item }: { item: Shop }) => (
-    <View style={styles.shopCard}>
-      <View style={styles.shopHeader}>
-        <Text style={styles.shopName}>
-          {item.verified && '✓ '}
-          {item.name}
-        </Text>
+    <Card>
+      <View className="flex-row justify-between items-center mb-2">
+        <Text className="text-xl font-bold text-gray-800 dark:text-gray-100 flex-1">{item.name}</Text>
         {item.verified && (
-          <View style={styles.verifiedBadge}>
-            <Text style={styles.verifiedText}>Verified</Text>
+          <View className="bg-brand-green px-2.5 py-1 rounded-full flex-row items-center gap-1">
+            <ShieldCheck color="#fff" size={12} />
+            <Text className="text-white text-xs font-bold">Verified</Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.address}>📍 {item.address}</Text>
+      <View className="flex-row items-center gap-1.5 mb-1">
+        <MapPin color="#888" size={14} />
+        <Text className="text-sm text-gray-500 dark:text-gray-400">{item.address}</Text>
+      </View>
 
-      {item.hours && <Text style={styles.hours}>🕒 {item.hours}</Text>}
+      {item.hours ? (
+        <Text className="text-sm text-gray-400 mb-3">{item.hours}</Text>
+      ) : null}
 
-      <View style={styles.actions}>
-        {item.phone && (
-          <TouchableOpacity style={styles.actionButton} onPress={() => openPhone(item.phone!)}>
-            <Text style={styles.actionButtonText}>📞 Call</Text>
+      <View className="flex-row flex-wrap gap-2">
+        {item.phone ? (
+          <TouchableOpacity
+            className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg flex-row items-center gap-1.5"
+            onPress={() => Linking.openURL(`tel:${item.phone}`)}
+          >
+            <Phone color="#333" size={14} />
+            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-200">Call</Text>
           </TouchableOpacity>
-        )}
-
-        {item.website && (
-          <TouchableOpacity style={styles.actionButton} onPress={() => openWebsite(item.website!)}>
-            <Text style={styles.actionButtonText}>🌐 Website</Text>
+        ) : null}
+        {item.website ? (
+          <TouchableOpacity
+            className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg flex-row items-center gap-1.5"
+            onPress={() => Linking.openURL(item.website!.startsWith('http') ? item.website! : `https://${item.website}`)}
+          >
+            <Globe color="#333" size={14} />
+            <Text className="text-sm font-semibold text-gray-700 dark:text-gray-200">Website</Text>
           </TouchableOpacity>
-        )}
-
+        ) : null}
         <TouchableOpacity
-          style={[styles.actionButton, styles.primaryButton]}
-          onPress={() => openMaps(item.latitude, item.longitude, item.name)}
+          className="bg-brand-terracotta px-3 py-2 rounded-lg flex-row items-center gap-1.5"
+          onPress={() => openMaps(item.latitude, item.longitude)}
         >
-          <Text style={[styles.actionButtonText, styles.primaryButtonText]}>📍 Directions</Text>
+          <Navigation color="#fff" size={14} />
+          <Text className="text-sm font-bold text-white">Directions</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🛒 Skate Shops</Text>
-        <Text style={styles.headerSubtitle}>{shops.length} shops found</Text>
+    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+      <View className="bg-brand-green p-5 rounded-b-2xl">
+        <Text className="text-2xl font-bold text-white text-center">Skate Shops</Text>
+        <Text className="text-sm text-white/90 text-center mt-1">{(shops ?? []).length} shops found</Text>
       </View>
 
       <FlatList
-        data={shops}
+        data={shops ?? []}
         renderItem={renderShop}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 16 }}
         refreshing={loading}
-        onRefresh={loadShops}
+        onRefresh={refetch}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No shops found</Text>
-            <Text style={styles.emptySubtext}>Check back later!</Text>
+          <View className="items-center mt-24">
+            <Text className="text-lg font-bold text-gray-400">No shops found</Text>
+            <Text className="text-sm text-gray-300 mt-1">Check back later!</Text>
           </View>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    backgroundColor: '#4CAF50',
-    padding: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  shopCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  shopHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  shopName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-  },
-  verifiedBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  verifiedText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  address: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 5,
-  },
-  hours: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 15,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  actionButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#d2673d',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  primaryButtonText: {
-    color: '#fff',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-});

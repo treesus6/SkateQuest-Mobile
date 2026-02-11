@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { MapPin, Building2, Hammer, Smartphone, ShoppingCart, Check, X } from 'lucide-react-native';
+import Button from './ui/Button';
 
 interface MapFiltersProps {
   visible: boolean;
@@ -13,6 +15,14 @@ interface MapFiltersProps {
   };
   onFilterChange: (filters: any) => void;
 }
+
+const FILTER_TYPES = [
+  { key: 'park' as const, label: 'Parks', icon: MapPin, color: '#10b981' },
+  { key: 'street' as const, label: 'Street', icon: Building2, color: '#3b82f6' },
+  { key: 'diy' as const, label: 'DIY', icon: Hammer, color: '#f59e0b' },
+  { key: 'quest' as const, label: 'Quests', icon: Smartphone, color: '#8b5cf6' },
+  { key: 'shop' as const, label: 'Shops', icon: ShoppingCart, color: '#ef4444' },
+];
 
 export default function MapFilters({ visible, onClose, filters, onFilterChange }: MapFiltersProps) {
   const [localFilters, setLocalFilters] = useState(filters);
@@ -35,169 +45,51 @@ export default function MapFilters({ visible, onClose, filters, onFilterChange }
     onFilterChange(allOff);
   };
 
-  const filterTypes = [
-    { key: 'park' as const, label: 'Parks', emoji: '🛹', color: '#10b981' },
-    { key: 'street' as const, label: 'Street', emoji: '🏙️', color: '#3b82f6' },
-    { key: 'diy' as const, label: 'DIY', emoji: '🔨', color: '#f59e0b' },
-    { key: 'quest' as const, label: 'Quests', emoji: '📱', color: '#8b5cf6' },
-    { key: 'shop' as const, label: 'Shops', emoji: '🛒', color: '#ef4444' },
-  ];
-
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Map Filters</Text>
+      <View className="flex-1 bg-black/70 justify-end">
+        <View className="bg-gray-800 rounded-t-2xl pt-5 pb-10 px-5" style={{ maxHeight: '70%' }}>
+          <View className="flex-row justify-between items-center mb-5">
+            <Text className="text-2xl font-bold text-white">Map Filters</Text>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeText}>✕</Text>
+              <X color="#666" size={24} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.filterList}>
-            {filterTypes.map(({ key, label, emoji, color }) => (
+          <ScrollView className="mb-5">
+            {FILTER_TYPES.map(({ key, label, icon: Icon, color }) => (
               <TouchableOpacity
                 key={key}
-                style={[
-                  styles.filterItem,
-                  localFilters[key] && { borderColor: color, borderWidth: 2 },
-                ]}
+                className="flex-row justify-between items-center bg-gray-900 rounded-xl p-4 mb-3"
+                style={localFilters[key] ? { borderWidth: 2, borderColor: color } : { borderWidth: 1, borderColor: '#333' }}
                 onPress={() => toggleFilter(key)}
               >
-                <View style={styles.filterLeft}>
-                  <Text style={styles.filterEmoji}>{emoji}</Text>
-                  <Text style={styles.filterLabel}>{label}</Text>
+                <View className="flex-row items-center flex-1">
+                  <Icon color={color} size={24} />
+                  <Text className="text-lg font-semibold text-white ml-3">{label}</Text>
                 </View>
                 <View
-                  style={[
-                    styles.checkbox,
-                    localFilters[key] && { backgroundColor: color },
-                  ]}
+                  className="w-7 h-7 rounded-md border-2 justify-center items-center"
+                  style={localFilters[key] ? { backgroundColor: color, borderColor: color } : { borderColor: '#666' }}
                 >
-                  {localFilters[key] && <Text style={styles.checkmark}>✓</Text>}
+                  {localFilters[key] && <Check color="#fff" size={18} />}
                 </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.quickButton} onPress={selectAll}>
-              <Text style={styles.quickButtonText}>Select All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickButton} onPress={selectNone}>
-              <Text style={styles.quickButtonText}>Clear All</Text>
-            </TouchableOpacity>
+          <View className="flex-row gap-3 mb-4">
+            <View className="flex-1">
+              <Button title="Select All" onPress={selectAll} variant="secondary" size="md" />
+            </View>
+            <View className="flex-1">
+              <Button title="Clear All" onPress={selectNone} variant="secondary" size="md" />
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.doneButton} onPress={onClose}>
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
+          <Button title="Done" onPress={onClose} variant="primary" size="lg" />
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#2a2a2a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    maxHeight: '70%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  closeText: {
-    fontSize: 24,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  filterList: {
-    marginBottom: 20,
-  },
-  filterItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  filterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  filterEmoji: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  filterLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#666',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 12,
-  },
-  quickButton: {
-    flex: 1,
-    backgroundColor: '#444',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  quickButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  doneButton: {
-    backgroundColor: '#d2673d',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  doneButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});

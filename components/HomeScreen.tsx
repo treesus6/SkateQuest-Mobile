@@ -1,6 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Flame } from 'lucide-react-native';
 import { useChallenges } from '../contexts/ChallengeContext';
+import Card from './ui/Card';
+import Button from './ui/Button';
 
 export default function HomeScreen({ navigation }: any) {
   const { xp, level, streakDays, dailyChallenges } = useChallenges();
@@ -10,115 +13,49 @@ export default function HomeScreen({ navigation }: any) {
   const progressPercent = progress / xpForNextLevel;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>SkateQuest</Text>
-      <Text style={styles.subtitle}>Level {level}</Text>
+    <View className="flex-1 p-4 bg-gray-900">
+      <Text className="text-[32px] font-black text-white mb-1">SkateQuest</Text>
+      <Text className="text-xl font-bold text-gray-400 mb-4">Level {level}</Text>
 
       {/* XP BAR */}
-      <View style={styles.xpBarBackground}>
-        <View style={[styles.xpBarFill, { width: `${progressPercent * 100}%` }]} />
+      <View className="w-full h-3.5 bg-gray-800 rounded-lg overflow-hidden mb-1.5">
+        <View className="h-full bg-brand-terracotta" style={{ width: `${progressPercent * 100}%` }} />
       </View>
-      <Text style={styles.xpText}>
+      <Text className="text-gray-400 mb-4">
         {progress} / {xpForNextLevel} XP
       </Text>
 
       {/* STREAK */}
-      <Text style={styles.streak}>🔥 Streak: {streakDays} day(s)</Text>
+      <View className="flex-row items-center gap-2 mb-6">
+        <Flame color="#FFB84C" size={20} />
+        <Text className="text-amber-400 text-base font-semibold">Streak: {streakDays} day(s)</Text>
+      </View>
 
       {/* DAILY CHALLENGES */}
-      <Text style={styles.sectionTitle}>Today’s Challenges</Text>
+      <Text className="text-xl font-bold text-white mb-3">Today's Challenges</Text>
       {dailyChallenges.map(ch => (
         <TouchableOpacity
           key={ch.id}
-          style={styles.card}
           onPress={() => navigation.navigate('ChallengeDetail', { id: ch.id })}
         >
-          <Text style={styles.cardTitle}>{ch.title}</Text>
-          <Text style={styles.cardSubtitle}>
-            {ch.xp} XP · {ch.difficulty}
-          </Text>
+          <Card className="mb-2.5">
+            <Text className="text-lg font-bold text-gray-800 dark:text-white">{ch.title}</Text>
+            <Text className="text-sm text-gray-500 dark:text-gray-400">
+              {ch.xp} XP · {ch.difficulty}
+            </Text>
+          </Card>
         </TouchableOpacity>
       ))}
 
       {/* CTA */}
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('ChallengesTab')}>
-        <Text style={styles.buttonText}>View All Challenges</Text>
-      </TouchableOpacity>
+      <View className="mt-6">
+        <Button
+          title="View All Challenges"
+          onPress={() => navigation.navigate('ChallengesTab')}
+          variant="primary"
+          size="lg"
+        />
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#05070B',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#F5F5F5',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#C7CED9',
-    marginBottom: 16,
-  },
-  xpBarBackground: {
-    width: '100%',
-    height: 14,
-    backgroundColor: '#1F2A3C',
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  xpBarFill: {
-    height: '100%',
-    backgroundColor: '#FF5A3C',
-  },
-  xpText: {
-    color: '#C7CED9',
-    marginBottom: 16,
-  },
-  streak: {
-    color: '#FFB84C',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#F5F5F5',
-    marginBottom: 12,
-  },
-  card: {
-    padding: 12,
-    backgroundColor: '#121826',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F5F5F5',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#C7CED9',
-  },
-  button: {
-    marginTop: 24,
-    paddingVertical: 14,
-    backgroundColor: '#FF5A3C',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#F5F5F5',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-});

@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import Button from '../components/ui/Button';
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -32,7 +24,6 @@ export default function AuthScreen() {
     setLoading(true);
 
     if (isSignUp) {
-      // Sign up
       const { error: signUpError } = await signUp(email, password);
 
       if (signUpError) {
@@ -46,7 +37,6 @@ export default function AuthScreen() {
         return;
       }
 
-      // Auto-login after successful signup
       const { error: signInError } = await signIn(email, password);
       setLoading(false);
 
@@ -56,9 +46,7 @@ export default function AuthScreen() {
           'Account created but auto-login failed. Please sign in manually.'
         );
       }
-      // If no error, the AuthContext will automatically update and navigate
     } else {
-      // Sign in
       const { error } = await signIn(email, password);
       setLoading(false);
 
@@ -72,15 +60,20 @@ export default function AuthScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      className="flex-1 bg-brand-beige dark:bg-gray-900"
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>SkateQuest</Text>
-        <Text style={styles.subtitle}>Discover. Skate. Connect.</Text>
+      <View className="flex-1 justify-center px-5">
+        <Text className="text-[42px] font-bold text-brand-terracotta text-center mb-2.5">
+          SkateQuest
+        </Text>
+        <Text className="text-base text-gray-500 dark:text-gray-400 text-center mb-10">
+          Discover. Skate. Connect.
+        </Text>
 
         <TextInput
-          style={styles.input}
+          className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-4 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
           placeholder="Email"
+          placeholderTextColor="#999"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -89,26 +82,25 @@ export default function AuthScreen() {
         />
 
         <TextInput
-          style={styles.input}
+          className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-4 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
           placeholder="Password"
+          placeholderTextColor="#999"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           editable={!loading}
         />
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
+        <Button
+          title={loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
           onPress={handleAuth}
+          variant="primary"
+          size="lg"
           disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
+        />
 
         <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
-          <Text style={styles.toggleText}>
+          <Text className="text-brand-terracotta text-center mt-5 text-sm">
             {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </Text>
         </TouchableOpacity>
@@ -116,58 +108,3 @@ export default function AuthScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  button: {
-    backgroundColor: '#d2673d',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  toggleText: {
-    color: '#d2673d',
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 14,
-  },
-});

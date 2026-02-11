@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
+import { ThumbsUp, ThumbsDown } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,19 +31,13 @@ export default function JudgesBoothScreen() {
   const [xpEarned, setXpEarned] = useState(0);
   const videoRef = useRef<Video>(null);
 
-  useEffect(() => {
-    fetchPendingSubmissions();
-  }, []);
+  useEffect(() => { fetchPendingSubmissions(); }, []);
 
   const fetchPendingSubmissions = async () => {
     try {
       const { data, error } = await supabase
         .from('challenge_submissions')
-        .select(`
-          *,
-          profiles!challenge_submissions_user_id_fkey(username),
-          challenges!challenge_submissions_challenge_id_fkey(description)
-        `)
+        .select(`*, profiles!challenge_submissions_user_id_fkey(username), challenges!challenge_submissions_challenge_id_fkey(description)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: true })
         .limit(20);
@@ -62,11 +51,8 @@ export default function JudgesBoothScreen() {
       })) || [];
 
       setSubmissions(formatted);
-    } catch (error) {
-      console.error('Error fetching submissions:', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Error fetching submissions:', error); }
+    finally { setLoading(false); }
   };
 
   const handleVote = async (vote: 'stomped' | 'bail') => {
@@ -80,59 +66,32 @@ export default function JudgesBoothScreen() {
 
     setVoting(true);
     try {
-      // Insert vote
-      const { error: voteError } = await supabase.from('submission_votes').insert({
-        submission_id: submission.id,
-        voter_id: user.id,
-        vote_type: vote,
-      });
-
+      const { error: voteError } = await supabase.from('submission_votes').insert({ submission_id: submission.id, voter_id: user.id, vote_type: vote });
       if (voteError) throw voteError;
 
-      // Update vote counts
       const newStomped = vote === 'stomped' ? submission.stomped_votes + 1 : submission.stomped_votes;
       const newBail = vote === 'bail' ? submission.bail_votes + 1 : submission.bail_votes;
 
-      // Check auto-approve/reject
       let newStatus = 'pending';
       if (newStomped >= 10) newStatus = 'approved';
       if (newBail >= 3) newStatus = 'rejected';
 
-      await supabase
-        .from('challenge_submissions')
-        .update({
-          stomped_votes: newStomped,
-          bail_votes: newBail,
-          status: newStatus,
-        })
-        .eq('id', submission.id);
+      await supabase.from('challenge_submissions').update({ stomped_votes: newStomped, bail_votes: newBail, status: newStatus }).eq('id', submission.id);
 
-      // Award XP to voter
       const newVoteCount = votesThisSession + 1;
       const bonusXP = newVoteCount % 5 === 0 ? 50 : 0;
       const totalXP = 10 + bonusXP;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('xp')
-        .eq('id', user.id)
-        .single();
-
+      const { data: profile } = await profilesService.getById(user.id);
       if (profile) {
-        await supabase
-          .from('profiles')
-          .update({ xp: (profile.xp || 0) + totalXP })
-          .eq('id', user.id);
+        await profilesService.update(user.id, { xp: (profile.xp || 0) + totalXP });
       }
 
       setVotesThisSession(newVoteCount);
       setXpEarned(xpEarned + totalXP);
 
-      if (bonusXP > 0) {
-        Alert.alert('Bonus!', `+${bonusXP} XP bonus for 5 votes!`, [{ text: 'Nice!' }]);
-      }
+      if (bonusXP > 0) Alert.alert('Bonus!', `+${bonusXP} XP bonus for 5 votes!`);
 
-      // Move to next submission
       if (currentIndex < submissions.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
@@ -141,30 +100,20 @@ export default function JudgesBoothScreen() {
         ]);
       }
     } catch (error: any) {
-      console.error('Error voting:', error);
-      if (error.code === '23505') {
-        Alert.alert('Already Voted', "You've already voted on this submission!");
-      } else {
-        Alert.alert('Error', 'Failed to submit vote. Please try again.');
-      }
-    } finally {
-      setVoting(false);
-    }
+      if (error.code === '23505') Alert.alert('Already Voted', "You've already voted on this submission!");
+      else Alert.alert('Error', 'Failed to submit vote. Please try again.');
+    } finally { setVoting(false); }
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#d2673d" />
-      </View>
-    );
+    return (<View className="flex-1 bg-gray-900 justify-center items-center"><LoadingSkeleton height={400} className="mx-4" /></View>);
   }
 
   if (submissions.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>No submissions to review!</Text>
-        <Text style={styles.emptySubtext}>Check back later</Text>
+      <View className="flex-1 bg-gray-900 justify-center items-center">
+        <Text className="text-lg font-bold text-white mb-2">No submissions to review!</Text>
+        <Text className="text-sm text-gray-500">Check back later</Text>
       </View>
     );
   }
@@ -172,199 +121,46 @@ export default function JudgesBoothScreen() {
   const currentSubmission = submissions[currentIndex];
 
   return (
-    <View style={styles.container}>
-      {/* Video Player */}
-      <Video
-        ref={videoRef}
-        source={{ uri: currentSubmission.video_url }}
-        style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        useNativeControls={false}
-      />
+    <View className="flex-1 bg-black">
+      <Video ref={videoRef} source={{ uri: currentSubmission.video_url }} style={{ width, height }} resizeMode={ResizeMode.COVER} shouldPlay isLooping useNativeControls={false} />
 
-      {/* Overlay Info */}
-      <View style={styles.overlay}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Judge's Booth</Text>
-          <Text style={styles.progressText}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'space-between', paddingTop: 60, paddingBottom: 40, paddingHorizontal: 20 }}>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-2xl font-bold text-white" style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>Judge's Booth</Text>
+          <Text className="text-base text-white font-semibold" style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}>
             {currentIndex + 1} / {submissions.length}
           </Text>
         </View>
 
-        {/* Submission Info */}
-        <View style={styles.infoContainer}>
-          <Text style={styles.username}>@{currentSubmission.username}</Text>
-          <Text style={styles.challengeText}>{currentSubmission.challenge_description}</Text>
-          {currentSubmission.description && (
-            <Text style={styles.description}>{currentSubmission.description}</Text>
-          )}
-          <View style={styles.voteStats}>
-            <Text style={styles.voteStat}>👍 {currentSubmission.stomped_votes}</Text>
-            <Text style={styles.voteStat}>👎 {currentSubmission.bail_votes}</Text>
+        <View className="bg-black/60 p-4 rounded-xl">
+          <Text className="text-lg font-bold text-brand-terracotta mb-2">@{currentSubmission.username}</Text>
+          <Text className="text-base text-white font-semibold mb-1">{currentSubmission.challenge_description}</Text>
+          {currentSubmission.description && <Text className="text-sm text-gray-300 mb-3">{currentSubmission.description}</Text>}
+          <View className="flex-row gap-5">
+            <View className="flex-row items-center gap-1"><ThumbsUp color="#4ade80" size={16} /><Text className="text-sm text-white font-semibold">{currentSubmission.stomped_votes}</Text></View>
+            <View className="flex-row items-center gap-1"><ThumbsDown color="#ef4444" size={16} /><Text className="text-sm text-white font-semibold">{currentSubmission.bail_votes}</Text></View>
           </View>
         </View>
 
-        {/* Vote Buttons */}
-        <View style={styles.voteContainer}>
-          <TouchableOpacity
-            style={[styles.voteButton, styles.bailButton]}
-            onPress={() => handleVote('bail')}
-            disabled={voting}
-          >
-            <Text style={styles.voteButtonText}>BAIL</Text>
+        <View className="flex-row justify-around gap-4">
+          <TouchableOpacity className="flex-1 bg-red-500 py-5 rounded-xl items-center justify-center" onPress={() => handleVote('bail')} disabled={voting}>
+            <Text className="text-xl font-bold text-white">BAIL</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.voteButton, styles.stompedButton]}
-            onPress={() => handleVote('stomped')}
-            disabled={voting}
-          >
-            <Text style={styles.voteButtonText}>STOMPED</Text>
+          <TouchableOpacity className="flex-1 bg-emerald-500 py-5 rounded-xl items-center justify-center" onPress={() => handleVote('stomped')} disabled={voting}>
+            <Text className="text-xl font-bold text-white">STOMPED</Text>
           </TouchableOpacity>
         </View>
 
-        {/* XP Tracker */}
-        <View style={styles.xpTracker}>
-          <Text style={styles.xpText}>
-            Votes: {votesThisSession} | XP: +{xpEarned}
-          </Text>
+        <View className="bg-black/70 py-2 px-4 rounded-full self-center">
+          <Text className="text-sm font-bold text-green-400">Votes: {votesThisSession} | XP: +{xpEarned}</Text>
         </View>
       </View>
 
       {voting && (
-        <View style={styles.loadingOverlay}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#fff" />
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  video: {
-    width,
-    height,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  progressText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  infoContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 16,
-    borderRadius: 12,
-  },
-  username: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    marginBottom: 8,
-  },
-  challengeText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#ddd',
-    marginBottom: 12,
-  },
-  voteStats: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  voteStat: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  voteContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 16,
-  },
-  voteButton: {
-    flex: 1,
-    paddingVertical: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bailButton: {
-    backgroundColor: '#ef4444',
-  },
-  stompedButton: {
-    backgroundColor: '#10b981',
-  },
-  voteButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  xpTracker: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  xpText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4ade80',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
-});
