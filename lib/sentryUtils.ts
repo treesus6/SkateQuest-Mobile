@@ -83,3 +83,65 @@ export const tagSupabaseQuery = (table: string, operation: string) => {
   Sentry.setTag('supabase.table', table);
   Sentry.setTag('supabase.operation', operation);
 };
+
+// ── Phase 20: Enhanced monitoring for offline & stability ──────
+
+/**
+ * Track an offline mutation being queued
+ */
+export const logOfflineMutation = (
+  type: string,
+  table: string,
+  mutationId: string,
+) => {
+  Sentry.addBreadcrumb({
+    category: 'offline.mutation',
+    message: `Queued ${type} on ${table}`,
+    level: 'info',
+    data: { mutationId, type, table },
+  });
+};
+
+/**
+ * Track sync operations (success or failure)
+ */
+export const logSyncEvent = (
+  event: 'start' | 'complete' | 'fail',
+  details?: Record<string, any>,
+) => {
+  Sentry.addBreadcrumb({
+    category: 'sync',
+    message: `Background sync ${event}`,
+    level: event === 'fail' ? 'error' : 'info',
+    data: details,
+  });
+};
+
+/**
+ * Track error recovery attempts (retry banners, auto-retry)
+ */
+export const logErrorRecovery = (
+  action: 'auto_retry' | 'manual_retry' | 'recovered' | 'gave_up',
+  context?: Record<string, any>,
+) => {
+  Sentry.addBreadcrumb({
+    category: 'error.recovery',
+    message: `Error recovery: ${action}`,
+    level: action === 'gave_up' ? 'warning' : 'info',
+    data: context,
+  });
+};
+
+/**
+ * Wrap a service call with ServiceError + Logger.error() + Sentry capture
+ */
+export const captureServiceError = (
+  error: unknown,
+  code: string,
+  context?: Record<string, any>,
+) => {
+  Sentry.captureException(error, {
+    tags: { errorCode: code },
+    contexts: { service: context || {} },
+  });
+};

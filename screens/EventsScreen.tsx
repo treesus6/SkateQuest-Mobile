@@ -5,6 +5,8 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { eventsService, Event } from '../lib/eventsService';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
+import { EmptyStates } from '../components/EmptyState';
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -48,7 +50,8 @@ export default function EventsScreen() {
     ]);
   };
 
-  const renderEvent = ({ item }: { item: Event }) => (
+  const renderEvent = ({ item, index }: { item: Event; index: number }) => (
+    <AnimatedListItem index={index}>
     <Card className="flex-row">
       <View className="bg-brand-orange rounded-lg p-3 items-center justify-center min-w-[70px] mr-4">
         <Text className="text-white text-sm font-bold">{formatDate(item.date)}</Text>
@@ -68,29 +71,27 @@ export default function EventsScreen() {
         <Button title="RSVP" onPress={() => rsvp(item.id)} variant="primary" size="sm" className="bg-brand-green" />
       </View>
     </Card>
+    </AnimatedListItem>
   );
 
   return (
-    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-orange p-5 rounded-b-2xl">
-        <Text className="text-2xl font-bold text-white text-center">Events</Text>
-        <Text className="text-sm text-white/90 text-center mt-1">Upcoming skate sessions</Text>
-      </View>
+    <ScreenFadeIn>
+      <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+        <View className="bg-brand-orange p-5 rounded-b-2xl">
+          <Text className="text-2xl font-bold text-white text-center">Events</Text>
+          <Text className="text-sm text-white/90 text-center mt-1">Upcoming skate sessions</Text>
+        </View>
 
-      <FlatList
-        data={events ?? []}
-        renderItem={renderEvent}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        refreshing={loading}
-        onRefresh={refetch}
-        ListEmptyComponent={
-          <View className="items-center mt-24">
-            <Text className="text-lg font-bold text-gray-400">No upcoming events</Text>
-            <Text className="text-sm text-gray-300 mt-1 text-center">Check back later or create your own!</Text>
-          </View>
-        }
-      />
-    </View>
+        <FlatList
+          data={events ?? []}
+          renderItem={renderEvent}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ padding: 16 }}
+          refreshing={loading}
+          onRefresh={refetch}
+          ListEmptyComponent={<EmptyStates.NoEvents />}
+        />
+      </View>
+    </ScreenFadeIn>
   );
 }

@@ -15,6 +15,8 @@ import { playlistsService } from '../lib/playlistsService';
 import { Playlist } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
+import { EmptyStates } from '../components/EmptyState';
 
 export default function PlaylistsScreen() {
   const user = useAuthStore(s => s.user);
@@ -73,7 +75,8 @@ export default function PlaylistsScreen() {
     }
   };
 
-  const renderPlaylist = ({ item }: { item: Playlist }) => (
+  const renderPlaylist = ({ item, index }: { item: Playlist; index: number }) => (
+    <AnimatedListItem index={index}>
     <Card>
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-1">
@@ -117,9 +120,11 @@ export default function PlaylistsScreen() {
         ) : null}
       </View>
     </Card>
+    </AnimatedListItem>
   );
 
   return (
+    <ScreenFadeIn>
     <View className="flex-1 bg-brand-beige dark:bg-gray-900">
       <View className="bg-brand-terracotta p-4 rounded-b-xl flex-row justify-between items-center">
         <View>
@@ -141,12 +146,7 @@ export default function PlaylistsScreen() {
         contentContainerStyle={{ padding: 16 }}
         refreshing={loading}
         onRefresh={refetch}
-        ListEmptyComponent={
-          <View className="items-center mt-24">
-            <Text className="text-lg font-bold text-gray-400">No playlists yet</Text>
-            <Text className="text-sm text-gray-300 mt-1">Share your session playlist!</Text>
-          </View>
-        }
+        ListEmptyComponent={<EmptyStates.NoPlaylists onAction={() => setShowModal(true)} />}
       />
 
       <Modal
@@ -217,5 +217,6 @@ export default function PlaylistsScreen() {
         </View>
       </Modal>
     </View>
+    </ScreenFadeIn>
   );
 }

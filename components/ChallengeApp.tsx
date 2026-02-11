@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { Home, Trophy, MapPin, Users, User, Calendar } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
+import AnimatedTabIcon from './ui/AnimatedTabIcon';
+import { Haptics } from '../lib/haptics';
 
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -140,13 +142,20 @@ function Tabs() {
         tabBarInactiveTintColor: '#999',
         tabBarStyle: { borderTopWidth: 0, elevation: 8, shadowOpacity: 0.1 },
       }}
+      screenListeners={{
+        tabPress: () => Haptics.light(),
+      }}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Home color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
       <Tab.Screen
@@ -154,7 +163,11 @@ function Tabs() {
         component={ChallengesStack}
         options={{
           title: 'Challenges',
-          tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Trophy color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
       <Tab.Screen
@@ -162,7 +175,11 @@ function Tabs() {
         component={SpotsScreenFromFile}
         options={{
           title: 'Spots',
-          tabBarIcon: ({ color, size }) => <MapPin color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <MapPin color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
       <Tab.Screen
@@ -170,7 +187,11 @@ function Tabs() {
         component={CrewScreen}
         options={{
           title: 'Crew',
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Users color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
       <Tab.Screen
@@ -178,7 +199,11 @@ function Tabs() {
         component={ProfileScreen}
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <User color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
       <Tab.Screen
@@ -186,7 +211,11 @@ function Tabs() {
         component={DailyQuestsScreen}
         options={{
           title: 'Daily',
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Calendar color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
         }}
       />
     </Tab.Navigator>
