@@ -3,17 +3,29 @@ import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { supabase } from '../../lib/supabase';
+import { profilesService } from '../../lib/profilesService';
 
 // Mock the useAuthStore
 jest.mock('../../stores/useAuthStore');
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 
+// Mock profilesService
+jest.mock('../../lib/profilesService');
+const mockGetById = profilesService.getById as jest.Mock;
+const mockCreate = profilesService.create as jest.Mock;
+const mockGetLevelProgress = profilesService.getLevelProgress as jest.Mock;
+
+// Mock LoadingSkeleton to avoid Animated issues in test renderer
+jest.mock('../../components/ui/LoadingSkeleton', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <View testID="loading-skeleton" />,
+  };
+});
+
 // Mock Alert.alert
 jest.spyOn(Alert, 'alert');
-
-// Access the mocked supabase.from
-const mockFrom = supabase.from as jest.Mock;
 
 describe('ProfileScreen - Integration', () => {
   const mockSignOut = jest.fn();
@@ -44,46 +56,37 @@ describe('ProfileScreen - Integration', () => {
   });
 
   /**
-   * Helper to set up the supabase.from mock chain for the profile query.
-   * Returns mock functions so tests can customize behavior.
+   * Helper to set up profilesService mocks.
    */
-  function setupProfileQuery(options: {
+  function setupProfileMocks(options: {
     profileData?: any;
     profileError?: any;
     rpcData?: any;
     rpcError?: any;
-  }) {
+  } = {}) {
     const { profileData = mockProfile, profileError = null, rpcData = null, rpcError = null } = options;
 
-    const mockSingle = jest.fn().mockResolvedValue({ data: profileData, error: profileError });
-    const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-
-    mockFrom.mockReturnValue({ select: mockSelect, insert: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: jest.fn() }) }) });
-
-    // Mock supabase.rpc for level progress
-    (supabase as any).rpc = jest.fn().mockResolvedValue({ data: rpcData, error: rpcError });
-
-    return { mockSingle, mockEq, mockSelect };
+    mockGetById.mockResolvedValue({ data: profileData, error: profileError });
+    mockGetLevelProgress.mockResolvedValue({ data: rpcData, error: rpcError });
+    mockCreate.mockResolvedValue({ data: profileData, error: null });
   }
 
   describe('loading state', () => {
-    it('should display loading text while profile is being fetched', () => {
+    it('should not display profile content while loading', () => {
       // Set up a query that never resolves
-      const mockSingle = jest.fn().mockReturnValue(new Promise(() => {}));
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-      mockFrom.mockReturnValue({ select: mockSelect });
+      mockGetById.mockReturnValue(new Promise(() => {}));
 
-      const { getByText } = render(<ProfileScreen />);
+      const { queryByText } = render(<ProfileScreen />);
 
-      expect(getByText('Loading profile...')).toBeTruthy();
+      // Profile content should not be rendered during loading
+      expect(queryByText('SkaterPro')).toBeNull();
+      expect(queryByText('Sign Out')).toBeNull();
     });
   });
 
   describe('profile display', () => {
     it('should display the username after loading', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -93,7 +96,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should display the user email', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -103,7 +106,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should display XP, Level, Spots, and Challenges stats', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -121,7 +124,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should display default values when profile fields are missing', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         profileData: {
           id: 'user-abc-123',
           username: null,
@@ -135,11 +138,11 @@ describe('ProfileScreen - Integration', () => {
         },
       });
 
-      const { getByText } = render(<ProfileScreen />);
+      const { getByText, getAllByText } = render(<ProfileScreen />);
 
       await waitFor(() => {
         expect(getByText('Skater')).toBeTruthy();  // fallback username
-        expect(getByText('0')).toBeTruthy();        // fallback XP / spots / challenges
+        expect(getAllByText('0').length).toBeGreaterThanOrEqual(1);  // fallback XP / spots / challenges
         expect(getByText('1')).toBeTruthy();        // fallback level
       });
     });
@@ -157,7 +160,7 @@ describe('ProfileScreen - Integration', () => {
         progress_percentage: 25,
       };
 
-      setupProfileQuery({ rpcData: mockLevelProgress });
+      setupProfileMocks({ rpcData: mockLevelProgress });
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -168,7 +171,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display level progress when rpc fails', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         rpcError: { message: 'RPC function not found' },
       });
 
@@ -182,7 +185,7 @@ describe('ProfileScreen - Integration', () => {
 
   describe('streak display', () => {
     it('should display the streak when it is greater than zero', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -192,7 +195,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display the streak section when streak is zero', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         profileData: { ...mockProfile, streak: 0 },
       });
 
@@ -204,7 +207,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display the streak section when streak is not set', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         profileData: { ...mockProfile, streak: null },
       });
 
@@ -218,7 +221,7 @@ describe('ProfileScreen - Integration', () => {
 
   describe('badges display', () => {
     it('should display unlocked badges', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -229,7 +232,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display the badges section when badges is empty', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         profileData: { ...mockProfile, badges: {} },
       });
 
@@ -241,7 +244,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display badges that are unlocked: false', async () => {
-      setupProfileQuery({
+      setupProfileMocks({
         profileData: {
           ...mockProfile,
           badges: { 'First Kickflip': true, 'Secret Badge': false },
@@ -259,7 +262,7 @@ describe('ProfileScreen - Integration', () => {
 
   describe('sign out flow', () => {
     it('should show an Alert confirmation when Sign Out is pressed', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       const { getByText } = render(<ProfileScreen />);
 
@@ -280,7 +283,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should call signOut when the destructive action is confirmed', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
       mockSignOut.mockResolvedValue(undefined);
 
       // Capture the Alert.alert call and simulate pressing the destructive button
@@ -303,7 +306,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not call signOut when Cancel is pressed in the alert', async () => {
-      setupProfileQuery({});
+      setupProfileMocks({});
 
       // Simulate pressing Cancel
       (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
@@ -327,25 +330,17 @@ describe('ProfileScreen - Integration', () => {
     it('should create a new profile when PGRST116 error is returned', async () => {
       const profileError = { code: 'PGRST116', message: 'No rows found' };
 
-      const mockInsertSingle = jest.fn().mockResolvedValue({
+      mockGetById.mockResolvedValue({ data: null, error: profileError });
+      mockCreate.mockResolvedValue({
         data: { ...mockProfile, username: 'Skater1234' },
         error: null,
       });
-      const mockInsertSelect = jest.fn().mockReturnValue({ single: mockInsertSingle });
-      const mockInsert = jest.fn().mockReturnValue({ select: mockInsertSelect });
+      mockGetLevelProgress.mockResolvedValue({ data: null, error: null });
 
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: profileError });
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-
-      mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
-      (supabase as any).rpc = jest.fn().mockResolvedValue({ data: null, error: null });
-
-      const { getByText } = render(<ProfileScreen />);
+      render(<ProfileScreen />);
 
       await waitFor(() => {
-        // Profile should be created and insert should be called
-        expect(mockInsert).toHaveBeenCalled();
+        expect(mockCreate).toHaveBeenCalled();
       });
     });
   });
@@ -359,15 +354,14 @@ describe('ProfileScreen - Integration', () => {
 
       render(<ProfileScreen />);
 
-      // supabase.from should not be called since user is null
-      expect(mockFrom).not.toHaveBeenCalled();
+      expect(mockGetById).not.toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
     it('should handle generic profile loading errors without crashing', async () => {
       const profileError = { code: 'GENERIC', message: 'Something went wrong' };
-      setupProfileQuery({ profileError });
+      setupProfileMocks({ profileError });
 
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 

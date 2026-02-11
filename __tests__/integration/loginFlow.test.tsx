@@ -166,9 +166,13 @@ describe('LoginScreen - Integration Flow', () => {
 
       const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
 
-      const button = getByText('Loading...').parent;
-      // TouchableOpacity uses the disabled prop
-      expect(button?.props.disabled || button?.parent?.props.disabled).toBeTruthy();
+      // Walk up the tree to find the TouchableOpacity with disabled prop
+      // (NativeWind may add wrapper layers between Text and TouchableOpacity)
+      let node = getByText('Loading...').parent;
+      while (node && node.props.disabled === undefined) {
+        node = node.parent;
+      }
+      expect(node?.props.disabled).toBe(true);
     });
   });
 

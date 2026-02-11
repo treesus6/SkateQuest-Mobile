@@ -46,17 +46,18 @@ jest.mock('@sentry/react-native', () => ({
   })),
 }));
 
-// Mock React Native modules
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
-jest.mock('react-native-maps', () => {
-  const React = require('react');
-  return {
-    __esModule: true,
-    default: React.forwardRef(() => null),
-    Marker: () => null,
-    Callout: () => null,
-  };
-});
+// Mock React Native modules (NativeAnimatedHelper removed in RN 0.76)
+jest.mock('react-native/Libraries/Animated/NativeAnimatedModule', () => ({}));
+jest.mock('@rnmapbox/maps', () => ({
+  __esModule: true,
+  default: { setAccessToken: jest.fn() },
+  Camera: () => null,
+  MapView: () => null,
+  ShapeSource: () => null,
+  LineLayer: () => null,
+  PointAnnotation: () => null,
+  MarkerView: () => null,
+}));
 
 // Mock Supabase
 jest.mock('./lib/supabase', () => ({
