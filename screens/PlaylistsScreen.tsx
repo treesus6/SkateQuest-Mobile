@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   TextInput,
@@ -92,43 +91,43 @@ export default function PlaylistsScreen() {
 
   const renderPlaylist = ({ item }: { item: Playlist }) => {
     return (
-      <View style={styles.playlistCard}>
-        <View style={styles.playlistHeader}>
+      <View className="bg-white rounded-xl p-[15px] mb-3 shadow-md">
+        <View className="flex-row justify-between items-start mb-2">
           <View>
-            <Text style={styles.playlistName}>{item.name}</Text>
-            <Text style={styles.playlistAuthor}>by {item.user?.username}</Text>
+            <Text className="text-lg font-bold text-[#333]">{item.name}</Text>
+            <Text className="text-[13px] text-[#666] mt-[2px]">by {item.user?.username}</Text>
           </View>
-          <TouchableOpacity style={styles.likeButton} onPress={() => likePlaylist(item.id)}>
-            <Text style={styles.likeIcon}>❤️</Text>
-            <Text style={styles.likeCount}>{item.likes_count}</Text>
+          <TouchableOpacity className="items-center" onPress={() => likePlaylist(item.id)}>
+            <Text className="text-2xl">❤️</Text>
+            <Text className="text-xs text-[#666] mt-[2px]">{item.likes_count}</Text>
           </TouchableOpacity>
         </View>
 
-        {item.description && <Text style={styles.playlistDescription}>{item.description}</Text>}
+        {item.description && <Text className="text-sm text-[#666] mb-3">{item.description}</Text>}
 
-        <View style={styles.linksContainer}>
+        <View className="flex-row gap-2 flex-wrap">
           {item.spotify_url && (
             <TouchableOpacity
-              style={[styles.linkButton, styles.spotifyButton]}
+              className="px-3 py-2 rounded-lg bg-[#1DB954]"
               onPress={() => openLink(item.spotify_url!)}
             >
-              <Text style={styles.linkButtonText}>🎵 Spotify</Text>
+              <Text className="text-white text-[13px] font-bold">🎵 Spotify</Text>
             </TouchableOpacity>
           )}
           {item.apple_music_url && (
             <TouchableOpacity
-              style={[styles.linkButton, styles.appleButton]}
+              className="px-3 py-2 rounded-lg bg-[#FA243C]"
               onPress={() => openLink(item.apple_music_url!)}
             >
-              <Text style={styles.linkButtonText}>🎵 Apple</Text>
+              <Text className="text-white text-[13px] font-bold">🎵 Apple</Text>
             </TouchableOpacity>
           )}
           {item.youtube_url && (
             <TouchableOpacity
-              style={[styles.linkButton, styles.youtubeButton]}
+              className="px-3 py-2 rounded-lg bg-[#FF0000]"
               onPress={() => openLink(item.youtube_url!)}
             >
-              <Text style={styles.linkButtonText}>▶️ YouTube</Text>
+              <Text className="text-white text-[13px] font-bold">▶️ YouTube</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -137,14 +136,17 @@ export default function PlaylistsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View className="flex-1 bg-[#f5f0ea]">
+      <View className="flex-row justify-between items-center bg-brand-orange p-[15px] rounded-bl-[15px] rounded-br-[15px]">
         <View>
-          <Text style={styles.headerTitle}>🎧 Session Playlists</Text>
-          <Text style={styles.headerSubtitle}>Music for skating</Text>
+          <Text className="text-2xl font-bold text-white">🎧 Session Playlists</Text>
+          <Text className="text-[13px] text-white opacity-90">Music for skating</Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setShowModal(true)}>
-          <Text style={styles.addButtonText}>+ Share</Text>
+        <TouchableOpacity
+          className="bg-white px-[15px] py-2 rounded-[20px]"
+          onPress={() => setShowModal(true)}
+        >
+          <Text className="text-brand-orange font-bold text-sm">+ Share</Text>
         </TouchableOpacity>
       </View>
 
@@ -152,11 +154,11 @@ export default function PlaylistsScreen() {
         data={playlists}
         renderItem={renderPlaylist}
         keyExtractor={(item: Playlist) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 15 }}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No playlists yet</Text>
-            <Text style={styles.emptySubtext}>Share your session playlist!</Text>
+          <View className="items-center mt-[100px]">
+            <Text className="text-lg font-bold text-[#999]">No playlists yet</Text>
+            <Text className="text-sm text-[#aaa] mt-[5px]">Share your session playlist!</Text>
           </View>
         }
       />
@@ -167,19 +169,20 @@ export default function PlaylistsScreen() {
         animationType="slide"
         onRequestClose={() => setShowModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Share Playlist</Text>
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-tl-[20px] rounded-tr-[20px] p-5 max-h-[90%]">
+            <Text className="text-[22px] font-bold text-[#333] mb-[15px]">Share Playlist</Text>
 
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-3"
               placeholder="Playlist name *"
               value={newPlaylist.name}
               onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, name: text })}
             />
 
             <TextInput
-              style={[styles.input, styles.textArea]}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-3 h-[60px]"
+              style={{ textAlignVertical: 'top' }}
               placeholder="Description (optional)"
               value={newPlaylist.description}
               onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, description: text })}
@@ -187,18 +190,18 @@ export default function PlaylistsScreen() {
               numberOfLines={2}
             />
 
-            <Text style={styles.linkLabel}>🎵 Spotify URL</Text>
+            <Text className="text-sm font-semibold text-[#333] my-[5px]">🎵 Spotify URL</Text>
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-3"
               placeholder="https://open.spotify.com/playlist/..."
               value={newPlaylist.spotifyUrl}
               onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, spotifyUrl: text })}
               autoCapitalize="none"
             />
 
-            <Text style={styles.linkLabel}>🍎 Apple Music URL</Text>
+            <Text className="text-sm font-semibold text-[#333] my-[5px]">🍎 Apple Music URL</Text>
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-3"
               placeholder="https://music.apple.com/..."
               value={newPlaylist.appleMusicUrl}
               onChangeText={(text: string) =>
@@ -207,27 +210,27 @@ export default function PlaylistsScreen() {
               autoCapitalize="none"
             />
 
-            <Text style={styles.linkLabel}>▶️ YouTube URL</Text>
+            <Text className="text-sm font-semibold text-[#333] my-[5px]">▶️ YouTube URL</Text>
             <TextInput
-              style={styles.input}
+              className="bg-[#f5f5f5] rounded-lg p-3 text-base mb-3"
               placeholder="https://youtube.com/playlist?list=..."
               value={newPlaylist.youtubeUrl}
               onChangeText={(text: string) => setNewPlaylist({ ...newPlaylist, youtubeUrl: text })}
               autoCapitalize="none"
             />
 
-            <View style={styles.modalActions}>
+            <View className="flex-row gap-[10px] mt-[10px]">
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-[#e0e0e0]"
                 onPress={() => setShowModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text className="text-[#333] text-base font-bold">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                className="flex-1 py-[14px] rounded-lg items-center bg-[#4CAF50]"
                 onPress={createPlaylist}
               >
-                <Text style={styles.saveButtonText}>Share</Text>
+                <Text className="text-white text-base font-bold">Share</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -236,187 +239,3 @@ export default function PlaylistsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#d2673d',
-    padding: 15,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  addButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  addButtonText: {
-    color: '#d2673d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  playlistCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  playlistHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  playlistName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  playlistAuthor: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  likeButton: {
-    alignItems: 'center',
-  },
-  likeIcon: {
-    fontSize: 24,
-  },
-  likeCount: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  playlistDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  linksContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  linkButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  spotifyButton: {
-    backgroundColor: '#1DB954',
-  },
-  appleButton: {
-    backgroundColor: '#FA243C',
-  },
-  youtubeButton: {
-    backgroundColor: '#FF0000',
-  },
-  linkButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  textArea: {
-    height: 60,
-    textAlignVertical: 'top',
-  },
-  linkLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 5,
-    marginBottom: 5,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e0e0e0',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});

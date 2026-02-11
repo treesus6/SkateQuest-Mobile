@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getUpcomingEvents, rsvpToEvent, type Event } from '../services/events';
 
@@ -56,157 +56,57 @@ export default function EventsScreen() {
   };
 
   const renderEvent = ({ item }: { item: Event }) => (
-    <View style={styles.eventCard}>
-      <View style={styles.dateTag}>
-        <Text style={styles.dateText}>{formatDate(item.date)}</Text>
-        <Text style={styles.timeText}>{item.time}</Text>
+    <View className="bg-white rounded-xl p-[15px] mb-[15px] shadow-md flex-row">
+      <View className="bg-[#FF6B35] rounded-lg p-[10px] items-center justify-center min-w-[70px] mr-[15px]">
+        <Text className="text-white text-sm font-bold">{formatDate(item.date)}</Text>
+        <Text className="text-white text-xs mt-1">{item.time}</Text>
       </View>
 
-      <View style={styles.eventContent}>
-        <Text style={styles.eventTitle}>{item.title}</Text>
-        {item.description && <Text style={styles.eventDescription}>{item.description}</Text>}
-        <Text style={styles.eventLocation}>📍 {item.location}</Text>
-        <Text style={styles.attendeeCount}>👥 {item.attendee_count} attending</Text>
+      <View className="flex-1">
+        <Text className="text-lg font-bold text-[#333] mb-[5px]">{item.title}</Text>
+        {item.description && <Text className="text-sm text-[#666] mb-2">{item.description}</Text>}
+        <Text className="text-sm text-[#888] mb-1">
+          {'\u{1F4CD}'} {item.location}
+        </Text>
+        <Text className="text-[13px] text-[#aaa]">
+          {'\u{1F465}'} {item.attendee_count} attending
+        </Text>
       </View>
 
-      <TouchableOpacity style={styles.rsvpButton} onPress={() => rsvp(item.id)}>
-        <Text style={styles.rsvpButtonText}>RSVP</Text>
+      <TouchableOpacity
+        className="bg-[#4CAF50] px-[15px] py-[10px] rounded-lg self-start ml-[10px]"
+        onPress={() => rsvp(item.id)}
+      >
+        <Text className="text-white font-bold text-sm">RSVP</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📅 Events</Text>
-        <Text style={styles.headerSubtitle}>Upcoming skate sessions</Text>
+    <View className="flex-1 bg-[#f5f0ea]">
+      <View className="bg-[#FF6B35] p-5 rounded-bl-[20px] rounded-br-[20px]">
+        <Text className="text-[28px] font-bold text-white text-center">{'\u{1F4C5}'} Events</Text>
+        <Text className="text-sm text-white opacity-90 text-center mt-[5px]">
+          Upcoming skate sessions
+        </Text>
       </View>
 
       <FlatList
         data={events}
         renderItem={renderEvent}
         keyExtractor={(item: Event) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 15 }}
         refreshing={loading}
         onRefresh={loadEvents}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No upcoming events</Text>
-            <Text style={styles.emptySubtext}>Check back later or create your own!</Text>
+          <View className="items-center mt-[100px]">
+            <Text className="text-lg font-bold text-[#999]">No upcoming events</Text>
+            <Text className="text-sm text-[#aaa] mt-[5px] text-center">
+              Check back later or create your own!
+            </Text>
           </View>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    backgroundColor: '#FF6B35',
-    padding: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-    textAlign: 'center',
-    marginTop: 5,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  eventCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    flexDirection: 'row',
-  },
-  dateTag: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 70,
-    marginRight: 15,
-  },
-  dateText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  timeText: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  eventContent: {
-    flex: 1,
-  },
-  eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  eventDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  eventLocation: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 4,
-  },
-  attendeeCount: {
-    fontSize: 13,
-    color: '#aaa',
-  },
-  rsvpButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginLeft: 10,
-  },
-  rsvpButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-    textAlign: 'center',
-  },
-});

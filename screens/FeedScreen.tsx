@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Activity } from '../types';
 import { getFeedActivities } from '../services/activities';
@@ -43,19 +35,19 @@ export default function FeedScreen({ navigation }: any) {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'spot_added':
-        return '📍';
+        return '\u{1F4CD}';
       case 'challenge_completed':
-        return '🎯';
+        return '\u{1F3AF}';
       case 'trick_landed':
-        return '🛹';
+        return '\u{1F6F9}';
       case 'level_up':
-        return '⬆️';
+        return '\u2B06\uFE0F';
       case 'media_uploaded':
-        return '📹';
+        return '\u{1F4F9}';
       case 'skate_game_won':
-        return '🏆';
+        return '\u{1F3C6}';
       default:
-        return '✨';
+        return '\u2728';
     }
   };
 
@@ -63,39 +55,47 @@ export default function FeedScreen({ navigation }: any) {
     const icon = getActivityIcon(item.activity_type);
 
     return (
-      <View style={styles.activityCard}>
-        <View style={styles.activityHeader}>
-          <Text style={styles.activityIcon}>{icon}</Text>
-          <View style={styles.activityHeaderText}>
-            <Text style={styles.username}>{item.user?.username || 'Skater'}</Text>
-            <Text style={styles.activityTitle}>{item.title}</Text>
-            {item.description && <Text style={styles.activityDescription}>{item.description}</Text>}
-            <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleDateString()}</Text>
+      <View className="bg-white rounded-xl p-[15px] mb-[15px] shadow-md">
+        <View className="flex-row items-start">
+          <Text className="text-[28px] mr-[10px]">{icon}</Text>
+          <View className="flex-1">
+            <Text className="text-base font-bold text-brand-orange mb-[2px]">
+              {item.user?.username || 'Skater'}
+            </Text>
+            <Text className="text-[15px] text-[#333] font-semibold mb-[3px]">{item.title}</Text>
+            {item.description && (
+              <Text className="text-sm text-[#666] mb-[5px]">{item.description}</Text>
+            )}
+            <Text className="text-xs text-[#999]">
+              {new Date(item.created_at).toLocaleDateString()}
+            </Text>
           </View>
           {item.xp_earned > 0 && (
-            <View style={styles.xpBadge}>
-              <Text style={styles.xpText}>+{item.xp_earned} XP</Text>
+            <View className="bg-[#4CAF50] px-[10px] py-[5px] rounded-xl">
+              <Text className="text-white text-xs font-bold">+{item.xp_earned} XP</Text>
             </View>
           )}
         </View>
 
         {item.media && (
-          <View style={styles.mediaContainer}>
+          <View className="mt-3 rounded-lg overflow-hidden">
             {item.media.type === 'photo' ? (
               <Image
                 source={{ uri: item.media.url }}
-                style={styles.mediaImage}
+                className="w-full h-[250px] rounded-lg"
                 resizeMode="cover"
               />
             ) : (
               <Video
                 source={{ uri: item.media.url }}
-                style={styles.mediaVideo}
+                style={{ width: '100%', height: 250 }}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
               />
             )}
-            {item.media.caption && <Text style={styles.mediaCaption}>{item.media.caption}</Text>}
+            {item.media.caption && (
+              <Text className="text-sm text-[#333] mt-2 italic">{item.media.caption}</Text>
+            )}
           </View>
         )}
       </View>
@@ -103,14 +103,14 @@ export default function FeedScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🌟 Feed</Text>
+    <View className="flex-1 bg-[#f5f0ea]">
+      <View className="flex-row justify-between items-center bg-brand-orange p-[15px] rounded-bl-[15px] rounded-br-[15px]">
+        <Text className="text-2xl font-bold text-white">{'\u{1F31F}'} Feed</Text>
         <TouchableOpacity
-          style={styles.uploadButton}
+          className="bg-white px-[15px] py-2 rounded-[20px]"
           onPress={() => navigation.navigate('UploadMedia')}
         >
-          <Text style={styles.uploadButtonText}>+ Upload</Text>
+          <Text className="text-brand-orange font-bold text-sm">+ Upload</Text>
         </TouchableOpacity>
       </View>
 
@@ -118,139 +118,15 @@ export default function FeedScreen({ navigation }: any) {
         data={activities}
         renderItem={renderActivity}
         keyExtractor={(item: Activity) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={{ padding: 15 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadFeed} />}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No activity yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to post!</Text>
+          <View className="items-center mt-[100px]">
+            <Text className="text-lg font-bold text-[#999]">No activity yet</Text>
+            <Text className="text-sm text-[#aaa] mt-[5px]">Be the first to post!</Text>
           </View>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f0ea',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#d2673d',
-    padding: 15,
-    paddingTop: 15,
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  uploadButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  uploadButtonText: {
-    color: '#d2673d',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  listContainer: {
-    padding: 15,
-  },
-  activityCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  activityIcon: {
-    fontSize: 28,
-    marginRight: 10,
-  },
-  activityHeaderText: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#d2673d',
-    marginBottom: 2,
-  },
-  activityTitle: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
-    marginBottom: 3,
-  },
-  activityDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#999',
-  },
-  xpBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  xpText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  mediaContainer: {
-    marginTop: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  mediaImage: {
-    width: '100%',
-    height: 250,
-    borderRadius: 8,
-  },
-  mediaVideo: {
-    width: '100%',
-    height: 250,
-  },
-  mediaCaption: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#999',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
-  },
-});
