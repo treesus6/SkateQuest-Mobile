@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { Flame, Award, Bug } from 'lucide-react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Flame, Award, Bug, Sun, Moon, Monitor } from 'lucide-react-native';
 import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useThemeStore } from '../stores/useThemeStore';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';
 import Card from '../components/ui/Card';
@@ -21,6 +22,7 @@ interface LevelProgress {
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuthStore();
+  const { preference, setPreference } = useThemeStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,6 +136,35 @@ export default function ProfileScreen() {
           )}
         </Card>
       ) : null}
+
+      <Card className="mx-4">
+        <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Appearance</Text>
+        <View className="flex-row gap-2">
+          {([
+            { value: 'light' as const, icon: Sun, label: 'Light' },
+            { value: 'dark' as const, icon: Moon, label: 'Dark' },
+            { value: 'system' as const, icon: Monitor, label: 'System' },
+          ]).map(({ value, icon: Icon, label }) => (
+            <TouchableOpacity
+              key={value}
+              accessibilityRole="button"
+              accessibilityLabel={`${label} theme`}
+              accessibilityState={{ selected: preference === value }}
+              onPress={() => setPreference(value)}
+              className={`flex-1 items-center py-2.5 rounded-lg ${
+                preference === value
+                  ? 'bg-brand-terracotta'
+                  : 'bg-gray-100 dark:bg-gray-700'
+              }`}
+            >
+              <Icon color={preference === value ? '#fff' : '#6B7280'} size={20} />
+              <Text className={`text-xs mt-1 font-semibold ${
+                preference === value ? 'text-white' : 'text-gray-500 dark:text-gray-400'
+              }`}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Card>
 
       {__DEV__ && (
         <Card className="mx-4 border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">

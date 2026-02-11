@@ -17,7 +17,7 @@ export const showToast = (config: ToastConfig) => {
   if (toastInstance) toastInstance(config);
 };
 
-const TOAST_ICONS: Record<ToastType, any> = {
+const TOAST_ICONS: Record<ToastType, React.ComponentType<{ color: string; size: number }>> = {
   success: CheckCircle,
   error: XCircle,
   warning: AlertTriangle,

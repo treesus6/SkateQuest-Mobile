@@ -11,6 +11,7 @@ import './global.css';
 import ChallengeApp from './components/ChallengeApp';
 import { useAuthStore } from './stores/useAuthStore';
 import { useNetworkStore } from './stores/useNetworkStore';
+import { useThemeStore } from './stores/useThemeStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import Onboarding from './components/Onboarding';
@@ -87,11 +88,26 @@ function RootNavigator() {
   );
 }
 
+function AppContent() {
+  const colorScheme = useThemeStore((s) => s.colorScheme);
+
+  return (
+    <ErrorBoundary>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <OfflineIndicator />
+      <PortalDimensionLogo />
+      <Toast />
+      <RootNavigator />
+    </ErrorBoundary>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     // Initialize stores
     const cleanupAuth = useAuthStore.getState().initialize();
     const cleanupNetwork = useNetworkStore.getState().initialize();
+    const cleanupTheme = useThemeStore.getState().initialize();
 
     // Initialize app
     const initializeApp = async () => {
@@ -111,16 +127,9 @@ export default function App() {
     return () => {
       cleanupAuth();
       cleanupNetwork();
+      cleanupTheme();
     };
   }, []);
 
-  return (
-    <ErrorBoundary>
-      <StatusBar style="light" />
-      <OfflineIndicator />
-      <PortalDimensionLogo />
-      <Toast />
-      <RootNavigator />
-    </ErrorBoundary>
-  );
+  return <AppContent />;
 }

@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { showToast } from '../components/Toast';
 
-export default function SignupScreen({ navigation }: any) {
+interface SignupScreenProps {
+  navigation: { navigate: (screen: string) => void };
+}
+
+export default function SignupScreen({ navigation }: SignupScreenProps) {
   const { signUp, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSignup = async () => {
-    await signUp(email.trim(), password);
+    const { error } = await signUp(email.trim(), password);
+    if (error) {
+      showToast({ message: error.message || 'Sign up failed', type: 'error' });
+    } else {
+      showToast({ message: 'Account created! Check your email to verify.', type: 'success' });
+    }
   };
 
   return (
@@ -23,6 +33,8 @@ export default function SignupScreen({ navigation }: any) {
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
+        accessibilityLabel="Email address"
+        keyboardType="email-address"
       />
 
       <TextInput
@@ -32,17 +44,25 @@ export default function SignupScreen({ navigation }: any) {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        accessibilityLabel="Password"
       />
 
       <TouchableOpacity
         className={`bg-[#FF5A3C] py-3.5 rounded-lg items-center mt-2 ${loading ? 'opacity-50' : ''}`}
         onPress={handleSignup}
         disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel={loading ? 'Loading' : 'Sign Up'}
+        accessibilityState={{ disabled: loading }}
       >
         <Text className="text-gray-100 font-bold text-base">{loading ? 'Loading...' : 'Sign Up'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Login')}
+        accessibilityRole="link"
+        accessibilityLabel="Go to sign in"
+      >
         <Text className="text-[#FF5A3C] mt-4 text-center">Already have an account? Sign in</Text>
       </TouchableOpacity>
     </View>

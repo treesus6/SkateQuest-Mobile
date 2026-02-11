@@ -6,11 +6,13 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
+  ListRenderItemInfo,
   SafeAreaView,
-  StatusBar,
+  useColorScheme,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Home, Trophy, MapPin, Users, User, Calendar } from 'lucide-react-native';
-import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
+import { ChallengeProvider, useChallenges, Challenge } from '../contexts/ChallengeContext';
 
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -18,13 +20,14 @@ import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
 import LevelUpModal from './LevelUpModal';
 
-function HomeScreen({ navigation }: any) {
+function HomeScreen({ navigation }: { navigation: { navigate: (screen: string) => void } }) {
   const { xp, level, challenges } = useChallenges();
-  const completedCount = challenges.filter((c: any) => c.completed).length;
+  const colorScheme = useColorScheme();
+  const completedCount = challenges.filter((c) => c.completed).length;
 
   return (
     <SafeAreaView className="flex-1 p-4 bg-white dark:bg-gray-900">
-      <StatusBar barStyle="dark-content" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Text className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">SkateQuest</Text>
       <Text className="text-lg font-semibold text-gray-700 dark:text-gray-300">
         Level {level} · {xp} XP
@@ -36,6 +39,8 @@ function HomeScreen({ navigation }: any) {
       <TouchableOpacity
         className="mt-4 bg-gray-900 dark:bg-gray-100 p-3 rounded-lg items-center"
         onPress={() => navigation.navigate('ChallengesTab')}
+        accessibilityRole="button"
+        accessibilityLabel="View Challenges"
       >
         <Text className="text-white dark:text-gray-900 font-semibold">View Challenges</Text>
       </TouchableOpacity>
@@ -43,6 +48,8 @@ function HomeScreen({ navigation }: any) {
       <TouchableOpacity
         className="mt-2 bg-gray-500 p-3 rounded-lg items-center"
         onPress={() => navigation.navigate('SpotsTab')}
+        accessibilityRole="button"
+        accessibilityLabel="Explore Spots"
       >
         <Text className="text-white font-semibold">Explore Spots</Text>
       </TouchableOpacity>
@@ -50,10 +57,10 @@ function HomeScreen({ navigation }: any) {
   );
 }
 
-function ChallengeListScreen({ navigation }: any) {
+function ChallengeListScreen({ navigation }: { navigation: { navigate: (screen: string, params?: Record<string, string>) => void } }) {
   const { challenges } = useChallenges();
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({ item }: ListRenderItemInfo<Challenge>) => (
     <TouchableOpacity
       className={`p-3 rounded-lg bg-gray-100 dark:bg-gray-800 mb-2 flex-row justify-between items-center ${item.completed ? 'opacity-60' : ''}`}
       onPress={() => navigation.navigate('ChallengeDetail', { id: item.id })}
@@ -73,10 +80,10 @@ function ChallengeListScreen({ navigation }: any) {
   );
 }
 
-function ChallengeDetailScreen({ route, navigation }: any) {
+function ChallengeDetailScreen({ route, navigation }: { route: { params: { id: string } }; navigation: { goBack: () => void } }) {
   const { id } = route.params;
   const { challenges, completeChallenge } = useChallenges();
-  const challenge = challenges.find((c: any) => c.id === id);
+  const challenge = challenges.find((c) => c.id === id);
 
   if (!challenge) {
     return (
@@ -103,6 +110,8 @@ function ChallengeDetailScreen({ route, navigation }: any) {
         <TouchableOpacity
           className="mt-4 bg-gray-900 dark:bg-gray-100 p-3 rounded-lg items-center"
           onPress={handleComplete}
+          accessibilityRole="button"
+          accessibilityLabel="Mark challenge as completed"
         >
           <Text className="text-white dark:text-gray-900 font-semibold">Mark as completed</Text>
         </TouchableOpacity>
@@ -146,6 +155,7 @@ function Tabs() {
         component={HomeScreen}
         options={{
           title: 'Home',
+          tabBarAccessibilityLabel: 'Home tab',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
@@ -154,6 +164,7 @@ function Tabs() {
         component={ChallengesStack}
         options={{
           title: 'Challenges',
+          tabBarAccessibilityLabel: 'Challenges tab',
           tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} />,
         }}
       />
@@ -162,6 +173,7 @@ function Tabs() {
         component={SpotsScreenFromFile}
         options={{
           title: 'Spots',
+          tabBarAccessibilityLabel: 'Spots tab',
           tabBarIcon: ({ color, size }) => <MapPin color={color} size={size} />,
         }}
       />
@@ -170,6 +182,7 @@ function Tabs() {
         component={CrewScreen}
         options={{
           title: 'Crew',
+          tabBarAccessibilityLabel: 'Crew tab',
           tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
@@ -178,6 +191,7 @@ function Tabs() {
         component={ProfileScreen}
         options={{
           title: 'Profile',
+          tabBarAccessibilityLabel: 'Profile tab',
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
@@ -186,6 +200,7 @@ function Tabs() {
         component={DailyQuestsScreen}
         options={{
           title: 'Daily',
+          tabBarAccessibilityLabel: 'Daily quests tab',
           tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />

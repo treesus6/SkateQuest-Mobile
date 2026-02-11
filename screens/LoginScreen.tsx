@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { showToast } from '../components/Toast';
 
-export default function LoginScreen({ navigation }: any) {
+interface LoginScreenProps {
+  navigation: { navigate: (screen: string) => void };
+}
+
+export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    await signIn(email.trim(), password);
+    const { error } = await signIn(email.trim(), password);
+    if (error) {
+      showToast({ message: error.message || 'Sign in failed', type: 'error' });
+    }
   };
 
   return (
@@ -23,6 +31,8 @@ export default function LoginScreen({ navigation }: any) {
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
+        accessibilityLabel="Email address"
+        keyboardType="email-address"
       />
 
       <TextInput
@@ -32,17 +42,25 @@ export default function LoginScreen({ navigation }: any) {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        accessibilityLabel="Password"
       />
 
       <TouchableOpacity
         className={`bg-[#FF5A3C] py-3.5 rounded-lg items-center mt-2 ${loading ? 'opacity-50' : ''}`}
         onPress={handleLogin}
         disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel={loading ? 'Loading' : 'Sign In'}
+        accessibilityState={{ disabled: loading }}
       >
         <Text className="text-gray-100 font-bold text-base">{loading ? 'Loading...' : 'Sign In'}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Signup')}
+        accessibilityRole="link"
+        accessibilityLabel="Go to sign up"
+      >
         <Text className="text-[#FF5A3C] mt-4 text-center">Don't have an account? Sign up</Text>
       </TouchableOpacity>
     </View>

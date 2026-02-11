@@ -53,6 +53,9 @@ export default function Button({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled }}
       className={`items-center ${variantClasses[variant]} ${sizeClasses[size]} ${disabled ? 'opacity-50' : ''} ${className}`}
     >
       <Text className={`font-bold ${textVariantClasses[variant]} ${textSizeClasses[size]}`}>

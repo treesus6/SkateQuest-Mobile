@@ -1,15 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, DependencyList } from 'react';
+import { showToast } from '../components/Toast';
 
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: unknown; timestamp: number }>();
 const DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000;
+
+interface QueryError {
+  message?: string;
+  code?: string;
+}
 
 interface UseSupabaseQueryOptions {
   cacheKey?: string;
   cacheTTL?: number;
   retries?: number;
   enabled?: boolean;
+  showErrorToast?: boolean;
 }
 
 interface UseSupabaseQueryResult<T> {
@@ -21,8 +28,8 @@ interface UseSupabaseQueryResult<T> {
 }
 
 export function useSupabaseQuery<T>(
-  queryFn: () => Promise<{ data: T | null; error: any }>,
-  deps: any[] = [],
+  queryFn: () => Promise<{ data: T | null; error: QueryError | null }>,
+  deps: DependencyList = [],
   options: UseSupabaseQueryOptions = {}
 ): UseSupabaseQueryResult<T> {
   const {
@@ -30,6 +37,7 @@ export function useSupabaseQuery<T>(
     cacheTTL = DEFAULT_CACHE_TTL,
     retries = MAX_RETRIES,
     enabled = true,
+    showErrorToast = true,
   } = options;
 
   const [data, setData] = useState<T | null>(() => {
@@ -64,7 +72,11 @@ export function useSupabaseQuery<T>(
             await new Promise(r => setTimeout(r, RETRY_DELAY * Math.pow(2, attempt)));
             return fetchWithRetry(attempt + 1);
           }
-          setError(queryError.message || 'An error occurred');
+          const errorMsg = queryError.message || 'An error occurred';
+          setError(errorMsg);
+          if (showErrorToast) {
+            showToast({ message: errorMsg, type: 'error' });
+          }
         } else {
           setData(result);
           setError(null);
@@ -72,13 +84,17 @@ export function useSupabaseQuery<T>(
             cache.set(cacheKey, { data: result, timestamp: Date.now() });
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!mountedRef.current) return;
         if (attempt < retries) {
           await new Promise(r => setTimeout(r, RETRY_DELAY * Math.pow(2, attempt)));
           return fetchWithRetry(attempt + 1);
         }
-        setError(err.message || 'An unexpected error occurred');
+        const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred';
+        setError(errorMsg);
+        if (showErrorToast) {
+          showToast({ message: errorMsg, type: 'error' });
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

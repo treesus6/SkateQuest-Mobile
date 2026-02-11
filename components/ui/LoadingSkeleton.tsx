@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated } from 'react-native';
+import { View, Animated, useColorScheme } from 'react-native';
 
 interface LoadingSkeletonProps {
   width?: number | string;
@@ -14,6 +14,7 @@ export default function LoadingSkeleton({
   borderRadius = 8,
   className = '',
 }: LoadingSkeletonProps) {
+  const colorScheme = useColorScheme();
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -39,10 +40,10 @@ export default function LoadingSkeleton({
     <View className={className}>
       <Animated.View
         style={{
-          width: width as any,
+          width: width as number | `${number}%`,
           height,
           borderRadius,
-          backgroundColor: '#e0e0e0',
+          backgroundColor: colorScheme === 'dark' ? '#374151' : '#e0e0e0',
           opacity,
         }}
       />

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Session, User } from '@supabase/supabase-js';
+import { AuthError, Session, User } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react-native';
 import { supabase } from '../lib/supabase';
 
@@ -8,10 +8,10 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   initialize: () => () => void;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

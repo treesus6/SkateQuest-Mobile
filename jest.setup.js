@@ -46,6 +46,18 @@ jest.mock('@sentry/react-native', () => ({
   })),
 }));
 
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+    clear: jest.fn(() => Promise.resolve()),
+    getAllKeys: jest.fn(() => Promise.resolve([])),
+  },
+}));
+
 // Mock React Native modules (NativeAnimatedHelper removed in RN 0.76)
 jest.mock('react-native/Libraries/Animated/NativeAnimatedModule', () => ({}));
 jest.mock('@rnmapbox/maps', () => ({
