@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { PersistentCache } from '../lib/persistentCache';
 
 const cache = new Map<string, { data: any; timestamp: number }>();
 const DEFAULT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const STALE_WHILE_REVALIDATE = 10 * 60 * 1000; // 10 minutes beyond TTL
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000;
 
@@ -10,6 +12,8 @@ interface UseSupabaseQueryOptions {
   cacheTTL?: number;
   retries?: number;
   enabled?: boolean;
+  /** Persist cache to AsyncStorage for offline access. Requires cacheKey. */
+  persist?: boolean;
 }
 
 interface UseSupabaseQueryResult<T> {
@@ -30,6 +34,7 @@ export function useSupabaseQuery<T>(
     cacheTTL = DEFAULT_CACHE_TTL,
     retries = MAX_RETRIES,
     enabled = true,
+    persist = false,
   } = options;
 
   const [data, setData] = useState<T | null>(() => {
@@ -53,6 +58,24 @@ export function useSupabaseQuery<T>(
     };
   }, []);
 
+  // Rehydrate from persistent cache on mount when no in-memory data
+  useEffect(() => {
+    if (!persist || !cacheKey || data) return;
+
+    let cancelled = false;
+    PersistentCache.get<T>(cacheKey, STALE_WHILE_REVALIDATE).then((cached) => {
+      if (cancelled || !mountedRef.current || !cached) return;
+      setData(cached.data);
+      setIsStale(cached.isStale);
+      if (!cached.isStale) {
+        setLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persist, cacheKey]);
+
   const fetchWithRetry = useCallback(
     async (attempt: number = 0): Promise<void> => {
       try {
@@ -70,6 +93,10 @@ export function useSupabaseQuery<T>(
           setError(null);
           if (cacheKey && result) {
             cache.set(cacheKey, { data: result, timestamp: Date.now() });
+            // Persist to AsyncStorage for offline use
+            if (persist) {
+              PersistentCache.set(cacheKey, result, cacheTTL);
+            }
           }
         }
       } catch (err: any) {
@@ -112,11 +139,13 @@ export function useSupabaseQuery<T>(
   return { data, loading, error, refetch: fetch, isStale };
 }
 
-// Utility to invalidate cache
+// Utility to invalidate cache (both in-memory and persistent)
 export function invalidateCache(key?: string) {
   if (key) {
     cache.delete(key);
+    PersistentCache.remove(key);
   } else {
     cache.clear();
+    PersistentCache.clearAll();
   }
 }

@@ -8,7 +8,9 @@ import { profilesService } from '../lib/profilesService';
 import { Challenge } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import { AnimatedListItem, ScreenFadeIn, ShimmerSkeleton } from '../components/ui';
+import { EmptyStates } from '../components/EmptyState';
+import { Haptics } from '../lib/haptics';
 
 export default function ChallengesScreen() {
   const { user } = useAuthStore();
@@ -21,6 +23,7 @@ export default function ChallengesScreen() {
   const completeChallenge = async (challenge: Challenge) => {
     if (!user) return;
 
+    Haptics.medium();
     Alert.alert(
       'Complete Challenge',
       `Complete "${challenge.title || challenge.trick}"?\nYou'll earn ${challenge.xp_reward} XP!`,
@@ -42,9 +45,11 @@ export default function ChallengesScreen() {
                 });
               }
 
+              Haptics.success();
               Alert.alert('Success', `You earned ${challenge.xp_reward} XP!`);
               refetch();
             } catch (error: any) {
+              Haptics.error();
               Alert.alert('Error', error.message);
             }
           },
@@ -53,57 +58,56 @@ export default function ChallengesScreen() {
     );
   };
 
-  const renderChallenge = ({ item }: { item: Challenge }) => (
-    <Card>
-      <View className="flex-row items-start gap-3">
-        <Target color="#d2673d" size={22} />
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-            {item.title || item.trick}
-          </Text>
-          {item.description ? (
-            <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</Text>
-          ) : null}
+  const renderChallenge = ({ item, index }: { item: Challenge; index: number }) => (
+    <AnimatedListItem index={index}>
+      <Card>
+        <View className="flex-row items-start gap-3">
+          <Target color="#d2673d" size={22} />
+          <View className="flex-1">
+            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+              {item.title || item.trick}
+            </Text>
+            {item.description ? (
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</Text>
+            ) : null}
+          </View>
         </View>
-      </View>
-      <View className="flex-row justify-between items-center mt-3">
-        <Text className="text-base font-bold text-brand-terracotta">+{item.xp_reward} XP</Text>
-        <Button title="Complete" onPress={() => completeChallenge(item)} variant="primary" size="sm" className="bg-brand-green" />
-      </View>
-    </Card>
+        <View className="flex-row justify-between items-center mt-3">
+          <Text className="text-base font-bold text-brand-terracotta">+{item.xp_reward} XP</Text>
+          <Button title="Complete" onPress={() => completeChallenge(item)} variant="primary" size="sm" className="bg-brand-green" />
+        </View>
+      </Card>
+    </AnimatedListItem>
   );
 
   if (loading) {
     return (
       <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
-        <LoadingSkeleton height={60} className="mb-3" />
-        <LoadingSkeleton height={80} className="mb-3" />
-        <LoadingSkeleton height={80} className="mb-3" />
-        <LoadingSkeleton height={80} className="mb-3" />
+        <ShimmerSkeleton height={60} className="mb-3" />
+        <ShimmerSkeleton height={80} className="mb-3" />
+        <ShimmerSkeleton height={80} className="mb-3" />
+        <ShimmerSkeleton height={80} className="mb-3" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-terracotta p-5 rounded-b-2xl">
-        <Text className="text-2xl font-bold text-white text-center">Challenges</Text>
-        <Text className="text-sm text-white/90 text-center mt-1">Complete challenges to earn XP</Text>
+    <ScreenFadeIn>
+      <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+        <View className="bg-brand-terracotta p-5 rounded-b-2xl">
+          <Text className="text-2xl font-bold text-white text-center">Challenges</Text>
+          <Text className="text-sm text-white/90 text-center mt-1">Complete challenges to earn XP</Text>
+        </View>
+        <FlatList
+          data={challenges ?? []}
+          renderItem={renderChallenge}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ padding: 16 }}
+          refreshing={loading}
+          onRefresh={refetch}
+          ListEmptyComponent={<EmptyStates.NoChallengesActive />}
+        />
       </View>
-      <FlatList
-        data={challenges ?? []}
-        renderItem={renderChallenge}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        refreshing={loading}
-        onRefresh={refetch}
-        ListEmptyComponent={
-          <View className="items-center mt-24">
-            <Text className="text-lg font-bold text-gray-400">No challenges available</Text>
-            <Text className="text-sm text-gray-300 mt-1">Check back later!</Text>
-          </View>
-        }
-      />
-    </View>
+    </ScreenFadeIn>
   );
 }
