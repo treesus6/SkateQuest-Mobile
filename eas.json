@@ -4,11 +4,19 @@
   },
   "build": {
     "production": {
+      "distribution": "store",
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "@supabase_url",
-        "EXPO_PUBLIC_SUPABASE_KEY": "@supabase_key",
-        "EXPO_PUBLIC_SENTRY_DSN": "@sentry_dsn",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hreeu.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb4b61c...",
         "MAPBOX_DOWNLOADS_TOKEN": "@mapbox_downloads_token"
+      }
+    },
+    "production-store": {
+      "extends": "production",
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
