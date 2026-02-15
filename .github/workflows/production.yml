@@ -41,4 +41,3 @@ jobs:
 
       - name: Build Android Release
         run: eas build --platform android --profile production --non-interactive
-
