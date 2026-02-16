@@ -7,6 +7,7 @@ import { skateGameService } from '../lib/skateGameService';
 import { SkateGame } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
 
 export default function SkateGameScreen({ navigation }: any) {
   const { user } = useAuthStore();
@@ -56,7 +57,7 @@ export default function SkateGameScreen({ navigation }: any) {
       return game.winner_id === user?.id ? 'YOU WON!' : 'YOU LOST';
     }
     if (game.status === 'pending') return 'Waiting...';
-    return game.current_turn === user?.id ? 'Your Turn' : "Their Turn";
+    return game.current_turn === user?.id ? 'Your Turn' : 'Their Turn';
   };
 
   const getLettersDisplay = (letters: string) => {
@@ -100,7 +101,13 @@ export default function SkateGameScreen({ navigation }: any) {
           </View>
 
           {item.status === 'active' && item.current_turn === user?.id && (
-            <Button title="Record Trick" variant="primary" size="sm" className="bg-brand-green" onPress={() => navigation.navigate('GameDetail', { gameId: item.id })} />
+            <Button
+              title="Record Trick"
+              variant="primary"
+              size="sm"
+              className="bg-brand-green"
+              onPress={() => navigation.navigate('GameDetail', { gameId: item.id })}
+            />
           )}
         </Card>
       </TouchableOpacity>
@@ -127,7 +134,9 @@ export default function SkateGameScreen({ navigation }: any) {
       </View>
 
       <Card className="mx-4 mt-4">
-        <Text className="text-base font-bold text-gray-800 dark:text-gray-100 mb-2">How to Play:</Text>
+        <Text className="text-base font-bold text-gray-800 dark:text-gray-100 mb-2">
+          How to Play:
+        </Text>
         <Text className="text-sm text-gray-500 dark:text-gray-400 leading-5">
           1. Challenge a skater to a game of SKATE{'\n'}
           2. Take turns posting trick videos{'\n'}
@@ -158,7 +167,9 @@ export default function SkateGameScreen({ navigation }: any) {
       >
         <View className="flex-1 bg-black/50 justify-center px-5">
           <View className="bg-white dark:bg-gray-800 rounded-2xl p-5">
-            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-1">New SKATE Game</Text>
+            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-1">
+              New SKATE Game
+            </Text>
             <Text className="text-sm text-gray-500 mb-5">Challenge another skater to a game!</Text>
 
             <TextInput
@@ -174,7 +185,10 @@ export default function SkateGameScreen({ navigation }: any) {
             <View className="flex-row gap-2.5">
               <Button
                 title="Cancel"
-                onPress={() => { setShowNewGameModal(false); setOpponentUsername(''); }}
+                onPress={() => {
+                  setShowNewGameModal(false);
+                  setOpponentUsername('');
+                }}
                 variant="secondary"
                 size="lg"
                 className="flex-1"

@@ -53,13 +53,23 @@ describe('ProfileScreen - Integration', () => {
     rpcData?: any;
     rpcError?: any;
   }) {
-    const { profileData = mockProfile, profileError = null, rpcData = null, rpcError = null } = options;
+    const {
+      profileData = mockProfile,
+      profileError = null,
+      rpcData = null,
+      rpcError = null,
+    } = options;
 
     const mockSingle = jest.fn().mockResolvedValue({ data: profileData, error: profileError });
     const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
     const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
 
-    mockFrom.mockReturnValue({ select: mockSelect, insert: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: jest.fn() }) }) });
+    mockFrom.mockReturnValue({
+      select: mockSelect,
+      insert: jest
+        .fn()
+        .mockReturnValue({ select: jest.fn().mockReturnValue({ single: jest.fn() }) }),
+    });
 
     // Mock supabase.rpc for level progress
     (supabase as any).rpc = jest.fn().mockResolvedValue({ data: rpcData, error: rpcError });
@@ -108,10 +118,10 @@ describe('ProfileScreen - Integration', () => {
       const { getByText } = render(<ProfileScreen />);
 
       await waitFor(() => {
-        expect(getByText('1250')).toBeTruthy();  // XP
-        expect(getByText('5')).toBeTruthy();     // Level
-        expect(getByText('12')).toBeTruthy();    // Spots
-        expect(getByText('3')).toBeTruthy();     // Challenges completed count
+        expect(getByText('1250')).toBeTruthy(); // XP
+        expect(getByText('5')).toBeTruthy(); // Level
+        expect(getByText('12')).toBeTruthy(); // Spots
+        expect(getByText('3')).toBeTruthy(); // Challenges completed count
       });
 
       expect(getByText('XP')).toBeTruthy();
@@ -138,9 +148,9 @@ describe('ProfileScreen - Integration', () => {
       const { getByText } = render(<ProfileScreen />);
 
       await waitFor(() => {
-        expect(getByText('Skater')).toBeTruthy();  // fallback username
-        expect(getByText('0')).toBeTruthy();        // fallback XP / spots / challenges
-        expect(getByText('1')).toBeTruthy();        // fallback level
+        expect(getByText('Skater')).toBeTruthy(); // fallback username
+        expect(getByText('0')).toBeTruthy(); // fallback XP / spots / challenges
+        expect(getByText('1')).toBeTruthy(); // fallback level
       });
     });
   });
@@ -341,7 +351,7 @@ describe('ProfileScreen - Integration', () => {
       mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
       (supabase as any).rpc = jest.fn().mockResolvedValue({ data: null, error: null });
 
-      const { getByText } = render(<ProfileScreen />);
+      render(<ProfileScreen />);
 
       await waitFor(() => {
         // Profile should be created and insert should be called

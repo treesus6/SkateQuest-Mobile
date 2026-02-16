@@ -13,6 +13,7 @@
       "backgroundColor": "#d2673d"
     },
     "platforms": ["ios", "android"],
+    "jsEngine": "hermes",
 
     "ios": {
       "supportsTablet": true,

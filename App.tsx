@@ -19,12 +19,25 @@ import Toast from './components/Toast';
 
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 
 import { setupGlobalErrorHandler } from './lib/globalErrorHandler';
 import { validateEnvironment } from './lib/envValidation';
 import { Logger } from './lib/logger';
 import { useMutationQueueStore } from './stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from './lib/backgroundSync';
+import * as Linking from 'expo-linking';
+
+const linking = {
+  prefixes: [Linking.createURL('/'), 'skatequest://'],
+  config: {
+    screens: {
+      Login: 'login',
+      Signup: 'signup',
+      ForgotPassword: 'forgot-password',
+    },
+  },
+};
 
 // Initialize Mapbox
 const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
@@ -77,13 +90,11 @@ function RootNavigator() {
 
   // Show auth screens if not logged in
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{ headerShown: false }}
-        initialRouteName="Login"
-      >
+    <NavigationContainer linking={linking}>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

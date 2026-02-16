@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, RefreshControl } from 'react-native';
-import { MapPin, Target, Zap, ArrowUpCircle, Users, Flag, Trophy, Crosshair, Star } from 'lucide-react-native';
+import {
+  MapPin,
+  Target,
+  Zap,
+  ArrowUpCircle,
+  Users,
+  Flag,
+  Trophy,
+  Crosshair,
+  Star,
+} from 'lucide-react-native';
 import LoadingSkeleton from './ui/LoadingSkeleton';
+import { supabase } from '../lib/supabase';
 
 interface Activity {
   id: string;
@@ -42,11 +53,12 @@ export default function ActivityFeed() {
 
       if (error) throw error;
 
-      const formatted = data?.map((item: any) => ({
-        ...item,
-        username: item.profiles?.username || 'Unknown',
-        avatar_url: item.profiles?.avatar_url,
-      })) || [];
+      const formatted =
+        data?.map((item: any) => ({
+          ...item,
+          username: item.profiles?.username || 'Unknown',
+          avatar_url: item.profiles?.avatar_url,
+        })) || [];
 
       setActivities(formatted);
     } catch (error) {
@@ -57,7 +69,9 @@ export default function ActivityFeed() {
     }
   };
 
-  useEffect(() => { fetchActivities(); }, []);
+  useEffect(() => {
+    fetchActivities();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -77,7 +91,9 @@ export default function ActivityFeed() {
           <View className="flex-1">
             <Text className="text-sm font-bold text-brand-terracotta mb-1">{item.username}</Text>
             <Text className="text-base font-semibold text-white mb-1">{item.title}</Text>
-            {item.description && <Text className="text-sm text-gray-400 mb-2">{item.description}</Text>}
+            {item.description && (
+              <Text className="text-sm text-gray-400 mb-2">{item.description}</Text>
+            )}
             <View className="flex-row justify-between items-center">
               <Text className="text-xs text-gray-500">{getTimeAgo(item.created_at)}</Text>
               {item.xp_earned > 0 && (
@@ -103,9 +119,11 @@ export default function ActivityFeed() {
   return (
     <FlatList
       data={activities}
-      keyExtractor={(item) => item.id}
+      keyExtractor={item => item.id}
       renderItem={renderActivity}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d2673d" />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d2673d" />
+      }
       contentContainerStyle={{ padding: 12 }}
       className="bg-gray-900"
       ListEmptyComponent={

@@ -31,6 +31,45 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
 }));
 
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn(path => `skatequest://${path}`),
+}));
+
+// Mock Mapbox
+jest.mock('@rnmapbox/maps', () => ({
+  __esModule: true,
+  default: {
+    setAccessToken: jest.fn(),
+    MapView: 'MapView',
+    Camera: 'Camera',
+    PointAnnotation: 'PointAnnotation',
+  },
+  MapView: 'MapView',
+  Camera: 'Camera',
+  PointAnnotation: 'PointAnnotation',
+}));
+
+// Mock lucide-react-native
+jest.mock('lucide-react-native', () => ({
+  Home: () => null,
+  Trophy: () => null,
+  MapPin: () => null,
+  Users: () => null,
+  User: () => null,
+  Calendar: () => null,
+  X: () => null,
+  Crosshair: () => null,
+  Navigation: () => null,
+  Plus: () => null,
+  Star: () => null,
+  QrCode: () => null,
+  Gamepad2: () => null,
+  Music: () => null,
+  ShoppingBag: () => null,
+  Zap: () => null,
+  BarChart3: () => null,
+}));
+
 // Mock Sentry
 jest.mock('@sentry/react-native', () => ({
   init: jest.fn(),
@@ -47,16 +86,24 @@ jest.mock('@sentry/react-native', () => ({
 }));
 
 // Mock React Native modules
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
-jest.mock('react-native-maps', () => {
-  const React = require('react');
-  return {
-    __esModule: true,
-    default: React.forwardRef(() => null),
-    Marker: () => null,
-    Callout: () => null,
-  };
-});
+try {
+  jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
+} catch {
+  // Module path may not exist in all RN versions
+}
+try {
+  jest.mock('react-native-maps', () => {
+    const React = require('react');
+    return {
+      __esModule: true,
+      default: React.forwardRef(() => null),
+      Marker: () => null,
+      Callout: () => null,
+    };
+  });
+} catch {
+  // react-native-maps not installed (using Mapbox)
+}
 
 // Mock Supabase
 jest.mock('./lib/supabase', () => ({

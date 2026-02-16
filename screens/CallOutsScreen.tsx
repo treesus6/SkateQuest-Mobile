@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, Modal, TextInput, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  TextInput,
+  ScrollView,
+} from 'react-native';
 import { Crosshair, MapPin, Clock, Check, X, Ban } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
@@ -8,6 +17,7 @@ import { profilesService } from '../lib/profilesService';
 import { CallOut, UserProfile, SkateSpot } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
 
 type TabType = 'received' | 'sent';
 
@@ -38,11 +48,14 @@ export default function CallOutsScreen() {
       : callOutsService.getSent(user.id);
   }, [user, activeTab]);
 
-  const { data: callOuts, loading, refetch } = useSupabaseQuery<CallOut[]>(
-    queryFn,
-    [activeTab, user?.id],
-    { cacheKey: `callouts-${activeTab}-${user?.id}`, enabled: !!user }
-  );
+  const {
+    data: callOuts,
+    loading,
+    refetch,
+  } = useSupabaseQuery<CallOut[]>(queryFn, [activeTab, user?.id], {
+    cacheKey: `callouts-${activeTab}-${user?.id}`,
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (showCreateModal) {
@@ -173,12 +186,18 @@ export default function CallOutsScreen() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock color="#FFA500" size={14} />;
-      case 'accepted': return <Check color="#2196F3" size={14} />;
-      case 'completed': return <Check color="#4CAF50" size={14} />;
-      case 'declined': return <X color="#666" size={14} />;
-      case 'failed': return <Ban color="#F44336" size={14} />;
-      default: return null;
+      case 'pending':
+        return <Clock color="#FFA500" size={14} />;
+      case 'accepted':
+        return <Check color="#2196F3" size={14} />;
+      case 'completed':
+        return <Check color="#4CAF50" size={14} />;
+      case 'declined':
+        return <X color="#666" size={14} />;
+      case 'failed':
+        return <Ban color="#F44336" size={14} />;
+      default:
+        return null;
     }
   };
 
@@ -208,7 +227,9 @@ export default function CallOutsScreen() {
         </View>
 
         {item.message ? (
-          <Text className="text-sm italic text-gray-500 dark:text-gray-400 mb-2">"{item.message}"</Text>
+          <Text className="text-sm italic text-gray-500 dark:text-gray-400 mb-2">
+            "{item.message}"
+          </Text>
         ) : null}
 
         {item.spot ? (
@@ -222,11 +243,22 @@ export default function CallOutsScreen() {
           <Text className="text-lg font-bold text-brand-green">+{item.xp_reward} XP</Text>
 
           {isReceived && item.status === 'pending' && (
-            <Button title="Respond" onPress={() => acceptCallOut(item)} variant="primary" size="sm" />
+            <Button
+              title="Respond"
+              onPress={() => acceptCallOut(item)}
+              variant="primary"
+              size="sm"
+            />
           )}
 
           {isReceived && item.status === 'accepted' && (
-            <Button title="Complete" onPress={() => completeCallOut(item)} variant="primary" size="sm" className="bg-brand-green" />
+            <Button
+              title="Complete"
+              onPress={() => completeCallOut(item)}
+              variant="primary"
+              size="sm"
+              className="bg-brand-green"
+            />
           )}
         </View>
       </Card>
@@ -240,7 +272,9 @@ export default function CallOutsScreen() {
           className={`flex-1 py-4 items-center ${activeTab === 'received' ? 'border-b-[3px] border-brand-terracotta' : ''}`}
           onPress={() => setActiveTab('received')}
         >
-          <Text className={`text-base font-semibold ${activeTab === 'received' ? 'text-brand-terracotta' : 'text-gray-500'}`}>
+          <Text
+            className={`text-base font-semibold ${activeTab === 'received' ? 'text-brand-terracotta' : 'text-gray-500'}`}
+          >
             Received
           </Text>
         </TouchableOpacity>
@@ -248,7 +282,9 @@ export default function CallOutsScreen() {
           className={`flex-1 py-4 items-center ${activeTab === 'sent' ? 'border-b-[3px] border-brand-terracotta' : ''}`}
           onPress={() => setActiveTab('sent')}
         >
-          <Text className={`text-base font-semibold ${activeTab === 'sent' ? 'text-brand-terracotta' : 'text-gray-500'}`}>
+          <Text
+            className={`text-base font-semibold ${activeTab === 'sent' ? 'text-brand-terracotta' : 'text-gray-500'}`}
+          >
             Sent
           </Text>
         </TouchableOpacity>
@@ -266,7 +302,9 @@ export default function CallOutsScreen() {
             <Text className="text-lg font-bold text-gray-400">
               {activeTab === 'received' ? 'No call outs received yet' : 'No call outs sent yet'}
             </Text>
-            <Text className="text-sm text-gray-300 mt-1">Challenge someone to step up their game!</Text>
+            <Text className="text-sm text-gray-300 mt-1">
+              Challenge someone to step up their game!
+            </Text>
           </View>
         }
       />
@@ -285,9 +323,14 @@ export default function CallOutsScreen() {
         onRequestClose={() => setShowCreateModal(false)}
       >
         <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white dark:bg-gray-800 rounded-t-2xl p-6" style={{ maxHeight: '90%' }}>
+          <View
+            className="bg-white dark:bg-gray-800 rounded-t-2xl p-6"
+            style={{ maxHeight: '90%' }}
+          >
             <ScrollView>
-              <Text className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">Create Call Out</Text>
+              <Text className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">
+                Create Call Out
+              </Text>
 
               <Text className="text-sm font-semibold text-gray-500 mb-2 mt-4">Challenge Who?</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2.5">
@@ -295,11 +338,15 @@ export default function CallOutsScreen() {
                   <TouchableOpacity
                     key={u.id}
                     className={`px-4 py-2.5 rounded-full mr-2.5 border-2 ${
-                      selectedUser === u.id ? 'bg-brand-terracotta border-brand-terracotta' : 'bg-gray-100 dark:bg-gray-700 border-transparent'
+                      selectedUser === u.id
+                        ? 'bg-brand-terracotta border-brand-terracotta'
+                        : 'bg-gray-100 dark:bg-gray-700 border-transparent'
                     }`}
                     onPress={() => setSelectedUser(u.id)}
                   >
-                    <Text className={`font-semibold ${selectedUser === u.id ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+                    <Text
+                      className={`font-semibold ${selectedUser === u.id ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}
+                    >
                       {u.username}
                     </Text>
                     <Text className="text-[10px] text-gray-400 mt-0.5">Lv {u.level}</Text>
@@ -316,15 +363,21 @@ export default function CallOutsScreen() {
                 onChangeText={setTrickName}
               />
 
-              <Text className="text-sm font-semibold text-gray-500 mb-2 mt-4">Location (Optional)</Text>
+              <Text className="text-sm font-semibold text-gray-500 mb-2 mt-4">
+                Location (Optional)
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2.5">
                 <TouchableOpacity
                   className={`px-4 py-2.5 rounded-full mr-2.5 border-2 ${
-                    !selectedSpot ? 'bg-blue-500 border-blue-600' : 'bg-gray-100 dark:bg-gray-700 border-transparent'
+                    !selectedSpot
+                      ? 'bg-blue-500 border-blue-600'
+                      : 'bg-gray-100 dark:bg-gray-700 border-transparent'
                   }`}
                   onPress={() => setSelectedSpot('')}
                 >
-                  <Text className={`text-sm font-semibold ${!selectedSpot ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+                  <Text
+                    className={`text-sm font-semibold ${!selectedSpot ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}
+                  >
                     Any Spot
                   </Text>
                 </TouchableOpacity>
@@ -332,18 +385,24 @@ export default function CallOutsScreen() {
                   <TouchableOpacity
                     key={spot.id}
                     className={`px-4 py-2.5 rounded-full mr-2.5 border-2 ${
-                      selectedSpot === spot.id ? 'bg-blue-500 border-blue-600' : 'bg-gray-100 dark:bg-gray-700 border-transparent'
+                      selectedSpot === spot.id
+                        ? 'bg-blue-500 border-blue-600'
+                        : 'bg-gray-100 dark:bg-gray-700 border-transparent'
                     }`}
                     onPress={() => setSelectedSpot(spot.id)}
                   >
-                    <Text className={`text-xs font-semibold ${selectedSpot === spot.id ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}>
+                    <Text
+                      className={`text-xs font-semibold ${selectedSpot === spot.id ? 'text-white' : 'text-gray-700 dark:text-gray-200'}`}
+                    >
                       {spot.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <Text className="text-sm font-semibold text-gray-500 mb-2 mt-4">Trash Talk (Optional)</Text>
+              <Text className="text-sm font-semibold text-gray-500 mb-2 mt-4">
+                Trash Talk (Optional)
+              </Text>
               <TextInput
                 className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-2.5 text-gray-800 dark:text-gray-100"
                 placeholder="Bet you can't land this..."
@@ -368,7 +427,10 @@ export default function CallOutsScreen() {
               <View className="flex-row gap-2.5 mt-5">
                 <Button
                   title="Cancel"
-                  onPress={() => { setShowCreateModal(false); resetForm(); }}
+                  onPress={() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                  }}
                   variant="secondary"
                   size="lg"
                   className="flex-1"
