@@ -5,20 +5,25 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';
 import Card from '../components/ui/Card';
+import { supabase } from '../lib/supabase';
 
 export default function LeaderboardScreen() {
-  const { data: leaders, loading, refetch } = useSupabaseQuery<UserProfile[]>(
-    () => profilesService.getLeaderboard(100),
-    [],
-    { cacheKey: 'leaderboard' }
-  );
+  const {
+    data: leaders,
+    loading,
+    refetch,
+  } = useSupabaseQuery<UserProfile[]>(() => profilesService.getLeaderboard(100), [], {
+    cacheKey: 'leaderboard',
+  });
 
   useEffect(() => {
     const subscription = supabase
       .channel('leaderboard-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refetch())
       .subscribe();
-    return () => { subscription.unsubscribe(); };
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [refetch]);
 
   const getMedal = (rank: number) => {
@@ -33,7 +38,9 @@ export default function LeaderboardScreen() {
     const medal = getMedal(rank);
 
     return (
-      <Card className={`flex-row items-center ${rank <= 3 ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : ''}`}>
+      <Card
+        className={`flex-row items-center ${rank <= 3 ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
+      >
         <View className="min-w-[50px]">
           {medal ? (
             <View className="flex-row items-center">
@@ -44,7 +51,9 @@ export default function LeaderboardScreen() {
           )}
         </View>
         <View className="flex-1 ml-2">
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{item.username}</Text>
+          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            {item.username}
+          </Text>
           <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             Level {item.level} · {item.spots_added} spots
           </Text>

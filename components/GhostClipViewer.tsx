@@ -5,6 +5,7 @@ import { Ghost, Film, Lock, Play } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import { supabase } from '../lib/supabase';
 
 interface GhostClipViewerProps {
   spotId: string;
@@ -17,7 +18,9 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
   const [loading, setLoading] = useState(true);
   const [showVideo, setShowVideo] = useState(false);
 
-  useEffect(() => { fetchGhostClip(); }, [spotId, user?.id]);
+  useEffect(() => {
+    fetchGhostClip();
+  }, [spotId, user?.id]);
 
   const fetchGhostClip = async () => {
     try {
@@ -70,8 +73,12 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
         >
           <Film color="#8b5cf6" size={28} />
           <View className="flex-1 ml-3">
-            <Text className="text-base font-bold text-gray-800 dark:text-gray-100">{ghostClip.title || 'Secret Clip'}</Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400">{ghostClip.description || 'Tap to watch'}</Text>
+            <Text className="text-base font-bold text-gray-800 dark:text-gray-100">
+              {ghostClip.title || 'Secret Clip'}
+            </Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
+              {ghostClip.description || 'Tap to watch'}
+            </Text>
           </View>
           <Play color="#8b5cf6" size={24} />
         </TouchableOpacity>
@@ -81,8 +88,12 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
             <Lock color="#666" size={28} />
           </View>
           <View className="flex-1 ml-3">
-            <Text className="text-sm font-bold text-gray-500 dark:text-gray-400">Secret Clip Locked</Text>
-            <Text className="text-xs text-gray-400 dark:text-gray-500 italic">Scan the QR code at this spot to unlock!</Text>
+            <Text className="text-sm font-bold text-gray-500 dark:text-gray-400">
+              Secret Clip Locked
+            </Text>
+            <Text className="text-xs text-gray-400 dark:text-gray-500 italic">
+              Scan the QR code at this spot to unlock!
+            </Text>
           </View>
         </View>
       )}
@@ -100,11 +111,21 @@ export default function GhostClipViewer({ spotId }: GhostClipViewerProps) {
           <View className="absolute top-0 left-0 right-0 pt-[60px] px-5">
             <Text
               className="text-2xl font-bold text-white mb-3"
-              style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: -1, height: 1 }, textShadowRadius: 10 }}
+              style={{
+                textShadowColor: 'rgba(0,0,0,0.75)',
+                textShadowOffset: { width: -1, height: 1 },
+                textShadowRadius: 10,
+              }}
             >
               {ghostClip.title || 'Ghost Clip'}
             </Text>
-            <Button title="Close" onPress={() => setShowVideo(false)} variant="primary" size="md" className="self-start" />
+            <Button
+              title="Close"
+              onPress={() => setShowVideo(false)}
+              variant="primary"
+              size="md"
+              className="self-start"
+            />
           </View>
         </View>
       </Modal>
