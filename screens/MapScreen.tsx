@@ -88,13 +88,17 @@ export default function MapScreen() {
     try {
       const { data, error } = await spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000);
       if (error) {
-        const { data: allData } = await spotsService.getAll();
+        const { data: allData, error: allError } = await spotsService.getAll();
+        if (allError) {
+          Alert.alert('Error', 'Could not load skate spots. Please try again.');
+        }
         setSpots(allData || []);
       } else {
         setSpots(data || []);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error loading spots:', error);
+      Alert.alert('Error', 'Could not load skate spots. Please try again.');
     } finally {
       setLoading(false);
     }

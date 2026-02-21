@@ -121,7 +121,6 @@ export default function App() {
         Logger.info('SkateQuest Mobile app initialized');
       } catch (error) {
         Logger.error('App initialization failed:', error);
-        throw error;
       }
     };
 
