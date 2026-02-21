@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Modal,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { crewsService, Crew } from '../lib/crewsService';
@@ -16,15 +8,17 @@ import Button from '../components/ui/Button';
 
 export default function CrewsScreen() {
   const user = useAuthStore(s => s.user);
-  const { data: crews, loading, refetch } = useSupabaseQuery<Crew[]>(
-    () => crewsService.getAll(),
-    []
-  );
+  const {
+    data: crews,
+    loading,
+    refetch,
+  } = useSupabaseQuery<Crew[]>(() => crewsService.getAll(), []);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCrewName, setNewCrewName] = useState('');
   const [newCrewDescription, setNewCrewDescription] = useState('');
 
   const createCrew = async () => {
+    if (!user) return;
     if (!newCrewName.trim()) {
       Alert.alert('Error', 'Please enter a crew name');
       return;
@@ -33,7 +27,7 @@ export default function CrewsScreen() {
       const { error } = await crewsService.create({
         name: newCrewName.trim(),
         description: newCrewDescription.trim(),
-        created_by: user?.id ?? '',
+        created_by: user.id,
       });
       if (error) throw error;
       setNewCrewName('');
@@ -52,8 +46,9 @@ export default function CrewsScreen() {
       {
         text: 'Join',
         onPress: async () => {
+          if (!user) return;
           try {
-            const { error } = await crewsService.join(crewId, user?.id ?? '');
+            const { error } = await crewsService.join(crewId, user.id);
             if (error) throw error;
             Alert.alert('Success', 'Joined crew!');
             refetch();
@@ -68,7 +63,9 @@ export default function CrewsScreen() {
   const renderCrew = ({ item }: { item: Crew }) => (
     <Card>
       <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-xl font-bold text-gray-800 dark:text-gray-100 flex-1">{item.name}</Text>
+        <Text className="text-xl font-bold text-gray-800 dark:text-gray-100 flex-1">
+          {item.name}
+        </Text>
         <Text className="text-base font-bold text-brand-purple">{item.total_xp} XP</Text>
       </View>
       {item.description ? (
@@ -116,7 +113,9 @@ export default function CrewsScreen() {
       >
         <View className="flex-1 bg-black/50 justify-center px-5">
           <View className="bg-white dark:bg-gray-800 rounded-2xl p-6">
-            <Text className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">Create New Crew</Text>
+            <Text className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">
+              Create New Crew
+            </Text>
 
             <TextInput
               className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 text-gray-800 dark:text-gray-100"

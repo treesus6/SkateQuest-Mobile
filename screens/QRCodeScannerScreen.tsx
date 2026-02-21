@@ -81,17 +81,18 @@ export default function QRCodeScannerScreen() {
   };
 
   const handleSuccessfulScan = async (qrData: QRCode) => {
+    if (!user) return;
     try {
-      const { data: profile } = await profilesService.getById(user?.id || '');
+      const { data: profile } = await profilesService.getById(user.id);
       if (!profile) throw new Error('Profile not found');
 
-      await qrCodeService.markFound(qrData.id, user?.id || '', profile.username);
+      await qrCodeService.markFound(qrData.id, user.id, profile.username);
 
       const newXP = (profile.xp || 0) + qrData.xp_reward;
-      await profilesService.update(user?.id || '', { xp: newXP });
+      await profilesService.update(user.id, { xp: newXP });
 
       await feedService.create({
-        user_id: user?.id || '',
+        user_id: user.id,
         activity_type: 'qr_code_found',
         title: 'Found QR Code!',
         description: qrData.trick_challenge

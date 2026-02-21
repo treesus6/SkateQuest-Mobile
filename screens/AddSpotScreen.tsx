@@ -95,6 +95,7 @@ export default function AddSpotScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!user) return;
     if (!name || !latitude || !longitude) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -114,13 +115,13 @@ export default function AddSpotScreen() {
         longitude: lng,
         difficulty,
         obstacles,
-        added_by: user?.id || '',
+        added_by: user.id,
       });
       if (error) throw error;
 
-      const { data: userData } = await profilesService.getById(user?.id || '');
+      const { data: userData } = await profilesService.getById(user.id);
       if (userData) {
-        await profilesService.update(user?.id || '', {
+        await profilesService.update(user.id, {
           spots_added: (userData.spots_added || 0) + 1,
           xp: (userData.xp || 0) + 100,
         });

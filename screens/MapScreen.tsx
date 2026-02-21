@@ -33,7 +33,7 @@ const SEARCH_RADIUS_KM = 50;
 
 const FEATURES = [
   { key: 'Feed', icon: Star, color: '#d2673d', screen: 'Feed' },
-  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'Challenges' },
+  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'ChallengesTab' },
   { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
   { key: 'Tricks', icon: Zap, color: '#FF6B35', screen: 'TrickTracker' },
   { key: 'SKATE', icon: Gamepad2, color: '#6B4CE6', screen: 'SkateGame' },

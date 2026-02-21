@@ -83,6 +83,7 @@ export default function CallOutsScreen() {
   };
 
   const createCallOut = async () => {
+    if (!user) return;
     if (!selectedUser || !trickName.trim()) {
       Alert.alert('Error', 'Please select a user and enter a trick name');
       return;
@@ -90,7 +91,7 @@ export default function CallOutsScreen() {
 
     try {
       const { error } = await callOutsService.create({
-        challenger_id: user?.id || '',
+        challenger_id: user.id,
         challenged_user_id: selectedUser,
         trick_name: trickName.trim(),
         spot_id: selectedSpot || undefined,
@@ -160,15 +161,19 @@ export default function CallOutsScreen() {
         {
           text: 'Mark Complete',
           onPress: async () => {
+            if (!user) return;
             try {
               await supabase
                 .from('call_outs')
                 .update({ status: 'completed', completed_at: new Date().toISOString() })
                 .eq('id', callOut.id);
 
-              const { data: userData } = await profilesService.getById(user?.id || '');
+              const { data: userData, error: profileError } = await profilesService.getById(
+                user.id
+              );
+              if (profileError) throw profileError;
               if (userData) {
-                await profilesService.update(user?.id || '', {
+                await profilesService.update(user.id, {
                   xp: (userData.xp || 0) + callOut.xp_reward,
                 });
               }
