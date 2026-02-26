@@ -39,10 +39,6 @@ module.exports = {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#d2673d',
       },
-      navigationBar: {
-        backgroundColor: '#d2673d',
-        barStyle: 'light-content',
-      },
       permissions: [
         'ACCESS_COARSE_LOCATION',
         'ACCESS_FINE_LOCATION',
@@ -54,6 +50,7 @@ module.exports = {
     },
 
     plugins: [
+      './plugins/withMapboxRepo',
       'expo-system-ui',
       [
         'expo-camera',
