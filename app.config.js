@@ -50,7 +50,7 @@ module.exports = {
     },
 
     plugins: [
-      './plugins/withMapboxRepo',
+      ['./plugins/withMapboxRepo', { RNMapboxMapsVersion: '11.0.0' }],
       'expo-system-ui',
       [
         'expo-camera',
@@ -66,13 +66,6 @@ module.exports = {
         {
           locationAlwaysAndWhenInUsePermission:
             'Allow SkateQuest to use your location to find nearby skate spots.',
-        },
-      ],
-      [
-        '@rnmapbox/maps',
-        {
-          RNMapboxMapsVersion: '11.0.0',
-          RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
         },
       ],
     ],
