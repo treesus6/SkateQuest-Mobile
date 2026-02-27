@@ -69,7 +69,7 @@ module.exports = {
         },
       ],
       [
-        '@rnmapbox/maps',
+        './node_modules/@rnmapbox/maps/app.plugin.js',
         {
           RNMapboxMapsVersion: '11.0.0',
           RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
