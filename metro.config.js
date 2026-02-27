@@ -1,10 +1,11 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 /**
  * Metro configuration for SkateQuest Mobile
  * Optimized for build performance and bundle size
  */
-module.exports = (() => {
+const config = (() => {
   const config = getDefaultConfig(__dirname);
 
   // Enable minification in production
@@ -57,7 +58,7 @@ module.exports = (() => {
     // Video files (some may already be in defaults)
     'mp4',
     'mov',
-    'avi'
+    'avi',
   ];
 
   // Keep default source extensions to maintain compatibility
@@ -65,3 +66,5 @@ module.exports = (() => {
 
   return config;
 })();
+
+module.exports = withNativeWind(config, { input: './global.css' });
