@@ -27,7 +27,9 @@ module.exports = function withMapboxRepo(config) {
     }
 
     // Add Mapbox Maven repo to dependencyResolutionManagement.repositories
-    if (!contents.includes('https://api.mapbox.com/downloads/v2/releases/maven')) {
+    // Use a regex anchored to the Gradle url '' syntax so we match the exact
+    // declaration and not an arbitrary string that merely contains the URL.
+    if (!/url\s+'https:\/\/api\.mapbox\.com\/downloads\/v2\/releases\/maven'/.test(contents)) {
       // Insert right after the opening of the repositories block inside
       // dependencyResolutionManagement (lazy match stops at first repositories {)
       contents = contents.replace(

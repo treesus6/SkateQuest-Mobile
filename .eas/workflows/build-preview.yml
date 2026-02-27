@@ -1,4 +1,3 @@
-build-preview.yml
 name: Preview Build
 
 on:
