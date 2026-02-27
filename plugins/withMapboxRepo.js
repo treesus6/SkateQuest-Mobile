@@ -27,7 +27,7 @@ module.exports = function withMapboxRepo(config) {
     }
 
     // Add Mapbox Maven repo to dependencyResolutionManagement.repositories
-    if (!contents.includes('api.mapbox.com')) {
+    if (!contents.includes('https://api.mapbox.com/downloads/v2/releases/maven')) {
       // Insert right after the opening of the repositories block inside
       // dependencyResolutionManagement (lazy match stops at first repositories {)
       contents = contents.replace(
