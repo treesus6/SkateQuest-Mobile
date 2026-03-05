@@ -28,6 +28,9 @@ import { useMutationQueueStore } from './stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from './lib/backgroundSync';
 import * as Linking from 'expo-linking';
 
+// Added import for Vexo Analytics
+import { vexo } from 'vexo-analytics';
+
 const linking = {
   prefixes: [Linking.createURL('/'), 'skatequest://'],
   config: {
@@ -44,6 +47,11 @@ const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 Mapbox.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 const Stack = createNativeStackNavigator();
+
+// Initialize Vexo OUTSIDE of any component, only in production
+if (__DEV__ === false) {
+  vexo('62a73927-b566-4be6-9ae6-0f062705b2f8');
+}
 
 // Root Navigator that handles auth state
 function RootNavigator() {
