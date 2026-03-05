@@ -8,10 +8,6 @@ interface ShimmerSkeletonProps {
   className?: string;
 }
 
-/**
- * An enhanced loading skeleton with a shimmer sweep animation.
- * Uses a translating opacity gradient effect for a modern feel.
- */
 export default function ShimmerSkeleton({
   width = '100%',
   height = 20,
