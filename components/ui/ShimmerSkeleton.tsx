@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { View, Animated, useColorScheme } from 'react-native';
 import { View, Animated } from 'react-native';
 
 interface ShimmerSkeletonProps {
@@ -19,6 +20,8 @@ export default function ShimmerSkeleton({
   className = '',
 }: ShimmerSkeletonProps) {
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -44,6 +47,9 @@ export default function ShimmerSkeleton({
     outputRange: [0.25, 0.55, 0.25],
   });
 
+  const baseColor = isDark ? '#374151' : '#e0e0e0'; // gray-700 / light gray
+  const shimmerColor = isDark ? '#4b5563' : '#f0f0f0'; // gray-600 / lighter gray
+
   return (
     <View className={className}>
       <View
@@ -51,6 +57,7 @@ export default function ShimmerSkeleton({
           width: width as any,
           height,
           borderRadius,
+          backgroundColor: baseColor,
           backgroundColor: '#e0e0e0',
           overflow: 'hidden',
         }}

@@ -1,9 +1,8 @@
-import * as Sentry from '@sentry/react-native';
 import { Logger } from './logger';
-import { ServiceError } from './serviceError';
 import { PersistentCache } from './persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
+import { logSyncEvent } from './sentryUtils';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 let syncTimer: ReturnType<typeof setInterval> | null = null;
@@ -64,6 +63,7 @@ export async function runSync(
   }
 
   const startTime = Date.now();
+  logSyncEvent('start');
 
   Sentry.addBreadcrumb({
     category: 'sync',
@@ -80,10 +80,11 @@ export async function runSync(
     await refreshDataSources(dataSources);
 
     const duration = Date.now() - startTime;
+    logSyncEvent('complete', { duration });
     Logger.info(`Background sync completed in ${duration}ms`);
   } catch (err) {
+    logSyncEvent('fail', { error: String(err) });
     Logger.error('Background sync failed', err);
-    Sentry.captureException(err);
   }
 }
 

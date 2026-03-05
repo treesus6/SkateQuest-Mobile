@@ -17,10 +17,11 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
 import { EmptyStates } from '../components/EmptyState';
+import RetryBanner from '../components/RetryBanner';
 
 export default function PlaylistsScreen() {
   const user = useAuthStore(s => s.user);
-  const { data: playlists, loading, refetch } = useSupabaseQuery<Playlist[]>(
+  const { data: playlists, loading, error: queryError, refetch } = useSupabaseQuery<Playlist[]>(
     () => playlistsService.getPublic(),
     []
   );
@@ -139,6 +140,7 @@ export default function PlaylistsScreen() {
         </TouchableOpacity>
       </View>
 
+      <RetryBanner error={queryError} onRetry={refetch} loading={loading} />
       <FlatList
         data={playlists ?? []}
         renderItem={renderPlaylist}
