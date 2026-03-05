@@ -7,5 +7,11 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
-  ignorePatterns: ['node_modules/', '.expo/', 'coverage/', 'dist/'],
+  ignorePatterns: [
+    'node_modules/',
+    '.expo/',
+    'coverage/',
+    'dist/',
+    'website/public/js/*'
+  ],
 };
