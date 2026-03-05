@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, useColorScheme } from 'react-native';
+
 
 interface ShimmerSkeletonProps {
   width?: number | string;
