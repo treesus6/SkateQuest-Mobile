@@ -31,8 +31,9 @@ export default function EventsScreen() {
       {
         text: 'RSVP',
         onPress: async () => {
+          if (!user) return;
           try {
-            const { error } = await eventsService.rsvp(eventId, user?.id ?? '');
+            const { error } = await eventsService.rsvp(eventId, user.id);
             if (error) {
               if (error.code === '23505') {
                 Alert.alert('Already registered', 'You already RSVPed to this event!');

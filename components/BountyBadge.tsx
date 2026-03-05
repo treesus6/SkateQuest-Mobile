@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
 import { Coins } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 
 interface BountyBadgeProps {
   challengeId: string;
@@ -11,7 +12,9 @@ export default function BountyBadge({ challengeId, baseXP }: BountyBadgeProps) {
   const [multiplier, setMultiplier] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { calculateBounty(); }, [challengeId]);
+  useEffect(() => {
+    calculateBounty();
+  }, [challengeId]);
 
   const calculateBounty = async () => {
     try {

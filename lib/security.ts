@@ -54,12 +54,6 @@ export function checkRateLimit(
 export function checkForExposedSecrets(): void {
   const envVars = process.env;
 
-  const suspiciousPatterns = [
-    /EXPO_PUBLIC_.*KEY/i,
-    /EXPO_PUBLIC_.*SECRET/i,
-    /EXPO_PUBLIC_.*PASSWORD/i,
-  ];
-
   const exposed: string[] = [];
 
   for (const [key, value] of Object.entries(envVars)) {

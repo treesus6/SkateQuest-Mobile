@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, useColorScheme } from 'react-native';
+import { View, Animated } from 'react-native';
 
 interface ShimmerSkeletonProps {
   width?: number | string;
@@ -10,7 +11,7 @@ interface ShimmerSkeletonProps {
 
 /**
  * An enhanced loading skeleton with a shimmer sweep animation.
- * Adapts colors for light and dark mode.
+ * Uses a translating opacity gradient effect for a modern feel.
  */
 export default function ShimmerSkeleton({
   width = '100%',
@@ -57,13 +58,14 @@ export default function ShimmerSkeleton({
           height,
           borderRadius,
           backgroundColor: baseColor,
+          backgroundColor: '#e0e0e0',
           overflow: 'hidden',
         }}
       >
         <Animated.View
           style={{
             flex: 1,
-            backgroundColor: shimmerColor,
+            backgroundColor: '#f0f0f0',
             opacity,
           }}
         />

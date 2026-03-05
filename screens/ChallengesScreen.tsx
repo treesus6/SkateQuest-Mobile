@@ -20,6 +20,13 @@ export default function ChallengesScreen() {
     [],
     { cacheKey: 'challenges-active' }
   );
+  const {
+    data: challenges,
+    loading,
+    refetch,
+  } = useSupabaseQuery<Challenge[]>(() => challengesService.getActive(), [], {
+    cacheKey: 'challenges-active',
+  });
 
   const completeChallenge = async (challenge: Challenge) => {
     if (!user) return;
@@ -34,16 +41,23 @@ export default function ChallengesScreen() {
           text: 'Complete',
           onPress: async () => {
             try {
-              const { error: challengeError } = await challengesService.complete(challenge.id, user.id);
+              const { error: challengeError } = await challengesService.complete(
+                challenge.id,
+                user.id
+              );
               if (challengeError) throw challengeError;
 
-              const { data: userData } = await profilesService.getById(user.id);
+              const { data: userData, error: profileError } = await profilesService.getById(
+                user.id
+              );
+              if (profileError) throw profileError;
               if (userData) {
                 const updatedChallenges = [...(userData.challenges_completed || []), challenge.id];
-                await profilesService.update(user.id, {
+                const { error: updateError } = await profilesService.update(user.id, {
                   xp: (userData.xp || 0) + challenge.xp_reward,
                   challenges_completed: updatedChallenges,
                 });
+                if (updateError) throw updateError;
               }
 
               Haptics.success();
@@ -70,6 +84,9 @@ export default function ChallengesScreen() {
             </Text>
             {item.description ? (
               <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {item.description}
+              </Text>
             ) : null}
           </View>
         </View>

@@ -38,6 +38,10 @@ export const feedService = {
     return supabase
       .channel('feed-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities' }, callback)
-      .subscribe();
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR') {
+          Logger.error('Feed realtime subscription failed');
+        }
+      });
   },
 };

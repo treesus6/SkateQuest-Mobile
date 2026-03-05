@@ -33,16 +33,28 @@ export default function ProfileScreen() {
         const newProfile = {
           id: user.id,
           username: `Skater${Math.floor(Math.random() * 10000)}`,
-          level: 1, xp: 0, spots_added: 0,
-          challenges_completed: [], streak: 0, badges: {},
+          level: 1,
+          xp: 0,
+          spots_added: 0,
+          challenges_completed: [],
+          streak: 0,
+          badges: {},
         };
-        const { data: created } = await profilesService.create(newProfile);
-        if (created) setProfile(created);
+        const { data: created, error: createError } = await profilesService.create(newProfile);
+        if (createError) {
+          console.error('Error creating profile:', createError);
+        } else if (created) {
+          setProfile(created);
+        }
       } else if (!error && data) {
         setProfile(data);
         if (data.xp !== undefined) {
-          const { data: prog } = await profilesService.getLevelProgress(data.xp);
-          if (prog) setLevelProgress(prog);
+          const { data: prog, error: progError } = await profilesService.getLevelProgress(data.xp);
+          if (progError) {
+            console.error('Error fetching level progress:', progError);
+          } else if (prog) {
+            setLevelProgress(prog);
+          }
         }
       }
     } catch (err) {
@@ -52,7 +64,9 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -99,7 +113,8 @@ export default function ProfileScreen() {
               Level {levelProgress.current_level} → {levelProgress.current_level + 1}
             </Text>
             <Text className="text-sm font-semibold text-brand-terracotta">
-              {levelProgress.xp_progress} / {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
+              {levelProgress.xp_progress} /{' '}
+              {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
             </Text>
           </View>
           <View className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
@@ -141,12 +156,31 @@ export default function ProfileScreen() {
             <Bug color="#856404" size={18} />
             <Text className="text-base font-bold text-yellow-700">Sentry Debug (Dev Only)</Text>
           </View>
-          <Button title="Test JS Crash" variant="ghost" size="sm" className="mb-2"
-            onPress={() => { throw new Error('Sentry Test Crash'); }} />
-          <Button title="Test Native Crash" variant="ghost" size="sm" className="mb-2"
-            onPress={() => Sentry.nativeCrash()} />
-          <Button title="Send Test Message" variant="ghost" size="sm"
-            onPress={() => { Sentry.captureMessage('Test from ProfileScreen', 'info'); Alert.alert('Sent!'); }} />
+          <Button
+            title="Test JS Crash"
+            variant="ghost"
+            size="sm"
+            className="mb-2"
+            onPress={() => {
+              throw new Error('Sentry Test Crash');
+            }}
+          />
+          <Button
+            title="Test Native Crash"
+            variant="ghost"
+            size="sm"
+            className="mb-2"
+            onPress={() => Sentry.nativeCrash()}
+          />
+          <Button
+            title="Send Test Message"
+            variant="ghost"
+            size="sm"
+            onPress={() => {
+              Sentry.captureMessage('Test from ProfileScreen', 'info');
+              Alert.alert('Sent!');
+            }}
+          />
         </Card>
       )}
 

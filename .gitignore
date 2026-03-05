@@ -67,3 +67,4 @@ validate-fixes.js
 .expo/
 android/
 ios/
+logs/

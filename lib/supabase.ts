@@ -1,10 +1,12 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { processLock } from '@supabase/auth-js';
 
 // Get Supabase credentials from environment
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_KEY;
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_KEY;
 
 // Validate credentials before creating client
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -12,7 +14,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('URL present:', !!supabaseUrl);
   console.error('Key present:', !!supabaseAnonKey);
   console.error('');
-  console.error('Make sure eas.json has EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
+  console.error(
+    'Make sure eas.json has EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY'
+  );
   throw new Error('Supabase credentials not configured. Check eas.json production env vars.');
 }
 
@@ -24,6 +28,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    lock: processLock,
   },
   global: {
     headers: {

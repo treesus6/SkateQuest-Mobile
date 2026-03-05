@@ -13,16 +13,16 @@ export interface SyncDataSource {
 }
 
 /**
- * Default no-op executor that safely skips mutations and logs a warning.
- * Consumers should provide a real executor that routes mutations
- * to the appropriate service method.
+ * Execute a queued offline mutation against the backend.
+ * Override this by passing a custom executor to processQueue.
  */
-async function defaultMutationExecutor(mutation: OfflineMutation): Promise<void> {
-  Logger.warn('No mutation executor configured — skipping mutation', {
-    id: mutation.id,
-    type: mutation.type,
-    table: mutation.table,
-  });
+async function defaultMutationExecutor(_mutation: OfflineMutation): Promise<void> {
+  // No-op default — consumers should provide their own executor
+  // that routes mutations to the appropriate service method.
+  throw new ServiceError(
+    'No mutation executor configured',
+    'SYNC_NO_EXECUTOR',
+  );
 }
 
 /**
@@ -64,6 +64,12 @@ export async function runSync(
 
   const startTime = Date.now();
   logSyncEvent('start');
+
+  Sentry.addBreadcrumb({
+    category: 'sync',
+    message: 'Background sync started',
+    level: 'info',
+  });
 
   try {
     // 1. Process offline mutation queue

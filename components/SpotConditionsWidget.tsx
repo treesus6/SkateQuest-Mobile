@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Sun, Droplets, Users, Sparkles, ShieldAlert, CheckCircle, AlertTriangle, MapPin, Circle } from 'lucide-react-native';
+import {
+  Sun,
+  Droplets,
+  Users,
+  Sparkles,
+  ShieldAlert,
+  CheckCircle,
+  AlertTriangle,
+  MapPin,
+  Circle,
+} from 'lucide-react-native';
 import { SpotCondition } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface SpotConditionsWidgetProps {
   spotId: string;
@@ -19,7 +30,11 @@ const CONDITION_ICONS: Record<string, { icon: any; color: string }> = {
   under_construction: { icon: AlertTriangle, color: '#FF9800' },
 };
 
-export default function SpotConditionsWidget({ spotId, compact = false, onPress }: SpotConditionsWidgetProps) {
+export default function SpotConditionsWidget({
+  spotId,
+  compact = false,
+  onPress,
+}: SpotConditionsWidgetProps) {
   const [conditions, setConditions] = useState<SpotCondition[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,13 +43,23 @@ export default function SpotConditionsWidget({ spotId, compact = false, onPress 
 
     const channel = supabase
       .channel(`spot-conditions-${spotId}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'spot_conditions',
-        filter: `spot_id=eq.${spotId}`,
-      }, () => { loadConditions(); })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'spot_conditions',
+          filter: `spot_id=eq.${spotId}`,
+        },
+        () => {
+          loadConditions();
+        }
+      )
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    return () => {
+      channel.unsubscribe();
+    };
   }, [spotId]);
 
   const loadConditions = async () => {
@@ -87,7 +112,9 @@ export default function SpotConditionsWidget({ spotId, compact = false, onPress 
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center gap-1.5">
           <Circle color="#ef4444" size={8} fill="#ef4444" />
-          <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">Live Conditions</Text>
+          <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">
+            Live Conditions
+          </Text>
         </View>
         <Text className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
           {conditions.length}
@@ -104,8 +131,12 @@ export default function SpotConditionsWidget({ spotId, compact = false, onPress 
           >
             <Icon color={iconData.color} size={18} />
             <View className="flex-1 ml-2.5">
-              <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">{getConditionLabel(condition.condition)}</Text>
-              <Text className="text-[11px] text-gray-400 mt-0.5">{getTimeAgo(condition.created_at)}</Text>
+              <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {getConditionLabel(condition.condition)}
+              </Text>
+              <Text className="text-[11px] text-gray-400 mt-0.5">
+                {getTimeAgo(condition.created_at)}
+              </Text>
             </View>
           </View>
         );

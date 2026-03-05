@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import { Logger } from '../lib/logger';
 import { ServiceError } from '../lib/serviceError';
 import { useNetworkStore } from './useNetworkStore';
-import { logOfflineMutation } from '../lib/sentryUtils';
 
 const QUEUE_STORAGE_KEY = 'offline_mutation_queue';
 

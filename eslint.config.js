@@ -18,7 +18,8 @@ module.exports = [
       'dist/**',
       'android/**',
       'ios/**',
-      'app-firebase-backup.js',
+      'scripts/**',
+      'eslint.config.js',
     ],
   },
 
@@ -63,6 +64,23 @@ module.exports = [
       'prefer-const': 'error',
       'prefer-arrow-callback': 'warn',
       'no-duplicate-imports': 'error',
+    },
+  },
+
+  // Test files configuration
+  {
+    files: ['**/__tests__/**/*', 'jest.setup.js', '**/*.test.*', '**/*.spec.*'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
     },
   },
 

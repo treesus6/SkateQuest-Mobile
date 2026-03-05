@@ -6,14 +6,12 @@ import { ServiceError } from './serviceError';
 export const playlistsService = {
   async getPublic() {
     try {
-      return (await supabase
+      const { data, error } = await supabase
         .from('playlists')
         .select(`*, user:users(id, username, level)`)
         .eq('is_public', true)
-        .order('created_at', { ascending: false })) as unknown as {
-        data: Playlist[] | null;
-        error: any;
-      };
+        .order('created_at', { ascending: false });
+      return { data: data as Playlist[] | null, error };
     } catch (error) {
       Logger.error('playlistsService.getPublic failed', error);
       throw new ServiceError(
@@ -41,11 +39,7 @@ export const playlistsService = {
       ]);
     } catch (error) {
       Logger.error('playlistsService.create failed', error);
-      throw new ServiceError(
-        'Failed to create playlist',
-        'PLAYLISTS_CREATE_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to create playlist', 'PLAYLISTS_CREATE_FAILED', error);
     }
   },
 
@@ -59,11 +53,7 @@ export const playlistsService = {
       ]);
     } catch (error) {
       Logger.error('playlistsService.like failed', error);
-      throw new ServiceError(
-        'Failed to like playlist',
-        'PLAYLISTS_LIKE_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to like playlist', 'PLAYLISTS_LIKE_FAILED', error);
     }
   },
 
@@ -76,11 +66,7 @@ export const playlistsService = {
         .eq('user_id', userId);
     } catch (error) {
       Logger.error('playlistsService.unlike failed', error);
-      throw new ServiceError(
-        'Failed to unlike playlist',
-        'PLAYLISTS_UNLIKE_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to unlike playlist', 'PLAYLISTS_UNLIKE_FAILED', error);
     }
   },
 };

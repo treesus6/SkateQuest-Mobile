@@ -20,12 +20,14 @@ export const spotsService = {
     try {
       return await supabase
         .from('skate_spots')
-        .select(`
+        .select(
+          `
           *,
           spot_photos(*, media(*)),
           spot_conditions(*, reporter:profiles(id, username)),
           challenges(*)
-        `)
+        `
+        )
         .eq('id', spotId)
         .single();
     } catch (error) {
@@ -64,13 +66,18 @@ export const spotsService = {
 
   async uploadPhoto(spotId: string, mediaId: string, userId: string, isPrimary: boolean = false) {
     try {
-      return await supabase.from('spot_photos').insert([{
-        spot_id: spotId,
-        media_id: mediaId,
-        uploaded_by: userId,
-        is_primary: isPrimary,
-      }]);
+      const { error } = await supabase.from('spot_photos').insert([
+        {
+          spot_id: spotId,
+          media_id: mediaId,
+          uploaded_by: userId,
+          is_primary: isPrimary,
+        },
+      ]);
+      if (error)
+        throw new ServiceError('Failed to upload spot photo', 'SPOTS_UPLOAD_PHOTO_FAILED', error);
     } catch (error) {
+      if (error instanceof ServiceError) throw error;
       Logger.error('spotsService.uploadPhoto failed', error);
       throw new ServiceError('Failed to upload spot photo', 'SPOTS_UPLOAD_PHOTO_FAILED', error);
     }
@@ -78,13 +85,15 @@ export const spotsService = {
 
   async reportCondition(spotId: string, userId: string, condition: string, notes?: string) {
     try {
-      return await supabase.from('spot_conditions').insert([{
-        spot_id: spotId,
-        reported_by: userId,
-        condition,
-        notes,
-        expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-      }]);
+      return await supabase.from('spot_conditions').insert([
+        {
+          spot_id: spotId,
+          reported_by: userId,
+          condition,
+          notes,
+          expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        },
+      ]);
     } catch (error) {
       Logger.error('spotsService.reportCondition failed', error);
       throw new ServiceError('Failed to report condition', 'SPOTS_REPORT_CONDITION_FAILED', error);

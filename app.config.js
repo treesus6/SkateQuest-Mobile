@@ -1,0 +1,86 @@
+module.exports = {
+  expo: {
+    name: 'SkateQuest',
+    slug: 'skatequest',
+    version: '1.0.0',
+    orientation: 'portrait',
+    userInterfaceStyle: 'light',
+    description:
+      'The ultimate skateboarding companion app. Find skate spots with an interactive map, track your trick progression, compete in SKATE games, complete challenges for XP, and level up your skating journey. Features AI trick analysis, social feed, crew system, and a comprehensive database of 27,000+ skateparks worldwide.',
+    icon: './assets/icon.png',
+    splash: {
+      image: './assets/splash.png',
+      resizeMode: 'contain',
+      backgroundColor: '#d2673d',
+    },
+    platforms: ['ios', 'android'],
+    jsEngine: 'hermes',
+
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: 'com.skatequest.app',
+      buildNumber: '1',
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription:
+          'SkateQuest needs your location to show nearby skate spots on the map.',
+        NSCameraUsageDescription:
+          'SkateQuest needs camera access to record your tricks and upload videos.',
+        NSPhotoLibraryUsageDescription:
+          'SkateQuest needs photo library access to upload photos and videos of your tricks.',
+        NSMicrophoneUsageDescription:
+          'SkateQuest needs microphone access to record audio with your trick videos.',
+      },
+    },
+
+    android: {
+      package: 'com.skatequest.app',
+      versionCode: 1,
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#d2673d',
+      },
+      permissions: [
+        'ACCESS_COARSE_LOCATION',
+        'ACCESS_FINE_LOCATION',
+        'CAMERA',
+        'READ_EXTERNAL_STORAGE',
+        'WRITE_EXTERNAL_STORAGE',
+        'RECORD_AUDIO',
+      ],
+    },
+
+    plugins: [
+      './plugins/withMapboxRepo',
+      'expo-system-ui',
+      [
+        'expo-camera',
+        {
+          cameraPermission: 'Allow SkateQuest to access your camera to record tricks.',
+          microphonePermission:
+            'Allow SkateQuest to access your microphone to record audio with videos.',
+          recordAudioAndroid: true,
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationAlwaysAndWhenInUsePermission:
+            'Allow SkateQuest to use your location to find nearby skate spots.',
+        },
+      ],
+      [
+        '@rnmapbox/maps',
+        {
+          RNMapboxMapsVersion: '11.0.0',
+          RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
+        },
+      ],
+    ],
+
+    extra: {
+      eas: {
+        projectId: '09a104b9-9e22-4ae0-9836-2701e366d8e5',
+      },
+    },
+  },
+};

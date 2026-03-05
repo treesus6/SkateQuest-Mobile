@@ -1,4 +1,3 @@
-import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
 
 /**
@@ -21,14 +20,12 @@ export interface TrickAnalysisResult {
  */
 export async function analyzeTrickVideo(
   videoUri: string,
-  apiKey?: string
+  _apiKey?: string
 ): Promise<TrickAnalysisResult> {
   try {
     // For now, we'll use a heuristic approach
     // In production, this would call an AI API
 
-    // Extract video metadata
-    const fileInfo = await FileSystem.getInfoAsync(videoUri);
     const fileName = videoUri.split('/').pop() || '';
 
     // Simulate AI analysis with smart heuristics
@@ -46,7 +43,7 @@ export async function analyzeTrickVideo(
  * Requires OPENAI_API_KEY in environment
  */
 export async function analyzeWithOpenAI(
-  videoUri: string,
+  _videoUri: string,
   apiKey: string
 ): Promise<TrickAnalysisResult> {
   try {

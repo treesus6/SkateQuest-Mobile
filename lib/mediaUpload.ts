@@ -94,7 +94,7 @@ export async function uploadToStorage(
   bucket: string,
   folder: string,
   fileName: string,
-  onProgress?: (progress: UploadProgress) => void
+  _onProgress?: (progress: UploadProgress) => void
 ): Promise<string> {
   try {
     // Read file as base64
@@ -107,7 +107,7 @@ export async function uploadToStorage(
     const filePath = `${folder}/${Date.now()}_${fileName}.${ext}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage.from(bucket).upload(filePath, decode(base64), {
+    const { error } = await supabase.storage.from(bucket).upload(filePath, decode(base64), {
       contentType: `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
       upsert: false,
     });

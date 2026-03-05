@@ -1,7 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
-import { MapPin, Target, Zap, ArrowUpCircle, Camera, Trophy, Sparkles, Upload } from 'lucide-react-native';
+import {
+  MapPin,
+  Target,
+  Zap,
+  ArrowUpCircle,
+  Camera,
+  Trophy,
+  Sparkles,
+  Upload,
+} from 'lucide-react-native';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { feedService } from '../lib/feedService';
 import { Activity } from '../types';
@@ -17,16 +26,23 @@ const ACTIVITY_ICONS: Record<string, { icon: typeof MapPin; color: string }> = {
 };
 
 export default function FeedScreen({ navigation }: any) {
-  const { data: activities, loading, refetch } = useSupabaseQuery<Activity[]>(
-    () => feedService.getRecent(50),
-    [],
-    { cacheKey: 'feed-recent' }
-  );
+  const {
+    data: activities,
+    loading,
+    refetch,
+  } = useSupabaseQuery<Activity[]>(() => feedService.getRecent(50), [], {
+    cacheKey: 'feed-recent',
+  });
+
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
 
   useEffect(() => {
-    const subscription = feedService.subscribeToFeed(() => refetch());
-    return () => { subscription.unsubscribe(); };
-  }, [refetch]);
+    const subscription = feedService.subscribeToFeed(() => refetchRef.current());
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const renderActivityIcon = (type: string) => {
     const config = ACTIVITY_ICONS[type] || { icon: Sparkles, color: '#999' };
@@ -37,9 +53,7 @@ export default function FeedScreen({ navigation }: any) {
   const renderActivity = ({ item }: { item: Activity }) => (
     <Card>
       <View className="flex-row items-start">
-        <View className="mr-3 mt-0.5">
-          {renderActivityIcon(item.activity_type)}
-        </View>
+        <View className="mr-3 mt-0.5">{renderActivityIcon(item.activity_type)}</View>
         <View className="flex-1">
           <Text className="text-base font-bold text-brand-terracotta mb-0.5">
             {item.user?.username || 'Skater'}
@@ -48,7 +62,9 @@ export default function FeedScreen({ navigation }: any) {
             {item.title}
           </Text>
           {item.description ? (
-            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">{item.description}</Text>
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              {item.description}
+            </Text>
           ) : null}
           <Text className="text-xs text-gray-400">
             {new Date(item.created_at).toLocaleDateString()}
@@ -63,19 +79,28 @@ export default function FeedScreen({ navigation }: any) {
 
       {item.media && (
         <View className="mt-3 rounded-lg overflow-hidden">
-          {item.media.type === 'photo' ? (
-            <Image
-              source={{ uri: item.media.url }}
-              style={{ width: '100%', height: 250 }}
-              resizeMode="cover"
-            />
+          {item.media.url ? (
+            item.media.type === 'photo' ? (
+              <Image
+                source={{ uri: item.media.url }}
+                style={{ width: '100%', height: 250 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Video
+                source={{ uri: item.media.url }}
+                style={{ width: '100%', height: 250 }}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+              />
+            )
           ) : (
-            <Video
-              source={{ uri: item.media.url }}
-              style={{ width: '100%', height: 250 }}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-            />
+            <View
+              style={{ height: 60 }}
+              className="bg-gray-100 dark:bg-gray-700 items-center justify-center"
+            >
+              <Text className="text-sm text-gray-400">Media unavailable</Text>
+            </View>
           )}
           {item.media.caption ? (
             <Text className="text-sm text-gray-600 dark:text-gray-300 mt-2 italic">

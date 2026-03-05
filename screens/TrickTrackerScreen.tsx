@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Alert, Modal, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Modal,
+  ScrollView,
+} from 'react-native';
 import { Target, Star, Zap, Plus, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
@@ -11,9 +20,21 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 const COMMON_TRICKS = [
-  'Ollie', 'Kickflip', 'Heelflip', 'Pop Shove-it', 'Frontside 180',
-  'Backside 180', 'Varial Kickflip', 'Hardflip', 'Treflip', '50-50 Grind',
-  'Boardslide', 'Noseslide', 'Tailslide', 'Feeble Grind', 'Smith Grind',
+  'Ollie',
+  'Kickflip',
+  'Heelflip',
+  'Pop Shove-it',
+  'Frontside 180',
+  'Backside 180',
+  'Varial Kickflip',
+  'Hardflip',
+  'Treflip',
+  '50-50 Grind',
+  'Boardslide',
+  'Noseslide',
+  'Tailslide',
+  'Feeble Grind',
+  'Smith Grind',
 ];
 
 const STATUS_CONFIG: Record<string, { icon: typeof Zap; color: string; label: string }> = {
@@ -59,25 +80,28 @@ export default function TrickTrackerScreen() {
     }
   };
 
-  const updateTrickStatus = async (trick: UserTrick, newStatus: 'trying' | 'landed' | 'consistent') => {
+  const updateTrickStatus = async (
+    trick: UserTrick,
+    newStatus: 'trying' | 'landed' | 'consistent'
+  ) => {
+    if (!user) return;
     try {
       const { error } = await userTricksService.updateStatus(trick.id, newStatus);
       if (error) throw error;
 
       if (newStatus === 'landed' && trick.status === 'trying') {
         await feedService.create({
-          user_id: user?.id || '',
+          user_id: user.id,
           activity_type: 'trick_landed',
           title: `Landed a ${trick.trick_name}!`,
           xp_earned: 25,
         });
 
-        try {
-          await profilesService.incrementXp(user?.id || '', 25);
-        } catch {
-          const { data: userData } = await profilesService.getById(user?.id || '');
+        const { error: xpError } = await profilesService.incrementXp(user.id, 25);
+        if (xpError) {
+          const { data: userData } = await profilesService.getById(user.id);
           if (userData) {
-            await profilesService.update(user?.id || '', { xp: (userData.xp || 0) + 25 });
+            await profilesService.update(user.id, { xp: (userData.xp || 0) + 25 });
           }
         }
 
@@ -92,7 +116,10 @@ export default function TrickTrackerScreen() {
 
   const incrementAttempts = async (trick: UserTrick) => {
     try {
-      await userTricksService.update(trick.id, { attempts: trick.attempts + 1, updated_at: new Date().toISOString() });
+      await userTricksService.update(trick.id, {
+        attempts: trick.attempts + 1,
+        updated_at: new Date().toISOString(),
+      });
       refetch();
     } catch {}
   };
@@ -120,9 +147,13 @@ export default function TrickTrackerScreen() {
         <View className="flex-row items-center mb-3">
           <Icon color={config.color} size={28} />
           <View className="flex-1 ml-3">
-            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{item.trick_name}</Text>
+            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+              {item.trick_name}
+            </Text>
             <View className="flex-row gap-2.5 mt-1">
-              <Text style={{ color: config.color }} className="text-xs font-bold">{config.label}</Text>
+              <Text style={{ color: config.color }} className="text-xs font-bold">
+                {config.label}
+              </Text>
               <Text className="text-xs text-gray-500">{item.attempts} attempts</Text>
             </View>
           </View>
@@ -198,8 +229,13 @@ export default function TrickTrackerScreen() {
         onRequestClose={() => setShowAddModal(false)}
       >
         <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white dark:bg-gray-800 rounded-t-2xl p-5" style={{ maxHeight: '80%' }}>
-            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-4">Add New Trick</Text>
+          <View
+            className="bg-white dark:bg-gray-800 rounded-t-2xl p-5"
+            style={{ maxHeight: '80%' }}
+          >
+            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-4">
+              Add New Trick
+            </Text>
 
             <TextInput
               className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 text-gray-800 dark:text-gray-100"
@@ -228,7 +264,10 @@ export default function TrickTrackerScreen() {
             <View className="flex-row gap-2.5">
               <Button
                 title="Cancel"
-                onPress={() => { setShowAddModal(false); setNewTrickName(''); }}
+                onPress={() => {
+                  setShowAddModal(false);
+                  setNewTrickName('');
+                }}
                 variant="secondary"
                 size="lg"
                 className="flex-1"

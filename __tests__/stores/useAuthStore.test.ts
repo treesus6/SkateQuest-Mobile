@@ -8,7 +8,6 @@ const mockSignInWithPassword = supabase.auth.signInWithPassword as jest.Mock;
 const mockSignOut = supabase.auth.signOut as jest.Mock;
 const mockGetSession = supabase.auth.getSession as jest.Mock;
 const mockOnAuthStateChange = supabase.auth.onAuthStateChange as jest.Mock;
-const mockResetPasswordForEmail = supabase.auth.resetPasswordForEmail as unknown as jest.Mock;
 
 describe('useAuthStore', () => {
   beforeEach(() => {
@@ -127,7 +126,7 @@ describe('useAuthStore', () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
       let authChangeCallback: Function;
-      mockOnAuthStateChange.mockImplementation((callback) => {
+      mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
       });
@@ -151,7 +150,7 @@ describe('useAuthStore', () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
       let authChangeCallback: Function;
-      mockOnAuthStateChange.mockImplementation((callback) => {
+      mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
       });
@@ -251,7 +250,9 @@ describe('useAuthStore', () => {
 
     it('should return the error when resetPassword fails', async () => {
       const mockError = { message: 'User not found' };
-      (supabase.auth as any).resetPasswordForEmail = jest.fn().mockResolvedValue({ error: mockError });
+      (supabase.auth as any).resetPasswordForEmail = jest
+        .fn()
+        .mockResolvedValue({ error: mockError });
 
       const result = await useAuthStore.getState().resetPassword('unknown@test.com');
 
