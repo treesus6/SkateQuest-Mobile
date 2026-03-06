@@ -11,7 +11,7 @@ const MAPBOX_MAVEN = `        maven {
             }
             credentials {
                 username = 'mapbox'
-                password = System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
+                password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
             }
         }`;
 
