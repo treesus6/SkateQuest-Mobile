@@ -2,18 +2,26 @@ const {
   withSettingsGradle,
   withGradleProperties,
   withAppBuildGradle,
+  withProjectBuildGradle,
 } = require('@expo/config-plugins');
 
-const MAPBOX_MAVEN = `        maven {
-            url 'https://api.mapbox.com/downloads/v2/releases/maven'
-            authentication {
-                basic(BasicAuthentication)
-            }
-            credentials {
-                username = 'mapbox'
-                password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
-            }
-        }`;
+// Appended to android/build.gradle so Gradle can resolve Mapbox artifacts.
+// Authentication is optional — token is read from env if present.
+const MAPBOX_MAVEN = `
+allprojects {
+  repositories {
+    maven {
+      url 'https://api.mapbox.com/downloads/v2/releases/maven'
+      authentication {
+        basic(BasicAuthentication)
+      }
+      credentials {
+        username = 'mapbox'
+        password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN") ?: ""
+      }
+    }
+  }
+}`;
 
 const LIBCPP_PACKAGING = `    packagingOptions {
         pickFirst 'lib/x86/libc++_shared.so'
@@ -23,30 +31,29 @@ const LIBCPP_PACKAGING = `    packagingOptions {
     }`;
 
 module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
-  // 1. settings.gradle — add Mapbox Maven repo + fix PREFER_SETTINGS
+  // 1. settings.gradle — switch to PREFER_SETTINGS so allprojects.repositories works
   config = withSettingsGradle(config, cfg => {
     let contents = cfg.modResults.contents;
-
     if (contents.includes('RepositoriesMode.FAIL_ON_PROJECT_REPOS')) {
       contents = contents.replace(
         'RepositoriesMode.FAIL_ON_PROJECT_REPOS',
         'RepositoriesMode.PREFER_SETTINGS'
       );
     }
-
-    if (!/url\s+'https:\/\/api\.mapbox\.com\/downloads\/v2\/releases\/maven'/.test(contents)) {
-      contents = contents.replace(
-        /(dependencyResolutionManagement[\s\S]*?repositories\s*\{)/,
-        `$1\n${MAPBOX_MAVEN}`
-      );
-    }
-
     cfg.modResults.contents = contents;
     return cfg;
   });
 
-  // 2. gradle.properties — set expoRNMapboxMapsVersion so the native module
-  //    knows which Mapbox Maps SDK version to use (replaces @rnmapbox/maps plugin)
+  // 2. android/build.gradle — add Mapbox Maven as an allprojects block
+  config = withProjectBuildGradle(config, cfg => {
+    if (cfg.modResults.language !== 'groovy') return cfg;
+    if (!cfg.modResults.contents.includes('api.mapbox.com/downloads/v2/releases/maven')) {
+      cfg.modResults.contents += '\n' + MAPBOX_MAVEN;
+    }
+    return cfg;
+  });
+
+  // 3. gradle.properties — tell @rnmapbox/maps which Mapbox Maps SDK version to use
   if (RNMapboxMapsVersion) {
     config = withGradleProperties(config, cfg => {
       cfg.modResults = cfg.modResults.filter(
@@ -61,7 +68,7 @@ module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
     });
   }
 
-  // 3. app/build.gradle — add packagingOptions to avoid duplicate libc++ conflicts
+  // 4. app/build.gradle — avoid duplicate libc++ conflicts from multiple native libs
   config = withAppBuildGradle(config, cfg => {
     if (cfg.modResults.language !== 'groovy') return cfg;
     if (!cfg.modResults.contents.includes("pickFirst 'lib/x86/libc++_shared.so'")) {
