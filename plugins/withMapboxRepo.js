@@ -6,18 +6,20 @@ const {
 } = require('@expo/config-plugins');
 
 // Appended to android/build.gradle so Gradle can resolve Mapbox artifacts.
-// Authentication is optional — token is read from env if present.
+// Only adds credentials when a token env var is present; otherwise tries anonymously
+// (Mapbox removed mandatory auth for public SDK artifacts as of 2024).
 const MAPBOX_MAVEN = `
 allprojects {
   repositories {
     maven {
       url 'https://api.mapbox.com/downloads/v2/releases/maven'
-      authentication {
-        basic(BasicAuthentication)
-      }
-      credentials {
-        username = 'mapbox'
-        password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN") ?: ""
+      def mapboxToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
+      if (mapboxToken) {
+        authentication { basic(BasicAuthentication) }
+        credentials {
+          username = 'mapbox'
+          password = mapboxToken
+        }
       }
     }
   }
