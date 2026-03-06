@@ -50,7 +50,7 @@ module.exports = {
     },
 
     plugins: [
-      ['./plugins/withMapboxRepo', { RNMapboxMapsVersion: '11.0.0' }],
+      ['./plugins/withMapboxRepo', { RNMapboxMapsVersion: '11.16.2' }],
       'expo-system-ui',
       [
         'expo-camera',
