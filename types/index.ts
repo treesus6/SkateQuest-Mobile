@@ -17,6 +17,8 @@ export type RootStackParamList = {
   GameDetail: { gameId: string };
   SpotDetail: { spotId: string };
   QRScanner: undefined;
+  CallOuts: undefined;
+  JudgesBooth: undefined;
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;

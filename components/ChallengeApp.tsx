@@ -16,9 +16,27 @@ import { Haptics } from '../lib/haptics';
 
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
 import LevelUpModal from './LevelUpModal';
+
+// Feature screens (previously orphaned — now wired into navigation)
+import MapScreen from '../screens/MapScreen';
+import FeedScreen from '../screens/FeedScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import TrickTrackerScreen from '../screens/TrickTrackerScreen';
+import SkateGameScreen from '../screens/SkateGameScreen';
+import GameDetailScreen from '../screens/GameDetailScreen';
+import PlaylistsScreen from '../screens/PlaylistsScreen';
+import ShopsScreen from '../screens/ShopsScreen';
+import CrewsScreen from '../screens/CrewsScreen';
+import EventsScreen from '../screens/EventsScreen';
+import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
+import UploadMediaScreen from '../screens/UploadMediaScreen';
+import AddSpotScreen from '../screens/AddSpotScreen';
+import SpotDetailScreen from '../screens/SpotDetailScreen';
+import ChallengesScreen from '../screens/ChallengesScreen';
+import CallOutsScreen from '../screens/CallOutsScreen';
+import JudgesBoothScreen from '../screens/JudgesBoothScreen';
 
 function HomeScreen({ navigation }: any) {
   const { xp, level, challenges } = useChallenges();
@@ -172,9 +190,9 @@ function Tabs() {
       />
       <Tab.Screen
         name="SpotsTab"
-        component={SpotsScreenFromFile}
+        component={MapScreen}
         options={{
-          title: 'Spots',
+          title: 'Map',
           tabBarIcon: ({ color, size, focused }) => (
             <AnimatedTabIcon focused={focused}>
               <MapPin color={color} size={size} />
@@ -239,6 +257,23 @@ function InnerApp() {
       <LevelUpModal visible={showLevelUp} level={level} onClose={() => setShowLevelUp(false)} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
+        {/* Feature screens accessible from the map and other screens */}
+        <Stack.Screen name="Feed" component={FeedScreen} options={{ headerShown: true, title: 'Activity Feed' }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: true, title: 'Leaderboard' }} />
+        <Stack.Screen name="TrickTracker" component={TrickTrackerScreen} options={{ headerShown: true, title: 'Trick Tracker' }} />
+        <Stack.Screen name="SkateGame" component={SkateGameScreen} options={{ headerShown: true, title: 'SKATE Game' }} />
+        <Stack.Screen name="GameDetail" component={GameDetailScreen} options={{ headerShown: true, title: 'Game' }} />
+        <Stack.Screen name="Playlists" component={PlaylistsScreen} options={{ headerShown: true, title: 'Session Playlists' }} />
+        <Stack.Screen name="Shops" component={ShopsScreen} options={{ headerShown: true, title: 'Skate Shops' }} />
+        <Stack.Screen name="Crews" component={CrewsScreen} options={{ headerShown: true, title: 'Crews' }} />
+        <Stack.Screen name="Events" component={EventsScreen} options={{ headerShown: true, title: 'Events' }} />
+        <Stack.Screen name="QRScanner" component={QRCodeScannerScreen} options={{ headerShown: true, title: 'Scan QR' }} />
+        <Stack.Screen name="UploadMedia" component={UploadMediaScreen} options={{ headerShown: true, title: 'Upload Media' }} />
+        <Stack.Screen name="AddSpot" component={AddSpotScreen} options={{ headerShown: true, title: 'Add Spot' }} />
+        <Stack.Screen name="SpotDetail" component={SpotDetailScreen} options={{ headerShown: true, title: 'Spot Detail' }} />
+        <Stack.Screen name="Challenges" component={ChallengesScreen} options={{ headerShown: true, title: 'Challenges' }} />
+        <Stack.Screen name="CallOuts" component={CallOutsScreen} options={{ headerShown: true, title: 'Call Outs' }} />
+        <Stack.Screen name="JudgesBooth" component={JudgesBoothScreen} options={{ headerShown: true, title: "Judge's Booth" }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>
