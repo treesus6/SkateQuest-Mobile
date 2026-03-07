@@ -53,6 +53,7 @@ import ClipOfWeekScreen from '../screens/ClipOfWeekScreen';
 import TrickTutorialsScreen from '../screens/TrickTutorialsScreen';
 import DonateXPScreen from '../screens/DonateXPScreen';
 import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
+import SessionsScreen from '../screens/SessionsScreen';
 
 function HomeScreen({ navigation }: any) {
   const { xp, level, challenges } = useChallenges();
@@ -306,6 +307,7 @@ function InnerApp() {
         <Stack.Screen name="TrickTutorials" component={TrickTutorialsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="DonateXP" component={DonateXPScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SponsorLeaderboard" component={SponsorLeaderboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: true, title: 'Sessions' }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>

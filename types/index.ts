@@ -35,6 +35,7 @@ export type RootStackParamList = {
   TrickTutorials: undefined;
   DonateXP: undefined;
   SponsorLeaderboard: undefined;
+  Sessions: undefined;
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
