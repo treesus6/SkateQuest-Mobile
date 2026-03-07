@@ -38,6 +38,21 @@ import ChallengesScreen from '../screens/ChallengesScreen';
 import CallOutsScreen from '../screens/CallOutsScreen';
 import JudgesBoothScreen from '../screens/JudgesBoothScreen';
 import SkateTVScreen from '../screens/SkateTVScreen';
+import SpotReviewsScreen from '../screens/SpotReviewsScreen';
+import CheckInScreen from '../screens/CheckInScreen';
+import CrewBattlesScreen from '../screens/CrewBattlesScreen';
+import MentorshipScreen from '../screens/MentorshipScreen';
+import TrickBingoScreen from '../screens/TrickBingoScreen';
+import SpotConquerScreen from '../screens/SpotConquerScreen';
+import SeasonalPassScreen from '../screens/SeasonalPassScreen';
+import StreaksScreen from '../screens/StreaksScreen';
+import WeatherSpotsScreen from '../screens/WeatherSpotsScreen';
+import HiddenGemsScreen from '../screens/HiddenGemsScreen';
+import SpotOfTheDayScreen from '../screens/SpotOfTheDayScreen';
+import ClipOfWeekScreen from '../screens/ClipOfWeekScreen';
+import TrickTutorialsScreen from '../screens/TrickTutorialsScreen';
+import DonateXPScreen from '../screens/DonateXPScreen';
+import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
 
 function HomeScreen({ navigation }: any) {
   const { xp, level, challenges } = useChallenges();
@@ -276,6 +291,21 @@ function InnerApp() {
         <Stack.Screen name="CallOuts" component={CallOutsScreen} options={{ headerShown: true, title: 'Call Outs' }} />
         <Stack.Screen name="JudgesBooth" component={JudgesBoothScreen} options={{ headerShown: true, title: "Judge's Booth" }} />
         <Stack.Screen name="SkateTV" component={SkateTVScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotReviews" component={SpotReviewsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CheckIn" component={CheckInScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CrewBattles" component={CrewBattlesScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Mentorship" component={MentorshipScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TrickBingo" component={TrickBingoScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotConquer" component={SpotConquerScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SeasonalPass" component={SeasonalPassScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Streaks" component={StreaksScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="WeatherSpots" component={WeatherSpotsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="HiddenGems" component={HiddenGemsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotOfTheDay" component={SpotOfTheDayScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ClipOfWeek" component={ClipOfWeekScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TrickTutorials" component={TrickTutorialsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DonateXP" component={DonateXPScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SponsorLeaderboard" component={SponsorLeaderboardScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>
