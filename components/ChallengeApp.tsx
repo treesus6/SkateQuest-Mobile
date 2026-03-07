@@ -14,6 +14,7 @@ import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
 
+import HomeScreen from '../screens/HomeScreen';
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
@@ -55,37 +56,6 @@ import DonateXPScreen from '../screens/DonateXPScreen';
 import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
 import SessionsScreen from '../screens/SessionsScreen';
 
-function HomeScreen({ navigation }: any) {
-  const { xp, level, challenges } = useChallenges();
-  const completedCount = challenges.filter((c: any) => c.completed).length;
-
-  return (
-    <SafeAreaView className="flex-1 p-4 bg-white dark:bg-gray-900">
-      <StatusBar barStyle="dark-content" />
-      <Text className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">SkateQuest</Text>
-      <Text className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Level {level} · {xp} XP
-      </Text>
-      <Text className="text-base text-gray-500 dark:text-gray-400 mt-2">
-        Completed challenges: {completedCount} / {challenges.length}
-      </Text>
-
-      <TouchableOpacity
-        className="mt-4 bg-gray-900 dark:bg-gray-100 p-3 rounded-lg items-center"
-        onPress={() => navigation.navigate('ChallengesTab')}
-      >
-        <Text className="text-white dark:text-gray-900 font-semibold">View Challenges</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        className="mt-2 bg-gray-500 p-3 rounded-lg items-center"
-        onPress={() => navigation.navigate('SpotsTab')}
-      >
-        <Text className="text-white font-semibold">Explore Spots</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
 
 function ChallengeListScreen({ navigation }: any) {
   const { challenges } = useChallenges();

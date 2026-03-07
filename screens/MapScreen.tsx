@@ -56,6 +56,7 @@ const FEATURES = [
   { key: 'Shops', icon: ShoppingBag, color: '#795548', screen: 'Shops' },
   { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
   { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
+  { key: 'Sessions', icon: Users, color: '#6B4CE6', screen: 'Sessions' },
   { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
   // Community & Social
   { key: 'Battles', icon: Swords, color: '#e74c3c', screen: 'CrewBattles' },
