@@ -2,28 +2,22 @@ const {
   withSettingsGradle,
   withGradleProperties,
   withAppBuildGradle,
-  withProjectBuildGradle,
 } = require('@expo/config-plugins');
 
-// Appended to android/build.gradle so Gradle can resolve Mapbox artifacts.
-// Only adds credentials when a token env var is present; otherwise tries anonymously
-// (Mapbox removed mandatory auth for public SDK artifacts as of 2024).
-const MAPBOX_MAVEN = `
-allprojects {
-  repositories {
-    maven {
-      url 'https://api.mapbox.com/downloads/v2/releases/maven'
-      def mapboxToken = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")
-      if (mapboxToken) {
-        authentication { basic(BasicAuthentication) }
-        credentials {
-          username = 'mapbox'
-          password = mapboxToken
-        }
-      }
-    }
-  }
-}`;
+// Maven block injected into settings.gradle's dependencyResolutionManagement.repositories.
+// This is the correct location for Gradle 7+ with FAIL_ON_PROJECT_REPOS or PREFER_SETTINGS —
+// project-level allprojects{} repos are ignored in those modes.
+const MAPBOX_MAVEN_BLOCK = `
+        maven {
+            url 'https://api.mapbox.com/downloads/v2/releases/maven'
+            credentials {
+                username = 'mapbox'
+                password = System.getenv("MAPBOX_DOWNLOADS_TOKEN") ?: System.getenv("RNMAPBOX_MAPS_DOWNLOAD_TOKEN") ?: ""
+            }
+            authentication {
+                basic(BasicAuthentication)
+            }
+        }`;
 
 const LIBCPP_PACKAGING = `    packagingOptions {
         pickFirst 'lib/x86/libc++_shared.so'
@@ -33,29 +27,25 @@ const LIBCPP_PACKAGING = `    packagingOptions {
     }`;
 
 module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
-  // 1. settings.gradle — switch to PREFER_SETTINGS so allprojects.repositories works
+  // 1. settings.gradle — inject Mapbox Maven into dependencyResolutionManagement.repositories.
+  //    With FAIL_ON_PROJECT_REPOS (Gradle 7+ default) or PREFER_SETTINGS, project-level
+  //    allprojects{} repository declarations are ignored. The only correct place to add
+  //    a repo for all modules is inside dependencyResolutionManagement.repositories here.
   config = withSettingsGradle(config, cfg => {
     let contents = cfg.modResults.contents;
-    if (contents.includes('RepositoriesMode.FAIL_ON_PROJECT_REPOS')) {
+    if (!contents.includes('api.mapbox.com/downloads/v2/releases/maven')) {
+      // Insert Mapbox Maven right after the opening brace of the repositories block
+      // inside dependencyResolutionManagement (lazy match stops at first occurrence).
       contents = contents.replace(
-        'RepositoriesMode.FAIL_ON_PROJECT_REPOS',
-        'RepositoriesMode.PREFER_SETTINGS'
+        /(dependencyResolutionManagement[\s\S]*?repositories\s*\{)/,
+        `$1${MAPBOX_MAVEN_BLOCK}`
       );
     }
     cfg.modResults.contents = contents;
     return cfg;
   });
 
-  // 2. android/build.gradle — add Mapbox Maven as an allprojects block
-  config = withProjectBuildGradle(config, cfg => {
-    if (cfg.modResults.language !== 'groovy') return cfg;
-    if (!cfg.modResults.contents.includes('api.mapbox.com/downloads/v2/releases/maven')) {
-      cfg.modResults.contents += '\n' + MAPBOX_MAVEN;
-    }
-    return cfg;
-  });
-
-  // 3. gradle.properties — tell @rnmapbox/maps which Mapbox Maps SDK version to use
+  // 2. gradle.properties — tell @rnmapbox/maps which Mapbox Maps SDK version to use
   if (RNMapboxMapsVersion) {
     config = withGradleProperties(config, cfg => {
       cfg.modResults = cfg.modResults.filter(
@@ -70,7 +60,7 @@ module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
     });
   }
 
-  // 4. app/build.gradle — avoid duplicate libc++ conflicts from multiple native libs
+  // 3. app/build.gradle — avoid duplicate libc++ conflicts from multiple native libs
   config = withAppBuildGradle(config, cfg => {
     if (cfg.modResults.language !== 'groovy') return cfg;
     if (!cfg.modResults.contents.includes("pickFirst 'lib/x86/libc++_shared.so'")) {
