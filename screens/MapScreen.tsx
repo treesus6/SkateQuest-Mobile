@@ -20,6 +20,7 @@ import {
   Zap,
   BarChart3,
   MapPin,
+  Tv,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
 import MapStyleSelector from '../components/MapStyleSelector';
@@ -42,6 +43,7 @@ const FEATURES = [
   { key: 'Shops', icon: ShoppingBag, color: '#795548', screen: 'Shops' },
   { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
   { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
+  { key: 'Skate TV', icon: Tv, color: '#FF6B35', screen: 'SkateTV' },
   { key: 'Add Spot', icon: Plus, color: '#fff', screen: 'AddSpot', highlight: true },
 ];
 

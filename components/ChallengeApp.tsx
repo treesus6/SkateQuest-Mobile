@@ -37,6 +37,7 @@ import SpotDetailScreen from '../screens/SpotDetailScreen';
 import ChallengesScreen from '../screens/ChallengesScreen';
 import CallOutsScreen from '../screens/CallOutsScreen';
 import JudgesBoothScreen from '../screens/JudgesBoothScreen';
+import SkateTVScreen from '../screens/SkateTVScreen';
 
 function HomeScreen({ navigation }: any) {
   const { xp, level, challenges } = useChallenges();
@@ -274,6 +275,7 @@ function InnerApp() {
         <Stack.Screen name="Challenges" component={ChallengesScreen} options={{ headerShown: true, title: 'Challenges' }} />
         <Stack.Screen name="CallOuts" component={CallOutsScreen} options={{ headerShown: true, title: 'Call Outs' }} />
         <Stack.Screen name="JudgesBooth" component={JudgesBoothScreen} options={{ headerShown: true, title: "Judge's Booth" }} />
+        <Stack.Screen name="SkateTV" component={SkateTVScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>

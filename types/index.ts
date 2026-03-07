@@ -19,6 +19,7 @@ export type RootStackParamList = {
   QRScanner: undefined;
   CallOuts: undefined;
   JudgesBooth: undefined;
+  SkateTV: undefined;
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
