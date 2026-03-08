@@ -20,6 +20,20 @@ import {
   Zap,
   BarChart3,
   MapPin,
+  Tv,
+  Grid3x3,
+  Flag,
+  Ticket,
+  Flame,
+  CloudSun,
+  Gem,
+  Sunrise,
+  Video,
+  BookOpen,
+  Heart,
+  Award,
+  Swords,
+  UserCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
 import MapStyleSelector from '../components/MapStyleSelector';
@@ -32,9 +46,9 @@ const INITIAL_COORDINATES = [-122.4324, 37.78825];
 const SEARCH_RADIUS_KM = 50;
 
 const FEATURES = [
+  // Core
   { key: 'Feed', icon: Star, color: '#d2673d', screen: 'Feed' },
   { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'ChallengesTab' },
-  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
   { key: 'Tricks', icon: Zap, color: '#FF6B35', screen: 'TrickTracker' },
   { key: 'SKATE', icon: Gamepad2, color: '#6B4CE6', screen: 'SkateGame' },
   { key: 'Leaderboard', icon: BarChart3, color: '#2196F3', screen: 'Leaderboard' },
@@ -42,6 +56,28 @@ const FEATURES = [
   { key: 'Shops', icon: ShoppingBag, color: '#795548', screen: 'Shops' },
   { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
   { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
+  { key: 'Sessions', icon: Users, color: '#6B4CE6', screen: 'Sessions' },
+  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
+  // Community & Social
+  { key: 'Battles', icon: Swords, color: '#e74c3c', screen: 'CrewBattles' },
+  { key: 'Mentorship', icon: UserCheck, color: '#8e44ad', screen: 'Mentorship' },
+  // Gamification
+  { key: 'Bingo', icon: Grid3x3, color: '#27ae60', screen: 'TrickBingo' },
+  { key: 'Conquer', icon: Flag, color: '#c0392b', screen: 'SpotConquer' },
+  { key: 'Skate Pass', icon: Ticket, color: '#2980b9', screen: 'SeasonalPass' },
+  { key: 'Streaks', icon: Flame, color: '#e67e22', screen: 'Streaks' },
+  // Discovery
+  { key: 'Weather', icon: CloudSun, color: '#3498db', screen: 'WeatherSpots' },
+  { key: 'Hidden Gems', icon: Gem, color: '#1abc9c', screen: 'HiddenGems' },
+  { key: 'Spot of Day', icon: Sunrise, color: '#f39c12', screen: 'SpotOfTheDay' },
+  // Content
+  { key: 'Clip of Week', icon: Video, color: '#9b59b6', screen: 'ClipOfWeek' },
+  { key: 'Tutorials', icon: BookOpen, color: '#16a085', screen: 'TrickTutorials' },
+  { key: 'Skate TV', icon: Tv, color: '#FF6B35', screen: 'SkateTV' },
+  // Charity
+  { key: 'Donate XP', icon: Heart, color: '#e74c3c', screen: 'DonateXP' },
+  { key: 'Sponsors', icon: Award, color: '#FFD700', screen: 'SponsorLeaderboard' },
+  // Add
   { key: 'Add Spot', icon: Plus, color: '#fff', screen: 'AddSpot', highlight: true },
 ];
 

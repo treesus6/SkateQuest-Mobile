@@ -14,43 +14,48 @@ import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
 
+import HomeScreen from '../screens/HomeScreen';
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import SpotsScreenFromFile from '../screens/SpotsScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
 import LevelUpModal from './LevelUpModal';
 
-function HomeScreen({ navigation }: any) {
-  const { xp, level, challenges } = useChallenges();
-  const completedCount = challenges.filter((c: any) => c.completed).length;
+// Feature screens (previously orphaned — now wired into navigation)
+import MapScreen from '../screens/MapScreen';
+import FeedScreen from '../screens/FeedScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import TrickTrackerScreen from '../screens/TrickTrackerScreen';
+import SkateGameScreen from '../screens/SkateGameScreen';
+import GameDetailScreen from '../screens/GameDetailScreen';
+import PlaylistsScreen from '../screens/PlaylistsScreen';
+import ShopsScreen from '../screens/ShopsScreen';
+import CrewsScreen from '../screens/CrewsScreen';
+import EventsScreen from '../screens/EventsScreen';
+import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
+import UploadMediaScreen from '../screens/UploadMediaScreen';
+import AddSpotScreen from '../screens/AddSpotScreen';
+import SpotDetailScreen from '../screens/SpotDetailScreen';
+import ChallengesScreen from '../screens/ChallengesScreen';
+import CallOutsScreen from '../screens/CallOutsScreen';
+import JudgesBoothScreen from '../screens/JudgesBoothScreen';
+import SkateTVScreen from '../screens/SkateTVScreen';
+import SpotReviewsScreen from '../screens/SpotReviewsScreen';
+import CheckInScreen from '../screens/CheckInScreen';
+import CrewBattlesScreen from '../screens/CrewBattlesScreen';
+import MentorshipScreen from '../screens/MentorshipScreen';
+import TrickBingoScreen from '../screens/TrickBingoScreen';
+import SpotConquerScreen from '../screens/SpotConquerScreen';
+import SeasonalPassScreen from '../screens/SeasonalPassScreen';
+import StreaksScreen from '../screens/StreaksScreen';
+import WeatherSpotsScreen from '../screens/WeatherSpotsScreen';
+import HiddenGemsScreen from '../screens/HiddenGemsScreen';
+import SpotOfTheDayScreen from '../screens/SpotOfTheDayScreen';
+import ClipOfWeekScreen from '../screens/ClipOfWeekScreen';
+import TrickTutorialsScreen from '../screens/TrickTutorialsScreen';
+import DonateXPScreen from '../screens/DonateXPScreen';
+import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
+import SessionsScreen from '../screens/SessionsScreen';
 
-  return (
-    <SafeAreaView className="flex-1 p-4 bg-white dark:bg-gray-900">
-      <StatusBar barStyle="dark-content" />
-      <Text className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">SkateQuest</Text>
-      <Text className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-        Level {level} · {xp} XP
-      </Text>
-      <Text className="text-base text-gray-500 dark:text-gray-400 mt-2">
-        Completed challenges: {completedCount} / {challenges.length}
-      </Text>
-
-      <TouchableOpacity
-        className="mt-4 bg-gray-900 dark:bg-gray-100 p-3 rounded-lg items-center"
-        onPress={() => navigation.navigate('ChallengesTab')}
-      >
-        <Text className="text-white dark:text-gray-900 font-semibold">View Challenges</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        className="mt-2 bg-gray-500 p-3 rounded-lg items-center"
-        onPress={() => navigation.navigate('SpotsTab')}
-      >
-        <Text className="text-white font-semibold">Explore Spots</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
 
 function ChallengeListScreen({ navigation }: any) {
   const { challenges } = useChallenges();
@@ -172,9 +177,9 @@ function Tabs() {
       />
       <Tab.Screen
         name="SpotsTab"
-        component={SpotsScreenFromFile}
+        component={MapScreen}
         options={{
-          title: 'Spots',
+          title: 'Map',
           tabBarIcon: ({ color, size, focused }) => (
             <AnimatedTabIcon focused={focused}>
               <MapPin color={color} size={size} />
@@ -239,6 +244,40 @@ function InnerApp() {
       <LevelUpModal visible={showLevelUp} level={level} onClose={() => setShowLevelUp(false)} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
+        {/* Feature screens accessible from the map and other screens */}
+        <Stack.Screen name="Feed" component={FeedScreen} options={{ headerShown: true, title: 'Activity Feed' }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: true, title: 'Leaderboard' }} />
+        <Stack.Screen name="TrickTracker" component={TrickTrackerScreen} options={{ headerShown: true, title: 'Trick Tracker' }} />
+        <Stack.Screen name="SkateGame" component={SkateGameScreen} options={{ headerShown: true, title: 'SKATE Game' }} />
+        <Stack.Screen name="GameDetail" component={GameDetailScreen} options={{ headerShown: true, title: 'Game' }} />
+        <Stack.Screen name="Playlists" component={PlaylistsScreen} options={{ headerShown: true, title: 'Session Playlists' }} />
+        <Stack.Screen name="Shops" component={ShopsScreen} options={{ headerShown: true, title: 'Skate Shops' }} />
+        <Stack.Screen name="Crews" component={CrewsScreen} options={{ headerShown: true, title: 'Crews' }} />
+        <Stack.Screen name="Events" component={EventsScreen} options={{ headerShown: true, title: 'Events' }} />
+        <Stack.Screen name="QRScanner" component={QRCodeScannerScreen} options={{ headerShown: true, title: 'Scan QR' }} />
+        <Stack.Screen name="UploadMedia" component={UploadMediaScreen} options={{ headerShown: true, title: 'Upload Media' }} />
+        <Stack.Screen name="AddSpot" component={AddSpotScreen} options={{ headerShown: true, title: 'Add Spot' }} />
+        <Stack.Screen name="SpotDetail" component={SpotDetailScreen} options={{ headerShown: true, title: 'Spot Detail' }} />
+        <Stack.Screen name="Challenges" component={ChallengesScreen} options={{ headerShown: true, title: 'Challenges' }} />
+        <Stack.Screen name="CallOuts" component={CallOutsScreen} options={{ headerShown: true, title: 'Call Outs' }} />
+        <Stack.Screen name="JudgesBooth" component={JudgesBoothScreen} options={{ headerShown: true, title: "Judge's Booth" }} />
+        <Stack.Screen name="SkateTV" component={SkateTVScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotReviews" component={SpotReviewsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CheckIn" component={CheckInScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CrewBattles" component={CrewBattlesScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Mentorship" component={MentorshipScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TrickBingo" component={TrickBingoScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotConquer" component={SpotConquerScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SeasonalPass" component={SeasonalPassScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Streaks" component={StreaksScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="WeatherSpots" component={WeatherSpotsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="HiddenGems" component={HiddenGemsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SpotOfTheDay" component={SpotOfTheDayScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ClipOfWeek" component={ClipOfWeekScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TrickTutorials" component={TrickTutorialsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DonateXP" component={DonateXPScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SponsorLeaderboard" component={SponsorLeaderboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: true, title: 'Sessions' }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>
