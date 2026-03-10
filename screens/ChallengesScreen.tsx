@@ -15,12 +15,14 @@ import { Haptics } from '../lib/haptics';
 
 export default function ChallengesScreen() {
   const { user } = useAuthStore();
-  const { data: challengesData, loading, error, refetch } = useSupabaseQuery<Challenge[]>(
-    () => challengesService.getActive(),
-    [],
-    { cacheKey: 'challenges-active' }
-  );
-
+  const {
+    data: challengesData,
+    loading,
+    error,
+    refetch,
+  } = useSupabaseQuery<Challenge[]>(() => challengesService.getActive(), [], {
+    cacheKey: 'challenges-active',
+  });
 
   const completeChallenge = async (challenge: Challenge) => {
     if (!user) return;
@@ -77,7 +79,6 @@ export default function ChallengesScreen() {
               {item.title || item.trick}
             </Text>
             {item.description ? (
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item.description}</Text>
               <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {item.description}
               </Text>
@@ -86,7 +87,13 @@ export default function ChallengesScreen() {
         </View>
         <View className="flex-row justify-between items-center mt-3">
           <Text className="text-base font-bold text-brand-terracotta">+{item.xp_reward} XP</Text>
-          <Button title="Complete" onPress={() => completeChallenge(item)} variant="primary" size="sm" className="bg-brand-green" />
+          <Button
+            title="Complete"
+            onPress={() => completeChallenge(item)}
+            variant="primary"
+            size="sm"
+            className="bg-brand-green"
+          />
         </View>
       </Card>
     </AnimatedListItem>
@@ -108,7 +115,9 @@ export default function ChallengesScreen() {
       <View className="flex-1 bg-brand-beige dark:bg-gray-900">
         <View className="bg-brand-terracotta p-5 rounded-b-2xl">
           <Text className="text-2xl font-bold text-white text-center">Challenges</Text>
-          <Text className="text-sm text-white/90 text-center mt-1">Complete challenges to earn XP</Text>
+          <Text className="text-sm text-white/90 text-center mt-1">
+            Complete challenges to earn XP
+          </Text>
         </View>
         <RetryBanner error={error} onRetry={refetch} loading={loading} />
         <FlatList
