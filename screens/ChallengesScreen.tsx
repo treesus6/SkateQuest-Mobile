@@ -15,18 +15,12 @@ import { Haptics } from '../lib/haptics';
 
 export default function ChallengesScreen() {
   const { user } = useAuthStore();
-  const { data: challenges, loading, error, refetch } = useSupabaseQuery<Challenge[]>(
+  const { data: challengesData, loading, error, refetch } = useSupabaseQuery<Challenge[]>(
     () => challengesService.getActive(),
     [],
     { cacheKey: 'challenges-active' }
   );
-  const {
-    data: challenges,
-    loading,
-    refetch,
-  } = useSupabaseQuery<Challenge[]>(() => challengesService.getActive(), [], {
-    cacheKey: 'challenges-active',
-  });
+
 
   const completeChallenge = async (challenge: Challenge) => {
     if (!user) return;
