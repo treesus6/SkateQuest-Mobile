@@ -103,8 +103,6 @@ function TypeBadge({ covered }: { covered: boolean }) {
 
 function SpotCard({
   spot,
-  userLat,
-  userLon,
 }: {
   spot: SpotWithDistance;
   userLat: number;

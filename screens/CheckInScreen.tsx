@@ -75,7 +75,7 @@ export default function CheckInScreen() {
   const [checkingIn, setCheckingIn] = useState(false)
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
   const [justEarnedXP, setJustEarnedXP] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [_currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const fetchCheckIns = useCallback(async () => {
     try {

@@ -150,7 +150,7 @@ export default function SkateTVScreen() {
       .eq('type', 'video')
       .order('created_at', { ascending: false })
       .limit(50);
-    setVideos(data ?? []);
+    setVideos((data as any) ?? []);
     setLoading(false);
   };
 

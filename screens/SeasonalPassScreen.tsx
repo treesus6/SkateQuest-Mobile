@@ -148,8 +148,6 @@ export default function SeasonalPassScreen() {
 
         // Check if reward was already claimed today
         if (prog) {
-          const today = new Date().toDateString();
-          const lastClaimKey = `pass_claimed_${prog.id ?? passData.id}_${today}`;
           // We'll store in-memory; a real impl would persist in Supabase
           setClaimedToday(false);
         }

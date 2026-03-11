@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Sentry from '@sentry/react-native';
 import { Logger } from '../lib/logger';
 import { ServiceError } from '../lib/serviceError';
 import { useNetworkStore } from './useNetworkStore';
@@ -70,7 +69,6 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
     await persistQueue(updated);
 
     Logger.info('Mutation queued for offline sync', { type, table, id: mutation.id });
-    logOfflineMutation(type, table, mutation.id);
   },
 
   dequeue: async (id) => {

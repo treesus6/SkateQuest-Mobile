@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   FlatList,
   SafeAreaView,
-  StatusBar,
 } from 'react-native';
 import { Home, Trophy, MapPin, Users, User, Calendar } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';

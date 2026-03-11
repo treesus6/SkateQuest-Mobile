@@ -25,10 +25,7 @@ interface GemSpot {
   distanceMiles: number;
 }
 
-interface SavedGem {
-  spot_id: string;
-  saved: boolean;
-}
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

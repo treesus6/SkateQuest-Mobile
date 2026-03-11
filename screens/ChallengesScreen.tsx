@@ -16,7 +16,7 @@ import { Haptics } from '../lib/haptics';
 export default function ChallengesScreen() {
   const { user } = useAuthStore();
   const {
-    data: challengesData,
+    data: challenges,
     loading,
     error,
     refetch,

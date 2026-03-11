@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/react-native';
+import { ServiceError } from './serviceError';
 import { Logger } from './logger';
 import { PersistentCache } from './persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';

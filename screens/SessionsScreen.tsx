@@ -17,19 +17,13 @@ import {
   Users,
   Plus,
   X,
-  Clock,
-  ChevronRight,
   CheckCircle,
   Circle,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
-import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface Session {
   id: string;
@@ -81,7 +75,6 @@ function getStatus(date: string, time: string): 'upcoming' | 'live' | 'ended' {
 }
 
 export default function SessionsScreen() {
-  const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);

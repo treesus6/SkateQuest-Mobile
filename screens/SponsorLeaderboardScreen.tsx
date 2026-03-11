@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ChevronLeft, Trophy, Heart, Award, Star } from 'lucide-react-native';
+import { ChevronLeft, Trophy, Heart } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 interface Donor {

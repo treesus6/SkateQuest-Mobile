@@ -6,10 +6,9 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  FlatList,
   RefreshControl,
 } from 'react-native';
-import { Heart, Gift, DollarSign, X, ChevronRight } from 'lucide-react-native';
+import { Heart, Gift, DollarSign, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -46,11 +45,6 @@ function xpToBoards(xp: number): number {
   return xpToUsd(xp) / COST_PER_BOARD_USD;
 }
 
-function formatBoards(xp: number): string {
-  const boards = xpToBoards(xp);
-  if (boards < 1) return `${(boards * 100).toFixed(0)}%`;
-  return boards % 1 === 0 ? boards.toString() : boards.toFixed(2);
-}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -105,7 +99,6 @@ function ConfirmModal({
   loading: boolean;
 }) {
   const usd = xpToUsd(xpAmount).toFixed(2);
-  const boards = xpToBoards(xpAmount);
   const remaining = userXp - xpAmount;
 
   return (
@@ -136,7 +129,6 @@ function ConfirmModal({
             <View className="flex-row justify-between">
               <Text className="text-neutral-400 text-sm">Boards funded</Text>
               <Text className="text-yellow-400 font-bold text-sm">
-                {boards >= 1 ? `${boards.toFixed(2)} boards` : `${(boards * 100).toFixed(0)}% of a board`}
               </Text>
             </View>
             <View className="h-px bg-neutral-700 my-1" />
