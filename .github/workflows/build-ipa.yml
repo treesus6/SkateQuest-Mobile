@@ -1,0 +1,62 @@
+name: Build SkateQuest IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Expo Prebuild iOS
+        run: npx expo prebuild --platform ios --non-interactive --clean
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://hreeuqdgrwvnxquxohod.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus
+          EXPO_PUBLIC_SENTRY_DSN: https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+      - name: Install CocoaPods
+        run: cd ios && pod install
+
+      - name: Build IPA
+        run: |
+          cd ios
+          xcodebuild \
+            -workspace SkateQuest.xcworkspace \
+            -scheme SkateQuest \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/SkateQuest.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+          xcodebuild \
+            -exportArchive \
+            -archivePath $RUNNER_TEMP/SkateQuest.xcarchive \
+            -exportPath $RUNNER_TEMP/ipa \
+            -exportOptionsPlist exportOptions.plist
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://hreeuqdgrwvnxquxohod.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus
+          EXPO_PUBLIC_SENTRY_DSN: https://fb4b61c45d4df52d09c1a6a589cd180f@o4510502830538752.ingest.us.sentry.io/4510522824261632
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkateQuest-IPA
+          path: ${{ runner.temp }}/ipa/*.ipa
+          retention-days: 30
