@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Mapbox from '@rnmapbox/maps';
 
 import './global.css';
 
@@ -41,10 +40,6 @@ const linking = {
     },
   },
 };
-
-// Initialize Mapbox
-const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
-Mapbox.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
 const Stack = createNativeStackNavigator();
 
