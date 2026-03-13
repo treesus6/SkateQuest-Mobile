@@ -1,10 +1,5 @@
 import { Logger } from './logger';
 
-/**
- * Environment variable validation
- * Ensures all required environment variables are present at app startup
- */
-
 export interface EnvConfig {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
@@ -15,7 +10,6 @@ export interface EnvConfig {
   ENV?: 'development' | 'staging' | 'production';
 }
 
-// Raw env snapshot (no dynamic access to process.env)
 const RAW_ENV = {
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
@@ -48,17 +42,12 @@ const OPTIONAL_VARS: OptionalEnvKey[] = [
   'EXPO_PUBLIC_POSTHOG_HOST',
 ];
 
-/**
- * Validate all required environment variables
- */
 export function validateEnvironment(): EnvConfig {
   const missing: RequiredEnvKey[] = [];
   const invalid: RequiredEnvKey[] = [];
 
-  // Check required variables using RAW_ENV (no dynamic process.env access)
   for (const varName of REQUIRED_VARS) {
     const value = RAW_ENV[varName];
-
     if (!value) {
       missing.push(varName);
     } else if (value.trim() === '') {
@@ -66,31 +55,30 @@ export function validateEnvironment(): EnvConfig {
     }
   }
 
-  // Report errors
+  // Log errors but never throw - throwing before React mounts = white screen
   if (missing.length > 0) {
     const errorMsg = `Missing required environment variables: ${missing.join(', ')}`;
     Logger.error(errorMsg);
-    throw new Error(errorMsg);
+    console.error('[ENV]', errorMsg);
   }
 
   if (invalid.length > 0) {
     const errorMsg = `Invalid (empty) environment variables: ${invalid.join(', ')}`;
     Logger.error(errorMsg);
-    throw new Error(errorMsg);
+    console.error('[ENV]', errorMsg);
   }
 
-  // Validate URL formats
+  // Validate URL formats - log only, never throw
   const supabaseUrl = RAW_ENV.EXPO_PUBLIC_SUPABASE_URL as string;
-  if (!isValidUrl(supabaseUrl)) {
-    throw new Error(`Invalid EXPO_PUBLIC_SUPABASE_URL format: ${supabaseUrl}`);
+  if (supabaseUrl && !isValidUrl(supabaseUrl)) {
+    console.error(`[ENV] Invalid EXPO_PUBLIC_SUPABASE_URL format: ${supabaseUrl}`);
   }
 
   const sentryDsn = RAW_ENV.EXPO_PUBLIC_SENTRY_DSN as string;
-  if (!isValidUrl(sentryDsn)) {
-    throw new Error(`Invalid EXPO_PUBLIC_SENTRY_DSN format: ${sentryDsn}`);
+  if (sentryDsn && !isValidUrl(sentryDsn)) {
+    console.error(`[ENV] Invalid EXPO_PUBLIC_SENTRY_DSN format: ${sentryDsn}`);
   }
 
-  // Log optional variables status
   for (const varName of OPTIONAL_VARS) {
     const value = RAW_ENV[varName];
     if (!value) {
@@ -98,28 +86,17 @@ export function validateEnvironment(): EnvConfig {
     }
   }
 
-  // Return validated config
-  const config: EnvConfig = {
-    SUPABASE_URL: RAW_ENV.EXPO_PUBLIC_SUPABASE_URL as string,
-    SUPABASE_ANON_KEY: RAW_ENV.EXPO_PUBLIC_SUPABASE_ANON_KEY as string,
-    SENTRY_DSN: RAW_ENV.EXPO_PUBLIC_SENTRY_DSN as string,
-    MAPBOX_ACCESS_TOKEN: RAW_ENV.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN as string,
+  return {
+    SUPABASE_URL: RAW_ENV.EXPO_PUBLIC_SUPABASE_URL || '',
+    SUPABASE_ANON_KEY: RAW_ENV.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+    SENTRY_DSN: RAW_ENV.EXPO_PUBLIC_SENTRY_DSN || '',
+    MAPBOX_ACCESS_TOKEN: RAW_ENV.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '',
     POSTHOG_API_KEY: RAW_ENV.EXPO_PUBLIC_POSTHOG_API_KEY,
     POSTHOG_HOST: RAW_ENV.EXPO_PUBLIC_POSTHOG_HOST,
-    ENV: (RAW_ENV.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'development',
+    ENV: (RAW_ENV.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'production',
   };
-
-  Logger.info(`Environment validated successfully (${config.ENV})`);
-  Logger.info(`Supabase URL: ${config.SUPABASE_URL}`);
-  Logger.info(`Mapbox: ${config.MAPBOX_ACCESS_TOKEN ? 'configured' : 'not configured'}`);
-  Logger.info(`PostHog: ${config.POSTHOG_API_KEY ? 'configured' : 'not configured'}`);
-
-  return config;
 }
 
-/**
- * Check if a string is a valid URL
- */
 function isValidUrl(urlString: string): boolean {
   try {
     const url = new URL(urlString);
@@ -129,30 +106,18 @@ function isValidUrl(urlString: string): boolean {
   }
 }
 
-/**
- * Get current environment
- */
 export function getEnvironment(): 'development' | 'staging' | 'production' {
-  return (RAW_ENV.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'development';
+  return (RAW_ENV.EXPO_PUBLIC_ENV as 'development' | 'staging' | 'production') || 'production';
 }
 
-/**
- * Check if running in development
- */
 export function isDevelopment(): boolean {
   return getEnvironment() === 'development' || __DEV__;
 }
 
-/**
- * Check if running in production
- */
 export function isProduction(): boolean {
   return getEnvironment() === 'production' && !__DEV__;
 }
 
-/**
- * Check if running in staging
- */
 export function isStaging(): boolean {
   return getEnvironment() === 'staging';
 }

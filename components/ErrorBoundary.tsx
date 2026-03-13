@@ -1,6 +1,5 @@
 import React, { Component, ReactNode } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import * as Sentry from '@sentry/react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 interface Props {
   children: ReactNode;
@@ -23,9 +22,16 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    Sentry.captureException(error, {
-      contexts: { react: { componentStack: errorInfo.componentStack } },
-    });
+    console.error('[ErrorBoundary] Caught error:', error.message);
+    console.error('[ErrorBoundary] Stack:', errorInfo.componentStack);
+    try {
+      const Sentry = require('@sentry/react-native');
+      Sentry.captureException(error, {
+        contexts: { react: { componentStack: errorInfo.componentStack } },
+      });
+    } catch (e) {
+      console.error('[ErrorBoundary] Sentry not available:', e);
+    }
   }
 
   handleReset = () => {
@@ -37,24 +43,17 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <View className="flex-1 bg-gray-900 justify-center items-center p-5">
-          <View className="items-center max-w-[400px]">
-            <Text className="text-2xl font-bold text-white mb-4 text-center">
-              Oops! Something went wrong
-            </Text>
-            <Text className="text-base text-gray-300 mb-6 text-center leading-6">
-              We've been notified and are working on a fix.
-            </Text>
-            {__DEV__ && this.state.error && (
-              <View className="bg-gray-800 p-4 rounded-lg mb-6 w-full">
-                <Text className="text-red-400 text-xs font-mono">{this.state.error.toString()}</Text>
+        <View style={styles.container}>
+          <View style={styles.inner}>
+            <Text style={styles.title}>Something went wrong</Text>
+            <Text style={styles.subtitle}>We've been notified and are working on a fix.</Text>
+            {this.state.error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{this.state.error.toString()}</Text>
               </View>
             )}
-            <TouchableOpacity
-              className="bg-brand-terracotta px-8 py-3 rounded-lg"
-              onPress={this.handleReset}
-            >
-              <Text className="text-white text-base font-bold">Try Again</Text>
+            <TouchableOpacity style={styles.button} onPress={this.handleReset}>
+              <Text style={styles.buttonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -64,5 +63,16 @@ class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#111827', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  inner: { alignItems: 'center', maxWidth: 400, width: '100%' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 12, textAlign: 'center' },
+  subtitle: { fontSize: 15, color: '#9CA3AF', marginBottom: 20, textAlign: 'center', lineHeight: 22 },
+  errorBox: { backgroundColor: '#1F2937', padding: 16, borderRadius: 8, marginBottom: 20, width: '100%' },
+  errorText: { color: '#F87171', fontSize: 12, fontFamily: 'monospace' },
+  button: { backgroundColor: '#d2673d', paddingHorizontal: 32, paddingVertical: 12, borderRadius: 8 },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+});
 
 export default ErrorBoundary;
