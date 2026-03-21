@@ -9,7 +9,7 @@ interface SpotMarkerProps {
   size?: number;
 }
 
-const SPOT_ICONS: Record<string, LucideIcon> = {
+const SPOT_ICONS: Record<string, React.ComponentType<{ color?: string; size?: number }>> = {
   park: MapPin, street: Building2, diy: Hammer, quest: Smartphone, shop: ShoppingCart,
 };
 

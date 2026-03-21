@@ -6,7 +6,7 @@ export type ToastType = 'success' | 'error' | 'warning' | 'info';
 interface ToastConfig { message: string; type: ToastType; duration?: number; onDismiss?: () => void; }
 let toastInstance: ((config: ToastConfig) => void) | null = null;
 export const showToast = (config: ToastConfig) => { if (toastInstance) toastInstance(config); };
-const TOAST_ICONS: Record<ToastType, LucideIcon> = { success: CheckCircle, error: XCircle, warning: AlertTriangle, info: Info };
+const TOAST_ICONS: Record<ToastType, React.ComponentType<{ color?: string; size?: number }>> = { success: CheckCircle, error: XCircle, warning: AlertTriangle, info: Info };
 const TOAST_COLORS: Record<ToastType, string> = { success: '#4CAF50', error: '#F44336', warning: '#FF9800', info: '#2196F3' };
 
 export const Toast: React.FC = () => {
