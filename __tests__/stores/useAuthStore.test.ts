@@ -125,7 +125,7 @@ describe('useAuthStore', () => {
     it('should update state when auth state changes', async () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
-      let authChangeCallback: Function;
+      let authChangeCallback: (event: string, session: unknown) => void;
       mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
@@ -149,7 +149,7 @@ describe('useAuthStore', () => {
     it('should set user to null when auth state change has no session', async () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
-      let authChangeCallback: Function;
+      let authChangeCallback: (event: string, session: unknown) => void;
       mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
@@ -240,17 +240,17 @@ describe('useAuthStore', () => {
     it('should call supabase resetPasswordForEmail with the provided email', async () => {
       // The mock for resetPasswordForEmail is not set up in jest.setup.js,
       // so we need to add it here
-      (supabase.auth as any).resetPasswordForEmail = jest.fn().mockResolvedValue({ error: null });
+      (supabase.auth as unknown as { resetPasswordForEmail: jest.Mock }).resetPasswordForEmail = jest.fn().mockResolvedValue({ error: null });
 
       const result = await useAuthStore.getState().resetPassword('forgot@test.com');
 
-      expect((supabase.auth as any).resetPasswordForEmail).toHaveBeenCalledWith('forgot@test.com');
+      expect((supabase.auth as unknown as { resetPasswordForEmail: jest.Mock }).resetPasswordForEmail).toHaveBeenCalledWith('forgot@test.com');
       expect(result.error).toBeNull();
     });
 
     it('should return the error when resetPassword fails', async () => {
       const mockError = { message: 'User not found' };
-      (supabase.auth as any).resetPasswordForEmail = jest
+      (supabase.auth as unknown as { resetPasswordForEmail: jest.Mock }).resetPasswordForEmail = jest
         .fn()
         .mockResolvedValue({ error: mockError });
 

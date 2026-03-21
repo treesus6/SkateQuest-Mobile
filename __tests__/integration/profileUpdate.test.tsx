@@ -72,7 +72,7 @@ describe('ProfileScreen - Integration', () => {
     });
 
     // Mock supabase.rpc for level progress
-    (supabase as any).rpc = jest.fn().mockResolvedValue({ data: rpcData, error: rpcError });
+    (supabase as unknown as { rpc: jest.Mock }).rpc = jest.fn().mockResolvedValue({ data: rpcData, error: rpcError });
 
     return { mockSingle, mockEq, mockSelect };
   }
@@ -349,7 +349,7 @@ describe('ProfileScreen - Integration', () => {
       const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
 
       mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
-      (supabase as any).rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+      (supabase as unknown as { rpc: jest.Mock }).rpc = jest.fn().mockResolvedValue({ data: null, error: null });
 
       render(<ProfileScreen />);
 

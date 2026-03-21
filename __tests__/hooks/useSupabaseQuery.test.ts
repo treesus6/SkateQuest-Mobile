@@ -110,11 +110,11 @@ describe('useSupabaseQuery', () => {
   });
 
   it('should set loading to true during refetch', async () => {
-    let resolveQuery: (value: any) => void;
+    let resolveQuery: (value: { data: unknown; error: null }) => void;
     const queryFn = jest.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolveQuery = resolve;
+          resolveQuery = resolve as (value: { data: unknown; error: null }) => void;
         })
     );
 
