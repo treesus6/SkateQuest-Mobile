@@ -1,3 +1,5 @@
+/* global document, window, setTimeout, posthog */
+
 // SkateQuest Landing Page JavaScript
 
 // Contact Form Handler

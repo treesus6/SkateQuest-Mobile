@@ -1,18 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import {
-  Sun,
-  Droplets,
-  Users,
-  Sparkles,
-  ShieldAlert,
-  CheckCircle,
-  AlertTriangle,
-  MapPin,
-  Circle,
+  Sun, Droplets, Users, Sparkles, ShieldAlert,
+  CheckCircle, AlertTriangle, MapPin, Circle,
 } from 'lucide-react-native';
 import { SpotCondition } from '../types';
 import { supabase } from '../lib/supabase';
+import type { LucideIcon } from 'lucide-react-native';
 
 interface SpotConditionsWidgetProps {
   spotId: string;
@@ -20,7 +14,7 @@ interface SpotConditionsWidgetProps {
   onPress?: () => void;
 }
 
-const CONDITION_ICONS: Record<string, { icon: any; color: string }> = {
+const CONDITION_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
   dry: { icon: Sun, color: '#4CAF50' },
   wet: { icon: Droplets, color: '#2196F3' },
   crowded: { icon: Users, color: '#FF9800' },
@@ -30,39 +24,11 @@ const CONDITION_ICONS: Record<string, { icon: any; color: string }> = {
   under_construction: { icon: AlertTriangle, color: '#FF9800' },
 };
 
-export default function SpotConditionsWidget({
-  spotId,
-  compact = false,
-  onPress,
-}: SpotConditionsWidgetProps) {
+export default function SpotConditionsWidget({ spotId, compact = false, onPress }: SpotConditionsWidgetProps) {
   const [conditions, setConditions] = useState<SpotCondition[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadConditions();
-
-    const channel = supabase
-      .channel(`spot-conditions-${spotId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'spot_conditions',
-          filter: `spot_id=eq.${spotId}`,
-        },
-        () => {
-          loadConditions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [spotId]);
-
-  const loadConditions = async () => {
+  const loadConditions = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('spot_conditions')
@@ -71,7 +37,6 @@ export default function SpotConditionsWidget({
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
         .limit(compact ? 1 : 3);
-
       if (error) throw error;
       setConditions(data || []);
     } catch (error) {
@@ -79,7 +44,17 @@ export default function SpotConditionsWidget({
     } finally {
       setLoading(false);
     }
-  };
+  }, [spotId, compact]);
+
+  useEffect(() => {
+    loadConditions();
+    const channel = supabase
+      .channel(`spot-conditions-${spotId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_conditions', filter: `spot_id=eq.${spotId}` },
+        () => { loadConditions(); })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [spotId, loadConditions]);
 
   const getConditionLabel = (condition: string) => condition.replace('_', ' ').toUpperCase();
 
@@ -89,7 +64,6 @@ export default function SpotConditionsWidget({
     const condition = conditions[0];
     const iconData = CONDITION_ICONS[condition.condition] || { icon: MapPin, color: '#999' };
     const Icon = iconData.icon;
-
     return (
       <TouchableOpacity
         className="w-7 h-7 rounded-full justify-center items-center border-2 border-white shadow-lg"
@@ -103,40 +77,23 @@ export default function SpotConditionsWidget({
   }
 
   return (
-    <TouchableOpacity
-      className="bg-white dark:bg-gray-800 rounded-xl p-3 my-2 shadow-sm"
-      onPress={onPress}
-      activeOpacity={0.9}
-      disabled={!onPress}
-    >
+    <TouchableOpacity className="bg-white dark:bg-gray-800 rounded-xl p-3 my-2 shadow-sm" onPress={onPress} activeOpacity={0.9} disabled={!onPress}>
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center gap-1.5">
           <Circle color="#ef4444" size={8} fill="#ef4444" />
-          <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">
-            Live Conditions
-          </Text>
+          <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">Live Conditions</Text>
         </View>
-        <Text className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-          {conditions.length}
-        </Text>
+        <Text className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{conditions.length}</Text>
       </View>
       {conditions.map(condition => {
         const iconData = CONDITION_ICONS[condition.condition] || { icon: MapPin, color: '#999' };
         const Icon = iconData.icon;
         return (
-          <View
-            key={condition.id}
-            className="flex-row items-center py-2 pl-2 mb-1.5"
-            style={{ borderLeftWidth: 3, borderLeftColor: iconData.color }}
-          >
+          <View key={condition.id} className="flex-row items-center py-2 pl-2 mb-1.5" style={{ borderLeftWidth: 3, borderLeftColor: iconData.color }}>
             <Icon color={iconData.color} size={18} />
             <View className="flex-1 ml-2.5">
-              <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                {getConditionLabel(condition.condition)}
-              </Text>
-              <Text className="text-[11px] text-gray-400 mt-0.5">
-                {getTimeAgo(condition.created_at)}
-              </Text>
+              <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100">{getConditionLabel(condition.condition)}</Text>
+              <Text className="text-[11px] text-gray-400 mt-0.5">{getTimeAgo(condition.created_at)}</Text>
             </View>
           </View>
         );

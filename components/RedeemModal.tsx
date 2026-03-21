@@ -4,11 +4,11 @@ import { shopsService } from '../lib/shopsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import Button from './ui/Button';
 
-let QRCode: any = null;
+let QRCode: React.ComponentType<{ value: string; size: number }> | null = null;
 try {
-  QRCode = require('react-native-qrcode-svg').default;
-} catch (e) {
-  console.log('QRCode not installed - install with: bun add react-native-qrcode-svg');
+  QRCode = (require('react-native-qrcode-svg') as { default: React.ComponentType<{ value: string; size: number }> }).default;
+} catch {
+  // QRCode not installed
 }
 
 interface RedeemModalProps {
@@ -28,20 +28,19 @@ export default function RedeemModal({ visible, dealId, dealTitle, onClose }: Red
       Alert.alert('Error', 'You must be logged in to redeem deals');
       return;
     }
-
     setLoading(true);
     try {
       const { data, error } = await shopsService.redeemDeal(user.id, dealId);
-
       if (error) throw error;
       if (data && data.code) {
         setRedeemCode(data.code);
       } else {
         throw new Error('No redemption code returned');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to redeem deal';
       console.error('Error redeeming deal:', error);
-      Alert.alert('Error', error.message || 'Failed to redeem deal');
+      Alert.alert('Error', message);
       onClose();
     } finally {
       setLoading(false);
@@ -64,7 +63,6 @@ export default function RedeemModal({ visible, dealId, dealTitle, onClose }: Red
               <Text className="text-sm text-gray-400 text-center mb-6">
                 You'll receive a unique QR code to show at the shop counter.
               </Text>
-
               {loading ? (
                 <ActivityIndicator size="large" color="#d2673d" className="my-5" />
               ) : (
@@ -78,7 +76,6 @@ export default function RedeemModal({ visible, dealId, dealTitle, onClose }: Red
             <>
               <Text className="text-2xl font-bold text-white mb-3">Your Code</Text>
               <Text className="text-base text-green-400 mb-6 text-center">Show this QR code at the shop!</Text>
-
               <View className="bg-white p-5 rounded-xl mb-5">
                 {QRCode ? (
                   <QRCode value={redeemCode} size={200} />
@@ -91,10 +88,8 @@ export default function RedeemModal({ visible, dealId, dealTitle, onClose }: Red
                   </View>
                 )}
               </View>
-
               <Text className="text-sm text-gray-400 mb-2">Code: {redeemCode}</Text>
               <Text className="text-xs text-gray-500 mb-6">Valid for 24 hours</Text>
-
               <Button title="Done" onPress={handleClose} variant="primary" size="lg" className="bg-green-400" />
             </>
           )}

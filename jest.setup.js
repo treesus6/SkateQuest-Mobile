@@ -96,7 +96,7 @@ try {
     const React = require('react');
     return {
       __esModule: true,
-      default: React.forwardRef(() => null),
+      default: Object.assign(React.forwardRef(() => null), { displayName: "MockMapView" }),
       Marker: () => null,
       Callout: () => null,
     };
