@@ -74,6 +74,7 @@ function RootNavigator() {
 
   // Show nothing while checking onboarding or auth status
   if (isCheckingOnboarding || loading) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { View, ActivityIndicator } = require("react-native");
     return (
       <View style={{ flex: 1, backgroundColor: "#05070B", justifyContent: "center", alignItems: "center" }}>

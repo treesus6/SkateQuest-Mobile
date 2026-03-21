@@ -125,7 +125,7 @@ describe('useAuthStore', () => {
     it('should update state when auth state changes', async () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
-      let authChangeCallback: (event: string, session: unknown) => void;
+      let authChangeCallback: (event: string, session: unknown) => void = () => {};
       mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
@@ -137,7 +137,7 @@ describe('useAuthStore', () => {
       const mockSession = { user: mockUser, access_token: 'new-token' };
 
       act(() => {
-        authChangeCallback!('SIGNED_IN', mockSession);
+        authChangeCallback('SIGNED_IN', mockSession);
       });
 
       const state = useAuthStore.getState();
@@ -149,7 +149,7 @@ describe('useAuthStore', () => {
     it('should set user to null when auth state change has no session', async () => {
       mockGetSession.mockResolvedValue({ data: { session: null } });
 
-      let authChangeCallback: (event: string, session: unknown) => void;
+      let authChangeCallback: (event: string, session: unknown) => void = () => {};
       mockOnAuthStateChange.mockImplementation(callback => {
         authChangeCallback = callback;
         return { data: { subscription: { unsubscribe: jest.fn() } } };
@@ -158,7 +158,7 @@ describe('useAuthStore', () => {
       useAuthStore.getState().initialize();
 
       act(() => {
-        authChangeCallback!('SIGNED_OUT', null);
+        authChangeCallback('SIGNED_OUT', null);
       });
 
       const state = useAuthStore.getState();

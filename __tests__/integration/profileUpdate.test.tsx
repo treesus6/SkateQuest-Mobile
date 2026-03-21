@@ -48,7 +48,7 @@ describe('ProfileScreen - Integration', () => {
    * Returns mock functions so tests can customize behavior.
    */
   function setupProfileQuery(options: {
-    profileData?: typeof mockProfile | null;
+    profileData?: { id: string; username: string | null; level: number | null; xp: number | null; spots_added: number | null; challenges_completed: string[] | null; streak: number | null; badges: Record<string, boolean> | null; created_at: string } | null;
     profileError?: { code: string; message: string } | null;
     rpcData?: Record<string, unknown> | null;
     rpcError?: { message: string } | null;

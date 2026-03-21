@@ -122,7 +122,7 @@ describe('useSupabaseQuery', () => {
 
     // Resolve initial fetch
     await act(async () => {
-      resolveQuery!({ data: [{ id: '1' }], error: null });
+      resolveQuery({ data: [{ id: '1' }], error: null });
     });
 
     expect(result.current.loading).toBe(false);
@@ -136,8 +136,8 @@ describe('useSupabaseQuery', () => {
     expect(result.current.loading).toBe(true);
 
     await act(async () => {
-      resolveQuery!({ data: [{ id: '2' }], error: null });
-      await refetchPromise!;
+      resolveQuery({ data: [{ id: '2' }], error: null });
+      await refetchPromise;
     });
 
     expect(result.current.loading).toBe(false);

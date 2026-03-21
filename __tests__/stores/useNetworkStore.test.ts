@@ -63,7 +63,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should update state when network becomes connected via wifi', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -72,7 +72,7 @@ describe('useNetworkStore', () => {
       useNetworkStore.getState().initialize();
 
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: true,
           isInternetReachable: true,
           type: 'wifi',
@@ -86,7 +86,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should update state when network becomes disconnected', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -95,7 +95,7 @@ describe('useNetworkStore', () => {
       useNetworkStore.getState().initialize();
 
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: false,
           isInternetReachable: false,
           type: 'none',
@@ -109,7 +109,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should handle isConnected being null by defaulting to false', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -118,7 +118,7 @@ describe('useNetworkStore', () => {
       useNetworkStore.getState().initialize();
 
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: null,
           isInternetReachable: null,
           type: 'unknown',
@@ -132,7 +132,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should update state when switching from wifi to cellular', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -142,7 +142,7 @@ describe('useNetworkStore', () => {
 
       // First: wifi connected
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: true,
           isInternetReachable: true,
           type: 'wifi',
@@ -153,7 +153,7 @@ describe('useNetworkStore', () => {
 
       // Then: switch to cellular
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: true,
           isInternetReachable: true,
           type: 'cellular',
@@ -166,7 +166,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should add a Sentry breadcrumb when connected', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -175,7 +175,7 @@ describe('useNetworkStore', () => {
       useNetworkStore.getState().initialize();
 
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: true,
           isInternetReachable: true,
           type: 'wifi',
@@ -195,7 +195,7 @@ describe('useNetworkStore', () => {
     });
 
     it('should add a Sentry breadcrumb with warning level when disconnected', () => {
-      let netInfoCallback: Function;
+      let netInfoCallback: (state: { isConnected: boolean | null; isInternetReachable: boolean | null; type: string }) => void;
       mockAddEventListener.mockImplementation((callback) => {
         netInfoCallback = callback;
         return jest.fn();
@@ -204,7 +204,7 @@ describe('useNetworkStore', () => {
       useNetworkStore.getState().initialize();
 
       act(() => {
-        netInfoCallback!({
+        netInfoCallback({
           isConnected: false,
           isInternetReachable: false,
           type: 'none',
