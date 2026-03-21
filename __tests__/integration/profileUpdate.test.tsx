@@ -48,10 +48,10 @@ describe('ProfileScreen - Integration', () => {
    * Returns mock functions so tests can customize behavior.
    */
   function setupProfileQuery(options: {
-    profileData?: any;
-    profileError?: any;
-    rpcData?: any;
-    rpcError?: any;
+    profileData?: typeof mockProfile | null;
+    profileError?: { code: string; message: string } | null;
+    rpcData?: Record<string, unknown> | null;
+    rpcError?: { message: string } | null;
   }) {
     const {
       profileData = mockProfile,
@@ -295,7 +295,7 @@ describe('ProfileScreen - Integration', () => {
 
       // Capture the Alert.alert call and simulate pressing the destructive button
       (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-        const signOutButton = buttons?.find((b: any) => b.style === 'destructive');
+        const signOutButton = buttons?.find((b: { style: string; onPress?: () => void; text: string }) => b.style === 'destructive');
         signOutButton?.onPress?.();
       });
 
@@ -317,7 +317,7 @@ describe('ProfileScreen - Integration', () => {
 
       // Simulate pressing Cancel
       (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-        const cancelButton = buttons?.find((b: any) => b.style === 'cancel');
+        const cancelButton = buttons?.find((b: { style: string; onPress?: () => void; text: string }) => b.style === 'cancel');
         cancelButton?.onPress?.();
       });
 

@@ -13,7 +13,7 @@ interface SpotConditionsWidgetProps {
   onPress?: () => void;
 }
 
-const CONDITION_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
+const CONDITION_ICONS: Record<string, { icon: React.ComponentType<{ color?: string; size?: number }>; color: string }> = {
   dry: { icon: Sun, color: '#4CAF50' },
   wet: { icon: Droplets, color: '#2196F3' },
   crowded: { icon: Users, color: '#FF9800' },
