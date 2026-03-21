@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated } from 'react-native';
 import { MapPin, Building2, Hammer, Smartphone, ShoppingCart, Wrench } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
 
 interface SpotMarkerProps {
   spotType: 'park' | 'street' | 'diy' | 'quest' | 'shop';

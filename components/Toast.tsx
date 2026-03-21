@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Animated, TouchableOpacity, Platform } from 'react-native';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 interface ToastConfig { message: string; type: ToastType; duration?: number; onDismiss?: () => void; }

@@ -6,7 +6,6 @@ import {
 } from 'lucide-react-native';
 import { SpotCondition } from '../types';
 import { supabase } from '../lib/supabase';
-import type { LucideIcon } from 'lucide-react-native';
 
 interface SpotConditionsWidgetProps {
   spotId: string;
