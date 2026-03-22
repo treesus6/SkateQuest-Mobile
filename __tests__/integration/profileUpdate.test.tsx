@@ -3,26 +3,35 @@ import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { supabase } from '../../lib/supabase';
+import { profilesService } from '../../lib/profilesService';
 
-// Mock the useAuthStore
 jest.mock('../../stores/useAuthStore');
-const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
+jest.mock('../../lib/profilesService');
 
-// Mock Alert.alert
+const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
+const mockGetById = profilesService.getById as jest.Mock;
+const mockCreate = profilesService.create as jest.Mock;
+const mockGetLevelProgress = profilesService.getLevelProgress as jest.Mock;
+
 jest.spyOn(Alert, 'alert');
 
-// Access the mocked supabase.from
-const mockFrom = supabase.from as jest.Mock;
+type MockBadges = Record<string, boolean>;
+interface MockProfile {
+  id: string;
+  username: string | null;
+  level: number | null;
+  xp: number | null;
+  spots_added: number | null;
+  challenges_completed: string[] | null;
+  streak: number | null;
+  badges: MockBadges | null;
+  created_at: string;
+}
 
 describe('ProfileScreen - Integration', () => {
   const mockSignOut = jest.fn();
-  const mockUser = {
-    id: 'user-abc-123',
-    email: 'skater@test.com',
-  };
-
-  const mockProfile = {
+  const mockUser = { id: 'user-abc-123', email: 'skater@test.com' };
+  const mockProfile: MockProfile = {
     id: 'user-abc-123',
     username: 'SkaterPro',
     level: 5,
@@ -36,57 +45,25 @@ describe('ProfileScreen - Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockUseAuthStore.mockReturnValue({
-      user: mockUser,
-      signOut: mockSignOut,
-    });
+    mockUseAuthStore.mockReturnValue({ user: mockUser, signOut: mockSignOut });
+    mockGetLevelProgress.mockResolvedValue({ data: null, error: null });
   });
 
-  /**
-   * Helper to set up the supabase.from mock chain for the profile query.
-   * Returns mock functions so tests can customize behavior.
-   */
   function setupProfileQuery(options: {
-    profileData?: { id: string; username: string | null; level: number | null; xp: number | null; spots_added: number | null; challenges_completed: string[] | null; streak: number | null; badges: Record<string, boolean> | null; created_at: string } | null;
+    profileData?: MockProfile | null;
     profileError?: { code: string; message: string } | null;
     rpcData?: Record<string, unknown> | null;
     rpcError?: { message: string } | null;
   }) {
-    const {
-      profileData = mockProfile,
-      profileError = null,
-      rpcData = null,
-      rpcError = null,
-    } = options;
-
-    const mockSingle = jest.fn().mockResolvedValue({ data: profileData, error: profileError });
-    const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-
-    mockFrom.mockReturnValue({
-      select: mockSelect,
-      insert: jest
-        .fn()
-        .mockReturnValue({ select: jest.fn().mockReturnValue({ single: jest.fn() }) }),
-    });
-
-    // Mock supabase.rpc for level progress
-    (supabase as unknown as { rpc: jest.Mock }).rpc = jest.fn().mockResolvedValue({ data: rpcData, error: rpcError });
-
-    return { mockSingle, mockEq, mockSelect };
+    const { profileData = mockProfile, profileError = null, rpcData = null, rpcError = null } = options;
+    mockGetById.mockResolvedValue({ data: profileData, error: profileError });
+    mockGetLevelProgress.mockResolvedValue({ data: rpcData, error: rpcError });
   }
 
   describe('loading state', () => {
     it('should display loading text while profile is being fetched', () => {
-      // Set up a query that never resolves
-      const mockSingle = jest.fn().mockReturnValue(new Promise(() => {}));
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-      mockFrom.mockReturnValue({ select: mockSelect });
-
+      mockGetById.mockReturnValue(new Promise(() => {}));
       const { getByText } = render(<ProfileScreen />);
-
       expect(getByText('Loading profile...')).toBeTruthy();
     });
   });
@@ -94,36 +71,25 @@ describe('ProfileScreen - Integration', () => {
   describe('profile display', () => {
     it('should display the username after loading', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText('SkaterPro')).toBeTruthy();
-      });
+      await waitFor(() => { expect(getByText('SkaterPro')).toBeTruthy(); });
     });
 
     it('should display the user email', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText('skater@test.com')).toBeTruthy();
-      });
+      await waitFor(() => { expect(getByText('skater@test.com')).toBeTruthy(); });
     });
 
     it('should display XP, Level, Spots, and Challenges stats', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
       await waitFor(() => {
-        expect(getByText('1250')).toBeTruthy(); // XP
-        expect(getByText('5')).toBeTruthy(); // Level
-        expect(getByText('12')).toBeTruthy(); // Spots
-        expect(getByText('3')).toBeTruthy(); // Challenges completed count
+        expect(getByText('1250')).toBeTruthy();
+        expect(getByText('5')).toBeTruthy();
+        expect(getByText('12')).toBeTruthy();
+        expect(getByText('3')).toBeTruthy();
       });
-
       expect(getByText('XP')).toBeTruthy();
       expect(getByText('Level')).toBeTruthy();
       expect(getByText('Spots')).toBeTruthy();
@@ -132,45 +98,21 @@ describe('ProfileScreen - Integration', () => {
 
     it('should display default values when profile fields are missing', async () => {
       setupProfileQuery({
-        profileData: {
-          id: 'user-abc-123',
-          username: null,
-          level: null,
-          xp: null,
-          spots_added: null,
-          challenges_completed: null,
-          streak: null,
-          badges: null,
-          created_at: '2025-01-01T00:00:00Z',
-        },
+        profileData: { id: 'user-abc-123', username: null, level: null, xp: null, spots_added: null, challenges_completed: null, streak: null, badges: null, created_at: '2025-01-01T00:00:00Z' },
       });
-
       const { getByText } = render(<ProfileScreen />);
-
       await waitFor(() => {
-        expect(getByText('Skater')).toBeTruthy(); // fallback username
-        expect(getByText('0')).toBeTruthy(); // fallback XP / spots / challenges
-        expect(getByText('1')).toBeTruthy(); // fallback level
+        expect(getByText('Skater')).toBeTruthy();
+        expect(getByText('0')).toBeTruthy();
+        expect(getByText('1')).toBeTruthy();
       });
     });
   });
 
   describe('level progress', () => {
     it('should display level progress when available', async () => {
-      const mockLevelProgress = {
-        current_level: 5,
-        current_xp: 1250,
-        xp_for_current_level: 1000,
-        xp_for_next_level: 2000,
-        xp_progress: 250,
-        xp_needed: 750,
-        progress_percentage: 25,
-      };
-
-      setupProfileQuery({ rpcData: mockLevelProgress });
-
+      setupProfileQuery({ rpcData: { current_level: 5, current_xp: 1250, xp_for_current_level: 1000, xp_for_next_level: 2000, xp_progress: 250, xp_needed: 750, progress_percentage: 25 } });
       const { getByText } = render(<ProfileScreen />);
-
       await waitFor(() => {
         expect(getByText(/Level 5/)).toBeTruthy();
         expect(getByText(/750 XP needed for next level/)).toBeTruthy();
@@ -178,60 +120,36 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display level progress when rpc fails', async () => {
-      setupProfileQuery({
-        rpcError: { message: 'RPC function not found' },
-      });
-
+      setupProfileQuery({ rpcError: { message: 'RPC function not found' } });
       const { queryByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(queryByText(/XP needed for next level/)).toBeNull();
-      });
+      await waitFor(() => { expect(queryByText(/XP needed for next level/)).toBeNull(); });
     });
   });
 
   describe('streak display', () => {
     it('should display the streak when it is greater than zero', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText(/7 Day Streak/)).toBeTruthy();
-      });
+      await waitFor(() => { expect(getByText(/7 Day Streak/)).toBeTruthy(); });
     });
 
     it('should not display the streak section when streak is zero', async () => {
-      setupProfileQuery({
-        profileData: { ...mockProfile, streak: 0 },
-      });
-
+      setupProfileQuery({ profileData: { ...mockProfile, streak: 0 } });
       const { queryByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(queryByText(/Day Streak/)).toBeNull();
-      });
+      await waitFor(() => { expect(queryByText(/Day Streak/)).toBeNull(); });
     });
 
     it('should not display the streak section when streak is not set', async () => {
-      setupProfileQuery({
-        profileData: { ...mockProfile, streak: null },
-      });
-
+      setupProfileQuery({ profileData: { ...mockProfile, streak: null } });
       const { queryByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(queryByText(/Day Streak/)).toBeNull();
-      });
+      await waitFor(() => { expect(queryByText(/Day Streak/)).toBeNull(); });
     });
   });
 
   describe('badges display', () => {
     it('should display unlocked badges', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
       await waitFor(() => {
         expect(getByText(/First Kickflip/)).toBeTruthy();
         expect(getByText(/Park Master/)).toBeTruthy();
@@ -239,27 +157,15 @@ describe('ProfileScreen - Integration', () => {
     });
 
     it('should not display the badges section when badges is empty', async () => {
-      setupProfileQuery({
-        profileData: { ...mockProfile, badges: {} },
-      });
-
+      setupProfileQuery({ profileData: { ...mockProfile, badges: {} } });
       const { queryByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(queryByText('Badges')).toBeNull();
-      });
+      await waitFor(() => { expect(queryByText('Badges')).toBeNull(); });
     });
 
     it('should not display badges that are unlocked: false', async () => {
-      setupProfileQuery({
-        profileData: {
-          ...mockProfile,
-          badges: { 'First Kickflip': true, 'Secret Badge': false },
-        },
-      });
-
+      const customBadges: MockBadges = { 'First Kickflip': true, 'Secret Badge': false };
+      setupProfileQuery({ profileData: { ...mockProfile, badges: customBadges } });
       const { getByText, queryByText } = render(<ProfileScreen />);
-
       await waitFor(() => {
         expect(getByText(/First Kickflip/)).toBeTruthy();
         expect(queryByText(/Secret Badge/)).toBeNull();
@@ -270,18 +176,10 @@ describe('ProfileScreen - Integration', () => {
   describe('sign out flow', () => {
     it('should show an Alert confirmation when Sign Out is pressed', async () => {
       setupProfileQuery({});
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
-
+      await waitFor(() => { expect(getByText('Sign Out')).toBeTruthy(); });
       fireEvent.press(getByText('Sign Out'));
-
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Sign Out',
-        'Are you sure you want to sign out?',
+      expect(Alert.alert).toHaveBeenCalledWith('Sign Out', 'Are you sure you want to sign out?',
         expect.arrayContaining([
           expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
           expect.objectContaining({ text: 'Sign Out', style: 'destructive' }),
@@ -292,102 +190,52 @@ describe('ProfileScreen - Integration', () => {
     it('should call signOut when the destructive action is confirmed', async () => {
       setupProfileQuery({});
       mockSignOut.mockResolvedValue(undefined);
-
-      // Capture the Alert.alert call and simulate pressing the destructive button
-      (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-        const signOutButton = buttons?.find((b: { style: string; onPress?: () => void; text: string }) => b.style === 'destructive');
-        signOutButton?.onPress?.();
+      type AlertButton = { style: string; onPress?: () => void; text: string };
+      (Alert.alert as jest.Mock).mockImplementation((_t: string, _m: string, buttons: AlertButton[]) => {
+        buttons?.find((b) => b.style === 'destructive')?.onPress?.();
       });
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
-
+      await waitFor(() => { expect(getByText('Sign Out')).toBeTruthy(); });
       fireEvent.press(getByText('Sign Out'));
-
-      await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalledTimes(1);
-      });
+      await waitFor(() => { expect(mockSignOut).toHaveBeenCalledTimes(1); });
     });
 
     it('should not call signOut when Cancel is pressed in the alert', async () => {
       setupProfileQuery({});
-
-      // Simulate pressing Cancel
-      (Alert.alert as jest.Mock).mockImplementation((_title, _message, buttons) => {
-        const cancelButton = buttons?.find((b: { style: string; onPress?: () => void; text: string }) => b.style === 'cancel');
-        cancelButton?.onPress?.();
+      type AlertButton = { style: string; onPress?: () => void; text: string };
+      (Alert.alert as jest.Mock).mockImplementation((_t: string, _m: string, buttons: AlertButton[]) => {
+        buttons?.find((b) => b.style === 'cancel')?.onPress?.();
       });
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
-
+      await waitFor(() => { expect(getByText('Sign Out')).toBeTruthy(); });
       fireEvent.press(getByText('Sign Out'));
-
       expect(mockSignOut).not.toHaveBeenCalled();
     });
   });
 
   describe('profile creation flow', () => {
     it('should create a new profile when PGRST116 error is returned', async () => {
-      const profileError = { code: 'PGRST116', message: 'No rows found' };
-
-      const mockInsertSingle = jest.fn().mockResolvedValue({
-        data: { ...mockProfile, username: 'Skater1234' },
-        error: null,
-      });
-      const mockInsertSelect = jest.fn().mockReturnValue({ single: mockInsertSingle });
-      const mockInsert = jest.fn().mockReturnValue({ select: mockInsertSelect });
-
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: profileError });
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-
-      mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
-      (supabase as unknown as { rpc: jest.Mock }).rpc = jest.fn().mockResolvedValue({ data: null, error: null });
-
+      mockGetById.mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'No rows found' } });
+      mockCreate.mockResolvedValue({ data: { ...mockProfile, username: 'Skater1234' }, error: null });
       render(<ProfileScreen />);
-
-      await waitFor(() => {
-        // Profile should be created and insert should be called
-        expect(mockInsert).toHaveBeenCalled();
-      });
+      await waitFor(() => { expect(mockCreate).toHaveBeenCalled(); });
     });
   });
 
   describe('no user state', () => {
     it('should not attempt to load profile when user is null', () => {
-      mockUseAuthStore.mockReturnValue({
-        user: null,
-        signOut: mockSignOut,
-      });
-
+      mockUseAuthStore.mockReturnValue({ user: null, signOut: mockSignOut });
       render(<ProfileScreen />);
-
-      // supabase.from should not be called since user is null
-      expect(mockFrom).not.toHaveBeenCalled();
+      expect(mockGetById).not.toHaveBeenCalled();
     });
   });
 
   describe('error handling', () => {
     it('should handle generic profile loading errors without crashing', async () => {
-      const profileError = { code: 'GENERIC', message: 'Something went wrong' };
-      setupProfileQuery({ profileError });
-
+      setupProfileQuery({ profileError: { code: 'GENERIC', message: 'Something went wrong' } });
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
       const { getByText } = render(<ProfileScreen />);
-
-      await waitFor(() => {
-        // The component should still render the sign out button
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
-
+      await waitFor(() => { expect(getByText('Sign Out')).toBeTruthy(); });
       consoleSpy.mockRestore();
     });
   });
