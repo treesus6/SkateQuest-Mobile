@@ -50,7 +50,20 @@ module.exports = {
     },
 
     plugins: [
-      ['./plugins/withMapboxRepo', { RNMapboxMapsVersion: '11.16.2' }],
+      [
+        './plugins/withMapboxRepo',
+        {
+          RNMapboxMapsVersion: '11.16.2',
+          RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
+        },
+      ],
+      [
+        '@sentry/react-native/expo',
+        {
+          organization: 'skatequest',
+          project: 'skatequest',
+        },
+      ],
       'expo-system-ui',
       [
         'expo-camera',
