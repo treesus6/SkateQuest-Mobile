@@ -22,6 +22,9 @@
     "production": {
       "distribution": "store",
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hreeuqdgrwvnxquxohod.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyZWV1cWRncnd2bnhxdXhvaG9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMDkzMjksImV4cCI6MjA3NDY4NTMyOX0.fAHN4tvPdebHzqpgp0Q-g3mLRBfTca5WguRNjiQ1dus",

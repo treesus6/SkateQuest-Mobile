@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-
-// Initialize Mapbox lazily - only when map screen loads
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '');
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,9 +36,13 @@ import {
   UserCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
+import { PersistentCache } from '../lib/persistentCache';
+import { useNetworkStore } from '../stores/useNetworkStore';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '');
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -88,6 +89,7 @@ export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapRef = useRef<Mapbox.MapView>(null);
+  const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
@@ -124,30 +126,53 @@ export default function MapScreen() {
   };
 
   const loadSpots = async (lat: number, lng: number) => {
+    const cacheKey = `spots_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
+    const CACHE_TTL = 60 * 60 * 1000; // 1 hour fresh
+    const STALE_WINDOW = 23 * 60 * 60 * 1000; // serve stale for 23 more hours offline
+
+    const { isConnected } = useNetworkStore.getState();
+
     try {
+      if (!isConnected) {
+        const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
+        if (cached) setSpots(cached.data);
+        return;
+      }
+
       const { data, error } = await spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000);
       if (error) {
-        const { data: allData, error: allError } = await spotsService.getAll();
-        if (allError) {
-          Alert.alert('Error', 'Could not load skate spots. Please try again.');
+        // Network error — fall back to cache
+        const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
+        if (cached) {
+          setSpots(cached.data);
         }
-        setSpots(allData || []);
+        // Don't call getAll() — 27k parks would OOM the device
       } else {
-        setSpots(data || []);
+        const spotsData = (data || []) as SkateSpot[];
+        setSpots(spotsData);
+        await PersistentCache.set(cacheKey, spotsData, CACHE_TTL);
       }
     } catch (error) {
-      console.error('Error loading spots:', error);
-      Alert.alert('Error', 'Could not load skate spots. Please try again.');
+      const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
+      if (cached) {
+        setSpots(cached.data);
+      } else {
+        console.error('Error loading spots:', error);
+        Alert.alert('Error', 'Could not load skate spots. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const onRegionDidChange = async () => {
-    if (mapRef.current) {
-      const center = await mapRef.current.getCenter();
-      if (center) loadSpots(center[1], center[0]);
-    }
+  const onRegionDidChange = () => {
+    if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
+    regionDebounceRef.current = setTimeout(async () => {
+      if (mapRef.current) {
+        const center = await mapRef.current.getCenter();
+        if (center) loadSpots(center[1], center[0]);
+      }
+    }, 800);
   };
 
   const goToUserLocation = () => {

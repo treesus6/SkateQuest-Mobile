@@ -3,9 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import './global.css';
 
 import ChallengeApp from './components/ChallengeApp';
@@ -30,6 +30,9 @@ import * as Linking from 'expo-linking';
 
 // Added import for Vexo Analytics
 import { vexo } from 'vexo-analytics';
+
+// Keep splash screen visible while fonts/auth load
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const linking = {
   prefixes: [Linking.createURL('/'), 'skatequest://'],
@@ -69,11 +72,18 @@ function RootNavigator() {
     checkOnboarding();
   }, []);
 
+  // Hide splash screen once auth + onboarding check are both done
+  useEffect(() => {
+    if (!isCheckingOnboarding && !loading) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isCheckingOnboarding, loading]);
+
   const handleOnboardingComplete = () => {
     setIsOnboardingComplete(true);
   };
 
-  // Show nothing while checking onboarding or auth status
+  // Show loading indicator while checking onboarding or auth status (splash is still visible)
   if (isCheckingOnboarding || loading) {
     return (
       <View style={{ flex: 1, backgroundColor: "#05070B", justifyContent: "center", alignItems: "center" }}>

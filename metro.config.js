@@ -1,27 +1,25 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
-module.exports = (() => {
-  const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
 
-  const defaultAssetExts = config.resolver.assetExts;
-  config.resolver.assetExts = [
-    ...defaultAssetExts,
-    'db',
-    'sqlite',
-    'mp3',
-    'wav',
-    'm4a',
-    'ttf',
-    'otf',
-    'woff',
-    'woff2',
-    'obj',
-    'mtl',
-    'fbx',
-    'mp4',
-    'mov',
-    'avi'
-  ];
+config.resolver.assetExts = [
+  ...config.resolver.assetExts,
+  'db',
+  'sqlite',
+  'mp3',
+  'wav',
+  'm4a',
+  'ttf',
+  'otf',
+  'woff',
+  'woff2',
+  'obj',
+  'mtl',
+  'fbx',
+  'mp4',
+  'mov',
+  'avi',
+];
 
-  return config;
-})();
+module.exports = withNativeWind(config, { input: './global.css' });

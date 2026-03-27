@@ -4,6 +4,7 @@ export type RootStackParamList = {
   Map: undefined;
   Profile: undefined;
   Challenges: undefined;
+  ChallengesTab: undefined;
   AddSpot: { latitude?: number; longitude?: number };
   Leaderboard: undefined;
   Shops: undefined;
@@ -54,6 +55,8 @@ export interface SkateSpot {
   created_at?: string;
   sponsor_name?: string;
   sponsor_url?: string;
+  spot_photos?: SpotPhoto[];
+  spot_conditions?: SpotCondition[];
 }
 
 export interface Challenge {
@@ -267,6 +270,15 @@ export interface QRCode {
   proof_required: boolean;
   created_at: string;
   expires_at: string;
+}
+
+export interface SpotComment {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author?: { id: string; username: string };
 }
 
 export interface CharityStats {

@@ -10,13 +10,17 @@ import {
   Image,
   Modal,
   Linking,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import { Camera, MapPin, Star, Target, AlertTriangle } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
 import { challengesService } from '../lib/challengesService';
-import { SkateSpot, SpotPhoto, SpotCondition, Challenge } from '../types';
+import { SkateSpot, SpotPhoto, SpotCondition, Challenge, SpotComment } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
 import PortalDimensionLogo from '../components/PortalDimensionLogo';
 import Card from '../components/ui/Card';
@@ -46,6 +50,9 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [showConditionsModal, setShowConditionsModal] = useState(false);
+  const [comments, setComments] = useState<SpotComment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     loadSpotData();
@@ -63,6 +70,14 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
       const { data: challengesData } = await challengesService.getForSpot(spotId);
       setChallenges(challengesData || []);
+
+      const { data: commentsData } = await supabase
+        .from('spot_comments')
+        .select('*, author:profiles(id, username)')
+        .eq('spot_id', spotId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setComments(commentsData || []);
     } catch (error: any) {
       console.error('Error loading spot:', error);
       Alert.alert('Error', error.message);
@@ -102,6 +117,25 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       loadSpotData();
     } catch (error: any) {
       Alert.alert('Error', error.message);
+    }
+  };
+
+  const submitComment = async () => {
+    if (!user || !commentText.trim()) return;
+    try {
+      setSubmittingComment(true);
+      const { error } = await supabase.from('spot_comments').insert([{
+        spot_id: spotId,
+        user_id: user.id,
+        content: commentText.trim(),
+      }]);
+      if (error) throw error;
+      setCommentText('');
+      loadSpotData();
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -338,6 +372,59 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           ))}
         </Card>
       )}
+
+      <Card className="mx-4">
+        <View className="flex-row items-center gap-2 mb-3">
+          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+            💬 Comments ({comments.length})
+          </Text>
+        </View>
+
+        {comments.length === 0 && (
+          <Text className="text-sm text-gray-400 text-center mb-3">
+            No comments yet — be the first!
+          </Text>
+        )}
+
+        {comments.slice(0, 10).map(c => (
+          <View key={c.id} className="py-3 border-b border-gray-100 dark:border-gray-700">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-xs font-bold text-brand-terracotta">
+                {c.author?.username ?? 'Skater'}
+              </Text>
+              <Text className="text-xs text-gray-400">{getTimeAgo(c.created_at)}</Text>
+            </View>
+            <Text className="text-sm text-gray-700 dark:text-gray-300">{c.content}</Text>
+          </View>
+        ))}
+
+        {user && (
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View className="flex-row items-center gap-2 mt-3">
+              <TextInput
+                className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100"
+                placeholder="Drop a comment..."
+                placeholderTextColor="#9CA3AF"
+                value={commentText}
+                onChangeText={setCommentText}
+                maxLength={280}
+                returnKeyType="send"
+                onSubmitEditing={submitComment}
+              />
+              <TouchableOpacity
+                className="bg-brand-terracotta px-4 py-2.5 rounded-xl"
+                onPress={submitComment}
+                disabled={submittingComment || !commentText.trim()}
+              >
+                {submittingComment
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text className="text-white font-bold text-sm">Post</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </Card>
 
       <View className="px-4 pb-8">
         <Button
