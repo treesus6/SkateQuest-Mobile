@@ -34,7 +34,6 @@ module.exports = {
 
     android: {
       package: 'com.skatequest.app',
-      versionCode: 1,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#d2673d',
@@ -79,6 +78,13 @@ module.exports = {
         {
           locationAlwaysAndWhenInUsePermission:
             'Allow SkateQuest to use your location to find nearby skate spots.',
+        },
+      ],
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#d2673d',
         },
       ],
     ],
