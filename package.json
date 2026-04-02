@@ -31,7 +31,7 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "@rnmapbox/maps": "^10.2.10",
-    "@sentry/react-native": "~6.15.0",
+    "@sentry/react-native": "~7.2.0",
     "@supabase/supabase-js": "^2.89.0",
     "base64-arraybuffer": "^1.0.2",
     "expo": "~54.0.33",

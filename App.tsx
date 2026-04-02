@@ -46,11 +46,7 @@ const linking = {
 };
 
 const Stack = createNativeStackNavigator();
-
-// Initialize Vexo OUTSIDE of any component, only in production
-if (__DEV__ === false) {
-  vexo('62a73927-b566-4be6-9ae6-0f062705b2f8');
-}
+const VEXO_API_KEY = '62a73927-b566-4be6-9ae6-0f062705b2f8';
 
 // Root Navigator that handles auth state
 function RootNavigator() {
@@ -86,7 +82,14 @@ function RootNavigator() {
   // Show loading indicator while checking onboarding or auth status (splash is still visible)
   if (isCheckingOnboarding || loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#05070B", justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#05070B',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
         <ActivityIndicator size="large" color="#d2673d" />
       </View>
     );
@@ -141,6 +144,15 @@ export default function App() {
         Logger.error('App initialization failed:', error);
       }
     };
+
+    if (!__DEV__) {
+      try {
+        vexo(VEXO_API_KEY);
+        Logger.info('Vexo analytics initialized');
+      } catch (error) {
+        Logger.error('Vexo analytics initialization failed:', error);
+      }
+    }
 
     setupGlobalErrorHandler();
     initializeApp();
