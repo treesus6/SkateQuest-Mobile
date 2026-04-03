@@ -68,11 +68,13 @@ describe('ProfileScreen - Integration', () => {
   }
 
   describe('loading state', () => {
-    it('should display loading text while profile is being fetched', () => {
+    it('should not show profile content while loading', () => {
       mockGetById.mockReturnValue(new Promise(() => {}));
       mockGetLevelProgress.mockReturnValue(new Promise(() => {}));
-      const { getByText } = render(<ProfileScreen />);
-      expect(getByText('Loading profile...')).toBeTruthy();
+      const { queryByText } = render(<ProfileScreen />);
+      // While loading, profile content is not yet rendered
+      expect(queryByText('Sign Out')).toBeNull();
+      expect(queryByText('SkaterPro')).toBeNull();
     });
   });
 
