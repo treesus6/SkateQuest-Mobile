@@ -99,6 +99,17 @@ try {
 } catch {
   // Module path may not exist in all RN versions
 }
+
+// Mock Animated to prevent issues with Animated.loop in components like LoadingSkeleton
+jest.mock('react-native', () => {
+  const RN = jest.requireActual('react-native');
+  RN.Animated.loop = jest.fn((animation) => ({
+    start: jest.fn((cb) => cb && cb({ finished: true })),
+    stop: jest.fn(),
+    reset: jest.fn(),
+  }));
+  return RN;
+});
 try {
   jest.mock('react-native-maps', () => {
     const React = require('react');

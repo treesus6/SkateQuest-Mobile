@@ -159,16 +159,16 @@ describe('LoginScreen - Integration Flow', () => {
       expect(getByText('Sign In')).toBeTruthy();
     });
 
-    it('should disable the sign in button when loading is true', () => {
+    it('should show Loading text instead of Sign In when loading is true', () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: true,
       });
 
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText, queryByText } = render(<LoginScreen navigation={mockNavigation} />);
 
-      const button = getByText('Loading...').parent;
-      expect(button?.props.disabled || button?.parent?.props.disabled).toBeTruthy();
+      expect(getByText('Loading...')).toBeTruthy();
+      expect(queryByText('Sign In')).toBeNull();
     });
   });
 

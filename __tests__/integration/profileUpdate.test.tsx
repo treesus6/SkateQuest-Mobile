@@ -8,35 +8,6 @@ import { profilesService } from '../../lib/profilesService';
 jest.mock('../../stores/useAuthStore');
 jest.mock('../../lib/profilesService');
 
-// Mock Animated to prevent AggregateError from Animated.loop in LoadingSkeleton
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper', () => ({
-  API: {
-    getValue: jest.fn(),
-    startOperationBatch: jest.fn(),
-    finishOperationBatch: jest.fn(),
-    createAnimatedNode: jest.fn(),
-    startListeningToAnimatedNodeValue: jest.fn(),
-    stopListeningToAnimatedNodeValue: jest.fn(),
-    connectAnimatedNodes: jest.fn(),
-    disconnectAnimatedNodes: jest.fn(),
-    startAnimatingNode: jest.fn(),
-    stopAnimation: jest.fn(),
-    setAnimatedNodeValue: jest.fn(),
-    setAnimatedNodeOffset: jest.fn(),
-    flattenAnimatedNodeOffset: jest.fn(),
-    extractAnimatedNodeOffset: jest.fn(),
-    connectAnimatedNodeToView: jest.fn(),
-    disconnectAnimatedNodeFromView: jest.fn(),
-    restoreDefaultValues: jest.fn(),
-    dropAnimatedNode: jest.fn(),
-    addAnimatedEventToView: jest.fn(),
-    removeAnimatedEventFromView: jest.fn(),
-    addListener: jest.fn(),
-    removeListeners: jest.fn(),
-  },
-  addListener: jest.fn(),
-  removeListeners: jest.fn(),
-}));
 
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 const mockGetById = profilesService.getById as jest.Mock;

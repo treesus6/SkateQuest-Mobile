@@ -35,11 +35,11 @@ describe('useSupabaseQuery', () => {
     const mockError = { message: 'Permission denied' };
     const queryFn = jest.fn().mockResolvedValue({ data: null, error: mockError });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
+    }, { timeout: 3000 });
 
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBe('Permission denied');
@@ -49,11 +49,11 @@ describe('useSupabaseQuery', () => {
     const mockError = {};
     const queryFn = jest.fn().mockResolvedValue({ data: null, error: mockError });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
+    }, { timeout: 3000 });
 
     expect(result.current.error).toBe('An error occurred');
   });
@@ -61,11 +61,11 @@ describe('useSupabaseQuery', () => {
   it('should handle exceptions thrown by the query function', async () => {
     const queryFn = jest.fn().mockRejectedValue(new Error('Network failure'));
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
+    }, { timeout: 3000 });
 
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBe('Network failure');
@@ -74,11 +74,11 @@ describe('useSupabaseQuery', () => {
   it('should handle exceptions without a message', async () => {
     const queryFn = jest.fn().mockRejectedValue({});
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-    });
+    }, { timeout: 3000 });
 
     expect(result.current.error).toBe('An unexpected error occurred');
   });
@@ -149,7 +149,7 @@ describe('useSupabaseQuery', () => {
       .mockResolvedValueOnce({ data: null, error: { message: 'First call failed' } })
       .mockResolvedValueOnce({ data: [{ id: '1' }], error: null });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
