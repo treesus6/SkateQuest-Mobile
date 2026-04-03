@@ -52,7 +52,7 @@ module.exports = {
       [
         './plugins/withMapboxRepo',
         {
-          RNMapboxMapsVersion: '10.18.0',
+          RNMapboxMapsVersion: '11.20.1',
           RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOADS_TOKEN,
         },
       ],
