@@ -33,7 +33,6 @@ jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper', () => ({
     removeAnimatedEventFromView: jest.fn(),
     addListener: jest.fn(),
     removeListeners: jest.fn(),
-    getValue: jest.fn(),
   },
   addListener: jest.fn(),
   removeListeners: jest.fn(),
