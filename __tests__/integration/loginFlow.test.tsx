@@ -106,16 +106,17 @@ describe('LoginScreen - Integration Flow', () => {
       });
     });
 
-    it('should call signIn with empty strings when fields are empty', async () => {
-      mockSignIn.mockResolvedValue({ error: null });
-
+    it('should show validation error when fields are empty', async () => {
       const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
 
       fireEvent.press(getByText('Sign In'));
 
       await waitFor(() => {
-        expect(mockSignIn).toHaveBeenCalledWith('', '');
+        expect(getByText('Please enter both email and password')).toBeTruthy();
       });
+
+      // signIn should NOT be called when fields are empty
+      expect(mockSignIn).not.toHaveBeenCalled();
     });
 
     it('should call signIn only once per button press', async () => {
@@ -167,7 +168,6 @@ describe('LoginScreen - Integration Flow', () => {
       const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
 
       const button = getByText('Loading...').parent;
-      // TouchableOpacity uses the disabled prop
       expect(button?.props.disabled || button?.parent?.props.disabled).toBeTruthy();
     });
   });
@@ -200,14 +200,10 @@ describe('LoginScreen - Integration Flow', () => {
         <LoginScreen navigation={mockNavigation} />
       );
 
-      // Step 1: Enter credentials
       fireEvent.changeText(getByPlaceholderText('Email'), 'pro.skater@test.com');
       fireEvent.changeText(getByPlaceholderText('Password'), 'kickflip2026');
-
-      // Step 2: Submit
       fireEvent.press(getByText('Sign In'));
 
-      // Step 3: Verify signIn was called with the correct credentials
       await waitFor(() => {
         expect(mockSignIn).toHaveBeenCalledWith('pro.skater@test.com', 'kickflip2026');
       });
@@ -229,7 +225,6 @@ describe('LoginScreen - Integration Flow', () => {
         expect(mockSignIn).toHaveBeenCalledWith('wrong@test.com', 'wrongpass');
       });
 
-      // The component does not crash even on error
       expect(getByText('Sign In')).toBeTruthy();
     });
   });

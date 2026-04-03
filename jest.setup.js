@@ -1,5 +1,10 @@
 import '@testing-library/jest-native/extend-expect';
 
+// Mock AsyncStorage - required by persistentCache and useMutationQueueStore
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
 // Mock Expo modules
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
@@ -68,6 +73,9 @@ jest.mock('lucide-react-native', () => ({
   ShoppingBag: () => null,
   Zap: () => null,
   BarChart3: () => null,
+  Flame: () => null,
+  Award: () => null,
+  Bug: () => null,
 }));
 
 // Mock Sentry
@@ -96,7 +104,7 @@ try {
     const React = require('react');
     return {
       __esModule: true,
-      default: Object.assign(React.forwardRef(() => null), { displayName: "MockMapView" }),
+      default: Object.assign(React.forwardRef(() => null), { displayName: 'MockMapView' }),
       Marker: () => null,
       Callout: () => null,
     };

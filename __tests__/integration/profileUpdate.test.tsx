@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor, fireEvent } from '@testing-library/react-native';
+import { render, waitFor, fireEvent, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -7,6 +7,37 @@ import { profilesService } from '../../lib/profilesService';
 
 jest.mock('../../stores/useAuthStore');
 jest.mock('../../lib/profilesService');
+
+// Mock Animated to prevent AggregateError from Animated.loop in LoadingSkeleton
+jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper', () => ({
+  API: {
+    getValue: jest.fn(),
+    startOperationBatch: jest.fn(),
+    finishOperationBatch: jest.fn(),
+    createAnimatedNode: jest.fn(),
+    startListeningToAnimatedNodeValue: jest.fn(),
+    stopListeningToAnimatedNodeValue: jest.fn(),
+    connectAnimatedNodes: jest.fn(),
+    disconnectAnimatedNodes: jest.fn(),
+    startAnimatingNode: jest.fn(),
+    stopAnimation: jest.fn(),
+    setAnimatedNodeValue: jest.fn(),
+    setAnimatedNodeOffset: jest.fn(),
+    flattenAnimatedNodeOffset: jest.fn(),
+    extractAnimatedNodeOffset: jest.fn(),
+    connectAnimatedNodeToView: jest.fn(),
+    disconnectAnimatedNodeFromView: jest.fn(),
+    restoreDefaultValues: jest.fn(),
+    dropAnimatedNode: jest.fn(),
+    addAnimatedEventToView: jest.fn(),
+    removeAnimatedEventFromView: jest.fn(),
+    addListener: jest.fn(),
+    removeListeners: jest.fn(),
+    getValue: jest.fn(),
+  },
+  addListener: jest.fn(),
+  removeListeners: jest.fn(),
+}));
 
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 const mockGetById = profilesService.getById as jest.Mock;
@@ -61,10 +92,14 @@ describe('ProfileScreen - Integration', () => {
   }
 
   describe('loading state', () => {
-    it('should display loading text while profile is being fetched', () => {
+    it('should display loading text while profile is being fetched', async () => {
       mockGetById.mockReturnValue(new Promise(() => {}));
-      const { getByText } = render(<ProfileScreen />);
-      expect(getByText('Loading profile...')).toBeTruthy();
+      mockGetLevelProgress.mockReturnValue(new Promise(() => {}));
+      let getByText: (text: string) => unknown;
+      await act(async () => {
+        ({ getByText } = render(<ProfileScreen />));
+      });
+      expect(getByText!('Loading profile...')).toBeTruthy();
     });
   });
 

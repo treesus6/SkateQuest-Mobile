@@ -4,9 +4,6 @@ import {
   TrickAnalysisResult,
 } from '../../lib/trickAnalyzer';
 import { supabase } from '../../lib/supabase';
-import * as FileSystem from 'expo-file-system';
-
-jest.mock('expo-file-system');
 
 describe('TrickAnalyzer', () => {
   beforeEach(() => {
@@ -15,11 +12,6 @@ describe('TrickAnalyzer', () => {
 
   describe('analyzeTrickVideo', () => {
     it('analyzes video and returns trick analysis', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
-        exists: true,
-        size: 1024000,
-      });
-
       const result = await analyzeTrickVideo('file:///path/to/kickflip.mp4');
 
       expect(result).toHaveProperty('trickName');
@@ -33,18 +25,30 @@ describe('TrickAnalyzer', () => {
     });
 
     it('detects trick from filename', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({
-        exists: true,
-      });
-
       const result = await analyzeTrickVideo('file:///path/to/kickflip-attempt.mp4');
       expect(result.trickName).toBe('Kickflip');
     });
 
-    it('handles errors gracefully', async () => {
-      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('File not found'));
+    it('returns a valid difficulty level', async () => {
+      const result = await analyzeTrickVideo('file:///path/to/ollie.mp4');
+      expect(['Beginner', 'Intermediate', 'Advanced']).toContain(result.difficulty);
+    });
 
-      await expect(analyzeTrickVideo('invalid-path')).rejects.toThrow();
+    it('returns confidence between 0.65 and 0.9', async () => {
+      const result = await analyzeTrickVideo('file:///path/to/heelflip.mp4');
+      expect(result.confidence).toBeGreaterThanOrEqual(0.65);
+      expect(result.confidence).toBeLessThanOrEqual(0.9);
+    });
+
+    it('detects boardslide from filename', async () => {
+      const result = await analyzeTrickVideo('file:///path/to/boardslide.mp4');
+      expect(result.trickName).toBe('Boardslide');
+    });
+
+    it('falls back to a random trick when filename is unrecognized', async () => {
+      const result = await analyzeTrickVideo('file:///path/to/unknown-clip.mp4');
+      expect(result.trickName).toBeTruthy();
+      expect(result.detectedElements.length).toBeGreaterThan(0);
     });
   });
 
