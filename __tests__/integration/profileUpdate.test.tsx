@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor, fireEvent, act } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import ProfileScreen from '../../screens/ProfileScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
