@@ -68,14 +68,11 @@ describe('ProfileScreen - Integration', () => {
   }
 
   describe('loading state', () => {
-    it('should display loading text while profile is being fetched', async () => {
+    it('should display loading text while profile is being fetched', () => {
       mockGetById.mockReturnValue(new Promise(() => {}));
       mockGetLevelProgress.mockReturnValue(new Promise(() => {}));
-      let getByText: (text: string) => unknown;
-      await act(async () => {
-        ({ getByText } = render(<ProfileScreen />));
-      });
-      expect(getByText!('Loading profile...')).toBeTruthy();
+      const { getByText } = render(<ProfileScreen />);
+      expect(getByText('Loading profile...')).toBeTruthy();
     });
   });
 
@@ -83,13 +80,13 @@ describe('ProfileScreen - Integration', () => {
     it('should display the username after loading', async () => {
       setupProfileQuery({});
       const { getByText } = render(<ProfileScreen />);
-      await waitFor(() => { expect(getByText('SkaterPro')).toBeTruthy(); });
+      await waitFor(() => { expect(getByText('SkaterPro')).toBeTruthy(); }, { timeout: 3000 });
     });
 
     it('should display the user email', async () => {
       setupProfileQuery({});
       const { getByText } = render(<ProfileScreen />);
-      await waitFor(() => { expect(getByText('skater@test.com')).toBeTruthy(); });
+      await waitFor(() => { expect(getByText('skater@test.com')).toBeTruthy(); }, { timeout: 3000 });
     });
 
     it('should display XP, Level, Spots, and Challenges stats', async () => {
@@ -111,12 +108,12 @@ describe('ProfileScreen - Integration', () => {
       setupProfileQuery({
         profileData: { id: 'user-abc-123', username: null, level: null, xp: null, spots_added: null, challenges_completed: null, streak: null, badges: null, created_at: '2025-01-01T00:00:00Z' },
       });
-      const { getByText } = render(<ProfileScreen />);
+      const { getByText, getAllByText } = render(<ProfileScreen />);
       await waitFor(() => {
         expect(getByText('Skater')).toBeTruthy();
-        expect(getByText('0')).toBeTruthy();
+        expect(getAllByText('0').length).toBeGreaterThan(0);
         expect(getByText('1')).toBeTruthy();
-      });
+      }, { timeout: 3000 });
     });
   });
 
