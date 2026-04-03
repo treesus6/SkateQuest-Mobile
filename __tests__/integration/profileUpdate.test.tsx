@@ -9,13 +9,10 @@ jest.mock('../../stores/useAuthStore');
 jest.mock('../../lib/profilesService');
 
 // Mock LoadingSkeleton to avoid Animated.loop issues in test environment
-jest.mock('../../components/ui/LoadingSkeleton', () => {
-  const React = require('react');
-  return {
-    __esModule: true,
-    default: () => React.createElement('View', { testID: 'loading-skeleton' }),
-  };
-});
+jest.mock('../../components/ui/LoadingSkeleton', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 
 
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
