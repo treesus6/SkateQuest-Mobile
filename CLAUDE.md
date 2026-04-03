@@ -4,6 +4,14 @@
 
 ---
 
+## CI/CD Status
+
+- ✅ CI pipeline (lint, typecheck, tests, expo build) — passing as of 2026-04-03
+- ✅ All GitHub secrets configured (EXPO_TOKEN, MAPBOX_DOWNLOADS_TOKEN, Supabase, Sentry)
+- ✅ Issue #13 resolved (loading state, analytics, Mapbox plugin)
+
+---
+
 ## Developer Environment
 
 - **Primary device:** Android phone running Termux
