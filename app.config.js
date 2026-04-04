@@ -61,6 +61,8 @@ module.exports = {
         {
           organization: 'skatequest',
           project: 'skatequest',
+          uploadNativeSymbols: false,
+          autoUploadNativeSymbols: false,
         },
       ],
       'expo-system-ui',
