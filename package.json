@@ -102,5 +102,14 @@
       "prettier --write"
     ]
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "install": {
+      "exclude": [
+        "@react-navigation/bottom-tabs",
+        "@react-navigation/native",
+        "@react-navigation/native-stack"
+      ]
+    }
+  }
 }
