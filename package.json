@@ -108,7 +108,9 @@
       "exclude": [
         "@react-navigation/bottom-tabs",
         "@react-navigation/native",
-        "@react-navigation/native-stack"
+        "@react-navigation/native-stack",
+        "expo-splash-screen",
+        "react-native-worklets"
       ]
     }
   }
