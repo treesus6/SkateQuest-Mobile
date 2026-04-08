@@ -4,9 +4,8 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
+    "android": "eas build --platform android --profile preview",
+    "ios": "eas build --platform ios --profile preview",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -16,7 +15,9 @@
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "analyze:bundle": "npx expo-bundle-visualizer",
-    "prepare": "husky install || true"
+    "prepare": "husky install || true",
+    "build:production": "eas build --platform all --profile production",
+    "update:production": "eas update --branch production --message 'prod: release'"
   },
   "trustedDependencies": [
     "@sentry/cli"
@@ -56,7 +57,6 @@
     "lucide-react-native": "^0.563.0",
     "nativewind": "^4.2.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-logs": "^5.5.0",
     "react-native-reanimated": "~4.1.1",

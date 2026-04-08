@@ -7,12 +7,6 @@ node_modules/
 coverage/
 .nyc_output/
 
-# Next.js
-.next/
-out/
-build/
-dist/
-
 # Expo
 .expo/
 .expo-shared/
@@ -48,14 +42,6 @@ pnpm-debug.log*
 *.swo
 *~
 .DS_Store
-
-# Firebase
-.firebase/
-firebase-debug.log
-firestore-debug.log
-
-# Vercel
-.vercel/
 
 # Apple/iOS
 *.jks
