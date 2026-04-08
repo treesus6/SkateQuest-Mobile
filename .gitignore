@@ -21,11 +21,16 @@ dist/
 android/
 ios/
 
+# EAS Build artifacts
+eas-build-*/
+.eas/
+
 # Production
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Environment
 .env
@@ -52,6 +57,24 @@ firestore-debug.log
 # Vercel
 .vercel/
 
+# Apple/iOS
+*.jks
+*.p12
+*.cer
+*.mobileprovision
+*.keystore
+.xcode.env
+.xcode.env.local
+
+# Google Play
+google-play-api.json
+google-service-account.json
+
+# Certificates and signing
+certificates/
+provisioning-profiles/
+keystore/
+
 # Temporary files
 tmp/
 temp/
@@ -64,7 +87,13 @@ clear-cache.html
 validate-fixes.js
 *.bak
 *.local
-.expo/
-android/
-ios/
 logs/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
