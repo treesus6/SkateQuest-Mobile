@@ -8,7 +8,7 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
-import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award } from 'lucide-react-native';
+import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award, Flame } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
@@ -56,6 +56,7 @@ import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
 import SessionsScreen from '../screens/SessionsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AchievementsScreen from '../screens/AchievementsScreen';
+import SeasonalEventsScreen from '../screens/SeasonalEventsScreen';
 
 
 function ChallengeListScreen({ navigation }: any) {
@@ -244,6 +245,18 @@ function Tabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <AnimatedTabIcon focused={focused}>
               <Award color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SeasonalTab"
+        component={SeasonalEventsScreen}
+        options={{
+          title: 'Seasonal',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Flame color={color} size={size} />
             </AnimatedTabIcon>
           ),
         }}
