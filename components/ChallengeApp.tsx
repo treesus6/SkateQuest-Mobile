@@ -8,7 +8,7 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
-import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award, Flame } from 'lucide-react-native';
+import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award, Flame, MessageCircle, Crown, Shield, Gift, BookOpen } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
@@ -57,6 +57,12 @@ import SessionsScreen from '../screens/SessionsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AchievementsScreen from '../screens/AchievementsScreen';
 import SeasonalEventsScreen from '../screens/SeasonalEventsScreen';
+import MessagesScreen from '../screens/MessagesScreen';
+import SpotClaimsScreen from '../screens/SpotClaimsScreen';
+import ModerationQueueScreen from '../screens/ModerationQueueScreen';
+import ReferralScreen from '../screens/ReferralScreen';
+import MentorshipListScreen from '../screens/MentorshipListScreen';
+import ChangelogScreen from '../screens/ChangelogScreen';
 
 
 function ChallengeListScreen({ navigation }: any) {
@@ -257,6 +263,78 @@ function Tabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <AnimatedTabIcon focused={focused}>
               <Flame color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MessagesTab"
+        component={MessagesScreen}
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <MessageCircle color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SpotClaimsTab"
+        component={SpotClaimsScreen}
+        options={{
+          title: 'King',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Crown color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ModerationTab"
+        component={ModerationQueueScreen}
+        options={{
+          title: 'Mod',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Shield color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ReferralTab"
+        component={ReferralScreen}
+        options={{
+          title: 'Refer',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Gift color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MentorshipTab"
+        component={MentorshipListScreen}
+        options={{
+          title: 'Mentor',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Users color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ChangelogTab"
+        component={ChangelogScreen}
+        options={{
+          title: 'Updates',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <BookOpen color={color} size={size} />
             </AnimatedTabIcon>
           ),
         }}
