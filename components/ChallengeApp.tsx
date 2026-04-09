@@ -8,7 +8,7 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
-import { Home, Trophy, MapPin, Users, User, Calendar } from 'lucide-react-native';
+import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
@@ -54,6 +54,8 @@ import TrickTutorialsScreen from '../screens/TrickTutorialsScreen';
 import DonateXPScreen from '../screens/DonateXPScreen';
 import SponsorLeaderboardScreen from '../screens/SponsorLeaderboardScreen';
 import SessionsScreen from '../screens/SessionsScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import AchievementsScreen from '../screens/AchievementsScreen';
 
 
 function ChallengeListScreen({ navigation }: any) {
@@ -218,6 +220,30 @@ function Tabs() {
           tabBarIcon: ({ color, size, focused }) => (
             <AnimatedTabIcon focused={focused}>
               <Calendar color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="NotificationsTab"
+        component={NotificationsScreen}
+        options={{
+          title: 'Notifications',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Bell color={color} size={size} />
+            </AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="AchievementsTab"
+        component={AchievementsScreen}
+        options={{
+          title: 'Achievements',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}>
+              <Award color={color} size={size} />
             </AnimatedTabIcon>
           ),
         }}
