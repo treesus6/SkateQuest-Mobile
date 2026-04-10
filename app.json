@@ -1,1 +1,6 @@
-{\n  "expo": {\n    "name": "SkateQuest",\n    "slug": "skatequest",\n    "version": "1.0.0",\n    "platforms": [\n      "ios",\n      "android"\n    ],\n    "bundleIdentifier": "com.treesus6.skatequest",\n    "android": {\n      "package": "com.treesus6.skatequest",\n      "permissions": [\n        "CAMERA",\n        "ACCESS_FINE_LOCATION"\n      ]\n    },\n    "ios": {\n      "infoPlist": {\n        "NSCameraUsageDescription": "This app needs access to your camera.",\n        "NSLocationWhenInUseUsageDescription": "This app needs location access to provide better services."\n      }\n    }\n  }\n}
+{
+  "expo": {
+    "name": "SkateQuest",
+    "slug": "skatequest"
+  }
+}
