@@ -17,9 +17,6 @@
     "production": {
       "distribution": "store",
       "autoIncrement": true,
-      "ios": {
-        "buildType": "ipa"
-      },
       "android": {
         "buildType": "app-bundle"
       }
