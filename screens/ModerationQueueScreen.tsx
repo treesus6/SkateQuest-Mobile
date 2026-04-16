@@ -9,7 +9,6 @@ import {
   StatusBar,
   Pressable,
   Alert,
-  ScrollView,
 } from 'react-native';
 import { CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -24,7 +23,7 @@ interface PendingItem {
   created_at: string;
 }
 
-export default function ModerationQueueScreen({ navigation }: any) {
+export default function ModerationQueueScreen({ navigation: _navigation }: any) {
   const { user } = useAuthStore();
   const [queue, setQueue] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +34,7 @@ export default function ModerationQueueScreen({ navigation }: any) {
   useEffect(() => {
     if (!user) return;
     // In a real app, check user.role === 'admin'
-    setIsAdmin(true);  // For demo, assume admin
+    setIsAdmin(true); // For demo, assume admin
   }, [user]);
 
   const loadQueue = useCallback(async () => {
@@ -94,7 +93,7 @@ export default function ModerationQueueScreen({ navigation }: any) {
     Alert.prompt(
       'Reject Content',
       'Reason for rejection:',
-      async (reason) => {
+      async reason => {
         if (!reason.trim()) return;
 
         try {
@@ -166,7 +165,7 @@ export default function ModerationQueueScreen({ navigation }: any) {
       ) : (
         <FlatList
           data={queue}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <View className="px-4 mb-3">
               <Card>
@@ -207,7 +206,9 @@ export default function ModerationQueueScreen({ navigation }: any) {
                       className="flex-1 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex-row items-center justify-center gap-2"
                     >
                       <CheckCircle size={16} color="#22C55E" strokeWidth={2} />
-                      <Text className="font-semibold text-green-700 dark:text-green-300">Approve</Text>
+                      <Text className="font-semibold text-green-700 dark:text-green-300">
+                        Approve
+                      </Text>
                     </Pressable>
                   </View>
                 </View>

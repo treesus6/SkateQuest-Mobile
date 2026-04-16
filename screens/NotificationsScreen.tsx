@@ -3,18 +3,17 @@ import {
   View,
   Text,
   SafeAreaView,
-  ScrollView,
   FlatList,
   TouchableOpacity,
   RefreshControl,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import { Bell, Trash2, Check, Clock } from 'lucide-react-native';
+import { Bell, Trash2, Check } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNotificationStore } from '../stores/useNotificationStore';
-import Card from './ui/Card';
-import Button from './ui/Button';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import { Logger } from '../lib/logger';
 
 interface NotificationItemProps {
@@ -28,7 +27,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete }: Notification
     challenge: '#F59E0B',
     crew: '#6B4CE6',
     achievement: '#d2673d',
-   message: '#0EA5E9',
+    message: '#0EA5E9',
     nearby: '#22C55E',
     seasonal: '#EC4899',
     system: '#6B7280',
@@ -64,10 +63,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete }: Notification
         {/* Content */}
         <View className="flex-1 gap-1">
           <View className="flex-row items-center gap-2">
-            <Text
-              className="font-bold flex-1"
-              style={{ color: isRead ? '#666' : '#000' }}
-            >
+            <Text className="font-bold flex-1" style={{ color: isRead ? '#666' : '#000' }}>
               {notification.title}
             </Text>
             <Text className="text-xs text-gray-500">{timeStr}</Text>
@@ -106,15 +102,22 @@ function NotificationItem({ notification, onMarkAsRead, onDelete }: Notification
 
 export default function NotificationsScreen({ navigation }: any) {
   const { user } = useAuthStore();
-  const { notifications, unreadCount, loading, refreshNotifications, markAsRead, deleteNotification, markAllAsRead } =
-    useNotificationStore();
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    refreshNotifications,
+    markAsRead,
+    deleteNotification,
+    markAllAsRead,
+  } = useNotificationStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!user?.id) return;
       // Refresh when screen is focused
-      refreshNotifications(user.id).catch((error) => {
+      refreshNotifications(user.id).catch(error => {
         Logger.error('Failed to refresh notifications', error);
       });
     });
@@ -202,7 +205,9 @@ export default function NotificationsScreen({ navigation }: any) {
       ) : notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center gap-3">
           <Bell size={48} color="#999" strokeWidth={1} />
-          <Text className="text-lg font-semibold text-gray-900 dark:text-white">No notifications</Text>
+          <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+            No notifications
+          </Text>
           <Text className="text-sm text-gray-500 text-center px-6">
             When something happens, you'll see it here
           </Text>
@@ -217,7 +222,7 @@ export default function NotificationsScreen({ navigation }: any) {
               onDelete={handleDelete}
             />
           )}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           contentContainerStyle={{ padding: 16 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           showsVerticalScrollIndicator={false}

@@ -13,7 +13,7 @@ interface ConversationItemProps {
 }
 
 export default function ConversationItem({
-  id,
+  id: _id,
   type,
   displayName,
   lastMessage,

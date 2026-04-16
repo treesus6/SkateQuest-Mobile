@@ -37,11 +37,11 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     // Load initial notifications
     notificationsService
       .getNotifications(userId, 50)
-      .then((data) => {
+      .then(data => {
         set({ notifications: data || [], loading: false });
         Logger.info('Notifications loaded', { userId, count: data?.length || 0 });
       })
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load notifications', error);
         set({ loading: false });
       });
@@ -49,15 +49,16 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     // Get unread count
     notificationsService
       .getUnreadCount(userId)
-      .then((count) => {
+      .then(count => {
         set({ unreadCount: count });
       })
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to get unread count', error);
       });
 
     // Subscribe to real-time updates
-    const subscription = notificationsService
+    let channel: { unsubscribe: () => void } | null = null;
+    notificationsService
       .subscribeToNotifications(userId, (newNotification: Notification) => {
         const current = get().notifications;
         set({
@@ -66,15 +67,16 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         });
         Logger.info('Real-time notification received', { type: newNotification.type });
       })
-      .catch((error) => {
+      .then(sub => {
+        channel = sub;
+      })
+      .catch(error => {
         Logger.error('Failed to subscribe to notifications', error);
       });
 
     // Return cleanup function
     return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
+      channel?.unsubscribe();
     };
   },
 
@@ -89,7 +91,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   markAsRead: async (notificationId: string) => {
     try {
       await notificationsService.markAsRead(notificationId);
-      const updated = get().notifications.map((n) =>
+      const updated = get().notifications.map(n =>
         n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
       );
       set({
@@ -106,7 +108,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   markAllAsRead: async (userId: string) => {
     try {
       await notificationsService.markAllAsRead(userId);
-      const updated = get().notifications.map((n) => ({
+      const updated = get().notifications.map(n => ({
         ...n,
         read_at: new Date().toISOString(),
       }));
@@ -124,7 +126,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   deleteNotification: async (notificationId: string) => {
     try {
       await notificationsService.deleteNotification(notificationId);
-      const updated = get().notifications.filter((n) => n.id !== notificationId);
+      const updated = get().notifications.filter(n => n.id !== notificationId);
       set({
         notifications: updated,
       });
