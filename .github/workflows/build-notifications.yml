@@ -25,6 +25,22 @@ jobs:
             const run = context.payload.workflow_run;
             const runUrl = run.html_url;
             const isSuccess = run.conclusion === 'success';
+            const sanitizeText = value =>
+              String(value || '')
+                .replace(/[\r\n\t]/g, ' ')
+                .replace(/([\\`*_{}[\]()#+\-.!|>])/g, '\\$1');
+            const sanitizeUrl = value => {
+              const cleaned = String(value || '').replace(/[\r\n\t]/g, '');
+              try {
+                const parsed = new URL(cleaned);
+                if (parsed.protocol !== 'https:') {
+                  return 'https://github.com';
+                }
+                return encodeURI(parsed.toString());
+              } catch (_error) {
+                return 'https://github.com';
+              }
+            };
 
             const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
               owner: context.repo.owner,
@@ -33,7 +49,10 @@ jobs:
             });
 
             const artifactLines = artifacts.data.artifacts.length
-              ? artifacts.data.artifacts.map((artifact) => `- ${artifact.name}: ${artifact.archive_download_url}`)
+              ? artifacts.data.artifacts.map(
+                  artifact =>
+                    `- \`${sanitizeText(artifact.name)}\`: <${sanitizeUrl(artifact.archive_download_url)}>`
+                )
               : ['- No artifacts were uploaded by the source workflow.'];
 
             const body = [

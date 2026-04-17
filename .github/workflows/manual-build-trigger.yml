@@ -24,6 +24,8 @@ on:
 jobs:
   android-build:
     if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-management.yml
     with:
       platform: android
@@ -34,6 +36,8 @@ jobs:
 
   ios-build:
     if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-management.yml
     with:
       platform: ios
@@ -47,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [android-build, ios-build]
     if: ${{ always() }}
+    permissions:
+      contents: read
     steps:
       - name: Print summary
         run: |

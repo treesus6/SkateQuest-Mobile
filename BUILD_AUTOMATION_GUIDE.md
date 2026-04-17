@@ -96,6 +96,9 @@ To run successfully in GitHub Actions, set repository secret `EXPO_TOKEN`.
 
 - `EXPO_TOKEN` (required)
 - `MAPBOX_DOWNLOADS_TOKEN` (required for native Mapbox package fetch in EAS environment)
+  - Set this as a **GitHub Actions secret** at:
+    `Repository Settings → Secrets and variables → Actions → New repository secret`
+  - Generate it from your Mapbox account as a token with **Downloads: Read** scope.
 - Any Expo public env vars used by app config as needed (`EXPO_PUBLIC_*`)
 
 ### Optional repository variables

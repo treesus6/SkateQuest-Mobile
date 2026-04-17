@@ -6,6 +6,8 @@ on:
 
 jobs:
   android-production:
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-management.yml
     with:
       platform: android
@@ -15,6 +17,8 @@ jobs:
     secrets: inherit
 
   ios-production:
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-management.yml
     with:
       platform: ios

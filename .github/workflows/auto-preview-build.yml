@@ -11,6 +11,8 @@ concurrency:
 jobs:
   preview-build:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/build-management.yml
     with:
       platform: android

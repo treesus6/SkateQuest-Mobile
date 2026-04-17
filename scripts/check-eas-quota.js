@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 
 function parseArgs(argv) {
   const args = {
     total: Number(process.env.EAS_BUILD_QUOTA_TOTAL || 25),
     warnThreshold: Number(process.env.EAS_BUILD_WARN_THRESHOLD || 5),
+    historyLimit: Number(process.env.EAS_BUILD_HISTORY_LIMIT || 1000),
     format: 'text',
   };
 
@@ -16,6 +17,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === '--warn-threshold') {
       args.warnThreshold = Number(argv[i + 1]);
+      i += 1;
+    } else if (arg === '--history-limit') {
+      args.historyLimit = Number(argv[i + 1]);
       i += 1;
     } else if (arg === '--format') {
       args.format = argv[i + 1] || 'text';
@@ -31,17 +35,35 @@ function parseArgs(argv) {
     throw new Error('Invalid --warn-threshold value');
   }
 
+  if (!Number.isFinite(args.historyLimit) || args.historyLimit < 1) {
+    throw new Error('Invalid --history-limit value');
+  }
+
   return args;
 }
 
-function runEasBuildList() {
-  const output = execSync('npx eas-cli build:list --json --limit 200 --non-interactive', {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+function runEasBuildList(historyLimit) {
+  let output = '';
+  try {
+    output = execFileSync(
+      'npx',
+      ['eas-cli', 'build:list', '--json', '--limit', String(historyLimit), '--non-interactive'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }
+    );
+  } catch (error) {
+    const stderr = error?.stderr ? String(error.stderr) : '';
+    throw new Error(`EAS CLI build:list failed${stderr ? `: ${stderr.trim()}` : ''}`);
+  }
 
-  const parsed = JSON.parse(output);
-  return Array.isArray(parsed) ? parsed : [];
+  try {
+    const parsed = JSON.parse(output);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    throw new Error(`Failed to parse EAS build:list JSON output: ${error.message || error}`);
+  }
 }
 
 function monthStartUtc(date = new Date()) {
@@ -75,7 +97,7 @@ function main() {
 
   let builds;
   try {
-    builds = runEasBuildList();
+    builds = runEasBuildList(args.historyLimit);
   } catch (error) {
     console.error('Failed to read EAS build history.');
     console.error(error.message || error);
@@ -86,7 +108,7 @@ function main() {
   const usedThisMonth = builds.filter(build => {
     if (!build || !build.createdAt) return false;
     const createdAt = new Date(build.createdAt);
-    return !Number.isNaN(createdAt.valueOf()) && createdAt >= start;
+    return !Number.isNaN(createdAt.getTime()) && createdAt >= start;
   }).length;
 
   const remaining = Math.max(args.total - usedThisMonth, 0);

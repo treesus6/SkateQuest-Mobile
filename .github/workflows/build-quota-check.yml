@@ -26,11 +26,12 @@ jobs:
 
       - name: Run EAS quota check
         id: quota
-        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --format json
+        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --history-limit "${EAS_BUILD_HISTORY_LIMIT}" --format json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_BUILD_QUOTA_TOTAL: ${{ vars.EAS_BUILD_QUOTA_TOTAL || '25' }}
           EAS_BUILD_WARN_THRESHOLD: ${{ vars.EAS_BUILD_WARN_THRESHOLD || '5' }}
+          EAS_BUILD_HISTORY_LIMIT: ${{ vars.EAS_BUILD_HISTORY_LIMIT || '1000' }}
 
       - name: Add quota summary
         run: |

@@ -97,11 +97,12 @@ jobs:
 
       - name: Estimate remaining build quota
         id: quota
-        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --format json
+        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --history-limit "${EAS_BUILD_HISTORY_LIMIT}" --format json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EAS_BUILD_QUOTA_TOTAL: ${{ vars.EAS_BUILD_QUOTA_TOTAL || '25' }}
           EAS_BUILD_WARN_THRESHOLD: ${{ vars.EAS_BUILD_WARN_THRESHOLD || '5' }}
+          EAS_BUILD_HISTORY_LIMIT: ${{ vars.EAS_BUILD_HISTORY_LIMIT || '1000' }}
 
       - name: Trigger EAS build
         id: trigger
@@ -115,7 +116,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           BUILD_PLATFORM: ${{ inputs.platform || github.event.inputs.platform }}
           BUILD_PROFILE: ${{ inputs.profile || github.event.inputs.profile }}
-          AUTO_SUBMIT: ${{ (inputs.auto_submit || github.event.inputs.auto_submit) && 'true' || 'false' }}
+          AUTO_SUBMIT: ${{ (inputs.auto_submit == true || github.event.inputs.auto_submit == 'true') && 'true' || 'false' }}
 
       - name: Upload build metadata
         uses: actions/upload-artifact@v4

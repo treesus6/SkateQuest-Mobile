@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const { writeFileSync, appendFileSync } = require('node:fs');
 
 function parseArgs(argv) {
@@ -37,13 +37,35 @@ function parseArgs(argv) {
   return args;
 }
 
-function runJsonCommand(command) {
-  const output = execSync(command, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+function assertAllowedValue(name, value, allowedValues) {
+  if (!allowedValues.includes(value)) {
+    throw new Error(`${name} must be one of: ${allowedValues.join(', ')}`);
+  }
+}
 
-  return JSON.parse(output);
+function assertBuildId(value) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+    throw new Error('buildId must contain only alphanumeric characters, hyphens, and underscores.');
+  }
+}
+
+function runJsonCommand(args) {
+  let output = '';
+  try {
+    output = execFileSync('npx', ['eas-cli', ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    const stderr = error?.stderr ? String(error.stderr) : '';
+    throw new Error(`EAS CLI command failed${stderr ? `: ${stderr.trim()}` : ''}`);
+  }
+
+  try {
+    return JSON.parse(output);
+  } catch (error) {
+    throw new Error(`Failed to parse EAS CLI JSON output: ${error.message || error}`);
+  }
 }
 
 function normalizeBuildPayload(payload) {
@@ -106,10 +128,9 @@ function main() {
       if (!args.buildId) {
         throw new Error('The status command requires --build-id.');
       }
+      assertBuildId(args.buildId);
 
-      const payload = runJsonCommand(
-        `npx eas-cli build:view ${args.buildId} --json --non-interactive`
-      );
+      const payload = runJsonCommand(['build:view', args.buildId, '--json', '--non-interactive']);
       const build = normalizeBuildPayload(payload);
 
       if (args.outputFile) {
@@ -121,10 +142,24 @@ function main() {
       return;
     }
 
-    const autoSubmitFlag = args.autoSubmit ? '--auto-submit' : '';
-    const payload = runJsonCommand(
-      `npx eas-cli build --platform ${args.platform} --profile ${args.profile} --non-interactive --no-wait --json ${autoSubmitFlag}`.trim()
-    );
+    assertAllowedValue('platform', args.platform, ['android', 'ios']);
+    assertAllowedValue('profile', args.profile, ['preview', 'production', 'development']);
+
+    const commandArgs = [
+      'build',
+      '--platform',
+      args.platform,
+      '--profile',
+      args.profile,
+      '--non-interactive',
+      '--no-wait',
+      '--json',
+    ];
+    if (args.autoSubmit) {
+      commandArgs.push('--auto-submit');
+    }
+
+    const payload = runJsonCommand(commandArgs);
     const build = normalizeBuildPayload(payload);
 
     if (args.outputFile) {
