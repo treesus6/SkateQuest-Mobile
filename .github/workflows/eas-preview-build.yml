@@ -61,7 +61,7 @@ jobs:
         id: eas_build
         run: |
           eas build --platform android --profile preview --non-interactive --no-wait --json > eas-build.json
-          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('eas-build.json','utf8')); console.log('build_url=' + (d[0]?.artifacts?.buildUrl || d[0]?.logs?.url || d[0]?.webUrl || ''));" >> "$GITHUB_OUTPUT"
+          node scripts/parse-eas-output.js eas-build.json >> "$GITHUB_OUTPUT"
 
       - name: Post build URL to PR
         if: ${{ steps.eas_build.outputs.build_url != '' }}

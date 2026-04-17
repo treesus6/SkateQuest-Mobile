@@ -53,8 +53,7 @@ Next steps:
    - EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN
    - EXPO_PUBLIC_SENTRY_DSN
    - MAPBOX_DOWNLOADS_TOKEN
-   - EXPO_ASC_APP_ID (production submit)
-   - EXPO_APPLE_TEAM_ID (production submit)
    - SLACK_WEBHOOK_URL (optional notifications)
-3) Run: node scripts/validate-build.js --skip-env
+4) Replace REPLACE_WITH_ASC_APP_ID and REPLACE_WITH_APPLE_TEAM_ID in eas.json for production submit
+5) Run: node scripts/validate-build.js --skip-env
 EOF

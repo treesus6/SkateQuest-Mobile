@@ -33,8 +33,6 @@ This repository now includes a complete EAS CI/CD setup for preview and producti
 - `EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN`
 - `EXPO_PUBLIC_SENTRY_DSN`
 - `MAPBOX_DOWNLOADS_TOKEN`
-- `EXPO_ASC_APP_ID` (production submit metadata)
-- `EXPO_APPLE_TEAM_ID` (production submit metadata)
 - `SLACK_WEBHOOK_URL` (optional)
 
 ## Local Build Utility Scripts
@@ -44,8 +42,20 @@ This repository now includes a complete EAS CI/CD setup for preview and producti
   - Adds placeholders for missing required keys
 
 - `scripts/validate-build.js`
-  - Validates `app.json` and `eas.json` structure
+  - Validates `app.json`, `app.config.js`, and `eas.json` structure
   - Validates required environment variables (unless `--skip-env` is set)
+
+- `scripts/parse-eas-output.js`
+  - Extracts build URL output from `eas build --json` results for workflow reporting
+
+## Production Submit Placeholders
+
+`eas.json` includes:
+
+- `submit.production.ios.ascAppId: REPLACE_WITH_ASC_APP_ID`
+- `submit.production.ios.appleTeamId: REPLACE_WITH_APPLE_TEAM_ID`
+
+Replace these placeholder values with your real App Store Connect IDs before first production submit.
 
 ## Recommended Local Validation
 

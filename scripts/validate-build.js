@@ -24,6 +24,16 @@ function validateAppConfig() {
   );
   ensureKeys(appJson.expo.ios, ['bundleIdentifier', 'buildNumber'], 'app.json expo.ios');
   ensureKeys(appJson.expo.android, ['package', 'versionCode'], 'app.json expo.android');
+
+  const appConfig = require(path.join(rootDir, 'app.config.js'));
+  ensureKeys(appConfig, ['expo'], 'app.config.js');
+  ensureKeys(
+    appConfig.expo,
+    ['name', 'slug', 'version', 'ios', 'android', 'plugins', 'updates'],
+    'app.config.js expo'
+  );
+  ensureKeys(appConfig.expo.ios, ['bundleIdentifier', 'buildNumber'], 'app.config.js expo.ios');
+  ensureKeys(appConfig.expo.android, ['package', 'versionCode'], 'app.config.js expo.android');
 }
 
 function validateEasConfig() {

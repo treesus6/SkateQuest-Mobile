@@ -65,7 +65,7 @@ jobs:
         id: eas_build
         run: |
           eas build --platform "${{ matrix.platform }}" --profile production --non-interactive --no-wait --json > eas-production-build.json
-          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('eas-production-build.json','utf8')); console.log('build_url=' + (d[0]?.artifacts?.buildUrl || d[0]?.logs?.url || d[0]?.webUrl || ''));" >> "$GITHUB_OUTPUT"
+          node scripts/parse-eas-output.js eas-production-build.json >> "$GITHUB_OUTPUT"
 
       - name: Build summary
         run: |
