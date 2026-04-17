@@ -1,0 +1,72 @@
+name: EAS Production Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+concurrency:
+  group: eas-production-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  production-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: ${{ secrets.EXPO_TOKEN != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [android, ios]
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate build configuration
+        run: node scripts/validate-build.js
+
+      - name: Trigger production build
+        id: eas_build
+        run: |
+          eas build --platform "${{ matrix.platform }}" --profile production --non-interactive --no-wait --json > eas-production-build.json
+          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('eas-production-build.json','utf8')); console.log('build_url=' + (d[0]?.artifacts?.buildUrl || d[0]?.logs?.url || d[0]?.webUrl || ''));" >> "$GITHUB_OUTPUT"
+
+      - name: Build summary
+        run: |
+          echo "### EAS Production Build (${{ matrix.platform }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build URL: ${{ steps.eas_build.outputs.build_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Slack notification
+        if: ${{ always() && secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          STATUS="${{ job.status }}"
+          URL="${{ steps.eas_build.outputs.build_url }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"SkateQuest production build (${{ matrix.platform }}) ${STATUS}. ${URL}\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"

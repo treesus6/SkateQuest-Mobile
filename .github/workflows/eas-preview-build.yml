@@ -1,0 +1,72 @@
+name: EAS Preview Build
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: eas-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ secrets.EXPO_TOKEN != '' }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate build configuration
+        run: node scripts/validate-build.js
+
+      - name: Trigger preview Android build
+        id: eas_build
+        run: |
+          eas build --platform android --profile preview --non-interactive --no-wait --json > eas-build.json
+          node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('eas-build.json','utf8')); console.log('build_url=' + (d[0]?.artifacts?.buildUrl || d[0]?.logs?.url || d[0]?.webUrl || ''));" >> "$GITHUB_OUTPUT"
+
+      - name: Post build URL to PR
+        if: ${{ steps.eas_build.outputs.build_url != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🚀 EAS Preview build started.\n\nBuild URL: ${{ steps.eas_build.outputs.build_url }}`
+            })
+
+      - name: Slack notification
+        if: ${{ always() && secrets.SLACK_WEBHOOK_URL != '' }}
+        run: |
+          STATUS="${{ job.status }}"
+          URL="${{ steps.eas_build.outputs.build_url }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"SkateQuest preview build ${STATUS}. ${URL}\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
