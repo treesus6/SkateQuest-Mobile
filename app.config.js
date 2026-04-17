@@ -2,7 +2,12 @@ module.exports = {
   expo: {
     name: 'SkateQuest',
     slug: 'skatequest',
+    owner: 'treesus6',
+    scheme: 'skatequest',
     version: '1.0.0',
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     description:
@@ -13,8 +18,15 @@ module.exports = {
       resizeMode: 'contain',
       backgroundColor: '#d2673d',
     },
+    assetBundlePatterns: ['**/*'],
     platforms: ['ios', 'android'],
     jsEngine: 'hermes',
+    updates: {
+      enabled: true,
+      checkAutomatically: 'ON_LOAD',
+      fallbackToCacheTimeout: 0,
+      url: 'https://u.expo.dev/09a104b9-9e22-4ae0-9836-2701e366d8e5',
+    },
 
     ios: {
       supportsTablet: true,
@@ -34,6 +46,7 @@ module.exports = {
 
     android: {
       package: 'com.skatequest.app',
+      versionCode: 1,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#d2673d',
