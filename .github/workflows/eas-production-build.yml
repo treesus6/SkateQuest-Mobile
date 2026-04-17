@@ -7,6 +7,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 concurrency:
   group: eas-production-${{ github.ref }}
   cancel-in-progress: false
@@ -15,7 +18,6 @@ jobs:
   production-build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: ${{ secrets.EXPO_TOKEN != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +31,15 @@ jobs:
       MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
 
     steps:
+      - name: Validate required secrets
+        run: |
+          for key in EXPO_TOKEN EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
+            if [[ -z "${!key}" ]]; then
+              echo "Missing required secret: $key"
+              exit 1
+            fi
+          done
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -63,10 +74,12 @@ jobs:
           echo "- Build URL: ${{ steps.eas_build.outputs.build_url }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Slack notification
-        if: ${{ always() && secrets.SLACK_WEBHOOK_URL != '' }}
+        if: ${{ always() && env.SLACK_WEBHOOK_URL != '' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           STATUS="${{ job.status }}"
           URL="${{ steps.eas_build.outputs.build_url }}"
           curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"SkateQuest production build (${{ matrix.platform }}) ${STATUS}. ${URL}\"}" \
-            "${{ secrets.SLACK_WEBHOOK_URL }}"
+            "${SLACK_WEBHOOK_URL}"
