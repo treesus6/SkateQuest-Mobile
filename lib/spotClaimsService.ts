@@ -2,17 +2,6 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
-interface SpotClaim {
-  id: string;
-  spot_id: string;
-  user_id: string;
-  claimed_at: string;
-  expires_at: string;
-  claim_strength: number;
-  created_at: string;
-  updated_at: string;
-}
-
 interface SpotClaimInfo {
   claim_id: string;
   holder_id: string;
@@ -48,7 +37,10 @@ export const spotClaimsService = {
   // CLAIMING
   // =========================================================================
 
-  async claimSpot(spotId: string, userId: string): Promise<{ success: boolean; action: string; xp_reward: number; previous_holder?: string }> {
+  async claimSpot(
+    spotId: string,
+    userId: string
+  ): Promise<{ success: boolean; action: string; xp_reward: number; previous_holder?: string }> {
     try {
       const { data, error } = await supabase.rpc('claim_spot', {
         p_spot_id: spotId,
@@ -56,8 +48,7 @@ export const spotClaimsService = {
       });
 
       if (error) throw error;
-      if (!data)
-        throw new Error('Failed to claim spot');
+      if (!data) throw new Error('Failed to claim spot');
       return data;
     } catch (error) {
       Logger.error('spotClaimsService.claimSpot failed', error);
@@ -121,7 +112,11 @@ export const spotClaimsService = {
       return data || [];
     } catch (error) {
       Logger.error('spotClaimsService.getClaimsLeaderboard failed', error);
-      throw new ServiceError('Failed to get claims leaderboard', 'CLAIMS_LEADERBOARD_FAILED', error);
+      throw new ServiceError(
+        'Failed to get claims leaderboard',
+        'CLAIMS_LEADERBOARD_FAILED',
+        error
+      );
     }
   },
 
@@ -159,7 +154,11 @@ export const spotClaimsService = {
       return data || [];
     } catch (error) {
       Logger.error('spotClaimsService.getUserClaimHistory failed', error);
-      throw new ServiceError('Failed to get user claim history', 'USER_CLAIM_HISTORY_FAILED', error);
+      throw new ServiceError(
+        'Failed to get user claim history',
+        'USER_CLAIM_HISTORY_FAILED',
+        error
+      );
     }
   },
 

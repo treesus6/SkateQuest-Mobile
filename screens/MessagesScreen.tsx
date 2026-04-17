@@ -30,25 +30,31 @@ interface DetailViewProps {
 
 function ConversationDetailView({ conversationId, conversationName, onBack }: DetailViewProps) {
   const { user } = useAuthStore();
-  const { messages, loading, sending, addMessage, markAsRead } = useMessagingStore();
+  const { messages, loading, sending, markAsRead } = useMessagingStore();
   const [messageText, setMessageText] = useState('');
   const [localMessages, setLocalMessages] = useState(messages);
 
   useEffect(() => {
     if (!user?.id) return;
-    messagesService.getMessages(conversationId).then(setLocalMessages).catch((error) => {
-      Logger.error('Failed to load messages', error);
-    });
-    markAsRead(conversationId, user.id).catch((error) => {
+    messagesService
+      .getMessages(conversationId)
+      .then(setLocalMessages)
+      .catch(error => {
+        Logger.error('Failed to load messages', error);
+      });
+    markAsRead(conversationId, user.id).catch(error => {
       Logger.error('Failed to mark as read', error);
     });
   }, [conversationId, user?.id]);
 
   useEffect(() => {
     const subscription = messagesService.subscribeToMessages(conversationId, () => {
-      messagesService.getMessages(conversationId).then(setLocalMessages).catch((error) => {
-        Logger.error('Real-time message update failed', error);
-      });
+      messagesService
+        .getMessages(conversationId)
+        .then(setLocalMessages)
+        .catch(error => {
+          Logger.error('Real-time message update failed', error);
+        });
     });
 
     return () => {
@@ -104,7 +110,7 @@ function ConversationDetailView({ conversationId, conversationName, onBack }: De
             /* Scroll to bottom on new messages */
           }}
         >
-          {localMessages.map((message) => (
+          {localMessages.map(message => (
             <MessageBubble
               key={message.id}
               content={message.content}
@@ -238,7 +244,7 @@ export default function MessagesScreen({ navigation }: any) {
       ) : (
         <FlatList
           data={conversations}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <ConversationItem
               id={item.id}

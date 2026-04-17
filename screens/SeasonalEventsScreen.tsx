@@ -8,30 +8,23 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import { Calendar, Calendar2, Flame } from 'lucide-react-native';
+import { Calendar, CalendarDays, Flame } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSeasonalEventStore } from '../stores/useSeasonalEventStore';
 import SeasonalProgressBar from '../components/SeasonalProgressBar';
-import Card from './ui/Card';
+import Card from '../components/ui/Card';
 import { Logger } from '../lib/logger';
 
 export default function SeasonalEventsScreen({ navigation }: any) {
   const { user } = useAuthStore();
-  const {
-    activeEvent,
-    allEvents,
-    userProgress,
-    loading,
-    loadActiveEvent,
-    loadUserProgress,
-    refreshUserProgress,
-  } = useSeasonalEventStore();
+  const { activeEvent, allEvents, userProgress, loading, loadUserProgress, refreshUserProgress } =
+    useSeasonalEventStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!user?.id || !activeEvent) return;
-      loadUserProgress(user.id, activeEvent.id).catch((error) => {
+      loadUserProgress(user.id, activeEvent.id).catch(error => {
         Logger.error('Failed to load user progress', error);
       });
     });
@@ -77,7 +70,7 @@ export default function SeasonalEventsScreen({ navigation }: any) {
       {/* Header */}
       <View className="bg-brand-terracotta px-4 py-4 rounded-b-2xl mb-4">
         <View className="flex-row items-center gap-2 mb-2">
-          <Calendar2 size={28} color="white" fill="white" strokeWidth={1.5} />
+          <CalendarDays size={28} color="white" fill="white" strokeWidth={1.5} />
           <Text className="text-2xl font-bold text-white">Seasonal Events</Text>
         </View>
         <Text className="text-white/90 text-sm">
@@ -157,7 +150,7 @@ export default function SeasonalEventsScreen({ navigation }: any) {
         ) : (
           <Card className="mb-6">
             <View className="items-center py-6">
-              <Calendar2 size={48} color="#999" strokeWidth={1} />
+              <CalendarDays size={48} color="#999" strokeWidth={1} />
               <Text className="text-lg font-semibold text-gray-900 dark:text-white mt-4">
                 No Active Event
               </Text>
@@ -171,18 +164,16 @@ export default function SeasonalEventsScreen({ navigation }: any) {
         {/* All events section */}
         {allEvents.length > 0 && (
           <View>
-            <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">
-              All Events
-            </Text>
+            <Text className="text-lg font-bold text-gray-900 dark:text-white mb-3">All Events</Text>
 
-            {allEvents.map((event) => {
-              const progress = Array.isArray(allEvents)
-                ? undefined
-                : null;
+            {allEvents.map(event => {
               const isActive = activeEvent?.id === event.id;
 
               return (
-                <Card key={event.id} className={isActive ? 'border-l-4 border-brand-terracotta' : ''}>
+                <Card
+                  key={event.id}
+                  className={isActive ? 'border-l-4 border-brand-terracotta' : ''}
+                >
                   <View className="gap-2">
                     <View className="flex-row items-start justify-between">
                       <View className="flex-1">

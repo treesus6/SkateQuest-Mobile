@@ -4,7 +4,6 @@ import {
   Text,
   SafeAreaView,
   ScrollView,
-  FlatList,
   RefreshControl,
   StatusBar,
   ActivityIndicator,
@@ -14,7 +13,6 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useAchievementStore } from '../stores/useAchievementStore';
 import AchievementCard from '../components/AchievementCard';
 import AchievementUnlockModal from '../components/AchievementUnlockModal';
-import Card from './ui/Card';
 import { Logger } from '../lib/logger';
 
 export default function AchievementsScreen({ navigation }: any) {
@@ -35,7 +33,7 @@ export default function AchievementsScreen({ navigation }: any) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!user?.id) return;
-      loadUserAchievements(user.id).catch((error) => {
+      loadUserAchievements(user.id).catch(error => {
         Logger.error('Failed to load user achievements', error);
       });
     });
@@ -45,7 +43,7 @@ export default function AchievementsScreen({ navigation }: any) {
 
   useEffect(() => {
     if (achievements.length === 0) {
-      loadAchievements().catch((error) => {
+      loadAchievements().catch(error => {
         Logger.error('Failed to load achievements', error);
       });
     }
@@ -75,7 +73,9 @@ export default function AchievementsScreen({ navigation }: any) {
   );
 
   // Get unlocked achievement IDs for quick lookup
-  const unlockedIds = new Set(userAchievements.filter((ua) => ua.unlocked_at).map((ua) => ua.achievement_id));
+  const unlockedIds = new Set(
+    userAchievements.filter(ua => ua.unlocked_at).map(ua => ua.achievement_id)
+  );
 
   const TIER_NAMES = {
     1: 'Bronze',
@@ -137,7 +137,7 @@ export default function AchievementsScreen({ navigation }: any) {
         {Object.keys(achievementsByTier)
           .map(Number)
           .sort((a, b) => a - b)
-          .map((tier) => {
+          .map(tier => {
             const tierColor = TIER_COLORS[tier as keyof typeof TIER_COLORS] || TIER_COLORS[1];
             const tierAchievements = achievementsByTier[tier] || [];
 
@@ -149,19 +149,25 @@ export default function AchievementsScreen({ navigation }: any) {
                     className="w-8 h-8 rounded-full items-center justify-center"
                     style={{ backgroundColor: tierColor.bg }}
                   >
-                    <Trophy size={16} color={tierColor.icon} fill={tierColor.icon} strokeWidth={1.5} />
+                    <Trophy
+                      size={16}
+                      color={tierColor.icon}
+                      fill={tierColor.icon}
+                      strokeWidth={1.5}
+                    />
                   </View>
                   <Text className="text-lg font-bold text-gray-900 dark:text-white">
                     {TIER_NAMES[tier as keyof typeof TIER_NAMES]}
                   </Text>
                   <Text className="text-sm text-gray-500">
-                    ({tierAchievements.filter((a) => unlockedIds.has(a.id)).length}/{tierAchievements.length})
+                    ({tierAchievements.filter(a => unlockedIds.has(a.id)).length}/
+                    {tierAchievements.length})
                   </Text>
                 </View>
 
                 {/* Tier achievements */}
                 <View className="gap-2">
-                  {tierAchievements.map((achievement) => (
+                  {tierAchievements.map(achievement => (
                     <AchievementCard
                       key={achievement.id}
                       achievement={achievement}

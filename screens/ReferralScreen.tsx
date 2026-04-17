@@ -1,6 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, SafeAreaView, FlatList, ActivityIndicator, RefreshControl, Pressable, TextInput, Modal, Alert } from 'react-native';
-import { Gift, Plus, X } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  SafeAreaView,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Pressable,
+  TextInput,
+  Modal,
+  Alert,
+} from 'react-native';
+import { Plus, X } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { referralService } from '../lib/referralService';
 import ReferralCodeCard from '../components/ReferralCodeCard';
@@ -12,7 +23,7 @@ export default function ReferralScreen() {
   const [codes, setCodes] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, _setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newCode, setNewCode] = useState('');
 
@@ -81,7 +92,7 @@ export default function ReferralScreen() {
 
       <FlatList
         data={codes}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View className="px-4 mb-3">
             <ReferralCodeCard
@@ -100,13 +111,17 @@ export default function ReferralScreen() {
             <View className="px-4 mb-4 gap-2 flex-row">
               <Card className="flex-1">
                 <View className="items-center">
-                  <Text className="text-2xl font-bold text-brand-terracotta">{stats.total_referrals}</Text>
+                  <Text className="text-2xl font-bold text-brand-terracotta">
+                    {stats.total_referrals}
+                  </Text>
                   <Text className="text-xs text-gray-500 dark:text-gray-400">Signups</Text>
                 </View>
               </Card>
               <Card className="flex-1">
                 <View className="items-center">
-                  <Text className="text-2xl font-bold text-brand-terracotta">{stats.total_xp_earned}</Text>
+                  <Text className="text-2xl font-bold text-brand-terracotta">
+                    {stats.total_xp_earned}
+                  </Text>
                   <Text className="text-xs text-gray-500 dark:text-gray-400">XP Earned</Text>
                 </View>
               </Card>
@@ -135,7 +150,10 @@ export default function ReferralScreen() {
                 maxLength={15}
                 autoCapitalize="characters"
               />
-              <Pressable onPress={handleCreateCode} className="bg-brand-terracotta px-4 py-2 rounded-lg items-center">
+              <Pressable
+                onPress={handleCreateCode}
+                className="bg-brand-terracotta px-4 py-2 rounded-lg items-center"
+              >
                 <Text className="text-white font-semibold">Create Code</Text>
               </Pressable>
             </View>

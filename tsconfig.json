@@ -10,5 +10,6 @@
     "jsx": "react-native",
     "lib": ["ES2015", "ES2020"],
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["node_modules", "scripts"]
 }

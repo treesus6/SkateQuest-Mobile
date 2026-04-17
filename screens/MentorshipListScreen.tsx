@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, SafeAreaView, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  SafeAreaView,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { Users } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { mentorshipService } from '../lib/mentorshipService';
@@ -13,7 +20,7 @@ export default function MentorshipListScreen() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, _setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
@@ -46,8 +53,8 @@ export default function MentorshipListScreen() {
   }
 
   const allRelationships = [
-    ...mentees.map((m) => ({ ...m, role: 'mentor' })),
-    ...mentors.map((m) => ({ ...m, role: 'mentee' })),
+    ...mentees.map(m => ({ ...m, role: 'mentor' })),
+    ...mentors.map(m => ({ ...m, role: 'mentee' })),
   ];
 
   return (
@@ -62,7 +69,7 @@ export default function MentorshipListScreen() {
 
       <FlatList
         data={allRelationships}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View className="px-4 mb-3">
             <MentorshipCard
@@ -82,7 +89,9 @@ export default function MentorshipListScreen() {
               {stats.mentees_count > 0 && (
                 <Card className="flex-1">
                   <View className="items-center">
-                    <Text className="text-2xl font-bold text-brand-terracotta">{stats.mentees_count}</Text>
+                    <Text className="text-2xl font-bold text-brand-terracotta">
+                      {stats.mentees_count}
+                    </Text>
                     <Text className="text-xs text-gray-500 dark:text-gray-400">Mentees</Text>
                   </View>
                 </Card>
@@ -90,7 +99,9 @@ export default function MentorshipListScreen() {
               {stats.mentors_count > 0 && (
                 <Card className="flex-1">
                   <View className="items-center">
-                    <Text className="text-2xl font-bold text-brand-terracotta">{stats.mentors_count}</Text>
+                    <Text className="text-2xl font-bold text-brand-terracotta">
+                      {stats.mentors_count}
+                    </Text>
                     <Text className="text-xs text-gray-500 dark:text-gray-400">Mentors</Text>
                   </View>
                 </Card>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { User, MessageCircle, Zap } from 'lucide-react-native';
+import { User, MessageCircle } from 'lucide-react-native';
 import Card from './ui/Card';
 
 interface MentorshipCardProps {
@@ -105,10 +105,7 @@ export default function MentorshipCard({
             <Text className="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">
               Latest Note
             </Text>
-            <Text
-              className="text-sm text-gray-900 dark:text-gray-100"
-              numberOfLines={2}
-            >
+            <Text className="text-sm text-gray-900 dark:text-gray-100" numberOfLines={2}>
               {progressNotes}
             </Text>
           </View>
@@ -133,7 +130,9 @@ export default function MentorshipCard({
               hitSlop={8}
             >
               <User size={16} color="#666" strokeWidth={2} />
-              <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300">Profile</Text>
+              <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Profile
+              </Text>
             </Pressable>
           )}
         </View>

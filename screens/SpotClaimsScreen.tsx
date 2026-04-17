@@ -14,7 +14,6 @@ import { Trophy, Crown, Flame, TrendingUp } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { spotClaimsService } from '../lib/spotClaimsService';
 import Card from '../components/ui/Card';
-import SpotClaimCard from '../components/SpotClaimCard';
 import { Logger } from '../lib/logger';
 
 interface LeaderboardEntry {
@@ -37,7 +36,7 @@ interface UserSpot {
   claim_strength: number;
 }
 
-export default function SpotClaimsScreen({ navigation }: any) {
+export default function SpotClaimsScreen({ navigation: _navigation }: any) {
   const { user } = useAuthStore();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userClaims, setUserClaims] = useState<UserSpot[]>([]);
@@ -58,7 +57,7 @@ export default function SpotClaimsScreen({ navigation }: any) {
       setUserClaims(userClaimsData);
 
       // Find user's rank
-      const userRankData = leaderboardData.find((entry) => entry.user_id === user.id);
+      const userRankData = leaderboardData.find(entry => entry.user_id === user.id);
       setUserRank(userRankData || null);
     } catch (error) {
       Logger.error('Failed to load claims data', error);
@@ -123,7 +122,8 @@ export default function SpotClaimsScreen({ navigation }: any) {
 
   const renderLeaderboardItem = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const isUser = item.user_id === user?.id;
-    const medalColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : undefined;
+    const medalColor =
+      index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : undefined;
 
     return (
       <View
@@ -159,10 +159,7 @@ export default function SpotClaimsScreen({ navigation }: any) {
                 className="px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: `${getTierColor(item.pro_tier)}20` }}
               >
-                <Text
-                  className="text-xs font-bold"
-                  style={{ color: getTierColor(item.pro_tier) }}
-                >
+                <Text className="text-xs font-bold" style={{ color: getTierColor(item.pro_tier) }}>
                   PRO
                 </Text>
               </View>
@@ -205,7 +202,9 @@ export default function SpotClaimsScreen({ navigation }: any) {
             <Crown size={28} color="white" fill="white" strokeWidth={1.5} />
             <Text className="text-2xl font-bold text-white">King of the Hill</Text>
           </View>
-          <Text className="text-white/90 text-sm">Challenge holders and claim spots as your territory</Text>
+          <Text className="text-white/90 text-sm">
+            Challenge holders and claim spots as your territory
+          </Text>
         </View>
 
         <View className="px-4">
@@ -261,14 +260,12 @@ export default function SpotClaimsScreen({ navigation }: any) {
             <View className="mb-4">
               <View className="flex-row items-center gap-2 mb-3">
                 <Flame size={20} color="#F59E0B" fill="#F59E0B" strokeWidth={1.5} />
-                <Text className="text-lg font-bold text-gray-900 dark:text-white">
-                  Your Claims
-                </Text>
+                <Text className="text-lg font-bold text-gray-900 dark:text-white">Your Claims</Text>
               </View>
 
               <FlatList
                 data={userClaims}
-                keyExtractor={(item) => item.claim_id}
+                keyExtractor={item => item.claim_id}
                 renderItem={({ item }) => (
                   <Card className="mb-2">
                     <View className="gap-2">
@@ -308,7 +305,7 @@ export default function SpotClaimsScreen({ navigation }: any) {
             <Card className="p-0 overflow-hidden">
               <FlatList
                 data={leaderboard.slice(0, 20)}
-                keyExtractor={(item) => item.user_id}
+                keyExtractor={item => item.user_id}
                 renderItem={renderLeaderboardItem}
                 scrollEnabled={false}
               />
