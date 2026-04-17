@@ -1,0 +1,56 @@
+name: Auto Preview Build on PR
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+concurrency:
+  group: auto-preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview-build:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: ./.github/workflows/build-management.yml
+    with:
+      platform: android
+      profile: preview
+      auto_submit: false
+      reason: pull-request-preview
+    secrets: inherit
+
+  comment-build-link:
+    name: Post PR build link
+    runs-on: ubuntu-latest
+    needs: [preview-build]
+    if: ${{ always() }}
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = '${{ needs.preview-build.result }}' === 'success';
+            const body = success
+              ? [
+                  '## ✅ Android Preview Build Triggered',
+                  '',
+                  '- **Build ID:** `${{ needs.preview-build.outputs.build_id }}`',
+                  `- **Build URL:** ${{ needs.preview-build.outputs.build_url || 'Unavailable from CLI output' }}`,
+                  `- **Estimated builds remaining:** ${{ needs.preview-build.outputs.quota_remaining }}`,
+                ].join('\n')
+              : [
+                  '## ❌ Android Preview Build Not Triggered',
+                  '',
+                  `Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+                  'Check job logs for the exact failure (token, quota, or EAS config).',
+                ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

@@ -1,0 +1,79 @@
+name: Build Quota Manager
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * *'
+
+jobs:
+  quota-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run EAS quota check
+        id: quota
+        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --format json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_QUOTA_TOTAL: ${{ vars.EAS_BUILD_QUOTA_TOTAL || '25' }}
+          EAS_BUILD_WARN_THRESHOLD: ${{ vars.EAS_BUILD_WARN_THRESHOLD || '5' }}
+
+      - name: Add quota summary
+        run: |
+          {
+            echo "## EAS Build Quota";
+            echo "- Status: ${{ steps.quota.outputs.quota_status }}";
+            echo "- Used: ${{ steps.quota.outputs.quota_used }} / ${{ steps.quota.outputs.quota_total }}";
+            echo "- Remaining: ${{ steps.quota.outputs.quota_remaining }}";
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open warning issue if builds are low
+        if: ${{ steps.quota.outputs.quota_status == 'warning' || steps.quota.outputs.quota_status == 'exhausted' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '⚠️ EAS build quota is running low';
+            const body = [
+              'Automated quota check detected low remaining EAS builds.',
+              '',
+              `- Status: ${{ steps.quota.outputs.quota_status }}`,
+              `- Used this month: ${{ steps.quota.outputs.quota_used }} / ${{ steps.quota.outputs.quota_total }}`,
+              `- Remaining: ${{ steps.quota.outputs.quota_remaining }}`,
+              '',
+              `Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+            ].join('\n');
+
+            const existing = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title "${title}"`,
+            });
+
+            if (existing.data.total_count > 0) {
+              const issue = existing.data.items[0];
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.createIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
