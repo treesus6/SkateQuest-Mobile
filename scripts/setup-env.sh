@@ -54,6 +54,6 @@ Next steps:
    - EXPO_PUBLIC_SENTRY_DSN
    - MAPBOX_DOWNLOADS_TOKEN
    - SLACK_WEBHOOK_URL (optional notifications)
-4) Replace REPLACE_WITH_ASC_APP_ID and REPLACE_WITH_APPLE_TEAM_ID in eas.json for production submit
-5) Run: node scripts/validate-build.js --skip-env
+3) Replace REPLACE_WITH_ASC_APP_ID and REPLACE_WITH_APPLE_TEAM_ID in eas.json for production submit
+4) Run: node scripts/validate-build.js --skip-env
 EOF

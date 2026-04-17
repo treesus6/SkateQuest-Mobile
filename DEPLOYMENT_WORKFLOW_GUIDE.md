@@ -57,6 +57,9 @@ This repository now includes a complete EAS CI/CD setup for preview and producti
 
 Replace these placeholder values with your real App Store Connect IDs before first production submit.
 
+- `ascAppId`: find in App Store Connect under **Apps → Your App → App Information → Apple ID**.
+- `appleTeamId`: find in App Store Connect / Apple Developer under **Membership → Team ID**.
+
 ## Recommended Local Validation
 
 ```bash
