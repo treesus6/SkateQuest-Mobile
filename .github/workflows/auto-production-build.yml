@@ -1,0 +1,74 @@
+name: Auto Production Build on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  android-production:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-management.yml
+    with:
+      platform: android
+      profile: production
+      auto_submit: ${{ vars.EAS_ENABLE_AUTO_SUBMIT == 'true' }}
+      reason: release-production-android
+    secrets: inherit
+
+  ios-production:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-management.yml
+    with:
+      platform: ios
+      profile: production
+      auto_submit: ${{ vars.EAS_ENABLE_AUTO_SUBMIT == 'true' }}
+      reason: release-production-ios
+    secrets: inherit
+
+  release-notification:
+    name: Update release notes with build links
+    runs-on: ubuntu-latest
+    needs: [android-production, ios-production]
+    if: ${{ always() }}
+    permissions:
+      contents: write
+    steps:
+      - name: Append build details to release body
+        uses: actions/github-script@v7
+        env:
+          AUTO_SUBMIT_ENABLED: ${{ vars.EAS_ENABLE_AUTO_SUBMIT == 'true' }}
+        with:
+          script: |
+            const releaseId = context.payload.release?.id;
+            if (!releaseId) {
+              core.setFailed('Release payload missing release id.');
+              return;
+            }
+
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+            });
+
+            const buildSection = [
+              '## 📦 EAS Production Builds',
+              '',
+              `- Android: ${{ needs.android-production.outputs.build_url || 'Unavailable' }}`,
+              `- iOS: ${{ needs.ios-production.outputs.build_url || 'Unavailable' }}`,
+              '- Android build id: `${{ needs.android-production.outputs.build_id }}`',
+              '- iOS build id: `${{ needs.ios-production.outputs.build_id }}`',
+              `- Auto-submit enabled: ${process.env.AUTO_SUBMIT_ENABLED}`,
+            ].join('\n');
+
+            const currentBody = release.data.body || '';
+            const nextBody = `${currentBody}\n\n${buildSection}`.trim();
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              body: nextBody,
+            });
