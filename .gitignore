@@ -35,6 +35,9 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# Local scripts
+claude.js
+
 # IDE
 .vscode/
 .idea/
@@ -82,4 +85,4 @@ logs/
 # Xcode
 *.xcodeproj/
 *.xcworkspace/
-xcuserdata/
+xcuserdata/*.js
