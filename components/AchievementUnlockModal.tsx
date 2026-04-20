@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, Animated } from 'react-native';
 import { Star, Trophy } from 'lucide-react-native';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
@@ -26,7 +26,11 @@ const TIER_COLORS = {
   5: { bg: '#A855F7', text: '#F9F5FF' },
 };
 
-export default function AchievementUnlockModal({ visible, achievement, onClose }: AchievementUnlockModalProps) {
+export default function AchievementUnlockModal({
+  visible,
+  achievement,
+  onClose,
+}: AchievementUnlockModalProps) {
   const scaleAnim = new Animated.Value(0.3);
   const opacityAnim = new Animated.Value(0);
 
@@ -87,34 +91,32 @@ export default function AchievementUnlockModal({ visible, achievement, onClose }
             <Trophy size={48} color={tierColor.text} fill={tierColor.text} strokeWidth={1.5} />
           </View>
 
-          <Text className="text-2xl font-bold text-center text-gray-900 mb-2">Achievement Unlocked!</Text>
-          <Text
-            className="text-sm text-center"
-            style={{ color: tierColor.text }}
-          >
+          <Text className="text-2xl font-bold text-center text-gray-900 mb-2">
+            Achievement Unlocked!
+          </Text>
+          <Text className="text-sm text-center" style={{ color: tierColor.text }}>
             Tier {achievement.tier} Achievement
           </Text>
         </View>
 
         {/* Achievement details */}
         <View className="mb-6 px-2">
-          <Text className="text-xl font-bold text-gray-900 text-center mb-2">{achievement.name}</Text>
+          <Text className="text-xl font-bold text-gray-900 text-center mb-2">
+            {achievement.name}
+          </Text>
           <Text className="text-sm text-gray-600 text-center mb-4">{achievement.description}</Text>
 
           {/* XP reward badge */}
           <View className="bg-brand-terracotta/10 rounded-xl p-4 items-center">
             <Text className="text-sm text-gray-600 mb-1">You earned</Text>
-            <Text className="text-3xl font-bold text-brand-terracotta">+{achievement.xp_reward} XP</Text>
+            <Text className="text-3xl font-bold text-brand-terracotta">
+              +{achievement.xp_reward} XP
+            </Text>
           </View>
         </View>
 
         {/* Close button */}
-        <Button
-          title="Awesome! 🎉"
-          variant="primary"
-          size="md"
-          onPress={onClose}
-        />
+        <Button title="Awesome! 🎉" variant="primary" size="md" onPress={onClose} />
       </Animated.View>
     </Modal>
   );

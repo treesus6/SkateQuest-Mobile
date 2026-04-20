@@ -1,3 +1,5 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 

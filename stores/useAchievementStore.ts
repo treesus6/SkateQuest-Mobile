@@ -53,19 +53,20 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
     // Load master achievements list
     get()
       .loadAchievements()
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load achievements in initialize', error);
       });
 
     // Load user's achievements
     get()
       .loadUserAchievements(userId)
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load user achievements in initialize', error);
       });
 
     // Subscribe to new unlocks via real-time
-    const subscription = achievementsService
+    let channel: { unsubscribe: () => void } | null = null;
+    achievementsService
       .subscribeToUserAchievements(userId, async (newUnlock: any) => {
         Logger.info('Real-time achievement unlock detected', { userId });
         // Refresh user achievements to get the full achievement details
@@ -73,7 +74,7 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
 
         // Find the achievement and show modal
         const allAchievements = get().achievements;
-        const unlockedAchievement = allAchievements.find((a) => a.id === newUnlock.achievement_id);
+        const unlockedAchievement = allAchievements.find(a => a.id === newUnlock.achievement_id);
         if (unlockedAchievement) {
           set({
             showUnlockModal: true,
@@ -81,7 +82,10 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
           });
         }
       })
-      .catch((error) => {
+      .then(sub => {
+        channel = sub;
+      })
+      .catch(error => {
         Logger.error('Failed to subscribe to achievements', error);
       });
 
@@ -89,9 +93,7 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
 
     // Return cleanup
     return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
+      channel?.unsubscribe();
     };
   },
 
@@ -109,7 +111,7 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
   loadUserAchievements: async (userId: string) => {
     try {
       const data = await achievementsService.getUserAchievements(userId);
-      const unlockedCount = data?.filter((ua) => ua.unlocked_at).length || 0;
+      const unlockedCount = data?.filter(ua => ua.unlocked_at).length || 0;
       set({
         userAchievements: data || [],
         unlockedCount,
@@ -132,7 +134,9 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
 
         // Find first new achievement and show modal
         const allAchievements = get().achievements;
-        const firstNewAchievement = allAchievements.find((a) => a.id === newUnlocks[0].achievement_id);
+        const firstNewAchievement = allAchievements.find(
+          a => a.id === newUnlocks[0].achievement_id
+        );
         if (firstNewAchievement) {
           set({
             showUnlockModal: true,
@@ -150,11 +154,11 @@ export const useAchievementStore = create<AchievementStoreState>((set, get) => (
 
   unlockAchievement: async (userId: string, achievementId: string) => {
     try {
-      const result = await achievementsService.unlockAchievement(userId, achievementId);
+      await achievementsService.unlockAchievement(userId, achievementId);
       await get().loadUserAchievements(userId);
 
       // Find achievement and show modal
-      const achievement = get().achievements.find((a) => a.id === achievementId);
+      const achievement = get().achievements.find(a => a.id === achievementId);
       if (achievement) {
         set({
           showUnlockModal: true,

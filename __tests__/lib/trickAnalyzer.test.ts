@@ -1,3 +1,4 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
 import {
   analyzeTrickVideo,
   saveAnalysisResult,
@@ -66,7 +67,7 @@ describe('TrickAnalyzer', () => {
       const mockUpdate = jest.fn().mockReturnThis();
       const mockEq = jest.fn().mockResolvedValue({ data: {}, error: null });
 
-      (supabase.from as jest.Mock).mockReturnValue({
+      (supabase.from as unknown as { mockReturnValue: (...args: any[]) => any }).mockReturnValue({
         update: mockUpdate,
         eq: mockEq,
       });

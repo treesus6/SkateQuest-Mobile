@@ -1,4 +1,6 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
 import * as Sentry from '@sentry/react-native';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   logUserAction,
   logNavigation,

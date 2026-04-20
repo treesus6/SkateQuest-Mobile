@@ -1,13 +1,17 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from '@testing-library/react-native';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { supabase } from '../../lib/supabase';
 
+type MockFn = { mockReturnValue: (...args: any[]) => any; mockResolvedValue: (...args: any[]) => any; mockRejectedValue: (...args: any[]) => any; mockImplementation: (...args: any[]) => any; mock: { calls: any[][] } };
+
 // Access the mocked supabase auth methods
-const mockSignUp = supabase.auth.signUp as jest.Mock;
-const mockSignInWithPassword = supabase.auth.signInWithPassword as jest.Mock;
-const mockSignOut = supabase.auth.signOut as jest.Mock;
-const mockGetSession = supabase.auth.getSession as jest.Mock;
-const mockOnAuthStateChange = supabase.auth.onAuthStateChange as jest.Mock;
+const mockSignUp = supabase.auth.signUp as unknown as MockFn;
+const mockSignInWithPassword = supabase.auth.signInWithPassword as unknown as MockFn;
+const mockSignOut = supabase.auth.signOut as unknown as MockFn;
+const mockGetSession = supabase.auth.getSession as unknown as MockFn;
+const mockOnAuthStateChange = supabase.auth.onAuthStateChange as unknown as MockFn;
 
 describe('useAuthStore', () => {
   beforeEach(() => {

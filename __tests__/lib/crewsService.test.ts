@@ -1,9 +1,11 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { crewsService } from '../../lib/crewsService';
 import { supabase } from '../../lib/supabase';
 
 // The supabase mock is set up globally in jest.setup.js
 // We cast it here for type-safe mock manipulation
-const mockFrom = supabase.from as jest.Mock;
+const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
 
 describe('crewsService', () => {
   beforeEach(() => {

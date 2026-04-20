@@ -57,14 +57,14 @@ export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) 
     // Load active event
     get()
       .loadActiveEvent()
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load active event', error);
       });
 
     // Load all events
     get()
       .loadAllEvents()
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load all events', error);
       });
 
@@ -73,7 +73,7 @@ export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) 
     if (activeEvent) {
       get()
         .loadUserProgress(userId, activeEvent.id)
-        .catch((error) => {
+        .catch(error => {
           Logger.error('Failed to load user progress', error);
         });
     }
@@ -81,17 +81,25 @@ export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) 
     // Load all user progress
     get()
       .loadAllUserProgress(userId)
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to load all user progress', error);
       });
 
     // Subscribe to progress updates
-    const subscription = seasonalEventsService
-      .subscribeToUserProgress(userId, activeEvent?.id || '', (newProgress: UserSeasonalProgress) => {
-        Logger.info('Seasonal progress updated in real-time', { userId });
-        set({ userProgress: newProgress });
+    let channel: { unsubscribe: () => void } | null = null;
+    seasonalEventsService
+      .subscribeToUserProgress(
+        userId,
+        activeEvent?.id || '',
+        (newProgress: UserSeasonalProgress) => {
+          Logger.info('Seasonal progress updated in real-time', { userId });
+          set({ userProgress: newProgress });
+        }
+      )
+      .then(sub => {
+        channel = sub;
       })
-      .catch((error) => {
+      .catch(error => {
         Logger.error('Failed to subscribe to progress', error);
       });
 
@@ -99,9 +107,7 @@ export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) 
 
     // Return cleanup
     return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
+      channel?.unsubscribe();
     };
   },
 

@@ -36,7 +36,7 @@ export const messagesService = {
   // CONVERSATIONS
   // =========================================================================
 
-  async getConversations(userId: string): Promise<Conversation[]> {
+  async getConversations(_userId: string): Promise<Conversation[]> {
     try {
       const { data, error } = await supabase
         .from('conversations')
@@ -115,14 +115,12 @@ export const messagesService = {
         .eq('crew_id', crewId);
 
       if (crewMembers.data) {
-        await supabase
-          .from('conversation_members')
-          .insert(
-            crewMembers.data.map((member) => ({
-              conversation_id: data.id,
-              user_id: member.user_id,
-            }))
-          );
+        await supabase.from('conversation_members').insert(
+          crewMembers.data.map(member => ({
+            conversation_id: data.id,
+            user_id: member.user_id,
+          }))
+        );
       }
 
       return data;

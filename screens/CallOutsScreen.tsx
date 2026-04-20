@@ -9,11 +9,13 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { Crosshair, MapPin, Clock, Check, X, Ban } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { callOutsService } from '../lib/callOutsService';
 import { profilesService } from '../lib/profilesService';
+import { Logger } from '../lib/logger';
 import { CallOut, UserProfile, SkateSpot } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -75,11 +77,30 @@ export default function CallOutsScreen() {
   };
 
   const loadNearbySpots = async () => {
-    const { data } = await supabase
-      .from('skate_spots')
-      .select('id, name, latitude, longitude')
-      .limit(20);
-    setSpots(data || []);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setSpots([]);
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { data, error } = await supabase.rpc('get_nearby_spots', {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        radius_meters: 50000,
+      });
+
+      if (error) throw error;
+
+      setSpots(((data || []) as SkateSpot[]).slice(0, 20));
+    } catch (error) {
+      Logger.error('CallOutsScreen.loadNearbySpots failed', error);
+      setSpots([]);
+    }
   };
 
   const createCallOut = async () => {
