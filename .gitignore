@@ -37,7 +37,7 @@ pnpm-debug.log*
 
 # Local scripts
 claude.js
-build：list*
+build*list*
 
 # IDE
 .vscode/
