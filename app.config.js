@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: 'SkateQuest',
     slug: 'skatequest',
-    owner: 'treesus6',
+    owner: 'treesus',
     scheme: 'skatequest',
     version: '1.0.0',
     runtimeVersion: {
