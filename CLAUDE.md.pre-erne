@@ -394,22 +394,3 @@ Portal Dimension (Kevin) — iOS distribution partner via AltStore. Their logo s
 5. **Respect the build cost.** 38 minutes and real money per build. Get it right.
 6. **Never remove features.** This app has 40+ screens. Preserve everything.
 7. **Ask about RLS.** Any new Supabase table needs RLS policies before it works.
-
----
-
-<!-- erne-profile: standard -->
-# ERNE Configuration (auto-generated)
-
-## Rules
-@import .claude/rules/common/
-@import .claude/rules/expo/
-
-## Skills
-@import .claude/skills/
-
-## Available Commands
-/erne-plan, /erne-code-review, /erne-tdd, /erne-build-fix, /erne-perf, /erne-upgrade, /erne-native-module, /erne-debug, /erne-debug-visual, /erne-deploy,
-/erne-component, /erne-navigate, /erne-animate, /erne-orchestrate, /erne-quality-gate, /erne-code, /erne-feature, /erne-worker, /erne-audit, /erne-learn, /erne-retrospective, /erne-setup-device
-
-## Dashboard
-ERNE includes a visual dashboard. Launch: `erne dashboard`

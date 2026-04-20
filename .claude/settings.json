@@ -1,0 +1,38 @@
+{
+  "erneVersion": "0.13.6",
+  "detection": {
+    "isRNProject": true,
+    "framework": "expo-managed",
+    "stack": {
+      "state": "zustand",
+      "serverState": "none",
+      "navigation": "expo-router",
+      "styling": "nativewind",
+      "lists": "flatlist",
+      "images": "rn-image",
+      "forms": "none",
+      "storage": "async-storage",
+      "testing": "jest-rntl",
+      "build": "eas"
+    },
+    "hasMonorepo": false,
+    "monorepo": null,
+    "hasNewArch": false,
+    "hasTypescript": true,
+    "existingClaudeMd": true,
+    "componentStyle": "functional"
+  },
+  "profile": "standard",
+  "ruleLayers": [
+    "common",
+    "expo"
+  ],
+  "mcpSelections": [
+    "agent-device",
+    "github",
+    "supabase",
+    "figma",
+    "sentry"
+  ],
+  "generatedAt": "2026-04-11T22:22:30.070Z"
+}
