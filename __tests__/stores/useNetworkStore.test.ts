@@ -1,3 +1,5 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from '@testing-library/react-native';
 import { useNetworkStore } from '../../stores/useNetworkStore';
 import NetInfo from '@react-native-community/netinfo';
@@ -8,7 +10,7 @@ jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(),
 }));
 
-const mockAddEventListener = NetInfo.addEventListener as jest.Mock;
+const mockAddEventListener = NetInfo.addEventListener as unknown as { mockReturnValue: (...args: any[]) => any; mockImplementation: (...args: any[]) => any; mock: { calls: any[][] } };
 
 describe('useNetworkStore', () => {
   beforeEach(() => {

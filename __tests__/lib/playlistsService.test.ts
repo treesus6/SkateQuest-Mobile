@@ -1,7 +1,9 @@
+/// <reference path="../../types/testEnvShims.d.ts" />
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { playlistsService } from '../../lib/playlistsService';
 import { supabase } from '../../lib/supabase';
 
-const mockFrom = supabase.from as jest.Mock;
+const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
 
 describe('playlistsService', () => {
   beforeEach(() => {
