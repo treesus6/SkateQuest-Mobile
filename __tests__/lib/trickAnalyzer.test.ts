@@ -1,5 +1,4 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
   analyzeTrickVideo,
   saveAnalysisResult,
