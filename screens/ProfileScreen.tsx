@@ -170,7 +170,7 @@ export default function ProfileScreen() {
             variant="ghost"
             size="sm"
             className="mb-2"
-            onPress={() => Sentry.nativeCrash()}
+            onPress={() => (Sentry as any).nativeCrash()}
           />
           <Button
             title="Send Test Message"

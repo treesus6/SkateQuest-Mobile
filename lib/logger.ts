@@ -1,5 +1,6 @@
 import { logger, consoleTransport, configLoggerType } from 'react-native-logs';
 import * as Sentry from '@sentry/react-native';
+import type { SeverityLevel } from '@sentry/core';
 
 /**
  * Production-grade logging system
@@ -60,7 +61,7 @@ function sentryTransport(props: any) {
   }
 }
 
-function mapLogLevelToSentryLevel(level: string): Sentry.SeverityLevel {
+function mapLogLevelToSentryLevel(level: string): SeverityLevel {
   switch (level) {
     case 'debug':
       return 'debug';

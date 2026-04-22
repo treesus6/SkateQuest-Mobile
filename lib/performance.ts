@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import { setMeasurement } from '@sentry/core';
 
 /**
  * Performance monitoring utilities
@@ -31,7 +32,7 @@ export function trackAppStartup(): void {
   });
 
   // Send as metric
-  Sentry.setMeasurement('app_startup_time', startupTime, 'millisecond');
+  setMeasurement('app_startup_time', startupTime, 'millisecond');
 }
 
 /**
@@ -48,7 +49,7 @@ export function trackScreenLoad(screenName: string, startTime: number): void {
     data: { screen_name: screenName, load_time: loadTime },
   });
 
-  Sentry.setMeasurement(`screen_load_${screenName}`, loadTime, 'millisecond');
+  setMeasurement(`screen_load_${screenName}`, loadTime, 'millisecond');
 
   // Alert if screen load is slow (> 3 seconds)
   if (loadTime > 3000) {
@@ -77,7 +78,7 @@ export async function trackApiCall<T>(
       data: { operation: operationName, duration, ...tags },
     });
 
-    Sentry.setMeasurement('api_duration', duration, 'millisecond');
+    setMeasurement('api_duration', duration, 'millisecond');
     metrics.apiCallDurations.set(operationName, duration);
 
     // Alert if API call is slow (> 5 seconds)
@@ -113,7 +114,7 @@ export async function trackDatabaseQuery<T>(
       data: { query: queryName, table, duration },
     });
 
-    Sentry.setMeasurement('query_duration', duration, 'millisecond');
+    setMeasurement('query_duration', duration, 'millisecond');
 
     // Alert if query is slow (> 2 seconds)
     if (duration > 2000) {
