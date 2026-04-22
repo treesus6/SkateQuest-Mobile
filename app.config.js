@@ -30,7 +30,7 @@ module.exports = {
 
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.skatequest.app',
+      bundleIdentifier: 'com.treesus6.skatequest',
       buildNumber: '1',
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
@@ -45,7 +45,7 @@ module.exports = {
     },
 
     android: {
-      package: 'com.skatequest.app',
+      package: 'com.treesus6.skatequest',
       versionCode: 1,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
