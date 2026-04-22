@@ -76,6 +76,8 @@ module.exports = {
           project: 'skatequest',
           uploadNativeSymbols: false,
           autoUploadNativeSymbols: false,
+          uploadSourceMaps: false,
+          autoUploadSourceMaps: false,
         },
       ],
       'expo-system-ui',
