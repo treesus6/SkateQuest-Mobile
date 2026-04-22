@@ -1,0 +1,114 @@
+name: Build Success Notification
+
+on:
+  workflow_run:
+    workflows:
+      - Auto Preview Build on PR
+      - Auto Production Build on Release
+      - Manual Build Trigger
+      - Build Management Utility
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Send build notifications and create release links
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const runUrl = run.html_url;
+            const isSuccess = run.conclusion === 'success';
+            const sanitizeText = value =>
+              String(value || '')
+                .replace(/[\r\n\t]/g, ' ')
+                .replace(/([\\`*_{}[\]()#+\-.!|>])/g, '\\$1');
+            const sanitizeUrl = value => {
+              const cleaned = String(value || '').replace(/[\r\n\t]/g, '');
+              try {
+                const parsed = new URL(cleaned);
+                if (parsed.protocol !== 'https:') {
+                  return 'https://github.com';
+                }
+                return encodeURI(parsed.toString());
+              } catch (_error) {
+                return 'https://github.com';
+              }
+            };
+
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: run.id,
+            });
+
+            const artifactLines = artifacts.data.artifacts.length
+              ? artifacts.data.artifacts.map(
+                  artifact =>
+                    `- \`${sanitizeText(artifact.name)}\`: <${sanitizeUrl(artifact.archive_download_url)}>`
+                )
+              : ['- No artifacts were uploaded by the source workflow.'];
+
+            const body = [
+              `## ${isSuccess ? '✅' : '❌'} Build Workflow Completed`,
+              '',
+              `- Workflow: ${run.name}`,
+              `- Conclusion: ${run.conclusion}`,
+              `- Triggered by: ${run.event}`,
+              `- Run URL: ${runUrl}`,
+              '',
+              '### Artifacts',
+              ...artifactLines,
+            ].join('\n');
+
+            if (run.event === 'pull_request' && Array.isArray(run.pull_requests) && run.pull_requests.length > 0) {
+              const prNumber = run.pull_requests[0].number;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+            if (isSuccess && (run.name === 'Auto Production Build on Release' || run.name === 'Manual Build Trigger')) {
+              const tag = `build-run-${run.id}`;
+              const releasePayload = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                name: `Build ${run.id}`,
+                body,
+                draft: false,
+                prerelease: true,
+              };
+
+              try {
+                await github.rest.repos.createRelease(releasePayload);
+              } catch (error) {
+                if (error.status === 422) {
+                  const existing = await github.rest.repos.getReleaseByTag({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    tag,
+                  });
+                  await github.rest.repos.updateRelease({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    release_id: existing.data.id,
+                    body,
+                    name: `Build ${run.id}`,
+                    draft: false,
+                    prerelease: true,
+                  });
+                } else {
+                  throw error;
+                }
+              }
+            }

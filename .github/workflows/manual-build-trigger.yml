@@ -1,0 +1,68 @@
+name: Manual Build Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        type: choice
+        options: [android, ios, all]
+        default: android
+      profile:
+        description: EAS profile
+        required: true
+        type: choice
+        options: [preview, production]
+        default: preview
+      auto_submit:
+        description: Auto-submit (production only when credentials are configured)
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  android-build:
+    if: ${{ github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-management.yml
+    with:
+      platform: android
+      profile: ${{ github.event.inputs.profile }}
+      auto_submit: ${{ github.event.inputs.auto_submit == 'true' }}
+      reason: manual-workflow-dispatch-android
+    secrets: inherit
+
+  ios-build:
+    if: ${{ github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-management.yml
+    with:
+      platform: ios
+      profile: ${{ github.event.inputs.profile }}
+      auto_submit: ${{ github.event.inputs.auto_submit == 'true' }}
+      reason: manual-workflow-dispatch-ios
+    secrets: inherit
+
+  summary:
+    name: Manual build summary
+    runs-on: ubuntu-latest
+    needs: [android-build, ios-build]
+    if: ${{ always() }}
+    permissions:
+      contents: read
+    steps:
+      - name: Print summary
+        run: |
+          {
+            echo "## Manual Build Trigger Summary";
+            echo "- Requested platform: ${{ github.event.inputs.platform }}";
+            echo "- Profile: ${{ github.event.inputs.profile }}";
+            echo "- Auto submit: ${{ github.event.inputs.auto_submit }}";
+            echo "- Android result: ${{ needs.android-build.result || 'not-run' }}";
+            echo "- iOS result: ${{ needs.ios-build.result || 'not-run' }}";
+            echo "- Android URL: ${{ needs.android-build.outputs.build_url || 'n/a' }}";
+            echo "- iOS URL: ${{ needs.ios-build.outputs.build_url || 'n/a' }}";
+          } >> "$GITHUB_STEP_SUMMARY"

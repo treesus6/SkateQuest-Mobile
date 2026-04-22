@@ -1,0 +1,139 @@
+name: Build Management Utility
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: Target platform
+        required: true
+        type: string
+      profile:
+        description: EAS build profile
+        required: true
+        type: string
+      auto_submit:
+        description: Auto submit after build if credentials exist
+        required: false
+        type: boolean
+        default: false
+      reason:
+        description: Human-readable trigger reason
+        required: false
+        type: string
+        default: automated
+    outputs:
+      build_id:
+        description: Build ID
+        value: ${{ jobs.build.outputs.build_id }}
+      build_url:
+        description: Build URL
+        value: ${{ jobs.build.outputs.build_url }}
+      build_status:
+        description: Build status
+        value: ${{ jobs.build.outputs.build_status }}
+      build_platform:
+        description: Build platform
+        value: ${{ jobs.build.outputs.build_platform }}
+      build_profile:
+        description: Build profile
+        value: ${{ jobs.build.outputs.build_profile }}
+      quota_remaining:
+        description: Remaining build quota estimate
+        value: ${{ jobs.build.outputs.quota_remaining }}
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Target platform
+        required: true
+        type: choice
+        options: [android, ios]
+        default: android
+      profile:
+        description: EAS build profile
+        required: true
+        type: choice
+        options: [preview, production]
+        default: preview
+      auto_submit:
+        description: Auto submit to store
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: Manage EAS build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      build_id: ${{ steps.trigger.outputs.build_id }}
+      build_url: ${{ steps.trigger.outputs.build_url }}
+      build_status: ${{ steps.trigger.outputs.build_status }}
+      build_platform: ${{ steps.trigger.outputs.build_platform }}
+      build_profile: ${{ steps.trigger.outputs.build_profile }}
+      quota_remaining: ${{ steps.quota.outputs.quota_remaining }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check required EAS token
+        run: |
+          if [ -z "${EXPO_TOKEN}" ]; then
+            echo "EXPO_TOKEN is required to run EAS builds in CI."
+            exit 1
+          fi
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Estimate remaining build quota
+        id: quota
+        run: node scripts/check-eas-quota.js --total "${EAS_BUILD_QUOTA_TOTAL}" --warn-threshold "${EAS_BUILD_WARN_THRESHOLD}" --history-limit "${EAS_BUILD_HISTORY_LIMIT}" --format json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_BUILD_QUOTA_TOTAL: ${{ vars.EAS_BUILD_QUOTA_TOTAL || '25' }}
+          EAS_BUILD_WARN_THRESHOLD: ${{ vars.EAS_BUILD_WARN_THRESHOLD || '5' }}
+          EAS_BUILD_HISTORY_LIMIT: ${{ vars.EAS_BUILD_HISTORY_LIMIT || '1000' }}
+
+      - name: Trigger EAS build
+        id: trigger
+        run: |
+          node scripts/manage-builds.js trigger \
+            --platform "${BUILD_PLATFORM}" \
+            --profile "${BUILD_PROFILE}" \
+            --auto-submit "${AUTO_SUBMIT}" \
+            --output-file build-metadata.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          BUILD_PLATFORM: ${{ inputs.platform || github.event.inputs.platform }}
+          BUILD_PROFILE: ${{ inputs.profile || github.event.inputs.profile }}
+          AUTO_SUBMIT: ${{ (inputs.auto_submit == true || github.event.inputs.auto_submit == 'true') && 'true' || 'false' }}
+
+      - name: Upload build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: eas-build-metadata-${{ steps.trigger.outputs.build_platform }}-${{ steps.trigger.outputs.build_id || github.run_id }}
+          path: build-metadata.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Build summary
+        run: |
+          {
+            echo "## EAS Build Triggered";
+            echo "- Reason: ${{ inputs.reason || 'manual-dispatch' }}";
+            echo "- Platform: ${{ steps.trigger.outputs.build_platform }}";
+            echo "- Profile: ${{ steps.trigger.outputs.build_profile }}";
+            echo "- Build ID: ${{ steps.trigger.outputs.build_id }}";
+            echo "- Build URL: ${{ steps.trigger.outputs.build_url }}";
+            echo "- Estimated remaining quota: ${{ steps.quota.outputs.quota_remaining }}";
+          } >> "$GITHUB_STEP_SUMMARY"
