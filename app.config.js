@@ -69,17 +69,7 @@ module.exports = {
           RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOADS_TOKEN,
         },
       ],
-      [
-        '@sentry/react-native/expo',
-        {
-          organization: 'skatequest',
-          project: 'skatequest',
-          uploadNativeSymbols: false,
-          autoUploadNativeSymbols: false,
-          uploadSourceMaps: false,
-          autoUploadSourceMaps: false,
-        },
-      ],
+
       'expo-system-ui',
       [
         'expo-camera',
