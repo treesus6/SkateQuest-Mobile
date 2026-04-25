@@ -1,0 +1,7 @@
+[build]
+  publish = "website"
+
+[[redirects]]
+  from = "/privacy"
+  to = "/privacy-policy"
+  status = 301
