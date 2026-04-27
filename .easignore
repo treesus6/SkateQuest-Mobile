@@ -1,0 +1,7 @@
+.claude/
+.agents/
+*.bat
+*.ps1
+scripts/resolve_conflicts.ps1
+node_modules/
+.git/
