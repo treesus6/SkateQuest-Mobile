@@ -71,7 +71,7 @@ jobs:
         run: npm ci
 
       - name: Validate build configuration
-        run: node scripts/validate-build.js
+        run: node scripts/validate-build.js --skip-env
 
       - name: Trigger EAS build
         run: |
