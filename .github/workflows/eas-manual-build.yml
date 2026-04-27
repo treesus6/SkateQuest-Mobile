@@ -6,7 +6,7 @@ on:
       platform:
         description: Platform to build
         required: true
-        default: all
+        default: android
         type: choice
         options:
           - all
