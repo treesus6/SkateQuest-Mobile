@@ -96,9 +96,14 @@ export default function JudgesBoothScreen() {
       const bonusXP = newVoteCount % 5 === 0 ? 50 : 0;
       const totalXP = 10 + bonusXP;
 
-      const { data: profile } = await profilesService.getById(user.id);
-      if (profile) {
-        await profilesService.update(user.id, { xp: (profile.xp || 0) + totalXP });
+      // Use RPC for atomic XP increment to prevent race conditions
+      const { error: xpError } = await profilesService.incrementXp(user.id, totalXP);
+      if (xpError) {
+        // Fallback if RPC not available
+        const { data: profile } = await profilesService.getById(user.id);
+        if (profile) {
+          await profilesService.update(user.id, { xp: (profile.xp || 0) + totalXP });
+        }
       }
 
       setVotesThisSession(newVoteCount);
