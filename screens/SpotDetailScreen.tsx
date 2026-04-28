@@ -23,6 +23,9 @@ import { challengesService } from '../lib/challengesService';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge, SpotComment } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
 import PortalDimensionLogo from '../components/PortalDimensionLogo';
+import KingOfTheHill from '../components/KingOfTheHill';
+import TerritoryControl from '../components/TerritoryControl';
+import GhostClipViewer from '../components/GhostClipViewer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
@@ -312,6 +315,12 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       </Card>
 
       <PortalDimensionLogo skateparkName={spot.name} />
+
+      <KingOfTheHill spotId={spotId} />
+
+      <TerritoryControl spotId={spotId} />
+
+      <GhostClipViewer spotId={spotId} />
 
       <Card className="mx-4">
         <View className="flex-row items-center gap-2 mb-3">
