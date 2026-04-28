@@ -116,10 +116,15 @@ export default function TrickTrackerScreen() {
 
   const incrementAttempts = async (trick: UserTrick) => {
     try {
-      await userTricksService.update(trick.id, {
-        attempts: trick.attempts + 1,
-        updated_at: new Date().toISOString(),
-      });
+      // Use RPC to increment atomically, avoiding race conditions on rapid taps
+      const { error } = await userTricksService.incrementAttempts(trick.id);
+      if (error) {
+        // Fallback to direct update if RPC doesn't exist yet
+        await userTricksService.update(trick.id, {
+          attempts: trick.attempts + 1,
+          updated_at: new Date().toISOString(),
+        });
+      }
       refetch();
     } catch {}
   };
