@@ -46,7 +46,7 @@ const linking = {
 };
 
 const Stack = createNativeStackNavigator();
-const VEXO_API_KEY = '62a73927-b566-4be6-9ae6-0f062705b2f8';
+const VEXO_API_KEY = process.env.EXPO_PUBLIC_VEXO_API_KEY ?? '62a73927-b566-4be6-9ae6-0f062705b2f8';
 
 // Root Navigator that handles auth state
 function RootNavigator() {
