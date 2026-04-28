@@ -198,7 +198,7 @@ export default function WeatherSpotsScreen() {
 
       // 3. Spots
       let query = supabase
-        .from('spots')
+        .from('skate_spots')
         .select('id, name, latitude, longitude, has_covered_area, spot_type, avg_rating')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
