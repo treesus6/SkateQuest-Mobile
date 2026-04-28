@@ -1,151 +1,84 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle, Bug } from 'lucide-react-native';
 import Card from './ui/Card';
 
-interface ChangelogItemProps {
-  version: string;
-  title: string;
-  releaseDate: string;
-  description?: string;
-  features?: string[];
-  bugFixes?: string[];
-  knownIssues?: string[];
-  isCritical?: boolean;
-  expanded?: boolean;
-  onToggle?: () => void;
+interface Props {
+  version: string; title: string; releaseDate: string;
+  description?: string; features?: string[]; bugFixes?: string[];
+  knownIssues?: string[]; isCritical: boolean;
+  expanded: boolean; onToggle: () => void;
 }
 
-export default function ChangelogItem({
-  version,
-  title,
-  releaseDate,
-  description,
-  features = [],
-  bugFixes = [],
-  knownIssues = [],
-  isCritical = false,
-  expanded = false,
-  onToggle,
-}: ChangelogItemProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
 
+export default function ChangelogItem({ version, title, releaseDate, description, features, bugFixes, knownIssues, isCritical, expanded, onToggle }: Props) {
   return (
-    <Card
-      className={isCritical ? 'border-l-4 border-red-500' : ''}
-    >
-      <Pressable onPress={onToggle} className="gap-3">
-        {/* Header */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1">
-            <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-lg font-bold text-gray-900 dark:text-white">
-                v{version}
-              </Text>
+    <Card className={isCritical ? 'border-l-4 border-red-500' : ''}>
+      <TouchableOpacity onPress={onToggle} activeOpacity={0.7}>
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-center gap-2 flex-wrap">
+              <View className="bg-brand-terracotta px-2 py-0.5 rounded-full">
+                <Text className="text-white text-xs font-bold">v{version}</Text>
+              </View>
               {isCritical && (
-                <View className="px-2 py-1 bg-red-100 dark:bg-red-900/30 rounded-full flex-row items-center gap-1">
-                  <AlertTriangle size={12} color="#EF4444" strokeWidth={2} />
-                  <Text className="text-xs font-bold text-red-700 dark:text-red-300">
-                    Critical
-                  </Text>
+                <View className="bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full flex-row items-center gap-1">
+                  <AlertTriangle size={10} color="#EF4444" />
+                  <Text className="text-red-600 text-xs font-bold">Critical</Text>
                 </View>
               )}
             </View>
-            <Text className="text-base font-semibold text-gray-900 dark:text-white">
-              {title}
-            </Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {formatDate(releaseDate)}
-            </Text>
+            <Text className="text-base font-bold text-gray-800 dark:text-gray-100 mt-1">{title}</Text>
+            <Text className="text-xs text-gray-400 mt-0.5">{formatDate(releaseDate)}</Text>
           </View>
-          {onToggle && (
-            <View className="pl-2">
-              {expanded ? (
-                <ChevronUp size={24} color="#d2673d" strokeWidth={2} />
-              ) : (
-                <ChevronDown size={24} color="#d2673d" strokeWidth={2} />
-              )}
+          {expanded ? <ChevronUp color="#9CA3AF" size={20} /> : <ChevronDown color="#9CA3AF" size={20} />}
+        </View>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          {description ? <Text className="text-sm text-gray-600 dark:text-gray-300 mb-3">{description}</Text> : null}
+
+          {features && features.length > 0 && (
+            <View className="mb-3">
+              <View className="flex-row items-center gap-1.5 mb-1.5">
+                <CheckCircle size={14} color="#4CAF50" />
+                <Text className="text-sm font-bold text-gray-700 dark:text-gray-200">New Features</Text>
+              </View>
+              {features.map((f, i) => (
+                <Text key={i} className="text-sm text-gray-600 dark:text-gray-300 ml-5 mb-1">• {f}</Text>
+              ))}
+            </View>
+          )}
+
+          {bugFixes && bugFixes.length > 0 && (
+            <View className="mb-3">
+              <View className="flex-row items-center gap-1.5 mb-1.5">
+                <Bug size={14} color="#2196F3" />
+                <Text className="text-sm font-bold text-gray-700 dark:text-gray-200">Bug Fixes</Text>
+              </View>
+              {bugFixes.map((f, i) => (
+                <Text key={i} className="text-sm text-gray-600 dark:text-gray-300 ml-5 mb-1">• {f}</Text>
+              ))}
+            </View>
+          )}
+
+          {knownIssues && knownIssues.length > 0 && (
+            <View>
+              <View className="flex-row items-center gap-1.5 mb-1.5">
+                <AlertTriangle size={14} color="#FF9800" />
+                <Text className="text-sm font-bold text-gray-700 dark:text-gray-200">Known Issues</Text>
+              </View>
+              {knownIssues.map((f, i) => (
+                <Text key={i} className="text-sm text-gray-600 dark:text-gray-300 ml-5 mb-1">• {f}</Text>
+              ))}
             </View>
           )}
         </View>
-
-        {/* Description (always visible) */}
-        {description && (
-          <Text className="text-sm text-gray-600 dark:text-gray-300">{description}</Text>
-        )}
-
-        {/* Expanded content */}
-        {expanded && (
-          <View className="mt-2 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-            {/* Features */}
-            {features.length > 0 && (
-              <View>
-                <View className="flex-row items-center gap-2 mb-2">
-                  <View className="w-2 h-2 rounded-full bg-green-500" />
-                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                    New Features
-                  </Text>
-                </View>
-                {features.map((feature, idx) => (
-                  <Text
-                    key={idx}
-                    className="text-sm text-gray-700 dark:text-gray-300 ml-4 mb-1"
-                  >
-                    • {feature}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            {/* Bug Fixes */}
-            {bugFixes.length > 0 && (
-              <View>
-                <View className="flex-row items-center gap-2 mb-2">
-                  <View className="w-2 h-2 rounded-full bg-blue-500" />
-                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Bug Fixes
-                  </Text>
-                </View>
-                {bugFixes.map((fix, idx) => (
-                  <Text
-                    key={idx}
-                    className="text-sm text-gray-700 dark:text-gray-300 ml-4 mb-1"
-                  >
-                    • {fix}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            {/* Known Issues */}
-            {knownIssues.length > 0 && (
-              <View>
-                <View className="flex-row items-center gap-2 mb-2">
-                  <View className="w-2 h-2 rounded-full bg-yellow-500" />
-                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Known Issues
-                  </Text>
-                </View>
-                {knownIssues.map((issue, idx) => (
-                  <Text
-                    key={idx}
-                    className="text-sm text-gray-700 dark:text-gray-300 ml-4 mb-1"
-                  >
-                    ⚠️ {issue}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-      </Pressable>
+      )}
     </Card>
   );
 }
