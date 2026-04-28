@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   TouchableOpacity,
   Modal,
@@ -492,27 +493,7 @@ function CreateBattleModal({ visible, onClose, onCreated, crews }: CreateBattleM
               >
                 {trick || 'e.g. Kickflip, 360 Flip...'}
               </Text>
-              {/* Use a simple text prompt — proper TextInput below */}
-            </View>
-            {/* Real input overlay */}
-            <View
-              style={{
-                backgroundColor: '#1a1a1a',
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                marginBottom: 16,
-                marginTop: -64,
-              }}
-            >
-              <Text
-                style={{
-                  color: '#fff',
-                  fontSize: 14,
-                  paddingVertical: 12,
-                }}
-                onPress={() => Alert.alert('Trick', 'Type the trick name')}
-              />
-            </View>
+              </View>
             {/* Simple trick selector chips */}
             <Text style={{ color: '#ccc', fontSize: 13, marginBottom: 8 }}>Quick Pick Trick</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
