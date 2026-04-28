@@ -145,7 +145,7 @@ export default function SpotOfTheDayScreen() {
           spot_id,
           date,
           description,
-          spot:spots(id, name, city, avg_rating)
+          spot:skate_spots(id, name, city, avg_rating)
         `,
         )
         .eq('date', today)
