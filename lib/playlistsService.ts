@@ -8,7 +8,7 @@ export const playlistsService = {
     try {
       const { data, error } = await supabase
         .from('playlists')
-        .select(`*, user:users(id, username, level)`)
+        .select(`*, user:profiles(id, username, level)`)
         .eq('is_public', true)
         .order('created_at', { ascending: false });
       return { data: data as Playlist[] | null, error };
