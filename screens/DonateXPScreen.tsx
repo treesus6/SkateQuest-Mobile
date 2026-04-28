@@ -129,6 +129,7 @@ function ConfirmModal({
             <View className="flex-row justify-between">
               <Text className="text-neutral-400 text-sm">Boards funded</Text>
               <Text className="text-yellow-400 font-bold text-sm">
+                {xpToBoards(xpAmount) >= 0.01 ? xpToBoards(xpAmount).toFixed(2) : '<0.01'} 🛹
               </Text>
             </View>
             <View className="h-px bg-neutral-700 my-1" />
