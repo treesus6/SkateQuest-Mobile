@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Alert,
   SafeAreaView,
   FlatList,
   ActivityIndicator,
@@ -185,8 +186,9 @@ export default function MessagesScreen({ navigation }: any) {
   }, [user?.id, loadConversations]);
 
   const handleCreateConversation = async () => {
-    // Navigate to user selection screen (to be implemented)
-    navigation.navigate('CreateMessage');
+    // TODO: navigate to user search/select screen
+    // For now, show a coming-soon message
+    Alert.alert('Start Conversation', 'Search for a skater to message:\n\nThis feature is coming soon — for now use crew chat or find skaters on the map.', [{ text: 'OK' }]);
   };
 
   if (currentConversation) {
