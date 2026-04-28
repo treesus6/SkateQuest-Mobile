@@ -1,20 +1,11 @@
-name: Build Android APK (No EAS)
+name: Build Android AAB (No EAS)
 
 on:
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'APK or AAB?'
-        required: true
-        default: 'aab'
-        type: choice
-        options:
-          - apk
-          - aab
 
 jobs:
   build:
-    name: Build Android
+    name: Build Android AAB
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -40,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Expo Prebuild (Android)
+      - name: Expo Prebuild
         run: npx expo prebuild --platform android --clean
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
@@ -53,22 +44,7 @@ jobs:
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/skatequest.keystore
 
-      - name: Build APK
-        if: ${{ github.event.inputs.build_type == 'apk' }}
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
-        env:
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
-          ANDROID_KEYSTORE_PATH: skatequest.keystore
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Build AAB
-        if: ${{ github.event.inputs.build_type == 'aab' }}
+      - name: Build Release AAB
         run: |
           cd android
           chmod +x gradlew
@@ -81,21 +57,10 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload APK
-        if: ${{ github.event.inputs.build_type == 'apk' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: skatequest-release-apk
-          path: android/app/build/outputs/apk/release/*.apk
-          retention-days: 14
-          if-no-files-found: error
-
       - name: Upload AAB
-        if: ${{ github.event.inputs.build_type == 'aab' }}
         uses: actions/upload-artifact@v4
         with:
           name: skatequest-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
           if-no-files-found: error
-
