@@ -194,7 +194,7 @@ export default function HiddenGemsScreen() {
       // Fetch spots with check-in count and avg rating
       // Using a join: spots + check_ins aggregate + spot_reviews aggregate
       const { data, error: dbErr } = await supabase
-        .from('spots')
+        .from('skate_spots')
         .select(
           `
           id,
