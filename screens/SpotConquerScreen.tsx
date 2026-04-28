@@ -76,7 +76,7 @@ export default function SpotConquerScreen() {
           user_id,
           trick_name,
           conquered_at,
-          spots ( name ),
+          skate_spots ( name ),
           profiles ( username )
         `
         )
@@ -87,7 +87,7 @@ export default function SpotConquerScreen() {
         const mapped: ConquestSpot[] = data.map((row: any) => ({
           conquest_id: row.id,
           spot_id: row.spot_id,
-          spot_name: row.spots?.name ?? 'Unknown Spot',
+          spot_name: row.skate_spots?.name ?? 'Unknown Spot',
           conquerer_id: row.user_id,
           conquerer_username: row.profiles?.username ?? 'Unknown Skater',
           trick_name: row.trick_name,
