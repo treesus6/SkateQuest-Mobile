@@ -148,8 +148,9 @@ export default function SeasonalPassScreen() {
 
         // Check if reward was already claimed today
         if (prog) {
-          // We'll store in-memory; a real impl would persist in Supabase
-          setClaimedToday(false);
+          const today = new Date().toISOString().split('T')[0];
+          const lastClaimed = prog.last_claimed_date ?? null;
+          setClaimedToday(lastClaimed === today);
         }
       }
     } finally {
@@ -184,15 +185,16 @@ export default function SeasonalPassScreen() {
     };
 
     try {
+      const today = new Date().toISOString().split('T')[0];
       if (progress.id) {
         await supabase
           .from('pass_progress')
-          .update({ completed_milestones: newCompleted })
+          .update({ completed_milestones: newCompleted, last_claimed_date: today })
           .eq('id', progress.id);
       } else {
         const { data } = await supabase
           .from('pass_progress')
-          .insert(updatedProgress)
+          .insert({ ...updatedProgress, last_claimed_date: today })
           .select()
           .single();
         if (data) updatedProgress.id = data.id;
