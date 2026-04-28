@@ -116,6 +116,8 @@ export default function AddSpotScreen() {
         difficulty,
         obstacles,
         added_by: user.id,
+        spot_type: spotType,
+        bust_risk: bustRisk,
       });
       if (error) throw error;
 
