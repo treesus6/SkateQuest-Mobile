@@ -84,3 +84,38 @@ module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
 
   return config;
 };
+
+// Export a separate signing plugin for GitHub Actions builds
+module.exports.withAndroidSigning = function withAndroidSigning(config) {
+  const { withAppBuildGradle } = require('@expo/config-plugins');
+
+  return withAppBuildGradle(config, cfg => {
+    if (cfg.modResults.language !== 'groovy') return cfg;
+
+    const signingConfig = `
+    signingConfigs {
+        release {
+            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }`;
+
+    if (!cfg.modResults.contents.includes('signingConfigs')) {
+      cfg.modResults.contents = cfg.modResults.contents.replace(
+        /^(\s*android\s*\{)/m,
+        `$1\n${signingConfig}`
+      );
+      // Wire release buildType to use the signingConfig
+      cfg.modResults.contents = cfg.modResults.contents.replace(
+        /release\s*\{(\s*)/,
+        `release {\n            signingConfig signingConfigs.release\n            `
+      );
+    }
+    return cfg;
+  });
+};
