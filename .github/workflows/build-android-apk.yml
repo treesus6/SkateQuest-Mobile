@@ -43,6 +43,8 @@ jobs:
       - name: Decode Keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/skatequest.keystore
+          echo "Keystore decoded to android/app/skatequest.keystore"
+          ls -la android/app/skatequest.keystore
 
       - name: Build Release AAB
         run: |
@@ -51,7 +53,9 @@ jobs:
           ./gradlew bundleRelease --no-daemon --stacktrace
         env:
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
           GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
+          # Path is relative to android/app/ since Gradle runs from android/
           ANDROID_KEYSTORE_PATH: skatequest.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -64,3 +68,11 @@ jobs:
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
           if-no-files-found: error
+
+      - name: Upload APK (if present)
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
+          if-no-files-found: ignore
