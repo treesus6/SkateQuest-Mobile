@@ -192,20 +192,23 @@ export default function StreaksScreen() {
 
   /**
    * Build 7-day calendar grid: offsets -6 … 0 (oldest → today).
-   * A day is "active" if last_active_date covers that day, OR if the streak
-   * spans far enough back (approximation — a real impl would store daily logs).
+   * A day is "active" if it falls within the current streak window,
+   * counting back from last_active_date.
    */
   const calendarDays = Array.from({ length: 7 }, (_, i) => {
     const offset = i - 6; // -6 … 0
     const dateStr = offsetDate(offset);
-    // Rough heuristic: within the current streak window
-    const daysAgo = -offset;
-    const active =
-      streak != null &&
-      alive &&
-      daysAgo < streak.current_streak &&
-      streak.last_active_date != null;
     const isCurrentDay = offset === 0;
+
+    // A day is active if the streak was alive and that day is within the streak window
+    let active = false;
+    if (streak != null && streak.last_active_date != null && streak.current_streak > 0) {
+      const lastActiveMs = new Date(streak.last_active_date).setHours(0, 0, 0, 0);
+      const dayMs = new Date(dateStr).setHours(0, 0, 0, 0);
+      const streakStartMs = lastActiveMs - (streak.current_streak - 1) * 86400000;
+      active = dayMs >= streakStartMs && dayMs <= lastActiveMs;
+    }
+
     return { dateStr, active, isCurrentDay, label: weekdayLabel(offset) };
   });
 
