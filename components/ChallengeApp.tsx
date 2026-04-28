@@ -8,7 +8,7 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
-import { Home, Trophy, MapPin, Users, User, Calendar, Bell, Award, Flame, MessageCircle, Crown, Shield, Gift, BookOpen } from 'lucide-react-native';
+import { Home, Trophy, MapPin, Users, User } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
@@ -165,21 +165,7 @@ function Tabs() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Home color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ChallengesTab"
-        component={ChallengesStack}
-        options={{
-          title: 'Challenges',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Trophy color={color} size={size} />
-            </AnimatedTabIcon>
+            <AnimatedTabIcon focused={focused}><Home color={color} size={size} /></AnimatedTabIcon>
           ),
         }}
       />
@@ -189,9 +175,17 @@ function Tabs() {
         options={{
           title: 'Map',
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <MapPin color={color} size={size} />
-            </AnimatedTabIcon>
+            <AnimatedTabIcon focused={focused}><MapPin color={color} size={size} /></AnimatedTabIcon>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ChallengesTab"
+        component={ChallengesStack}
+        options={{
+          title: 'Challenges',
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon focused={focused}><Trophy color={color} size={size} /></AnimatedTabIcon>
           ),
         }}
       />
@@ -201,9 +195,7 @@ function Tabs() {
         options={{
           title: 'Crew',
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Users color={color} size={size} />
-            </AnimatedTabIcon>
+            <AnimatedTabIcon focused={focused}><Users color={color} size={size} /></AnimatedTabIcon>
           ),
         }}
       />
@@ -213,129 +205,7 @@ function Tabs() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <User color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="DailyTab"
-        component={DailyQuestsScreen}
-        options={{
-          title: 'Daily',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Calendar color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="NotificationsTab"
-        component={NotificationsScreen}
-        options={{
-          title: 'Notifications',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Bell color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="AchievementsTab"
-        component={AchievementsScreen}
-        options={{
-          title: 'Achievements',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Award color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="SeasonalTab"
-        component={SeasonalEventsScreen}
-        options={{
-          title: 'Seasonal',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Flame color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="MessagesTab"
-        component={MessagesScreen}
-        options={{
-          title: 'Messages',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <MessageCircle color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="SpotClaimsTab"
-        component={SpotClaimsScreen}
-        options={{
-          title: 'King',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Crown color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ModerationTab"
-        component={ModerationQueueScreen}
-        options={{
-          title: 'Mod',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Shield color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ReferralTab"
-        component={ReferralScreen}
-        options={{
-          title: 'Refer',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Gift color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="MentorshipTab"
-        component={MentorshipListScreen}
-        options={{
-          title: 'Mentor',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <Users color={color} size={size} />
-            </AnimatedTabIcon>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ChangelogTab"
-        component={ChangelogScreen}
-        options={{
-          title: 'Updates',
-          tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon focused={focused}>
-              <BookOpen color={color} size={size} />
-            </AnimatedTabIcon>
+            <AnimatedTabIcon focused={focused}><User color={color} size={size} /></AnimatedTabIcon>
           ),
         }}
       />
