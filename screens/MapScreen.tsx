@@ -40,6 +40,7 @@ import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
+import MapFilters from '../components/MapFilters';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '');
@@ -99,6 +100,8 @@ export default function MapScreen() {
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [showDirections, setShowDirections] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({ park: true, street: true, diy: true, quest: true, shop: true });
 
   useEffect(() => {
     requestLocationPermission();
@@ -279,6 +282,20 @@ export default function MapScreen() {
       </Mapbox.MapView>
 
       <MapStyleSelector currentStyle={mapStyle} onStyleChange={setMapStyle} />
+
+      <TouchableOpacity
+        className="absolute top-[110px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg"
+        onPress={() => setShowFilters(true)}
+      >
+        <Grid3x3 color="#d2673d" size={22} />
+      </TouchableOpacity>
+
+      <MapFilters
+        visible={showFilters}
+        onClose={() => setShowFilters(false)}
+        filters={activeFilters}
+        onFilterChange={setActiveFilters}
+      />
 
       {userLocation && (
         <TouchableOpacity
