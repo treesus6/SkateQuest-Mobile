@@ -8,6 +8,7 @@ export type RootStackParamList = {
   AddSpot: { latitude?: number; longitude?: number };
   Leaderboard: undefined;
   Shops: undefined;
+  Community: undefined;
   Crews: undefined;
   Events: undefined;
   Feed: undefined;
