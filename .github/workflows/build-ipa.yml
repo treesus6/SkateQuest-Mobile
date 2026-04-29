@@ -1,9 +1,0 @@
-name: Build IPA (iOS - DISABLED)
-# iOS builds disabled until Apple Developer account is set up
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "iOS builds disabled. Set up Apple Developer account first."
