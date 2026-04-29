@@ -1,8 +1,0 @@
-[build]
-  publish = "web"
-  command = ""
-
-[[redirects]]
-  from = "/privacy"
-  to = "/privacy-policy"
-  status = 301
