@@ -36,6 +36,7 @@ import {
   UserCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
+import { sponsorsService, MapSponsor, SPONSOR_CATEGORY_EMOJI } from '../lib/sponsorsService';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import MapStyleSelector from '../components/MapStyleSelector';
@@ -101,6 +102,8 @@ export default function MapScreen() {
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [sponsors, setSponsors] = useState<MapSponsor[]>([]);
+  const [selectedSponsor, setSelectedSponsor] = useState<MapSponsor | null>(null);
   const [activeFilters, setActiveFilters] = useState({ park: true, street: true, diy: true, quest: true, shop: true });
 
   useEffect(() => {
