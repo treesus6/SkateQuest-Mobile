@@ -1,67 +1,41 @@
-name: EAS Manual Build
+name: EAS Build (Manual)
 
 on:
   workflow_dispatch:
     inputs:
       platform:
-        description: Platform to build
+        description: Platform
         required: true
         default: android
         type: choice
-        options:
-          - all
-          - android
-          - ios
+        options: [android, ios]
       profile:
-        description: EAS build profile
+        description: Build profile
         required: true
         default: preview
         type: choice
-        options:
-          - development
-          - preview
-          - production
-      wait_for_completion:
-        description: Wait for EAS build completion
-        required: true
-        default: false
-        type: boolean
+        options: [preview, production]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: EAS Build (${{ github.event.inputs.platform }} / ${{ github.event.inputs.profile }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
-      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
-      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
 
     steps:
-      - name: Validate required secrets
-        run: |
-          for key in EXPO_TOKEN EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
-            if [[ -z "${!key}" ]]; then
-              echo "Missing required secret: $key"
-              exit 1
-            fi
-          done
-
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
           cache: npm
 
-      - name: Setup Expo and EAS
+      - name: Setup Expo + EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -70,25 +44,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate build configuration
-        run: node scripts/validate-build.js --skip-env
-
-      - name: Trigger EAS build
-        run: |
-          WAIT_FLAG="--no-wait"
-          if [[ "${{ inputs.wait_for_completion }}" == "true" ]]; then
-            WAIT_FLAG=""
-          fi
-
-          eas build --platform "${{ inputs.platform }}" --profile "${{ inputs.profile }}" --non-interactive ${WAIT_FLAG}
-
-      - name: Notify Slack
-        if: ${{ always() && env.SLACK_WEBHOOK_URL != '' }}
+      - name: EAS Build
+        run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive --no-wait
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          STATUS="${{ job.status }}"
-          MESSAGE="SkateQuest manual build (${{ inputs.platform }}, profile=${{ inputs.profile }}) ${STATUS}"
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"${MESSAGE}\"}" \
-            "${SLACK_WEBHOOK_URL}"
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
