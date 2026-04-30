@@ -36,7 +36,7 @@ import {
   UserCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
-import { sponsorsService, MapSponsor, SPONSOR_CATEGORY_EMOJI } from '../lib/sponsorsService';
+import { sceneService, MapSponsor, CATEGORY_EMOJI } from '../lib/sceneService';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import MapStyleSelector from '../components/MapStyleSelector';
