@@ -14,7 +14,7 @@ import AnimatedTabIcon from './ui/AnimatedTabIcon';
 import { Haptics } from '../lib/haptics';
 
 import HomeScreen from '../screens/HomeScreen';
-import SponsorsScreen from '../screens/SponsorsScreen';
+import SceneScreen from '../screens/SceneScreen';
 import CrewScreen from '../screens/CrewScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import DailyQuestsScreen from '../screens/DailyQuestsScreen';
