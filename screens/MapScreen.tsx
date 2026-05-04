@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
@@ -34,11 +35,13 @@ import {
   Award,
   Swords,
   UserCheck,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
-import { sceneService, MapSponsor, CATEGORY_EMOJI } from '../lib/sceneService';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
@@ -50,6 +53,26 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const INITIAL_COORDINATES = [-122.4324, 37.78825];
 const SEARCH_RADIUS_KM = 50;
+const SAVED_SPOTS_KEY = 'saved_spot_ids';
+
+const CONDITION_OPTIONS: Array<{ key: string; emoji: string; label: string }> = [
+  { key: 'dry', emoji: '🌞', label: 'Dry' },
+  { key: 'wet', emoji: '🌧', label: 'Wet' },
+  { key: 'crowded', emoji: '👥', label: 'Busy' },
+  { key: 'empty', emoji: '🏄', label: 'Empty' },
+  { key: 'cops', emoji: '🚨', label: 'Cops' },
+  { key: 'under_construction', emoji: '🚧', label: 'WIP' },
+];
+
+const CONDITION_LABELS: Record<string, string> = {
+  dry: '🌞 Dry',
+  wet: '🌧 Wet',
+  crowded: '👥 Busy',
+  empty: '🏄 Empty',
+  cops: '🚨 Cops',
+  clear: '✅ Clear',
+  under_construction: '🚧 WIP',
+};
 
 const FEATURES = [
   // Core
@@ -89,6 +112,7 @@ const FEATURES = [
 
 export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuthStore();
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapRef = useRef<Mapbox.MapView>(null);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,13 +126,44 @@ export default function MapScreen() {
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [sponsors, setSponsors] = useState<MapSponsor[]>([]);
-  const [selectedSponsor, setSelectedSponsor] = useState<MapSponsor | null>(null);
   const [activeFilters, setActiveFilters] = useState({ park: true, street: true, diy: true, quest: true, shop: true });
+
+  // Offline save
+  const [savedSpotIds, setSavedSpotIds] = useState<Set<string>>(new Set());
+
+  // Spot conditions
+  const [spotCondition, setSpotCondition] = useState<string | null>(null);
+  const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
     requestLocationPermission();
+    AsyncStorage.getItem(SAVED_SPOTS_KEY).then((raw: string | null) => {
+      if (raw) {
+        try { setSavedSpotIds(new Set(JSON.parse(raw))); } catch {}
+      }
+    });
   }, []);
+
+  // Fetch the latest condition report whenever a spot is selected
+  useEffect(() => {
+    if (!selectedSpot) {
+      setSpotCondition(null);
+      return;
+    }
+    let cancelled = false;
+    spotsService.getById(selectedSpot.id).then(({ data }) => {
+      if (cancelled) return;
+      const conditions = (data as any)?.spot_conditions;
+      if (conditions?.length > 0) {
+        const cond = conditions[0];
+        const notExpired = !cond.expires_at || new Date(cond.expires_at) > new Date();
+        setSpotCondition(notExpired ? cond.condition : null);
+      } else {
+        setSpotCondition(null);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedSpot?.id]);
 
   const requestLocationPermission = async () => {
     try {
@@ -133,8 +188,8 @@ export default function MapScreen() {
 
   const loadSpots = async (lat: number, lng: number) => {
     const cacheKey = `spots_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
-    const CACHE_TTL = 60 * 60 * 1000; // 1 hour fresh
-    const STALE_WINDOW = 23 * 60 * 60 * 1000; // serve stale for 23 more hours offline
+    const CACHE_TTL = 60 * 60 * 1000;
+    const STALE_WINDOW = 23 * 60 * 60 * 1000;
 
     const { isConnected } = useNetworkStore.getState();
 
@@ -147,12 +202,10 @@ export default function MapScreen() {
 
       const { data, error } = await spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000);
       if (error) {
-        // Network error — fall back to cache
         const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
         if (cached) {
           setSpots(cached.data);
         }
-        // Don't call getAll() — 27k parks would OOM the device
       } else {
         const spotsData = (data || []) as SkateSpot[];
         setSpots(spotsData);
@@ -191,6 +244,30 @@ export default function MapScreen() {
     }
   };
 
+  const toggleSave = async (spot: SkateSpot) => {
+    const next = new Set(savedSpotIds);
+    if (next.has(spot.id)) {
+      next.delete(spot.id);
+    } else {
+      next.add(spot.id);
+    }
+    setSavedSpotIds(next);
+    await AsyncStorage.setItem(SAVED_SPOTS_KEY, JSON.stringify(Array.from(next)));
+  };
+
+  const reportCondition = async (condition: string) => {
+    if (!user || !selectedSpot || reportingCondition) return;
+    setReportingCondition(true);
+    try {
+      await spotsService.reportCondition(selectedSpot.id, user.id, condition);
+      setSpotCondition(condition);
+    } catch {
+      // condition reporting is best-effort; silently swallow
+    } finally {
+      setReportingCondition(false);
+    }
+  };
+
   if (loading) {
     return (
       <View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center">
@@ -199,6 +276,8 @@ export default function MapScreen() {
       </View>
     );
   }
+
+  const savedIdsArray = Array.from(savedSpotIds);
 
   return (
     <View className="flex-1 bg-brand-beige dark:bg-gray-900">
@@ -234,10 +313,10 @@ export default function MapScreen() {
               },
             })),
           }}
-          onPress={event => {
+          onPress={(event: any) => {
             const f = event.features[0];
             if (f?.properties && !f.properties.cluster) {
-              const s = spots.find(sp => sp.id === f.properties!.spotId);
+              const s = spots.find((sp: SkateSpot) => sp.id === f.properties!.spotId);
               if (s) setSelectedSpot(s);
             }
           }}
@@ -261,12 +340,24 @@ export default function MapScreen() {
               textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
             }}
           />
+          {/* Regular unclustered spots */}
           <Mapbox.CircleLayer
             id="unclustered-point"
             filter={['!', ['has', 'point_count']]}
             style={{
               circleColor: '#d2673d',
               circleRadius: 8,
+              circleStrokeWidth: 2,
+              circleStrokeColor: '#ffffff',
+            }}
+          />
+          {/* Saved spots — gold ring rendered on top */}
+          <Mapbox.CircleLayer
+            id="saved-points"
+            filter={['in', ['get', 'spotId'], ['literal', savedIdsArray.length > 0 ? savedIdsArray : ['']] as any]}
+            style={{
+              circleColor: '#FFD700',
+              circleRadius: 11,
               circleStrokeWidth: 2,
               circleStrokeColor: '#ffffff',
             }}
@@ -313,21 +404,81 @@ export default function MapScreen() {
         <Text className="text-white font-bold text-sm">{spots.length} spots nearby</Text>
       </View>
 
+      {savedSpotIds.size > 0 && (
+        <View className="absolute top-[90px] left-5 bg-yellow-500 px-3 py-1.5 rounded-full shadow">
+          <Text className="text-white font-bold text-xs">⭐ {savedSpotIds.size} saved</Text>
+        </View>
+      )}
+
+      {/* Spot info panel */}
       {selectedSpot && !showDirections && (
         <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
-          <View className="flex-row justify-between items-start mb-2.5">
-            <View className="flex-1">
-              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">
+          {/* Header row */}
+          <View className="flex-row justify-between items-start mb-1">
+            <View className="flex-1 mr-2">
+              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-0.5">
                 {selectedSpot.name}
               </Text>
-              <Text className="text-sm text-gray-500 dark:text-gray-400">
-                Difficulty: {selectedSpot.difficulty || 'Unknown'}
-              </Text>
+              <View className="flex-row items-center gap-2 flex-wrap">
+                <Text className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedSpot.difficulty || 'Unknown'}
+                </Text>
+                {spotCondition && (
+                  <View className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                    <Text className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                      {CONDITION_LABELS[spotCondition] ?? spotCondition}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
-            <TouchableOpacity className="p-1" onPress={() => setSelectedSpot(null)}>
-              <Text className="text-xl text-gray-500">✕</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => toggleSave(selectedSpot)}
+                accessibilityLabel={savedSpotIds.has(selectedSpot.id) ? 'Unsave spot' : 'Save spot'}
+                accessibilityRole="button"
+              >
+                {savedSpotIds.has(selectedSpot.id)
+                  ? <BookmarkCheck color="#d2673d" size={22} />
+                  : <Bookmark color="#9CA3AF" size={22} />
+                }
+              </TouchableOpacity>
+              <TouchableOpacity className="p-1" onPress={() => setSelectedSpot(null)}>
+                <Text className="text-xl text-gray-500">✕</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {/* Quick condition report */}
+          <View className="mb-3">
+            <Text className="text-xs text-gray-400 mb-1.5 font-medium">Report conditions:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-2">
+                {CONDITION_OPTIONS.map(opt => {
+                  const isActive = spotCondition === opt.key;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      onPress={() => reportCondition(opt.key)}
+                      disabled={reportingCondition}
+                      className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full border ${
+                        isActive
+                          ? 'bg-brand-terracotta border-brand-terracotta'
+                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      <Text className="text-sm">{opt.emoji}</Text>
+                      <Text className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Action buttons */}
           <View className="flex-row gap-2.5">
             <TouchableOpacity
               className="flex-1 bg-brand-terracotta p-3 rounded-lg items-center flex-row justify-center gap-1.5"

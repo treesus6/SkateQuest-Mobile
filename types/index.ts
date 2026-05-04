@@ -34,10 +34,10 @@ export type RootStackParamList = {
   HiddenGems: undefined;
   SpotOfTheDay: undefined;
   ClipOfWeek: undefined;
-  TrickTutorials: undefined;
+  TrickTutorials: { initialSearch?: string } | undefined;
   DonateXP: undefined;
   SponsorLeaderboard: undefined;
-  Sessions: undefined;
+  Sessions: { spotId?: string; spotName?: string; autoCreate?: boolean } | undefined;
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;

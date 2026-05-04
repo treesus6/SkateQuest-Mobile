@@ -9,8 +9,10 @@ import {
   Alert,
 } from 'react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { ChevronLeft, MapPin, Zap, Clock, Users } from 'lucide-react-native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
+import { RootStackParamList } from '../types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,7 +67,7 @@ const XP_PER_CHECKIN = 25
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function CheckInScreen() {
-  const navigation = useNavigation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>()
   const { spotId, spotName, latitude, longitude } = route.params
 
@@ -75,6 +77,7 @@ export default function CheckInScreen() {
   const [checkingIn, setCheckingIn] = useState(false)
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
   const [justEarnedXP, setJustEarnedXP] = useState(false)
+  const [showSessionPrompt, setShowSessionPrompt] = useState(false)
   const [_currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const fetchCheckIns = useCallback(async () => {
@@ -101,12 +104,11 @@ export default function CheckInScreen() {
       const records = (data as CheckInRecord[]) ?? []
       setAllCheckIns(records)
 
-      // Check if user already checked in today
       if (uid) {
         const todayStart = new Date()
         todayStart.setHours(0, 0, 0, 0)
         const checkedToday = records.some(
-          (c) => c.user_id === uid && new Date(c.created_at) >= todayStart
+          (c: CheckInRecord) => c.user_id === uid && new Date(c.created_at) >= todayStart
         )
         setAlreadyCheckedIn(checkedToday)
       }
@@ -133,7 +135,6 @@ export default function CheckInScreen() {
         return
       }
 
-      // Insert check-in
       const { error: insertError } = await supabase.from('check_ins').insert({
         spot_id: spotId,
         user_id: user.id,
@@ -143,7 +144,6 @@ export default function CheckInScreen() {
       })
       if (insertError) throw insertError
 
-      // Update user XP (increment by XP_PER_CHECKIN using RPC or direct update)
       await supabase.rpc('increment_user_xp', {
         uid: user.id,
         amount: XP_PER_CHECKIN,
@@ -151,6 +151,7 @@ export default function CheckInScreen() {
 
       setAlreadyCheckedIn(true)
       setJustEarnedXP(true)
+      setShowSessionPrompt(true)
       fetchCheckIns()
 
       setTimeout(() => setJustEarnedXP(false), 4000)
@@ -162,8 +163,8 @@ export default function CheckInScreen() {
   }
 
   const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-  const hereNow = allCheckIns.filter((c) => c.created_at >= threeHoursAgo)
-  const recentHistory = allCheckIns.filter((c) => c.created_at < threeHoursAgo)
+  const hereNow = allCheckIns.filter((c: CheckInRecord) => c.created_at >= threeHoursAgo)
+  const recentHistory = allCheckIns.filter((c: CheckInRecord) => c.created_at < threeHoursAgo)
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
@@ -199,7 +200,7 @@ export default function CheckInScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-          {/* XP earned badge (shows after successful check-in) */}
+          {/* XP earned badge */}
           {justEarnedXP && (
             <View
               style={{
@@ -211,7 +212,7 @@ export default function CheckInScreen() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
-                marginBottom: 20,
+                marginBottom: 16,
               }}
             >
               <Zap size={22} color="#fff" />
@@ -221,14 +222,71 @@ export default function CheckInScreen() {
             </View>
           )}
 
+          {/* Session suggestion — appears after successful check-in */}
+          {showSessionPrompt && (
+            <View
+              style={{
+                backgroundColor: '#6B4CE615',
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: '#6B4CE640',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <CalendarDays size={18} color="#6B4CE6" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
+                  Anyone else skating here?
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#6B4CE6',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => navigation.navigate('Sessions', { spotName, autoCreate: true })}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
+                    Start a Session
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: '#6B4CE6',
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => navigation.navigate('Sessions', { spotName })}
+                >
+                  <Text style={{ color: '#6B4CE6', fontWeight: '700', fontSize: 13 }}>
+                    See Sessions
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setShowSessionPrompt(false)}
+                >
+                  <Text style={{ color: '#666', fontSize: 13 }}>Skip</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Big check-in button */}
-          <View
-            style={{
-              alignItems: 'center',
-              marginBottom: 32,
-              marginTop: 12,
-            }}
-          >
+          <View style={{ alignItems: 'center', marginBottom: 32, marginTop: 12 }}>
             <TouchableOpacity
               onPress={handleCheckIn}
               disabled={alreadyCheckedIn || checkingIn}
@@ -241,7 +299,6 @@ export default function CheckInScreen() {
                 justifyContent: 'center',
                 borderWidth: alreadyCheckedIn ? 2 : 0,
                 borderColor: '#333',
-                // subtle shadow via elevation
                 elevation: alreadyCheckedIn ? 0 : 8,
               }}
             >
@@ -270,14 +327,7 @@ export default function CheckInScreen() {
             </TouchableOpacity>
 
             {!alreadyCheckedIn && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginTop: 14,
-                }}
-              >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}>
                 <Zap size={16} color="#FF6B35" />
                 <Text style={{ color: '#FF6B35', fontSize: 14, fontWeight: '700' }}>
                   +{XP_PER_CHECKIN} XP
@@ -294,21 +344,9 @@ export default function CheckInScreen() {
 
           {/* Who's here now */}
           <View
-            style={{
-              backgroundColor: '#1a1a1a',
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 16,
-            }}
+            style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16, marginBottom: 16 }}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 14,
-              }}
-            >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Users size={18} color="#FF6B35" />
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
                 Who's Here Now
@@ -332,7 +370,7 @@ export default function CheckInScreen() {
                 Nobody checked in recently — be the first!
               </Text>
             ) : (
-              hereNow.map((c) => (
+              hereNow.map((c: CheckInRecord) => (
                 <View
                   key={c.id}
                   style={{
@@ -346,12 +384,7 @@ export default function CheckInScreen() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: '#4CAF50',
-                      }}
+                      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50' }}
                     />
                     <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
                       {c.profiles?.username ?? 'Skater'}
@@ -363,22 +396,9 @@ export default function CheckInScreen() {
             )}
           </View>
 
-          {/* Recent check-ins (past 7 days) */}
-          <View
-            style={{
-              backgroundColor: '#1a1a1a',
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 14,
-              }}
-            >
+          {/* Recent check-ins */}
+          <View style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Clock size={18} color="#666" />
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
                 Recent Check-ins
@@ -391,7 +411,7 @@ export default function CheckInScreen() {
                 No recent check-ins at this spot.
               </Text>
             ) : (
-              recentHistory.slice(0, 20).map((c) => (
+              recentHistory.slice(0, 20).map((c: CheckInRecord) => (
                 <View
                   key={c.id}
                   style={{
