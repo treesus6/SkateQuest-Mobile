@@ -7,189 +7,201 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#05070B; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#F3F4F6; min-height:100vh; }
-.container { max-width:580px; margin:0 auto; padding:40px 20px; }
+.wrap { max-width:600px; margin:0 auto; padding:40px 20px; }
 .brand { color:#d2673d; font-weight:900; letter-spacing:3px; font-size:0.9rem; margin-bottom:24px; display:block; }
-h1 { font-size:2rem; font-weight:900; margin-bottom:6px; }
+h1 { font-size:2rem; font-weight:900; margin-bottom:8px; }
 .sub { color:#6B7280; font-size:0.95rem; margin-bottom:32px; line-height:1.6; }
-
-.card { background:#111827; border:1px solid #1F2937; border-radius:16px; padding:28px; }
-
-label { display:block; color:#9CA3AF; font-size:0.85rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; margin-top:20px; }
+.form-card { background:#111827; border-radius:16px; padding:28px; border:1px solid #1F2937; }
+label { display:block; color:#9CA3AF; font-size:0.85rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; margin-top:18px; }
 label:first-of-type { margin-top:0; }
-
-input, textarea, select { 
-  width:100%; background:#0a0e1a; color:#F3F4F6; 
-  border:1px solid #1F2937; border-radius:10px; 
-  padding:12px 14px; font-size:0.95rem; font-family:inherit;
-  outline:none; transition:border-color 0.2s;
-}
+input, textarea, select { width:100%; background:#0a0e1a; border:1px solid #1F2937; color:#F3F4F6; padding:12px 14px; border-radius:10px; font-size:0.95rem; font-family:inherit; outline:none; transition:border-color 0.2s; }
 input:focus, textarea:focus, select:focus { border-color:#d2673d; }
-textarea { min-height:120px; resize:vertical; }
-select option { background:#0a0e1a; }
-
-.rating-row { display:flex; gap:8px; margin-top:4px; }
-.rating-btn {
-  flex:1; padding:10px 4px; background:#0a0e1a; 
-  border:1px solid #1F2937; border-radius:8px;
-  color:#6B7280; font-size:0.9rem; font-weight:700;
-  cursor:pointer; text-align:center; transition:all 0.15s;
-}
-.rating-btn:hover { border-color:#d2673d; color:#d2673d; }
-.rating-btn.selected { background:rgba(210,103,61,0.2); border-color:#d2673d; color:#d2673d; }
-
-.checkbox-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
-.checkbox-row input[type=checkbox] { width:18px; height:18px; accent-color:#d2673d; flex-shrink:0; }
-.checkbox-row label { margin:0; font-size:0.9rem; text-transform:none; letter-spacing:0; color:#9CA3AF; font-weight:400; }
-
-.submit-btn {
-  width:100%; background:#d2673d; color:white;
-  border:none; border-radius:12px; padding:16px;
-  font-size:1rem; font-weight:700; letter-spacing:1px;
-  cursor:pointer; margin-top:24px; transition:opacity 0.2s;
-}
+select option { background:#111827; }
+textarea { resize:vertical; min-height:120px; }
+.stars { display:flex; gap:8px; margin-bottom:4px; }
+.star { font-size:28px; cursor:pointer; opacity:0.3; transition:opacity 0.15s; }
+.star.on { opacity:1; }
+.rating-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.rating-group { background:#0a0e1a; border-radius:10px; padding:14px; }
+.rating-label { font-size:0.8rem; color:#6B7280; margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+input[type="hidden"] { display:none; }
+.submit-btn { width:100%; background:#d2673d; color:white; border:none; padding:16px; border-radius:12px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:24px; letter-spacing:1px; transition:opacity 0.2s; }
 .submit-btn:hover { opacity:0.9; }
 .submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
-
-.success { 
-  display:none; text-align:center; padding:40px 20px;
-  background:#111827; border:1px solid #166534; border-radius:16px;
-}
-.success-icon { font-size:56px; margin-bottom:16px; }
-.success h2 { color:#4ade80; margin-bottom:8px; }
-.success p { color:#6B7280; font-size:0.9rem; line-height:1.6; }
-
-.nav { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; position:sticky; top:0; background:rgba(5,7,11,0.95); backdrop-filter:blur(10px); border-bottom:1px solid #1F2937; margin:-40px -20px 32px; }
-.nav-logo { color:#d2673d; font-weight:900; letter-spacing:2px; font-size:1rem; text-decoration:none; }
-.nav-back { color:#6B7280; font-size:0.85rem; text-decoration:none; }
-.nav-back:hover { color:#d2673d; }
+.success { display:none; text-align:center; padding:40px 20px; }
+.success-icon { font-size:64px; margin-bottom:16px; }
+.success h2 { font-size:1.5rem; font-weight:900; color:#4ade80; margin-bottom:8px; }
+.success p { color:#6B7280; }
+.back-link { display:inline-block; color:#d2673d; text-decoration:none; font-size:0.9rem; margin-bottom:24px; }
+.back-link:hover { text-decoration:underline; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { background:#0a0e1a; border:1px solid #1F2937; border-radius:20px; padding:7px 14px; font-size:0.85rem; color:#9CA3AF; cursor:pointer; transition:all 0.15s; user-select:none; }
+.chip.selected { background:rgba(210,103,61,0.2); border-color:#d2673d; color:#d2673d; }
 </style>
 </head>
 <body>
-<div class="container">
-  <nav class="nav">
-    <a href="/" class="nav-logo">SKATEQUEST</a>
-    <a href="/" class="nav-back">← Back</a>
-  </nav>
+<div class="wrap">
+  <span class="brand">🛹 SKATEQUEST</span>
+  <a href="/" class="back-link">← Back to home</a>
+  <h1>Beta Feedback</h1>
+  <p class="sub">Help us build the best skateboarding app ever. Tell us what you love, what's broken, and what we should add next.</p>
 
-  <span class="brand">BETA FEEDBACK</span>
-  <h1>Tell Us What You Think</h1>
-  <p class="sub">Your feedback shapes the app. Be brutal — we want to know exactly what sucks and what rips.</p>
+  <div class="form-card">
+    <form name="beta-feedback" netlify netlify-honeypot="bot-field" id="feedbackForm">
+      <input type="hidden" name="form-name" value="beta-feedback" />
+      <p style="display:none"><input name="bot-field" /></p>
 
-  <div id="form-wrap">
-    <div class="card">
-      <form name="beta-feedback" method="POST" netlify netlify-honeypot="bot-field" onsubmit="handleSubmit(event)">
-        <input type="hidden" name="form-name" value="beta-feedback" />
-        <p style="display:none"><input name="bot-field" /></p>
+      <label>Your name</label>
+      <input type="text" name="name" placeholder="What do people call you?" required />
 
-        <label for="name">Your Name</label>
-        <input type="text" id="name" name="name" placeholder="What do people call you?" required />
+      <label>Email (so we can follow up)</label>
+      <input type="email" name="email" placeholder="your@email.com" />
 
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="So we can follow up if needed" required />
+      <label>Overall rating</label>
+      <div class="stars" id="overallStars">
+        <span class="star" data-val="1">⭐</span>
+        <span class="star" data-val="2">⭐</span>
+        <span class="star" data-val="3">⭐</span>
+        <span class="star" data-val="4">⭐</span>
+        <span class="star" data-val="5">⭐</span>
+      </div>
+      <input type="hidden" name="overall_rating" id="overallRating" value="" />
 
-        <label>Overall Rating</label>
-        <div class="rating-row" id="rating-row">
-          <div class="rating-btn" onclick="setRating(1)">1<br><span style="font-size:0.7rem;font-weight:400">Trash</span></div>
-          <div class="rating-btn" onclick="setRating(2)">2<br><span style="font-size:0.7rem;font-weight:400">Meh</span></div>
-          <div class="rating-btn" onclick="setRating(3)">3<br><span style="font-size:0.7rem;font-weight:400">OK</span></div>
-          <div class="rating-btn" onclick="setRating(4)">4<br><span style="font-size:0.7rem;font-weight:400">Good</span></div>
-          <div class="rating-btn" onclick="setRating(5)">5<br><span style="font-size:0.7rem;font-weight:400">Rips 🔥</span></div>
-        </div>
-        <input type="hidden" id="rating" name="rating" value="" required />
-
-        <label for="feature">What feature are you reviewing?</label>
-        <select id="feature" name="feature" required>
-          <option value="" disabled selected>Pick a feature...</option>
-          <option value="map">🗺 Skatepark Map</option>
-          <option value="xp">⚡ XP & Leveling</option>
-          <option value="crew">👥 Crew Battles</option>
-          <option value="challenges">🎯 Challenges</option>
-          <option value="trick-coach">🤖 Trick Coach</option>
-          <option value="skatetv">📺 SkateTV</option>
-          <option value="bounty">💰 Bounty Board</option>
-          <option value="forecast">⛅ Skate Forecast</option>
-          <option value="shops">🏪 Skate Shops</option>
-          <option value="hidden-gems">💎 Hidden Gems</option>
-          <option value="passport">🛹 Skate Passport</option>
-          <option value="overall">📱 Overall App</option>
-          <option value="bugs">🐛 Bug Report</option>
-          <option value="other">Other</option>
-        </select>
-
-        <label for="what_works">What's working well?</label>
-        <textarea id="what_works" name="what_works" placeholder="What do you actually like? What feels right?"></textarea>
-
-        <label for="what_sucks">What needs to be fixed?</label>
-        <textarea id="what_sucks" name="what_sucks" placeholder="Don't hold back — what's broken, confusing, or missing?" required></textarea>
-
-        <label for="missing">What feature are you missing most?</label>
-        <textarea id="missing" name="missing" placeholder="What would make you use this app every day?" style="min-height:80px"></textarea>
-
-        <label for="device">Your Device</label>
-        <input type="text" id="device" name="device" placeholder="e.g. Samsung Galaxy S23, Pixel 7" />
-
-        <div style="margin-top:20px">
-          <div class="checkbox-row">
-            <input type="checkbox" id="contact_ok" name="contact_ok" value="yes" />
-            <label for="contact_ok">You can contact me for more details</label>
+      <label>Rate specific features</label>
+      <div class="rating-row">
+        <div class="rating-group">
+          <div class="rating-label">🗺 Skatepark Map</div>
+          <div class="stars" id="mapStars" data-target="map_rating">
+            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
           </div>
-          <div class="checkbox-row" style="margin-top:10px">
-            <input type="checkbox" id="would_recommend" name="would_recommend" value="yes" />
-            <label for="would_recommend">I would recommend SkateQuest to other skaters</label>
-          </div>
+          <input type="hidden" name="map_rating" id="map_rating" />
         </div>
+        <div class="rating-group">
+          <div class="rating-label">⚡ XP & Challenges</div>
+          <div class="stars" id="xpStars" data-target="xp_rating">
+            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
+          </div>
+          <input type="hidden" name="xp_rating" id="xp_rating" />
+        </div>
+        <div class="rating-group">
+          <div class="rating-label">👥 Crews</div>
+          <div class="stars" id="crewStars" data-target="crew_rating">
+            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
+          </div>
+          <input type="hidden" name="crew_rating" id="crew_rating" />
+        </div>
+        <div class="rating-group">
+          <div class="rating-label">🤖 Trick Coach</div>
+          <div class="stars" id="coachStars" data-target="coach_rating">
+            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
+          </div>
+          <input type="hidden" name="coach_rating" id="coach_rating" />
+        </div>
+      </div>
 
-        <button type="submit" class="submit-btn" id="submit-btn">SEND FEEDBACK 🛹</button>
-      </form>
+      <label>What features did you actually use?</label>
+      <div class="chips" id="featureChips">
+        <span class="chip" data-val="map">🗺 Map</span>
+        <span class="chip" data-val="xp">⚡ XP System</span>
+        <span class="chip" data-val="challenges">🎯 Challenges</span>
+        <span class="chip" data-val="crews">👥 Crews</span>
+        <span class="chip" data-val="bounties">💰 Bounties</span>
+        <span class="chip" data-val="skatetv">📺 SkateTV</span>
+        <span class="chip" data-val="coach">🤖 Trick Coach</span>
+        <span class="chip" data-val="forecast">⛅ Forecast</span>
+        <span class="chip" data-val="shops">🏪 Skate Shops</span>
+        <span class="chip" data-val="passport">🛹 Passport</span>
+      </div>
+      <input type="hidden" name="features_used" id="featuresUsed" />
+
+      <label>What bugs did you find?</label>
+      <textarea name="bugs" placeholder="Describe any crashes, errors, or anything that didn't work right..."></textarea>
+
+      <label>What should we add or improve?</label>
+      <textarea name="suggestions" placeholder="What features are missing? What would make you use this every day?" required></textarea>
+
+      <label>Would you recommend SkateQuest to other skaters?</label>
+      <select name="recommend">
+        <option value="">Select...</option>
+        <option value="definitely">Yes definitely</option>
+        <option value="probably">Probably</option>
+        <option value="maybe">Maybe</option>
+        <option value="no">No</option>
+      </select>
+
+      <label>Anything else?</label>
+      <textarea name="other" placeholder="Any other thoughts, ideas, or just want to say what's up..."></textarea>
+
+      <button type="submit" class="submit-btn" id="submitBtn">SEND FEEDBACK 🛹</button>
+    </form>
+
+    <div class="success" id="successMsg">
+      <div class="success-icon">🤙</div>
+      <h2>Thanks for the feedback!</h2>
+      <p>This helps more than you know. We'll use this to make SkateQuest better for everyone.</p>
+      <br/>
+      <p style="color:#d2673d;font-weight:700;">Born to Lurk. Forced to Work.</p>
     </div>
-  </div>
-
-  <div class="success" id="success">
-    <div class="success-icon">🤙</div>
-    <h2>Thanks for the feedback!</h2>
-    <p>Real talk — this means a lot. Every message gets read and helps make SkateQuest better for the whole community.</p>
-    <p style="margin-top:12px">Keep skating. We'll keep building.</p>
   </div>
 </div>
 
 <script>
-let selectedRating = 0;
-
-function setRating(val) {
-  selectedRating = val;
-  document.getElementById('rating').value = val;
-  document.querySelectorAll('.rating-btn').forEach((btn, i) => {
-    btn.classList.toggle('selected', i < val);
+// Star ratings
+function setupStars(containerId, hiddenId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const stars = container.querySelectorAll('.star');
+  const hidden = document.getElementById(hiddenId || container.dataset.target);
+  stars.forEach((star, i) => {
+    star.addEventListener('click', () => {
+      const val = star.dataset.val;
+      if (hidden) hidden.value = val;
+      stars.forEach((s, j) => s.classList.toggle('on', j <= i));
+    });
+    star.addEventListener('mouseover', (_, j) => {
+      stars.forEach((s, j) => s.style.opacity = j <= i ? '1' : '0.3');
+    });
+    star.addEventListener('mouseout', () => {
+      const cur = hidden ? parseInt(hidden.value) : 0;
+      stars.forEach((s, j) => s.style.opacity = j < cur ? '1' : '0.3');
+    });
   });
 }
 
-async function handleSubmit(e) {
+setupStars('overallStars', 'overallRating');
+['map','xp','crew','coach'].forEach(f => {
+  const el = document.querySelector(`[data-target="${f}_rating"]`);
+  if (el) setupStars(el.id, `${f}_rating`);
+});
+
+// Feature chips
+const selected = new Set();
+document.querySelectorAll('#featureChips .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const val = chip.dataset.val;
+    if (selected.has(val)) { selected.delete(val); chip.classList.remove('selected'); }
+    else { selected.add(val); chip.classList.add('selected'); }
+    document.getElementById('featuresUsed').value = [...selected].join(', ');
+  });
+});
+
+// Form submit
+document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!selectedRating) {
-    alert('Please give us a rating!');
-    return;
-  }
-  const btn = document.getElementById('submit-btn');
+  const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.textContent = 'Sending...';
-
-  const form = e.target;
-  const data = new FormData(form);
-
+  const data = new FormData(e.target);
   try {
-    await fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(data).toString()
-    });
-    document.getElementById('form-wrap').style.display = 'none';
-    document.getElementById('success').style.display = 'block';
-  } catch (err) {
+    await fetch('/', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams(data).toString() });
+    document.getElementById('feedbackForm').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'block';
+  } catch(err) {
     btn.disabled = false;
     btn.textContent = 'SEND FEEDBACK 🛹';
-    alert('Something went wrong. Please try again.');
+    alert('Something went wrong. Try again.');
   }
-}
+});
 </script>
 </body>
 </html>
