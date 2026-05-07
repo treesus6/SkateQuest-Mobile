@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beta Feedback — SkateQuest</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#05070B; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#F3F4F6; min-height:100vh; }
+.container { max-width:580px; margin:0 auto; padding:40px 20px; }
+.brand { color:#d2673d; font-weight:900; letter-spacing:3px; font-size:0.9rem; margin-bottom:24px; display:block; }
+h1 { font-size:2rem; font-weight:900; margin-bottom:6px; }
+.sub { color:#6B7280; font-size:0.95rem; margin-bottom:32px; line-height:1.6; }
+
+.card { background:#111827; border:1px solid #1F2937; border-radius:16px; padding:28px; }
+
+label { display:block; color:#9CA3AF; font-size:0.85rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; margin-top:20px; }
+label:first-of-type { margin-top:0; }
+
+input, textarea, select { 
+  width:100%; background:#0a0e1a; color:#F3F4F6; 
+  border:1px solid #1F2937; border-radius:10px; 
+  padding:12px 14px; font-size:0.95rem; font-family:inherit;
+  outline:none; transition:border-color 0.2s;
+}
+input:focus, textarea:focus, select:focus { border-color:#d2673d; }
+textarea { min-height:120px; resize:vertical; }
+select option { background:#0a0e1a; }
+
+.rating-row { display:flex; gap:8px; margin-top:4px; }
+.rating-btn {
+  flex:1; padding:10px 4px; background:#0a0e1a; 
+  border:1px solid #1F2937; border-radius:8px;
+  color:#6B7280; font-size:0.9rem; font-weight:700;
+  cursor:pointer; text-align:center; transition:all 0.15s;
+}
+.rating-btn:hover { border-color:#d2673d; color:#d2673d; }
+.rating-btn.selected { background:rgba(210,103,61,0.2); border-color:#d2673d; color:#d2673d; }
+
+.checkbox-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.checkbox-row input[type=checkbox] { width:18px; height:18px; accent-color:#d2673d; flex-shrink:0; }
+.checkbox-row label { margin:0; font-size:0.9rem; text-transform:none; letter-spacing:0; color:#9CA3AF; font-weight:400; }
+
+.submit-btn {
+  width:100%; background:#d2673d; color:white;
+  border:none; border-radius:12px; padding:16px;
+  font-size:1rem; font-weight:700; letter-spacing:1px;
+  cursor:pointer; margin-top:24px; transition:opacity 0.2s;
+}
+.submit-btn:hover { opacity:0.9; }
+.submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+.success { 
+  display:none; text-align:center; padding:40px 20px;
+  background:#111827; border:1px solid #166534; border-radius:16px;
+}
+.success-icon { font-size:56px; margin-bottom:16px; }
+.success h2 { color:#4ade80; margin-bottom:8px; }
+.success p { color:#6B7280; font-size:0.9rem; line-height:1.6; }
+
+.nav { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; position:sticky; top:0; background:rgba(5,7,11,0.95); backdrop-filter:blur(10px); border-bottom:1px solid #1F2937; margin:-40px -20px 32px; }
+.nav-logo { color:#d2673d; font-weight:900; letter-spacing:2px; font-size:1rem; text-decoration:none; }
+.nav-back { color:#6B7280; font-size:0.85rem; text-decoration:none; }
+.nav-back:hover { color:#d2673d; }
+</style>
+</head>
+<body>
+<div class="container">
+  <nav class="nav">
+    <a href="/" class="nav-logo">SKATEQUEST</a>
+    <a href="/" class="nav-back">← Back</a>
+  </nav>
+
+  <span class="brand">BETA FEEDBACK</span>
+  <h1>Tell Us What You Think</h1>
+  <p class="sub">Your feedback shapes the app. Be brutal — we want to know exactly what sucks and what rips.</p>
+
+  <div id="form-wrap">
+    <div class="card">
+      <form name="beta-feedback" method="POST" netlify netlify-honeypot="bot-field" onsubmit="handleSubmit(event)">
+        <input type="hidden" name="form-name" value="beta-feedback" />
+        <p style="display:none"><input name="bot-field" /></p>
+
+        <label for="name">Your Name</label>
+        <input type="text" id="name" name="name" placeholder="What do people call you?" required />
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="So we can follow up if needed" required />
+
+        <label>Overall Rating</label>
+        <div class="rating-row" id="rating-row">
+          <div class="rating-btn" onclick="setRating(1)">1<br><span style="font-size:0.7rem;font-weight:400">Trash</span></div>
+          <div class="rating-btn" onclick="setRating(2)">2<br><span style="font-size:0.7rem;font-weight:400">Meh</span></div>
+          <div class="rating-btn" onclick="setRating(3)">3<br><span style="font-size:0.7rem;font-weight:400">OK</span></div>
+          <div class="rating-btn" onclick="setRating(4)">4<br><span style="font-size:0.7rem;font-weight:400">Good</span></div>
+          <div class="rating-btn" onclick="setRating(5)">5<br><span style="font-size:0.7rem;font-weight:400">Rips 🔥</span></div>
+        </div>
+        <input type="hidden" id="rating" name="rating" value="" required />
+
+        <label for="feature">What feature are you reviewing?</label>
+        <select id="feature" name="feature" required>
+          <option value="" disabled selected>Pick a feature...</option>
+          <option value="map">🗺 Skatepark Map</option>
+          <option value="xp">⚡ XP & Leveling</option>
+          <option value="crew">👥 Crew Battles</option>
+          <option value="challenges">🎯 Challenges</option>
+          <option value="trick-coach">🤖 Trick Coach</option>
+          <option value="skatetv">📺 SkateTV</option>
+          <option value="bounty">💰 Bounty Board</option>
+          <option value="forecast">⛅ Skate Forecast</option>
+          <option value="shops">🏪 Skate Shops</option>
+          <option value="hidden-gems">💎 Hidden Gems</option>
+          <option value="passport">🛹 Skate Passport</option>
+          <option value="overall">📱 Overall App</option>
+          <option value="bugs">🐛 Bug Report</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label for="what_works">What's working well?</label>
+        <textarea id="what_works" name="what_works" placeholder="What do you actually like? What feels right?"></textarea>
+
+        <label for="what_sucks">What needs to be fixed?</label>
+        <textarea id="what_sucks" name="what_sucks" placeholder="Don't hold back — what's broken, confusing, or missing?" required></textarea>
+
+        <label for="missing">What feature are you missing most?</label>
+        <textarea id="missing" name="missing" placeholder="What would make you use this app every day?" style="min-height:80px"></textarea>
+
+        <label for="device">Your Device</label>
+        <input type="text" id="device" name="device" placeholder="e.g. Samsung Galaxy S23, Pixel 7" />
+
+        <div style="margin-top:20px">
+          <div class="checkbox-row">
+            <input type="checkbox" id="contact_ok" name="contact_ok" value="yes" />
+            <label for="contact_ok">You can contact me for more details</label>
+          </div>
+          <div class="checkbox-row" style="margin-top:10px">
+            <input type="checkbox" id="would_recommend" name="would_recommend" value="yes" />
+            <label for="would_recommend">I would recommend SkateQuest to other skaters</label>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">SEND FEEDBACK 🛹</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="success" id="success">
+    <div class="success-icon">🤙</div>
+    <h2>Thanks for the feedback!</h2>
+    <p>Real talk — this means a lot. Every message gets read and helps make SkateQuest better for the whole community.</p>
+    <p style="margin-top:12px">Keep skating. We'll keep building.</p>
+  </div>
+</div>
+
+<script>
+let selectedRating = 0;
+
+function setRating(val) {
+  selectedRating = val;
+  document.getElementById('rating').value = val;
+  document.querySelectorAll('.rating-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', i < val);
+  });
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!selectedRating) {
+    alert('Please give us a rating!');
+    return;
+  }
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  const form = e.target;
+  const data = new FormData(form);
+
+  try {
+    await fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(data).toString()
+    });
+    document.getElementById('form-wrap').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'SEND FEEDBACK 🛹';
+    alert('Something went wrong. Please try again.');
+  }
+}
+</script>
+</body>
+</html>
