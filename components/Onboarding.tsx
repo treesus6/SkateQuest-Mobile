@@ -1,105 +1,456 @@
-import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, Dimensions, TouchableOpacity,
+  Animated, StatusBar, Pressable
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Map, Zap, Trophy, Users } from 'lucide-react-native';
-import Button from './ui/Button';
 
-interface OnboardingScreen {
-  title: string;
-  description: string;
-  icon: any;
-  color: string;
-}
+const { width, height } = Dimensions.get('window');
 
-const screens: OnboardingScreen[] = [
-  {
-    title: 'Discover Skateparks',
-    description: 'Find skateparks near you or explore spots around the world. Get directions, see photos, and read reviews from other skaters.',
-    icon: Map,
-    color: '#3b82f6',
-  },
-  {
-    title: 'Share Your Tricks',
-    description: 'Upload videos and photos of your best tricks. Get AI-powered analysis and feedback to improve your skills.',
-    icon: Zap,
-    color: '#FF6B35',
-  },
-  {
-    title: 'Complete Challenges',
-    description: 'Take on daily and weekly challenges. Compete on leaderboards and earn rewards for landing new tricks.',
-    icon: Trophy,
-    color: '#f59e0b',
-  },
-  {
-    title: 'Connect with Skaters',
-    description: 'Follow your favorite skaters, join crews, and discover local skate events. Build your skate community.',
-    icon: Users,
-    color: '#8b5cf6',
-  },
-];
-
-interface OnboardingProps {
+interface Props {
   onComplete: () => void;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [currentScreen, setCurrentScreen] = useState(0);
+export default function Onboarding({ onComplete }: Props) {
+  const [step, setStep] = useState(0);
+  const [stance, setStance] = useState<'regular' | 'goofy' | null>(null);
 
-  const handleNext = () => {
-    if (currentScreen < screens.length - 1) {
-      setCurrentScreen(currentScreen + 1);
-    } else {
-      handleComplete();
-    }
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const slideY = useRef(new Animated.Value(40)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    animateIn();
+    // Pulse the CTA
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.04, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const animateIn = () => {
+    fadeAnim.setValue(0);
+    scaleAnim.setValue(0.85);
+    slideY.setValue(50);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 120, friction: 8, useNativeDriver: true }),
+      Animated.timing(slideY, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start();
   };
 
-  const handleComplete = async () => {
-    try {
-      await AsyncStorage.setItem('onboarding_completed', 'true');
-      onComplete();
-    } catch (error) {
-      console.error('Failed to save onboarding status:', error);
-      onComplete();
-    }
+  const goNext = () => {
+    Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+      setStep(s => s + 1);
+      animateIn();
+    });
   };
 
-  const screen = screens[currentScreen];
-  const isLastScreen = currentScreen === screens.length - 1;
-  const Icon = screen.icon;
+  const finish = async () => {
+    if (stance) await AsyncStorage.setItem('skate_stance', stance);
+    await AsyncStorage.setItem('onboarding_completed', 'true');
+    onComplete();
+  };
 
-  return (
-    <View className="flex-1 bg-gray-900 justify-between p-5">
-      {!isLastScreen && (
-        <View className="self-end p-2.5">
-          <Button title="Skip" onPress={handleComplete} variant="secondary" size="sm" />
-        </View>
-      )}
-
-      <View className="flex-1 justify-center items-center px-5">
-        <View className="mb-10">
-          <Icon color={screen.color} size={100} />
-        </View>
-        <Text className="text-[28px] font-bold text-white text-center mb-5">{screen.title}</Text>
-        <Text className="text-base text-gray-300 text-center leading-6 max-w-[320px]">{screen.description}</Text>
-      </View>
-
-      <View className="flex-row justify-center mb-10">
-        {screens.map((_, index) => (
-          <View
-            key={index}
-            className={`h-2 rounded-full mx-1 ${index === currentScreen ? 'bg-brand-terracotta w-6' : 'bg-gray-600 w-2'}`}
-          />
+  // SCREEN 0 — BIG SPLASH
+  if (step === 0) return (
+    <View style={[s.screen, { backgroundColor: '#05070B' }]}>
+      <StatusBar hidden />
+      {/* Gritty background pattern */}
+      <View style={s.bgLines}>
+        {[...Array(8)].map((_, i) => (
+          <View key={i} style={[s.bgLine, {
+            top: `${10 + i * 12}%` as any,
+            opacity: 0.03 + i * 0.01,
+            transform: [{ rotate: '-8deg' }]
+          }]} />
         ))}
       </View>
 
-      <Button
-        title={isLastScreen ? "Let's Go!" : 'Next'}
-        onPress={handleNext}
-        variant="primary"
-        size="lg"
-      />
+      <Animated.View style={[s.content0, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        <Text style={s.bigEmoji}>🛹</Text>
+        <Text style={s.word1}>SKATE</Text>
+        <View style={s.orangeLine} />
+        <Text style={s.word2}>QUEST</Text>
+        <Text style={s.tagline}>FIND YOUR SPOT</Text>
+      </Animated.View>
+
+      <Animated.View style={[s.bottomCTA, { opacity: fadeAnim, transform: [{ scale: pulseAnim }] }]}>
+        <Pressable style={s.bigBtn} onPress={goNext}>
+          <Text style={s.bigBtnTxt}>LET'S GO →</Text>
+        </Pressable>
+      </Animated.View>
     </View>
   );
-};
 
-export default Onboarding;
+  // SCREEN 1 — THE MAP
+  if (step === 1) return (
+    <View style={[s.screen, { backgroundColor: '#05070B' }]}>
+      <StatusBar hidden />
+      <Animated.View style={[s.slideContent, { opacity: fadeAnim, transform: [{ translateY: slideY }] }]}>
+        <View style={s.featureIconWrap}>
+          <Text style={s.featureEmoji}>🗺</Text>
+        </View>
+        <Text style={s.slideNum}>01 / 03</Text>
+        <Text style={s.slideTitle}>27,000+{'\n'}SKATEPARKS</Text>
+        <Text style={s.slideTitle2}>WORLDWIDE</Text>
+        <View style={s.accentBar} />
+        <Text style={s.slideSub}>
+          Every park. Every spot. Every city.{'\n'}
+          The biggest skateboarding map ever built.
+        </Text>
+        <View style={s.featurePills}>
+          <View style={s.pill}><Text style={s.pillTxt}>🏙 Cities</Text></View>
+          <View style={s.pill}><Text style={s.pillTxt}>🏖 Beaches</Text></View>
+          <View style={s.pill}><Text style={s.pillTxt}>🔒 Hidden Gems</Text></View>
+        </View>
+      </Animated.View>
+      <View style={s.navRow}>
+        <TouchableOpacity onPress={finish}><Text style={s.skipTxt}>Skip</Text></TouchableOpacity>
+        <TouchableOpacity style={s.nextBtn} onPress={goNext}>
+          <Text style={s.nextTxt}>NEXT →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // SCREEN 2 — XP & CREWS
+  if (step === 2) return (
+    <View style={[s.screen, { backgroundColor: '#05070B' }]}>
+      <StatusBar hidden />
+      <Animated.View style={[s.slideContent, { opacity: fadeAnim, transform: [{ translateY: slideY }] }]}>
+        <View style={[s.featureIconWrap, { backgroundColor: 'rgba(168,85,247,0.15)', borderColor: 'rgba(168,85,247,0.4)' }]}>
+          <Text style={s.featureEmoji}>⚡</Text>
+        </View>
+        <Text style={[s.slideNum, { color: '#a855f7' }]}>02 / 03</Text>
+        <Text style={[s.slideTitle, { color: '#a855f7' }]}>EARN XP.</Text>
+        <Text style={s.slideTitle2}>LEVEL UP.</Text>
+        <View style={[s.accentBar, { backgroundColor: '#a855f7' }]} />
+        <Text style={s.slideSub}>
+          Every session earns XP. Land tricks, complete{'\n'}
+          daily quests, submit proof. Build your crew{'\n'}
+          and battle for territory.
+        </Text>
+        <View style={s.featurePills}>
+          <View style={[s.pill, { borderColor: 'rgba(168,85,247,0.4)' }]}><Text style={[s.pillTxt, { color: '#a855f7' }]}>⚡ Daily Quests</Text></View>
+          <View style={[s.pill, { borderColor: 'rgba(168,85,247,0.4)' }]}><Text style={[s.pillTxt, { color: '#a855f7' }]}>👥 Crew Wars</Text></View>
+          <View style={[s.pill, { borderColor: 'rgba(168,85,247,0.4)' }]}><Text style={[s.pillTxt, { color: '#a855f7' }]}>💰 Bounties</Text></View>
+        </View>
+      </Animated.View>
+      <View style={s.navRow}>
+        <TouchableOpacity onPress={finish}><Text style={s.skipTxt}>Skip</Text></TouchableOpacity>
+        <TouchableOpacity style={[s.nextBtn, { backgroundColor: '#a855f7' }]} onPress={goNext}>
+          <Text style={s.nextTxt}>NEXT →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // SCREEN 3 — TRICKS & CLIPS
+  if (step === 3) return (
+    <View style={[s.screen, { backgroundColor: '#05070B' }]}>
+      <StatusBar hidden />
+      <Animated.View style={[s.slideContent, { opacity: fadeAnim, transform: [{ translateY: slideY }] }]}>
+        <View style={[s.featureIconWrap, { backgroundColor: 'rgba(74,222,128,0.15)', borderColor: 'rgba(74,222,128,0.4)' }]}>
+          <Text style={s.featureEmoji}>📺</Text>
+        </View>
+        <Text style={[s.slideNum, { color: '#4ade80' }]}>03 / 03</Text>
+        <Text style={[s.slideTitle, { color: '#4ade80' }]}>POST CLIPS.</Text>
+        <Text style={s.slideTitle2}>GET HYPED.</Text>
+        <View style={[s.accentBar, { backgroundColor: '#4ade80' }]} />
+        <Text style={s.slideSub}>
+          Film your sessions. Upload to SkateTV.{'\n'}
+          Get coaching on any trick. Free. Offline.{'\n'}
+          No BS. Just skating.
+        </Text>
+        <View style={s.featurePills}>
+          <View style={[s.pill, { borderColor: 'rgba(74,222,128,0.4)' }]}><Text style={[s.pillTxt, { color: '#4ade80' }]}>📺 SkateTV</Text></View>
+          <View style={[s.pill, { borderColor: 'rgba(74,222,128,0.4)' }]}><Text style={[s.pillTxt, { color: '#4ade80' }]}>🤖 AI Coach</Text></View>
+          <View style={[s.pill, { borderColor: 'rgba(74,222,128,0.4)' }]}><Text style={[s.pillTxt, { color: '#4ade80' }]}>⛅ Forecast</Text></View>
+        </View>
+      </Animated.View>
+      <View style={s.navRow}>
+        <TouchableOpacity onPress={finish}><Text style={s.skipTxt}>Skip</Text></TouchableOpacity>
+        <TouchableOpacity style={[s.nextBtn, { backgroundColor: '#4ade80' }]} onPress={goNext}>
+          <Text style={[s.nextTxt, { color: '#05070B' }]}>ALMOST →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // SCREEN 4 — STANCE PICKER (personalization)
+  if (step === 4) return (
+    <View style={[s.screen, { backgroundColor: '#05070B' }]}>
+      <StatusBar hidden />
+      <Animated.View style={[s.slideContent, { opacity: fadeAnim, transform: [{ translateY: slideY }] }]}>
+        <Text style={s.stanceTitle}>ONE QUICK{'\n'}QUESTION</Text>
+        <Text style={s.stanceSub}>What's your stance?</Text>
+        <View style={s.stanceRow}>
+          <TouchableOpacity
+            style={[s.stanceCard, stance === 'regular' && s.stanceCardOn]}
+            onPress={() => setStance('regular')}
+          >
+            <Text style={s.stanceEmoji}>🛹</Text>
+            <Text style={s.stanceName}>REGULAR</Text>
+            <Text style={s.stanceDesc}>Left foot forward</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.stanceCard, stance === 'goofy' && s.stanceCardOn]}
+            onPress={() => setStance('goofy')}
+          >
+            <Text style={[s.stanceEmoji, { transform: [{ scaleX: -1 }] }]}>🛹</Text>
+            <Text style={s.stanceName}>GOOFY</Text>
+            <Text style={s.stanceDesc}>Right foot forward</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity onPress={() => { setStance(null); finish(); }}>
+          <Text style={s.stanceSkip}>Not sure / Skip</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <Animated.View style={[s.bottomCTA, { opacity: fadeAnim, transform: [{ scale: pulseAnim }] }]}>
+        <Pressable
+          style={[s.bigBtn, { opacity: stance ? 1 : 0.4 }]}
+          onPress={stance ? finish : undefined}
+        >
+          <Text style={s.bigBtnTxt}>START SKATING 🛹</Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+
+  return null;
+}
+
+const s = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#05070B',
+  },
+  // SCREEN 0
+  bgLines: {
+    position: 'absolute',
+    inset: 0,
+  },
+  bgLine: {
+    position: 'absolute',
+    left: -100,
+    right: -100,
+    height: 60,
+    backgroundColor: '#d2673d',
+  },
+  content0: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 120,
+  },
+  bigEmoji: {
+    fontSize: 88,
+    marginBottom: 20,
+  },
+  word1: {
+    color: '#F3F4F6',
+    fontSize: 58,
+    fontWeight: '900',
+    letterSpacing: 12,
+    lineHeight: 62,
+  },
+  orangeLine: {
+    width: 80,
+    height: 5,
+    backgroundColor: '#d2673d',
+    borderRadius: 3,
+    marginVertical: 10,
+  },
+  word2: {
+    color: '#d2673d',
+    fontSize: 58,
+    fontWeight: '900',
+    letterSpacing: 12,
+    lineHeight: 62,
+  },
+  tagline: {
+    color: '#4B5563',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 6,
+    marginTop: 20,
+  },
+  bottomCTA: {
+    position: 'absolute',
+    bottom: 60,
+    left: 24,
+    right: 24,
+  },
+  bigBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  bigBtnTxt: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 3,
+  },
+
+  // SLIDES 1-3
+  slideContent: {
+    flex: 1,
+    paddingTop: 80,
+    paddingHorizontal: 28,
+    paddingBottom: 100,
+  },
+  featureIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: 'rgba(210,103,61,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  featureEmoji: {
+    fontSize: 38,
+  },
+  slideNum: {
+    color: '#d2673d',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 3,
+    marginBottom: 12,
+  },
+  slideTitle: {
+    color: '#d2673d',
+    fontSize: 50,
+    fontWeight: '900',
+    letterSpacing: 2,
+    lineHeight: 54,
+  },
+  slideTitle2: {
+    color: '#F3F4F6',
+    fontSize: 50,
+    fontWeight: '900',
+    letterSpacing: 2,
+    lineHeight: 54,
+    marginBottom: 16,
+  },
+  accentBar: {
+    width: 60,
+    height: 4,
+    backgroundColor: '#d2673d',
+    borderRadius: 2,
+    marginBottom: 20,
+  },
+  slideSub: {
+    color: '#9CA3AF',
+    fontSize: 17,
+    lineHeight: 28,
+    marginBottom: 28,
+  },
+  featurePills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  pillTxt: {
+    color: '#d2673d',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  navRow: {
+    position: 'absolute',
+    bottom: 50,
+    left: 28,
+    right: 28,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  skipTxt: {
+    color: '#4B5563',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  nextBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+  },
+  nextTxt: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 2,
+  },
+
+  // STANCE PICKER
+  stanceTitle: {
+    color: '#F3F4F6',
+    fontSize: 46,
+    fontWeight: '900',
+    letterSpacing: 2,
+    lineHeight: 52,
+    marginTop: 80,
+    marginBottom: 10,
+  },
+  stanceSub: {
+    color: '#9CA3AF',
+    fontSize: 18,
+    marginBottom: 40,
+  },
+  stanceRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  stanceCard: {
+    flex: 1,
+    backgroundColor: '#111827',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1F2937',
+  },
+  stanceCardOn: {
+    borderColor: '#d2673d',
+    backgroundColor: 'rgba(210,103,61,0.1)',
+  },
+  stanceEmoji: {
+    fontSize: 44,
+    marginBottom: 12,
+  },
+  stanceName: {
+    color: '#F3F4F6',
+    fontWeight: '900',
+    fontSize: 16,
+    letterSpacing: 2,
+    marginBottom: 4,
+  },
+  stanceDesc: {
+    color: '#6B7280',
+    fontSize: 13,
+  },
+  stanceSkip: {
+    color: '#4B5563',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 24,
+  },
+});
