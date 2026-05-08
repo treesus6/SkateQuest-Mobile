@@ -1,3 +1,4 @@
+import { uploadQuestProof } from '../lib/uploadMedia';
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
@@ -99,23 +100,7 @@ export default function DailyQuestsScreen() {
     Alert.alert('Location captured', 'Your location will be submitted as proof.');
   };
 
-  const uploadProofToStorage = async (uri: string, questId: string): Promise<string | null> => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const ext = uri.split('.').pop() || 'jpg';
-      const filename = `quest-proof/${user!.id}/${questId}-${Date.now()}.${ext}`;
-      const { data, error } = await supabase.storage
-        .from('quest-proofs')
-        .upload(filename, blob, { contentType: `image/${ext}` });
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from('quest-proofs').getPublicUrl(filename);
-      return urlData.publicUrl;
-    } catch (err) {
-      console.error('Upload error:', err);
-      return null;
-    }
-  };
+
 
   const submitProof = async () => {
     if (!proofModal || !user) return;
@@ -131,11 +116,8 @@ export default function DailyQuestsScreen() {
       let lng = null;
 
       if (proofType === 'photo' && proofImage) {
-        proofUrl = await uploadProofToStorage(proofImage, proofModal.id);
-        if (!proofUrl) {
-          // Fall back to just note if upload fails
-          proofUrl = 'submitted';
-        }
+        const { url: uploadUrl } = await uploadQuestProof(proofImage, proofModal.id, user.id);
+          proofUrl = uploadUrl || 'submitted';
       } else if (proofType === 'location') {
         const loc = await Location.getCurrentPositionAsync({});
         lat = loc.coords.latitude;
