@@ -9,13 +9,15 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { Target, Star, Zap, Plus, Trash2 } from 'lucide-react-native';
+import { Target, Star, Zap, Plus, Trash2, CheckCircle, BookOpen } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';
 import { feedService } from '../lib/feedService';
 import { profilesService } from '../lib/profilesService';
-import { UserTrick } from '../types';
+import { UserTrick, RootStackParamList } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
@@ -43,7 +45,15 @@ const STATUS_CONFIG: Record<string, { icon: typeof Zap; color: string; label: st
   consistent: { icon: Star, color: '#4CAF50', label: 'CONSISTENT' },
 };
 
+// Deterministic daily trick: seeded by calendar date so all users see the same trick each day
+function getDailyTrick(): string {
+  const d = new Date();
+  const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  return COMMON_TRICKS[seed % COMMON_TRICKS.length];
+}
+
 export default function TrickTrackerScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuthStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTrickName, setNewTrickName] = useState('');
@@ -53,6 +63,12 @@ export default function TrickTrackerScreen() {
     [user?.id],
     { cacheKey: `tricks-${user?.id}`, enabled: !!user }
   );
+
+  const todayTrick = getDailyTrick();
+  const todayTrickDone = tricks?.some(
+    t => t.trick_name.toLowerCase() === todayTrick.toLowerCase() &&
+      (t.status === 'landed' || t.status === 'consistent')
+  ) ?? false;
 
   const addTrick = async () => {
     if (!newTrickName.trim() || !user) return;
@@ -116,10 +132,8 @@ export default function TrickTrackerScreen() {
 
   const incrementAttempts = async (trick: UserTrick) => {
     try {
-      // Use RPC to increment atomically, avoiding race conditions on rapid taps
       const { error } = await userTricksService.incrementAttempts(trick.id);
       if (error) {
-        // Fallback to direct update if RPC doesn't exist yet
         await userTricksService.update(trick.id, {
           attempts: trick.attempts + 1,
           updated_at: new Date().toISOString(),
@@ -201,6 +215,46 @@ export default function TrickTrackerScreen() {
     );
   };
 
+  // Trick of the Day banner — shown at the top of the list
+  const trickOfTheDayHeader = (
+    <View className="bg-purple-50 dark:bg-purple-950/40 rounded-2xl p-4 mb-4 border border-purple-200 dark:border-purple-800">
+      <View className="flex-row items-center gap-1.5 mb-1">
+        <Star color="#9333EA" size={14} fill="#9333EA" />
+        <Text className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">
+          Trick of the Day
+        </Text>
+      </View>
+      <Text className="text-2xl font-black text-gray-800 dark:text-gray-100 mb-3">
+        {todayTrick}
+      </Text>
+      <View className="flex-row gap-2">
+        {todayTrickDone ? (
+          <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-green-500 py-2.5 rounded-xl">
+            <CheckCircle size={14} color="#fff" />
+            <Text className="text-white text-sm font-bold">Landed!</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            className="flex-1 bg-purple-600 py-2.5 rounded-xl items-center"
+            onPress={() => {
+              setNewTrickName(todayTrick);
+              setShowAddModal(true);
+            }}
+          >
+            <Text className="text-white text-sm font-bold">Add to My Tricks</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          className="flex-1 border border-purple-400 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
+          onPress={() => navigation.navigate('TrickTutorials', { initialSearch: todayTrick })}
+        >
+          <BookOpen size={13} color="#9333EA" />
+          <Text className="text-purple-600 dark:text-purple-400 text-sm font-bold">Tutorial</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-brand-beige dark:bg-gray-900">
       <View className="bg-brand-terracotta p-4 rounded-b-2xl flex-row justify-between items-center">
@@ -219,8 +273,9 @@ export default function TrickTrackerScreen() {
         renderItem={renderTrick}
         keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 16 }}
+        ListHeaderComponent={trickOfTheDayHeader}
         ListEmptyComponent={
-          <View className="items-center mt-24">
+          <View className="items-center mt-12">
             <Text className="text-lg font-bold text-gray-400">No tricks yet</Text>
             <Text className="text-sm text-gray-300 mt-1">Add a trick you're working on!</Text>
           </View>

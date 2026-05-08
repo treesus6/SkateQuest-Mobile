@@ -13,7 +13,9 @@ import {
   Platform,
 } from 'react-native';
 import { Youtube, ExternalLink, Bookmark, X, Send, Search } from 'lucide-react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { RootStackParamList } from '../types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -237,9 +239,12 @@ function SuggestModal({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function TrickTutorialsScreen() {
+  const route = useRoute<RouteProp<RootStackParamList, 'TrickTutorials'>>();
+  const initialSearch = route.params?.initialSearch ?? '';
+
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [activeFilter, setActiveFilter] = useState<'All' | Difficulty>('All');
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);

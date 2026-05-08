@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,10 @@ import {
   CheckCircle,
   Circle,
 } from 'lucide-react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
+import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
 
 
@@ -76,6 +78,9 @@ function getStatus(date: string, time: string): 'upcoming' | 'live' | 'ended' {
 
 export default function SessionsScreen() {
   const { user } = useAuthStore();
+  const route = useRoute<RouteProp<RootStackParamList, 'Sessions'>>();
+  const routeParams = route.params;
+
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,9 +88,9 @@ export default function SessionsScreen() {
   const [createVisible, setCreateVisible] = useState(false);
   const [creating, setCreating] = useState(false);
 
-  // Create form state
+  // Create form state — pre-filled from route params when coming from CheckInScreen
   const [title, setTitle] = useState('');
-  const [spotName, setSpotName] = useState('');
+  const [spotName, setSpotName] = useState(routeParams?.spotName ?? '');
   const [date, setDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -95,10 +100,19 @@ export default function SessionsScreen() {
   const [description, setDescription] = useState('');
   const [maxAttendees, setMaxAttendees] = useState('');
 
+  // Open create modal once on mount if autoCreate was requested
+  const initDone = useRef(false);
+  useEffect(() => {
+    if (initDone.current) return;
+    initDone.current = true;
+    if (routeParams?.autoCreate) {
+      setCreateVisible(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const loadSessions = useCallback(async () => {
     if (!user?.id) return;
     try {
-      // Fetch sessions with attendee counts
       const { data: rawSessions } = await supabase
         .from('skate_sessions')
         .select(`
@@ -111,7 +125,6 @@ export default function SessionsScreen() {
 
       if (!rawSessions) return;
 
-      // Fetch attendee counts and user's RSVPs in parallel
       const [attendeesRes, myRsvpsRes] = await Promise.all([
         supabase
           .from('session_attendees')
@@ -124,10 +137,10 @@ export default function SessionsScreen() {
       ]);
 
       const attendeeMap: Record<string, number> = {};
-      (attendeesRes.data ?? []).forEach(({ session_id }) => {
+      (attendeesRes.data ?? []).forEach(({ session_id }: { session_id: string }) => {
         attendeeMap[session_id] = (attendeeMap[session_id] ?? 0) + 1;
       });
-      const mySessionIds = new Set((myRsvpsRes.data ?? []).map(r => r.session_id));
+      const mySessionIds = new Set((myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id));
 
       const mapped: Session[] = rawSessions.map((s: any) => ({
         id: s.id,
@@ -173,7 +186,6 @@ export default function SessionsScreen() {
       return;
     }
 
-    // Optimistic update
     setSessions(prev => prev.map(s =>
       s.id === session.id
         ? { ...s, is_attending: !s.is_attending, attendee_count: s.is_attending ? s.attendee_count - 1 : s.attendee_count + 1 }
@@ -213,11 +225,13 @@ export default function SessionsScreen() {
 
       if (error) throw error;
 
-      // Auto-RSVP creator
       await supabase.from('session_attendees').insert({ session_id: data.id, user_id: user.id });
 
       setCreateVisible(false);
-      setTitle(''); setSpotName(''); setDescription(''); setMaxAttendees('');
+      setTitle('');
+      setSpotName('');
+      setDescription('');
+      setMaxAttendees('');
       await loadSessions();
     } catch (err: any) {
       Alert.alert('Error', err.message ?? 'Could not create session.');
@@ -237,7 +251,6 @@ export default function SessionsScreen() {
     return (
       <AnimatedListItem index={index}>
         <View className="bg-white dark:bg-gray-800 rounded-2xl mx-4 mb-3 overflow-hidden shadow-sm">
-          {/* Status bar */}
           <View style={{ backgroundColor: statusColor }} className="h-1" />
           <View className="p-4">
             <View className="flex-row items-start justify-between mb-2">
@@ -256,7 +269,6 @@ export default function SessionsScreen() {
               </View>
             </View>
 
-            {/* Meta info */}
             <View className="gap-1.5 mb-3">
               <View className="flex-row items-center gap-2">
                 <CalendarDays size={14} color="#9CA3AF" />
@@ -286,7 +298,6 @@ export default function SessionsScreen() {
               </Text>
             ) : null}
 
-            {/* RSVP button */}
             {item.status !== 'ended' && (
               <TouchableOpacity
                 onPress={() => toggleRSVP(item)}
@@ -329,7 +340,6 @@ export default function SessionsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Tabs */}
           <View className="flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-3">
             {(['all', 'mine'] as const).map(t => (
               <TouchableOpacity
@@ -390,7 +400,6 @@ export default function SessionsScreen() {
       >
         <View className="flex-1 justify-end bg-black/50">
           <View className="bg-white dark:bg-gray-900 rounded-t-3xl">
-            {/* Handle */}
             <View className="items-center pt-3 pb-1">
               <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
             </View>
