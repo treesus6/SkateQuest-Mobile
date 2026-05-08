@@ -1,249 +1,398 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  ActivityIndicator,
-  Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  Modal, TextInput, Alert, ActivityIndicator, Image, ScrollView
 } from 'react-native';
-import { Star, CheckCircle, Circle, Zap, RefreshCw } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
-import { profilesService } from '../lib/profilesService';
-import { feedService } from '../lib/feedService';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
+import { useAuthStore } from '../stores/useAuthStore';
 
-interface DailyQuest {
+interface Quest {
   id: string;
   title: string;
   description: string;
   xp_reward: number;
-  difficulty: string;
   quest_type: string;
-  completed?: boolean;
-  completed_at?: string | null;
+  requirement_type: string;
 }
 
-const QUEST_DIFFICULTY_COLORS: Record<string, string> = {
-  easy: '#4CAF50',
-  medium: '#FF9800',
-  hard: '#F44336',
-  insane: '#9C27B0',
-};
+interface Submission {
+  quest_id: string;
+  status: string;
+  xp_awarded: boolean;
+}
 
-// Fallback local quests when DB table doesn't exist yet
-const FALLBACK_QUESTS: DailyQuest[] = [
-  { id: 'q1', title: 'Check In Somewhere', description: 'Check in at any skate spot today.', xp_reward: 50, difficulty: 'easy', quest_type: 'checkin' },
-  { id: 'q2', title: 'Land a Trick', description: 'Mark any trick as landed in your Trick Tracker.', xp_reward: 75, difficulty: 'easy', quest_type: 'trick' },
-  { id: 'q3', title: 'Upload Proof', description: 'Upload a photo or video to the feed.', xp_reward: 100, difficulty: 'medium', quest_type: 'media' },
-  { id: 'q4', title: 'Call Out a Skater', description: 'Send a call out challenge to someone.', xp_reward: 125, difficulty: 'medium', quest_type: 'callout' },
-  { id: 'q5', title: 'Complete a Challenge', description: 'Finish any active challenge.', xp_reward: 150, difficulty: 'hard', quest_type: 'challenge' },
-];
-
-export default function DailyQuestsScreen({ navigation }: any) {
-  const [quests, setQuests] = useState<DailyQuest[]>([]);
+export default function DailyQuestsScreen() {
+  const { user } = useAuthStore();
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [submissions, setSubmissions] = useState<Map<string, Submission>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [proofModal, setProofModal] = useState<Quest | null>(null);
+  const [proofType, setProofType] = useState<'photo' | 'video' | 'location' | null>(null);
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [proofNote, setProofNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const loadQuests = useCallback(async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
+  const loadData = async () => {
+    if (!user) return;
+    const { data: q } = await supabase
+      .from('daily_quests')
+      .select('*')
+      .eq('active', true)
+      .order('xp_reward', { ascending: false });
+    setQuests(q || []);
 
-      // Try to fetch from daily_quests table
-      const { data: questData, error } = await supabase
-        .from('daily_quests')
-        .select('*')
-        .eq('date', today);
-
-      if (error || !questData || questData.length === 0) {
-        // Fallback to local quests
-        setQuests(FALLBACK_QUESTS);
-        return;
-      }
-
-      // Check completion status for this user
-      if (userId) {
-        const { data: completions } = await supabase
-          .from('daily_quest_completions')
-          .select('quest_id, completed_at')
-          .eq('user_id', userId)
-          .eq('date', today);
-
-        const completedMap = new Map((completions || []).map((c: any) => [c.quest_id, c.completed_at]));
-        setQuests(questData.map((q: DailyQuest) => ({
-          ...q,
-          completed: completedMap.has(q.id),
-          completed_at: completedMap.get(q.id) || null,
-        })));
-      } else {
-        setQuests(questData);
-      }
-    } catch {
-      setQuests(FALLBACK_QUESTS);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId !== null) loadQuests();
-  }, [userId, loadQuests]);
-
-  const handleComplete = async (quest: DailyQuest) => {
-    if (!userId || quest.completed) return;
-
-    Alert.alert(
-      'Complete Quest',
-      `Mark "${quest.title}" as completed? You'll earn ${quest.xp_reward} XP.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          onPress: async () => {
-            try {
-              const today = new Date().toISOString().split('T')[0];
-
-              // Try to record completion in DB
-              await supabase.from('daily_quest_completions').insert({
-                user_id: userId,
-                quest_id: quest.id,
-                date: today,
-                xp_earned: quest.xp_reward,
-              }).throwOnError();
-
-              // Award XP
-              const { error: xpError } = await profilesService.incrementXp(userId, quest.xp_reward);
-              if (xpError) {
-                const { data: profile } = await profilesService.getById(userId);
-                if (profile) await profilesService.update(userId, { xp: (profile.xp || 0) + quest.xp_reward });
-              }
-
-              // Feed entry
-              await feedService.create({
-                user_id: userId,
-                activity_type: 'challenge_completed',
-                title: `Completed daily quest: ${quest.title}`,
-                xp_earned: quest.xp_reward,
-              });
-
-              Alert.alert('Quest Complete! 🎉', `+${quest.xp_reward} XP earned!`);
-              loadQuests();
-            } catch {
-              // If DB table missing, still show success for fallback quests
-              Alert.alert('Quest Complete! 🎉', `+${quest.xp_reward} XP earned!`);
-              setQuests(prev => prev.map(q => q.id === quest.id ? { ...q, completed: true } : q));
-            }
-          },
-        },
-      ]
-    );
+    const { data: s } = await supabase
+      .from('quest_proof_submissions')
+      .select('quest_id, status, xp_awarded')
+      .eq('user_id', user.id);
+    const map = new Map<string, Submission>();
+    s?.forEach(sub => map.set(sub.quest_id, sub));
+    setSubmissions(map);
+    setLoading(false);
   };
 
-  const completedCount = quests.filter(q => q.completed).length;
-  const totalXP = quests.filter(q => q.completed).reduce((sum, q) => sum + q.xp_reward, 0);
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'We need camera roll access to upload proof.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setProofImage(result.assets[0].uri);
+      setProofType('photo');
+    }
+  };
 
-  const renderQuest = ({ item }: { item: DailyQuest }) => {
-    const color = QUEST_DIFFICULTY_COLORS[item.difficulty] || '#999';
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'We need camera access to take proof photos.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      setProofImage(result.assets[0].uri);
+      setProofType('photo');
+    }
+  };
+
+  const useLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'We need location access to verify you were at the spot.');
+      return;
+    }
+    setProofType('location');
+    Alert.alert('Location captured', 'Your location will be submitted as proof.');
+  };
+
+  const uploadProofToStorage = async (uri: string, questId: string): Promise<string | null> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const ext = uri.split('.').pop() || 'jpg';
+      const filename = `quest-proof/${user!.id}/${questId}-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from('quest-proofs')
+        .upload(filename, blob, { contentType: `image/${ext}` });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('quest-proofs').getPublicUrl(filename);
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error('Upload error:', err);
+      return null;
+    }
+  };
+
+  const submitProof = async () => {
+    if (!proofModal || !user) return;
+    if (!proofType) {
+      Alert.alert('Proof required', 'Please add a photo, video, or location check-in as proof.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let proofUrl = null;
+      let lat = null;
+      let lng = null;
+
+      if (proofType === 'photo' && proofImage) {
+        proofUrl = await uploadProofToStorage(proofImage, proofModal.id);
+        if (!proofUrl) {
+          // Fall back to just note if upload fails
+          proofUrl = 'submitted';
+        }
+      } else if (proofType === 'location') {
+        const loc = await Location.getCurrentPositionAsync({});
+        lat = loc.coords.latitude;
+        lng = loc.coords.longitude;
+      }
+
+      const { data, error } = await supabase.rpc('submit_quest_proof', {
+        p_user_id: user.id,
+        p_quest_id: proofModal.id,
+        p_proof_type: proofType,
+        p_proof_url: proofUrl,
+        p_proof_note: proofNote.trim() || null,
+        p_latitude: lat,
+        p_longitude: lng,
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        Alert.alert(
+          '🛹 Quest Complete!',
+          `+${proofModal.xp_reward} XP earned! Keep shredding.`,
+          [{ text: 'Let\'s go!', onPress: () => { setProofModal(null); loadData(); } }]
+        );
+      } else {
+        Alert.alert('Error', data?.error || 'Something went wrong');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit proof');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openProofModal = (quest: Quest) => {
+    setProofModal(quest);
+    setProofType(null);
+    setProofImage(null);
+    setProofNote('');
+  };
+
+  const questTypeIcon = (type: string) => {
+    const icons: Record<string, string> = {
+      location: '📍', tricks: '🛹', challenge: '🎯',
+      social: '👥', exploration: '🗺', general: '⚡'
+    };
+    return icons[type] || '⚡';
+  };
+
+  const renderQuest = ({ item }: { item: Quest }) => {
+    const sub = submissions.get(item.id);
+    const done = sub?.status === 'approved';
+
     return (
-      <Card className={item.completed ? 'opacity-60' : ''}>
-        <View className="flex-row items-start gap-3">
-          <TouchableOpacity
-            onPress={() => handleComplete(item)}
-            disabled={item.completed || !userId}
-            className="mt-0.5"
-          >
-            {item.completed
-              ? <CheckCircle color="#4CAF50" size={24} />
-              : <Circle color={color} size={24} />
-            }
-          </TouchableOpacity>
-          <View className="flex-1">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className={`text-base font-bold ${item.completed ? 'text-gray-400' : 'text-gray-800 dark:text-gray-100'}`}>
-                {item.title}
-              </Text>
-              <View className="flex-row items-center gap-1">
-                <Zap size={12} color="#FFD700" />
-                <Text className="text-sm font-bold text-yellow-500">+{item.xp_reward}</Text>
-              </View>
-            </View>
-            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">{item.description}</Text>
-            <View className="flex-row items-center gap-2">
-              <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: color + '20' }}>
-                <Text className="text-xs font-semibold capitalize" style={{ color }}>{item.difficulty}</Text>
-              </View>
-              {item.completed && (
-                <Text className="text-xs text-green-500 font-semibold">✓ Completed</Text>
-              )}
-            </View>
+      <View style={[s.card, done && s.cardDone]}>
+        <View style={s.cardTop}>
+          <Text style={s.questIcon}>{questTypeIcon(item.quest_type)}</Text>
+          <View style={s.questInfo}>
+            <Text style={[s.questTitle, done && s.questTitleDone]}>{item.title}</Text>
+            <Text style={s.questDesc}>{item.description}</Text>
+          </View>
+          <View style={s.xpBadge}>
+            <Text style={s.xpText}>+{item.xp_reward}</Text>
+            <Text style={s.xpLabel}>XP</Text>
           </View>
         </View>
-      </Card>
-    );
-  };
 
-  if (loading) {
-    return (
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900 items-center justify-center">
-        <ActivityIndicator size="large" color="#d2673d" />
+        <View style={s.cardBottom}>
+          <View style={s.proofRequired}>
+            <Text style={s.proofIcon}>📸</Text>
+            <Text style={s.proofText}>Proof required to claim XP</Text>
+          </View>
+          {done ? (
+            <View style={s.doneBtn}>
+              <Text style={s.doneTxt}>✓ Completed</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={s.submitBtn} onPress={() => openProofModal(item)}>
+              <Text style={s.submitTxt}>Submit Proof</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
-  }
+  };
 
   return (
-    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-      {/* Header */}
-      <View className="bg-brand-terracotta p-5 rounded-b-2xl">
-        <View className="flex-row items-center gap-2 mb-1">
-          <Star color="#FFD700" size={24} fill="#FFD700" />
-          <Text className="text-2xl font-bold text-white">Daily Quests</Text>
-        </View>
-        <Text className="text-white/90 text-sm">
-          {completedCount}/{quests.length} completed · +{totalXP} XP earned today
-        </Text>
-        {quests.length > 0 && (
-          <View className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
-            <View
-              className="h-full bg-white rounded-full"
-              style={{ width: `${(completedCount / quests.length) * 100}%` }}
-            />
+    <SafeAreaView style={s.container}>
+      <View style={s.header}>
+        <Text style={s.title}>⚡ Daily Quests</Text>
+        <Text style={s.sub}>Submit proof to claim your XP. Resets every day.</Text>
+        <View style={s.progressRow}>
+          <Text style={s.progressTxt}>{submissions.size} / {quests.length} completed today</Text>
+          <View style={s.progressBar}>
+            <View style={[s.progressFill, { width: quests.length ? `${(submissions.size/quests.length)*100}%` as any : '0%' }]} />
           </View>
-        )}
+        </View>
       </View>
 
       <FlatList
         data={quests}
+        keyExtractor={i => i.id}
+        contentContainerStyle={{ padding: 16, gap: 12 }}
         renderItem={renderQuest}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadQuests(); }} />}
         ListEmptyComponent={
-          <View className="items-center mt-24">
-            <RefreshCw color="#ccc" size={48} />
-            <Text className="text-lg font-bold text-gray-400 mt-3">No quests today</Text>
-            <Text className="text-sm text-gray-300 mt-1">Check back soon!</Text>
-          </View>
-        }
-        ListFooterComponent={
-          quests.length > 0 && completedCount === quests.length ? (
-            <View className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 items-center mx-0">
-              <Text className="text-2xl mb-2">🎉</Text>
-              <Text className="text-base font-bold text-green-700 dark:text-green-300">All quests done!</Text>
-              <Text className="text-sm text-green-600 dark:text-green-400 mt-1">Come back tomorrow for new quests.</Text>
+          !loading ? (
+            <View style={s.empty}>
+              <Text style={s.emptyIcon}>⚡</Text>
+              <Text style={s.emptyTxt}>No quests today. Check back soon!</Text>
             </View>
-          ) : null
+          ) : <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
         }
       />
-    </View>
+
+      {/* Proof Submission Modal */}
+      <Modal visible={!!proofModal} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.modal}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Submit Proof</Text>
+              <TouchableOpacity onPress={() => setProofModal(null)}>
+                <Text style={s.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={s.modalBody}>
+              <Text style={s.modalQuest}>{proofModal?.title}</Text>
+              <Text style={s.modalDesc}>{proofModal?.description}</Text>
+
+              <Text style={s.proofSectionTitle}>Choose your proof type:</Text>
+
+              {/* Photo options */}
+              <View style={s.proofOptions}>
+                <TouchableOpacity style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]} onPress={takePhoto}>
+                  <Text style={s.proofOptionIcon}>📷</Text>
+                  <Text style={s.proofOptionTxt}>Take Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]} onPress={pickImage}>
+                  <Text style={s.proofOptionIcon}>🖼</Text>
+                  <Text style={s.proofOptionTxt}>Upload Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.proofOption, proofType === 'location' && s.proofOptionOn]} onPress={useLocation}>
+                  <Text style={s.proofOptionIcon}>📍</Text>
+                  <Text style={s.proofOptionTxt}>Check-in Location</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Image preview */}
+              {proofImage && (
+                <View style={s.imagePreview}>
+                  <Image source={{ uri: proofImage }} style={s.previewImg} resizeMode="cover" />
+                  <TouchableOpacity style={s.removeImg} onPress={() => { setProofImage(null); setProofType(null); }}>
+                    <Text style={s.removeImgTxt}>✕ Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {proofType === 'location' && (
+                <View style={s.locationConfirm}>
+                  <Text style={s.locationTxt}>📍 Location will be captured when you submit</Text>
+                </View>
+              )}
+
+              {/* Note */}
+              <Text style={s.noteLbl}>Add a note (optional)</Text>
+              <TextInput
+                style={s.noteInput}
+                placeholder="Describe what you did, who was there, any details..."
+                placeholderTextColor="#4B5563"
+                value={proofNote}
+                onChangeText={setProofNote}
+                multiline
+                numberOfLines={3}
+              />
+
+              {/* XP reminder */}
+              <View style={s.xpReminder}>
+                <Text style={s.xpReminderTxt}>🏆 You'll earn <Text style={s.xpReminderNum}>+{proofModal?.xp_reward} XP</Text> when approved</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[s.submitProofBtn, (!proofType || submitting) && s.submitProofBtnDis]}
+                onPress={submitProof}
+                disabled={!proofType || submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={s.submitProofTxt}>Submit & Claim XP 🛹</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#05070B' },
+  header: { padding: 20, paddingBottom: 12 },
+  title: { fontSize: 24, fontWeight: '900', color: '#F3F4F6' },
+  sub: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 12 },
+  progressRow: { gap: 6 },
+  progressTxt: { color: '#d2673d', fontSize: 12, fontWeight: '700' },
+  progressBar: { height: 4, backgroundColor: '#1a1f3a', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#d2673d', borderRadius: 2 },
+  card: { backgroundColor: '#111827', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1a2030' },
+  cardDone: { borderColor: '#166534', backgroundColor: 'rgba(22,101,52,0.1)' },
+  cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
+  questIcon: { fontSize: 28, marginTop: 2 },
+  questInfo: { flex: 1 },
+  questTitle: { color: '#F3F4F6', fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  questTitleDone: { color: '#4ade80' },
+  questDesc: { color: '#6B7280', fontSize: 13, lineHeight: 18 },
+  xpBadge: { alignItems: 'center', backgroundColor: 'rgba(210,103,61,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(210,103,61,0.4)', minWidth: 48 },
+  xpText: { color: '#d2673d', fontWeight: '900', fontSize: 16 },
+  xpLabel: { color: '#d2673d', fontSize: 9, fontWeight: '600' },
+  cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderColor: '#1a2030' },
+  proofRequired: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  proofIcon: { fontSize: 14 },
+  proofText: { color: '#4B5563', fontSize: 11 },
+  submitBtn: { backgroundColor: '#d2673d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  submitTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
+  doneBtn: { backgroundColor: 'rgba(22,101,52,0.3)', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#166834' },
+  doneTxt: { color: '#4ade80', fontWeight: '700', fontSize: 13 },
+  empty: { alignItems: 'center', paddingTop: 60 },
+  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyTxt: { color: '#4B5563', fontSize: 15 },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#111827', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: '#1a2030' },
+  modalTitle: { color: '#F3F4F6', fontSize: 18, fontWeight: '900' },
+  closeBtn: { color: '#6B7280', fontSize: 18, fontWeight: '700' },
+  modalBody: { padding: 20 },
+  modalQuest: { color: '#d2673d', fontSize: 18, fontWeight: '900', marginBottom: 6 },
+  modalDesc: { color: '#9CA3AF', fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  proofSectionTitle: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  proofOptions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  proofOption: { flex: 1, backgroundColor: '#0a0e1a', borderRadius: 12, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#1a2030' },
+  proofOptionOn: { borderColor: '#d2673d', backgroundColor: 'rgba(210,103,61,0.1)' },
+  proofOptionIcon: { fontSize: 24 },
+  proofOptionTxt: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  imagePreview: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  previewImg: { width: '100%', height: 200 },
+  removeImg: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  removeImgTxt: { color: 'white', fontSize: 12, fontWeight: '600' },
+  locationConfirm: { backgroundColor: 'rgba(210,103,61,0.1)', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(210,103,61,0.3)' },
+  locationTxt: { color: '#d2673d', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  noteLbl: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  noteInput: { backgroundColor: '#0a0e1a', color: '#F3F4F6', borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, borderColor: '#1a2030', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 },
+  xpReminder: { backgroundColor: 'rgba(210,103,61,0.08)', borderRadius: 10, padding: 12, marginBottom: 16, alignItems: 'center' },
+  xpReminderTxt: { color: '#9CA3AF', fontSize: 13 },
+  xpReminderNum: { color: '#d2673d', fontWeight: '900', fontSize: 15 },
+  submitProofBtn: { backgroundColor: '#d2673d', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 20 },
+  submitProofBtnDis: { opacity: 0.5 },
+  submitProofTxt: { color: 'white', fontWeight: '700', fontSize: 16 },
+});
