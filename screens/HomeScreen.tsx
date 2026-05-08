@@ -306,7 +306,7 @@ export default function HomeScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#05070B' },
+  container: { flex: 1, backgroundColor: '#030508' },
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 12 },
@@ -317,7 +317,7 @@ const s = StyleSheet.create({
   avatarEmoji: { fontSize: 20 },
 
   // XP Card
-  xpCard: { margin: 16, marginTop: 0, backgroundColor: '#111827', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#1a2030' },
+  xpCard: { margin: 16, marginTop: 0, backgroundColor: '#0F1623', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   xpTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   levelBadge: { backgroundColor: '#d2673d', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   levelNum: { color: 'white', fontWeight: '900', fontSize: 13, letterSpacing: 1 },
@@ -341,7 +341,7 @@ const s = StyleSheet.create({
   liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4ade80' },
   liveCount: { color: '#4ade80', fontSize: 12, fontWeight: '600', marginLeft: 4 },
   liveScroll: { gap: 10, paddingRight: 16 },
-  liveCard: { backgroundColor: '#111827', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#1a2030', width: 130 },
+  liveCard: { backgroundColor: '#0F1623', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', width: 130 },
   liveAvatar: { fontSize: 28, marginBottom: 6 },
   liveUser: { color: '#d2673d', fontWeight: '700', fontSize: 12, marginBottom: 2 },
   livePark: { color: '#F3F4F6', fontSize: 12, fontWeight: '600', marginBottom: 4 },
@@ -353,7 +353,7 @@ const s = StyleSheet.create({
   emptyLiveTxt: { color: '#d2673d', fontWeight: '600', fontSize: 14 },
 
   // Quests
-  questRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10, borderWidth: 1, borderColor: '#1a2030' },
+  questRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F1623', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   questIcon: { fontSize: 22 },
   questText: { flex: 1 },
   questTitle: { color: '#F3F4F6', fontWeight: '700', fontSize: 14 },
@@ -364,7 +364,7 @@ const s = StyleSheet.create({
 
   // Clips
   clipsScroll: { gap: 10, paddingRight: 16 },
-  clipCard: { width: 150, backgroundColor: '#111827', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#1a2030' },
+  clipCard: { width: 150, backgroundColor: '#0F1623', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   clipThumb: { height: 100, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   clipImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   clipImgPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -377,7 +377,7 @@ const s = StyleSheet.create({
   clipAddTxt: { color: '#d2673d', fontWeight: '600', fontSize: 12, marginTop: 4 },
 
   // Bounties
-  bountyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#1a2030' },
+  bountyRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F1623', borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   bountyLeft: { flex: 1 },
   bountyTrick: { color: '#F3F4F6', fontWeight: '700', fontSize: 15 },
   bountyPark: { color: '#6B7280', fontSize: 12, marginTop: 2 },
@@ -387,7 +387,7 @@ const s = StyleSheet.create({
 
   // Quick Nav
   quickNav: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
-  quickNavItem: { width: (width - 52) / 3, backgroundColor: '#111827', borderRadius: 12, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#1a2030' },
+  quickNavItem: { width: (width - 52) / 3, backgroundColor: '#0F1623', borderRadius: 12, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   quickNavIcon: { fontSize: 26 },
   quickNavLabel: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', textAlign: 'center' },
 });

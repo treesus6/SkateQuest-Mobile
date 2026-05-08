@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import CustomTabBar from './CustomTabBar';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -150,14 +151,9 @@ function ChallengesStack() {
 function Tabs() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#d2673d',
-        tabBarInactiveTintColor: '#999',
-        tabBarStyle: { borderTopWidth: 0, elevation: 8, shadowOpacity: 0.1 },
-      }}
-      screenListeners={{
-        tabPress: () => Haptics.light(),
       }}
     >
       <Tab.Screen
