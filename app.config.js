@@ -94,6 +94,7 @@ module.exports = {
           color: '#d2673d',
         },
       ],
+      'expo-web-browser',
     ],
 
     extra: {
