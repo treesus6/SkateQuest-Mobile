@@ -65,6 +65,10 @@ import ModerationQueueScreen from '../screens/ModerationQueueScreen';
 import ReferralScreen from '../screens/ReferralScreen';
 import MentorshipListScreen from '../screens/MentorshipListScreen';
 import ChangelogScreen from '../screens/ChangelogScreen';
+// ── New Feature Screens (v2) ──────────────────────────────────────────────────
+import XPRewardsScreen from '../screens/XPRewardsScreen';
+import GoProImportScreen from '../screens/GoProImportScreen';
+import ActiveSessionScreen from '../screens/ActiveSessionScreen';
 
 
 function ChallengeListScreen({ navigation }: any) {
@@ -261,6 +265,10 @@ function InnerApp() {
         <Stack.Screen name="DonateXP" component={DonateXPScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SponsorLeaderboard" component={SponsorLeaderboardScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Sessions" component={SessionsScreen} options={{ headerShown: true, title: 'Sessions' }} />
+        {/* ── New Feature Screens (v2) ── */}
+        <Stack.Screen name="XPRewards" component={XPRewardsScreen} options={{ headerShown: true, title: 'XP Rewards' }} />
+        <Stack.Screen name="GoProImport" component={GoProImportScreen} options={{ headerShown: true, title: 'Import from GoPro' }} />
+        <Stack.Screen name="ActiveSession" component={ActiveSessionScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
       </Stack.Navigator>
     </>

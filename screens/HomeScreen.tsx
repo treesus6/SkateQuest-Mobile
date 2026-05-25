@@ -286,6 +286,9 @@ export default function HomeScreen() {
               { icon: '⛅', label: 'Forecast', screen: 'SkateForecast' },
               { icon: '💎', label: 'Hidden Gems', screen: 'HiddenGems' },
               { icon: '🛹', label: 'Passport', screen: 'SkatePassport' },
+              { icon: '🎁', label: 'XP Rewards', screen: 'XPRewards' },
+              { icon: '📷', label: 'GoPro Import', screen: 'GoProImport' },
+              { icon: '⏱', label: 'Start Session', screen: 'ActiveSession' },
             ].map((item, i) => (
               <TouchableOpacity
                 key={i}

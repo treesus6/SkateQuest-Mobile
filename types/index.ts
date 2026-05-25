@@ -41,6 +41,10 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
+  // ── New Features (v2) ──────────────────────────────────────────
+  XPRewards: undefined;
+  GoProImport: undefined;
+  ActiveSession: { spotId?: string; spotName?: string } | undefined;
 };
 
 export interface SkateSpot {
