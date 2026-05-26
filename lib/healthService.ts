@@ -1,12 +1,10 @@
 /**
  * healthService.ts
- * Syncs SkateQuest skate sessions to Apple Health (iOS) and Google Fit (Android)
- * as "Skateboarding" workout entries.
+ * Tracks SkateQuest skate sessions and estimates health metrics.
  *
- * Uses expo-health (a community Expo module wrapping HealthKit / Health Connect).
- * Install: expo install expo-health
- *
- * Fallback: If expo-health is unavailable, gracefully degrades with no crash.
+ * Native HealthKit (iOS) / Health Connect (Android) integration is planned
+ * for a future release. Currently uses built-in calorie estimation and
+ * session timing — no native health modules required.
  */
 
 import { Platform } from 'react-native';
@@ -34,94 +32,30 @@ export function estimateCalories(durationMinutes: number): number {
 
 /**
  * Request permission to write workouts to Apple Health / Google Fit.
- * Returns true if permission granted.
+ * Currently returns false — native health module integration is planned
+ * for a future release.
  */
 export async function requestHealthPermissions(): Promise<boolean> {
-  try {
-    if (Platform.OS === 'ios') {
-      // expo-health for iOS HealthKit
-      const Health = await import('expo-health').catch(() => null);
-      if (!Health) {
-        Logger.warn('healthService: expo-health not installed');
-        return false;
-      }
-      const available = await Health.isAvailableAsync();
-      if (!available) return false;
-
-      await Health.requestPermissionsAsync({
-        read: [],
-        write: [
-          Health.HealthDataType.Workout,
-          Health.HealthDataType.ActiveEnergyBurned,
-        ],
-      });
-      return true;
-    }
-
-    if (Platform.OS === 'android') {
-      // expo-health for Android Health Connect
-      const Health = await import('expo-health').catch(() => null);
-      if (!Health) return false;
-      const available = await Health.isAvailableAsync();
-      if (!available) return false;
-      await Health.requestPermissionsAsync({
-        read: [],
-        write: [Health.HealthDataType.Workout],
-      });
-      return true;
-    }
-
-    return false;
-  } catch (err) {
-    Logger.error('healthService: permission request failed', err);
-    return false;
-  }
+  Logger.info(`healthService: native health integration not yet enabled on ${Platform.OS}`);
+  return false;
 }
 
 /**
  * Save a completed skate session as a workout to Apple Health / Google Fit.
+ * Currently a no-op — native health module integration is planned for a future release.
+ * Future: use react-native-health (iOS) and react-native-health-connect (Android).
  */
 export async function saveSkateSessionToHealth(
   session: SkateSessionHealth
 ): Promise<{ success: boolean; message: string }> {
-  try {
-    const Health = await import('expo-health').catch(() => null);
-    if (!Health) {
-      return { success: false, message: 'Health integration not available on this device.' };
-    }
-
-    const available = await Health.isAvailableAsync();
-    if (!available) {
-      return { success: false, message: 'Health app not available on this device.' };
-    }
-
-    const calories = session.caloriesBurned ?? estimateCalories(session.durationMinutes);
-
-    await Health.saveWorkoutAsync({
-      activityType: Health.WorkoutActivityType.Skateboarding,
-      startDate: session.startTime,
-      endDate: session.endTime,
-      energyBurned: calories,
-      energyBurnedUnit: 'kilocalorie',
-      distance: session.distanceMeters,
-      distanceUnit: 'meter',
-      metadata: {
-        HKMetadataKeyWorkoutBrandName: 'SkateQuest',
-        ...(session.spotName ? { location: session.spotName } : {}),
-      },
-    });
-
-    return {
-      success: true,
-      message: `Saved to Health: ${session.durationMinutes} min skate session, ~${calories} cal burned`,
-    };
-  } catch (err: any) {
-    Logger.error('healthService: saveWorkout failed', err);
-    return {
-      success: false,
-      message: err?.message || 'Could not save to Health app.',
-    };
-  }
+  const calories = session.caloriesBurned ?? estimateCalories(session.durationMinutes);
+  Logger.info(
+    `healthService: session logged locally — ${session.durationMinutes} min, ~${calories} cal (native health sync coming soon)`
+  );
+  return {
+    success: false,
+    message: 'Health app sync coming soon! Your session data is saved in SkateQuest.',
+  };
 }
 
 /**
