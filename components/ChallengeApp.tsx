@@ -270,6 +270,24 @@ function InnerApp() {
         <Stack.Screen name="GoProImport" component={GoProImportScreen} options={{ headerShown: true, title: 'Import from GoPro' }} />
         <Stack.Screen name="ActiveSession" component={ActiveSessionScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />
+        <Stack.Screen name="Achievements" component={AchievementsScreen} options={{ headerShown: true, title: 'Achievements' }} />
+        <Stack.Screen name="AiCoach" component={AiCoachScreen} options={{ headerShown: true, title: 'AI Coach' }} />
+        <Stack.Screen name="BountyBoard" component={BountyBoardScreen} options={{ headerShown: true, title: 'Bounty Board' }} />
+        <Stack.Screen name="Changelog" component={ChangelogScreen} options={{ headerShown: true, title: 'What\'s New' }} />
+        <Stack.Screen name="DailyQuests" component={DailyQuestsScreen} options={{ headerShown: true, title: 'Daily Quests' }} />
+        <Stack.Screen name="DemoDay" component={DemoDayScreen} options={{ headerShown: true, title: 'Demo Day' }} />
+        <Stack.Screen name="LiveCheckIn" component={LiveCheckInScreen} options={{ headerShown: true, title: 'Live Check-In' }} />
+        <Stack.Screen name="MentorshipList" component={MentorshipListScreen} options={{ headerShown: true, title: 'Mentors' }} />
+        <Stack.Screen name="Messages" component={MessagesScreen} options={{ headerShown: true, title: 'Messages' }} />
+        <Stack.Screen name="ModerationQueue" component={ModerationQueueScreen} options={{ headerShown: true, title: 'Moderation' }} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ headerShown: true, title: 'Notifications' }} />
+        <Stack.Screen name="Referral" component={ReferralScreen} options={{ headerShown: true, title: 'Invite Friends' }} />
+        <Stack.Screen name="Scene" component={SceneScreen} options={{ headerShown: true, title: 'Local Scene' }} />
+        <Stack.Screen name="SeasonalEvents" component={SeasonalEventsScreen} options={{ headerShown: true, title: 'Seasonal Events' }} />
+        <Stack.Screen name="SkatePassport" component={SkatePassportScreen} options={{ headerShown: true, title: 'Skate Passport' }} />
+        <Stack.Screen name="SkateForecast" component={SkateForecastScreen} options={{ headerShown: true, title: 'Skate Forecast' }} />
+        <Stack.Screen name="SpotClaims" component={SpotClaimsScreen} options={{ headerShown: true, title: 'Spot Claims' }} />
+        <Stack.Screen name="TrickOfWeek" component={TrickOfWeekScreen} options={{ headerShown: true, title: 'Trick of the Week' }} />
       </Stack.Navigator>
     </>
   );

@@ -47,9 +47,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   ];
 
   const POST_ACTIONS = [
-    { icon: '🎥', label: 'Post Clip',     screen: 'SkateTV',     color: '#d2673d' },
-    { icon: '📍', label: 'Check In',      screen: 'LiveCheckIn', color: '#4ade80' },
-    { icon: '🛹', label: 'Log Trick',     screen: 'AiCoach',     color: '#a855f7' },
+    { icon: '🎥', label: 'Post Clip',     screen: 'UploadMedia',  color: '#d2673d' },
+    { icon: '📍', label: 'Check In',      screen: 'LiveCheckIn',  color: '#4ade80' },
+    { icon: '🛹', label: 'Log Trick',     screen: 'TrickTracker', color: '#a855f7' },
+    { icon: '🤖', label: 'AI Coach',      screen: 'AiCoach',      color: '#3b82f6' },
   ];
 
   return (

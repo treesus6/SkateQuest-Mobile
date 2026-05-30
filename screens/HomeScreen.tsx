@@ -281,7 +281,7 @@ export default function HomeScreen() {
           <View style={s.quickNav}>
             {[
               { icon: '🗺', label: 'Find Parks', screen: 'Map' },
-              { icon: '👥', label: 'My Crew', screen: 'Crew' },
+              { icon: '👥', label: 'My Crew', screen: 'Crews' },
               { icon: '🤖', label: 'Coach', screen: 'AiCoach' },
               { icon: '⛅', label: 'Forecast', screen: 'SkateForecast' },
               { icon: '💎', label: 'Hidden Gems', screen: 'HiddenGems' },

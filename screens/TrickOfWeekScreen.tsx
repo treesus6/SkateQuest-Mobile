@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 
-export default function TrickOfWeekScreen() {
+export default function TrickOfWeekScreen({ navigation }: any) {
   const { user } = useAuthStore();
   const [current, setCurrent] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -23,16 +23,30 @@ export default function TrickOfWeekScreen() {
     setCurrent(totw);
 
     if (totw) {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const weekNum = Math.ceil(
+        ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
+      );
+      
       const { data: subs } = await supabase
-        .from('trick_of_week_submissions')
-        .select('*, profiles(username)')
-        .eq('totw_id', totw.id)
+        .from('clip_submissions')
+        .select('*, media(url), profile:user_id(username)')
+        .eq('week_number', weekNum)
+        .eq('year', now.getFullYear())
         .order('votes', { ascending: false });
-      setSubmissions(subs || []);
+      
+      const formattedSubs = (subs || []).map((s: any) => ({
+        id: s.id, // Use clip_submission id for voting
+        media_id: s.media_id,
+        votes: s.votes,
+        username: s.profile?.username || 'Skater'
+      }));
+      setSubmissions(formattedSubs);
 
       if (user) {
         const { data: votes } = await supabase
-          .from('trick_of_week_votes')
+          .from('clip_votes')
           .select('submission_id')
           .eq('user_id', user.id);
         setUserVotes(new Set(votes?.map(v => v.submission_id) || []));
@@ -44,8 +58,9 @@ export default function TrickOfWeekScreen() {
     if (!user || userVotes.has(subId)) return;
     setUserVotes(prev => new Set([...prev, subId]));
     setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, votes: s.votes + 1 } : s).sort((a,b) => b.votes - a.votes));
-    await supabase.from('trick_of_week_votes').insert({ user_id: user.id, submission_id: subId });
-    await supabase.from('trick_of_week_submissions').update({ votes: currentVotes + 1 }).eq('id', subId);
+    
+    await supabase.from('clip_votes').insert({ user_id: user.id, submission_id: subId });
+    await supabase.rpc('increment_clip_votes', { submission_id: subId });
   };
 
   if (!current) return (
@@ -65,6 +80,16 @@ export default function TrickOfWeekScreen() {
         <Text style={s.trick}>{current.trick_name}</Text>
         {current.description && <Text style={s.desc}>{current.description}</Text>}
         <Text style={s.ends}>Voting ends: {new Date(current.week_end).toLocaleDateString()}</Text>
+        
+        <TouchableOpacity 
+          style={s.submitMainBtn}
+          onPress={() => navigation.navigate('UploadMedia', { 
+            initialTrickName: current.trick_name,
+            totwId: current.id 
+          })}
+        >
+          <Text style={s.submitMainBtnTxt}>Submit Your Clip</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={s.sectionTitle}>Submissions — vote for your favorite</Text>
@@ -79,7 +104,7 @@ export default function TrickOfWeekScreen() {
               <Text style={s.rankNum}>#{index + 1}</Text>
             </View>
             <View style={s.cardMain}>
-              <Text style={s.submitter}>@{item.profiles?.username}</Text>
+              <Text style={s.submitter}>@{item.username}</Text>
               <Text style={s.voteCount}>{item.votes} votes</Text>
             </View>
             <TouchableOpacity
@@ -125,4 +150,23 @@ const s = StyleSheet.create({
   voteBtnTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
   empty: { paddingTop: 40, alignItems: 'center' },
   emptyTxt: { color: '#4B5563', fontSize: 14, textAlign: 'center' },
+  submitMainBtn: {
+    backgroundColor: '#FF5A3C',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+    shadowColor: '#FF5A3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  submitMainBtnTxt: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
 });

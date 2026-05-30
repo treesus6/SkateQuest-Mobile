@@ -16,7 +16,7 @@ interface Bounty {
   crews: { name: string };
 }
 
-export default function BountyBoardScreen() {
+export default function BountyBoardScreen({ navigation }: any) {
   const { user } = useAuthStore();
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,17 @@ export default function BountyBoardScreen() {
     Alert.alert(
       'Claim Bounty',
       `Land "${bounty.trick_name}" and upload your clip to claim ${bounty.xp_reward} XP!`,
-      [{ text: 'Got it', style: 'default' }, { text: 'Cancel', style: 'cancel' }]
+      [
+        { 
+          text: 'Upload Clip', 
+          onPress: () => (navigation as any).navigate('UploadMedia', { 
+            initialTrickName: bounty.trick_name,
+            bountyId: bounty.id,
+            spotName: bounty.park_name
+          }) 
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
     );
   };
 

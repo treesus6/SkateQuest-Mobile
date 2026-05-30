@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Plus, X } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useAuthStore } from '../stores/useAuthStore';
 import { referralService } from '../lib/referralService';
 import ReferralCodeCard from '../components/ReferralCodeCard';
@@ -65,8 +66,8 @@ export default function ReferralScreen() {
     }
   };
 
-  const handleCopyCode = (code: string) => {
-    // In real app, use clipboard
+  const handleCopyCode = async (code: string) => {
+    await Clipboard.setStringAsync(code);
     Alert.alert('Copied!', `Code "${code}" copied to clipboard`);
   };
 

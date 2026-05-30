@@ -33,8 +33,20 @@ export default function ModerationQueueScreen({ navigation: _navigation }: any) 
   // Check if user is admin
   useEffect(() => {
     if (!user) return;
-    // In a real app, check user.role === 'admin'
-    setIsAdmin(true); // For demo, assume admin
+    const checkAdmin = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      if (data && data.role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
   }, [user]);
 
   const loadQueue = useCallback(async () => {
@@ -90,23 +102,39 @@ export default function ModerationQueueScreen({ navigation: _navigation }: any) 
   const handleReject = async (itemId: string) => {
     if (!user?.id) return;
 
-    Alert.prompt(
-      'Reject Content',
-      'Reason for rejection:',
-      async reason => {
-        if (!reason.trim()) return;
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Reject Content',
+        'Reason for rejection:',
+        async reason => {
+          if (!reason.trim()) return;
+          await submitRejection(itemId, reason);
+        },
+        'plain-text'
+      );
+    } else {
+      // Android fallback: simpler alert for now
+      Alert.alert(
+        'Reject Content',
+        'Are you sure you want to reject this content?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Reject', style: 'destructive', onPress: () => submitRejection(itemId, 'Rejected by moderator') }
+        ]
+      );
+    }
+  };
 
-        try {
-          await moderationService.rejectModerationItem(itemId, user.id, reason);
-          Alert.alert('Success', 'Content rejected');
-          await loadQueue();
-        } catch (error) {
-          Logger.error('Failed to reject item', error);
-          Alert.alert('Error', 'Failed to reject content');
-        }
-      },
-      'plain-text'
-    );
+  const submitRejection = async (itemId: string, reason: string) => {
+    if (!user?.id) return;
+    try {
+      await moderationService.rejectModerationItem(itemId, user.id, reason);
+      Alert.alert('Success', 'Content rejected');
+      await loadQueue();
+    } catch (error) {
+      Logger.error('Failed to reject item', error);
+      Alert.alert('Error', 'Failed to reject content');
+    }
   };
 
   if (!isAdmin) {

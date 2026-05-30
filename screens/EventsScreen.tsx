@@ -65,7 +65,7 @@ export default function EventsScreen() {
         {item.description ? (
           <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">{item.description}</Text>
         ) : null}
-        <Text className="text-sm text-gray-400 dark:text-gray-500 mb-1">{item.location}</Text>
+        <Text className="text-sm text-gray-400 dark:text-gray-500 mb-1">{(item as any).spot_name || item.location}</Text>
         <Text className="text-xs text-gray-300 dark:text-gray-500">{item.attendee_count} attending</Text>
       </View>
 

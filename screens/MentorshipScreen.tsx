@@ -9,8 +9,11 @@ import {
   Switch,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ChevronLeft, Star, UserCheck, Users, Zap, Award } from 'lucide-react-native';
+import { ChevronLeft, Star, UserCheck, Users, Zap, Award, MessageSquare } from 'lucide-react-native';
+import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { mentorshipService } from '../lib/mentorshipService';
+import { useAuthStore } from '../stores/useAuthStore';
 
 interface MentorProfile {
   id: string;
@@ -21,34 +24,28 @@ interface MentorProfile {
   username?: string;
 }
 
-interface ActiveMentorship {
-  id: string;
-  mentor_id: string;
-  apprentice_id: string;
-  status: string;
-  xp_earned: number;
-  tricks_learned: number;
-  mentor_username?: string;
-  apprentice_username?: string;
-}
-
 export default function MentorshipScreen() {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [tab, setTab] = useState<'find' | 'mentor'>('find');
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
-  const [activeMentorship, setActiveMentorship] = useState<ActiveMentorship | null>(null);
+  const [activeRelationships, setActiveRelationships] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [user]);
 
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
+      // Still use mentor_profiles for the "Find" list
       const { data: mentorData } = await supabase
         .from('mentor_profiles')
         .select('*, profiles:user_id(username)')
         .eq('available', true)
+        .neq('user_id', user.id)
         .order('level', { ascending: false })
         .limit(20);
 
@@ -56,35 +53,58 @@ export default function MentorshipScreen() {
         setMentors(mentorData.map((m: any) => ({ ...m, username: m.profiles?.username })));
       }
 
-      const { data: ms } = await supabase
-        .from('mentorships')
-        .select('*, mentor:mentor_id(username), apprentice:apprentice_id(username)')
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
+      // Use the newer mentorshipService for active relationships
+      const [mentees, mentors_list, mentorshipStats] = await Promise.all([
+        mentorshipService.getUserMentees(user.id),
+        mentorshipService.getUserMentors(user.id),
+        mentorshipService.getMentorshipStats(user.id)
+      ]);
 
-      if (ms) {
-        setActiveMentorship({
-          ...ms,
-          mentor_username: (ms.mentor as any)?.username,
-          apprentice_username: (ms.apprentice as any)?.username,
-        });
-      }
-    } catch (_) {}
+      setActiveRelationships([...mentees, ...mentors_list]);
+      setStats(mentorshipStats);
+
+      // Check if current user is a mentor
+      const { data: myProfile } = await supabase
+        .from('mentor_profiles')
+        .select('available')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (myProfile) setIsMentor(myProfile.available);
+
+    } catch (error) {
+      console.error('Error fetching mentorship data:', error);
+    }
     setLoading(false);
   };
 
   const requestMentor = async (mentorUserId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('mentorships').insert([{
-      mentor_id: mentorUserId,
-      apprentice_id: user.id,
-      status: 'pending',
-      xp_earned: 0,
-      tricks_learned: 0,
-    }]);
-    fetchData();
+    try {
+      await mentorshipService.requestMentorship(mentorUserId, user.id, 'I want to learn more street tricks!');
+      Alert.alert('Success', 'Mentorship request sent!');
+      fetchData();
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const toggleMentorStatus = async (val: boolean) => {
+    if (!user) return;
+    setIsMentor(val);
+    try {
+      await supabase
+        .from('mentor_profiles')
+        .upsert({ 
+          user_id: user.id, 
+          available: val,
+          specialty: 'street', // default
+          tricks_mastered: 0,
+          level: 1
+        });
+    } catch (error) {
+      console.error('Error toggling mentor status:', error);
+    }
   };
 
   const specialtyColor = (s: string) => {
@@ -103,24 +123,31 @@ export default function MentorshipScreen() {
         <Award color="#FF6B35" size={22} />
       </View>
 
-      {activeMentorship && (
-        <View style={{ margin: 16, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#FF6B35' }}>
-          <Text style={{ color: '#FF6B35', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 6 }}>ACTIVE MENTORSHIP</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <View>
-              <Text style={{ color: '#fff', fontWeight: '700' }}>
-                {activeMentorship.mentor_username} → {activeMentorship.apprentice_username}
+      {activeRelationships.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 120, marginBottom: 10 }}>
+          {activeRelationships.map((rel: any) => (
+            <TouchableOpacity 
+              key={rel.id}
+              onPress={() => (navigation as any).navigate('Messages', { recipientId: rel.mentor_user_id === user?.id ? rel.mentee_user_id : rel.mentor_user_id })}
+              style={{ width: 280, marginHorizontal: 16, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: rel.status === 'active' ? '#4CAF50' : '#FF6B35' }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ color: rel.status === 'active' ? '#4CAF50' : '#FF6B35', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 4 }}>
+                    {rel.status.toUpperCase()} {rel.mentor_user_id === user?.id ? 'APPRENTICE' : 'MENTOR'}
+                  </Text>
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>
+                    {rel.mentor_user_id === user?.id ? 'Teaching Skater' : 'Learning from Mentor'}
+                  </Text>
+                </View>
+                <MessageSquare color="#666" size={18} />
+              </View>
+              <Text style={{ color: '#666', fontSize: 11, marginTop: 6 }}>
+                Last interaction: {new Date(rel.last_interaction).toLocaleDateString()}
               </Text>
-              <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
-                {activeMentorship.tricks_learned} tricks learned together
-              </Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={{ color: '#4CAF50', fontWeight: '800', fontSize: 16 }}>+{activeMentorship.xp_earned}</Text>
-              <Text style={{ color: '#666', fontSize: 10 }}>XP earned</Text>
-            </View>
-          </View>
-        </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: '#1a1a1a', borderRadius: 10, padding: 4 }}>
@@ -193,7 +220,7 @@ export default function MentorshipScreen() {
                 <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Available as Mentor</Text>
                 <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>Show up in the mentor list</Text>
               </View>
-              <Switch value={isMentor} onValueChange={setIsMentor} trackColor={{ false: '#333', true: '#FF6B35' }} />
+              <Switch value={isMentor} onValueChange={toggleMentorStatus} trackColor={{ false: '#333', true: '#FF6B35' }} />
             </View>
           </View>
           <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>

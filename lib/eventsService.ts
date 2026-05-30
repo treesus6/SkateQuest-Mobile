@@ -17,7 +17,7 @@ export const eventsService = {
   async getUpcoming() {
     try {
       return await supabase
-        .from('events')
+        .from('skate_sessions')
         .select('*')
         .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true })
@@ -34,9 +34,9 @@ export const eventsService = {
 
   async rsvp(eventId: string, userId: string) {
     try {
-      return await supabase.from('event_rsvps').insert([
+      return await supabase.from('session_attendees').insert([
         {
-          event_id: eventId,
+          session_id: eventId,
           user_id: userId,
         },
       ]);

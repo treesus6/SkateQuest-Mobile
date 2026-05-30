@@ -77,7 +77,7 @@ const CONDITION_LABELS: Record<string, string> = {
 const FEATURES = [
   // Core
   { key: 'Feed', icon: Star, color: '#d2673d', screen: 'Feed' },
-  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'ChallengesTab' },
+  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'Challenges' },
   { key: 'Tricks', icon: Zap, color: '#FF6B35', screen: 'TrickTracker' },
   { key: 'SKATE', icon: Gamepad2, color: '#6B4CE6', screen: 'SkateGame' },
   { key: 'Leaderboard', icon: BarChart3, color: '#2196F3', screen: 'Leaderboard' },
@@ -86,7 +86,7 @@ const FEATURES = [
   { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
   { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
   { key: 'Sessions', icon: Users, color: '#6B4CE6', screen: 'Sessions' },
-  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
+  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRCodeScanner' },
   // Community & Social
   { key: 'Battles', icon: Swords, color: '#e74c3c', screen: 'CrewBattles' },
   { key: 'Mentorship', icon: UserCheck, color: '#8e44ad', screen: 'Mentorship' },

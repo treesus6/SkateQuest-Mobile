@@ -1,16 +1,94 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { weatherService } from '../lib/weatherService';
+import { spotsService } from '../lib/spotsService';
+import * as Location from 'expo-location';
 
-const MOCK_FORECAST = [
-  { park_name: 'Kirtsis Park', temp: 64, rain: 5, bust: 20, score: 90, condition: '☀️ Clear', rec: 'Perfect day to skate. Low bust risk, no rain.' },
-  { park_name: 'Portland Skatepark', temp: 58, rain: 30, bust: 45, score: 65, condition: '🌥 Cloudy', rec: 'Decent conditions. Watch for afternoon showers.' },
-  { park_name: 'Burnside', temp: 61, rain: 15, bust: 15, score: 80, condition: '⛅ Partly Cloudy', rec: 'Good session conditions. Burnside is usually fine.' },
-  { park_name: 'Clackamas Skatepark', temp: 63, rain: 10, bust: 30, score: 75, condition: '☀️ Clear', rec: 'Good conditions. Light security presence on weekends.' },
-];
+interface ForecastItem {
+  park_name: string;
+  temp: number;
+  rain: number;
+  bust: number;
+  score: number;
+  condition: string;
+  rec: string;
+}
 
 export default function SkateForecastScreen() {
+  const [forecasts, setForecasts] = useState<ForecastItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadForecasts = async () => {
+    try {
+      setLoading(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      let lat = 37.78825; // Default SF
+      let lon = -122.4324;
+
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        lat = loc.coords.latitude;
+        lon = loc.coords.longitude;
+      }
+
+      // Get nearby spots
+      const { data: spots } = await supabase.rpc('get_nearby_spots', {
+        lat: lat,
+        lng: lon,
+        radius_meters: 50000, // 50km
+      });
+
+      if (!spots || spots.length === 0) {
+        setForecasts([]);
+        return;
+      }
+
+      const results: ForecastItem[] = [];
+      
+      for (const spot of spots.slice(0, 5)) {
+        const weather = await weatherService.getWeatherForSpot(spot.id, spot.latitude, spot.longitude);
+        
+        // Get bust risk from spot_conditions
+        const { data: conditions } = await supabase
+          .from('spot_conditions')
+          .select('bust_risk')
+          .eq('spot_id', spot.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const bustRisk = conditions?.bust_risk ?? 20; // Default 20%
+        const score = weatherService.getSkateabilityScore(weather || {});
+        
+        results.push({
+          park_name: spot.name,
+          temp: Math.round(weather?.temperature ?? 70),
+          rain: Math.round((weather?.precipitation ?? 0) * 100),
+          bust: bustRisk,
+          score: score,
+          condition: `${weatherService.getWeatherEmoji(weather?.weather_main)} ${weather?.weather_main || 'Clear'}`,
+          rec: score >= 80 ? 'Perfect day to skate. Low bust risk, no rain.' : 
+               score >= 60 ? 'Decent conditions. Watch for afternoon showers.' : 
+               'Not ideal. Better find an indoor spot or work on flatground.'
+        });
+      }
+
+      setForecasts(results);
+    } catch (err) {
+      console.error('Error loading forecast:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadForecasts();
+  }, []);
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return '#4ade80';
     if (score >= 60) return '#fbbf24';
@@ -23,9 +101,20 @@ export default function SkateForecastScreen() {
     return 'SKIP IT';
   };
 
+  if (loading && !refreshing) {
+    return (
+      <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#d2673d" />
+        <Text style={{ color: '#6B7280', marginTop: 12 }}>Checking conditions...</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={s.container}>
-      <ScrollView>
+      <ScrollView 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadForecasts(); }} tintColor="#d2673d" />}
+      >
         <View style={s.header}>
           <Text style={s.title}>⛅ Skate Forecast</Text>
           <Text style={s.sub}>Weather + bust risk combined. Best spots to skate today.</Text>
@@ -33,7 +122,7 @@ export default function SkateForecastScreen() {
         </View>
 
         <View style={s.cards}>
-          {MOCK_FORECAST.map((item, i) => (
+          {forecasts.length > 0 ? forecasts.map((item, i) => (
             <View key={i} style={s.card}>
               <View style={s.cardHeader}>
                 <Text style={s.parkName}>{item.park_name}</Text>
@@ -64,7 +153,11 @@ export default function SkateForecastScreen() {
 
               <Text style={s.rec}>{item.rec}</Text>
             </View>
-          ))}
+          )) : (
+            <View style={s.empty}>
+              <Text style={s.emptyText}>No spots found nearby. Try adding some spots to the map!</Text>
+            </View>
+          )}
         </View>
 
         <View style={s.legend}>
@@ -98,4 +191,6 @@ const s = StyleSheet.create({
   legend: { margin: 16, padding: 16, backgroundColor: '#111827', borderRadius: 10 },
   legendTitle: { color: '#d2673d', fontWeight: '700', fontSize: 13, marginBottom: 6 },
   legendText: { color: '#6B7280', fontSize: 12, lineHeight: 18 },
+  empty: { padding: 40, alignItems: 'center' },
+  emptyText: { color: '#6B7280', textAlign: 'center', fontSize: 14 },
 });

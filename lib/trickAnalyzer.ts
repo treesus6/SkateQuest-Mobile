@@ -10,8 +10,8 @@ export interface TrickAnalysis {
 }
 
 /**
- * Analyzes a trick via the Supabase Edge Function (server-side OpenAI call).
- * This keeps the OpenAI API key off the client bundle entirely.
+ * Analyzes a trick via the Supabase Edge Function (analyze-trick).
+ * AI processing happens server-side — no API keys on the client.
  */
 export async function analyzeTrick(
   trickName: string,

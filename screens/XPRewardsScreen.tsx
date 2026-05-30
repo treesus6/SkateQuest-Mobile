@@ -16,8 +16,8 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import {
   Gift,
   Zap,
@@ -179,8 +179,8 @@ function RedemptionCodeModal({
   const [copied, setCopied] = useState(false);
   const expiresDate = new Date(expiresAt).toLocaleString();
 
-  const copyCode = () => {
-    Clipboard.setString(code);
+  const copyCode = async () => {
+    await Clipboard.setStringAsync(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

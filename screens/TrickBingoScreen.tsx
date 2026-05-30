@@ -100,7 +100,7 @@ export default function TrickBingoScreen() {
       const { data: cardData } = await supabase
         .from('bingo_cards')
         .select('*')
-        .order('week_number', { ascending: false })
+        .order('created_at', { ascending: false }) // Use created_at if week_number sorting is ambiguous
         .limit(1)
         .single();
 

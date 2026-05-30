@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, ScrollView } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Camera, Film, ImageIcon, Video as VideoIcon, Bot, Check } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { feedService } from '../lib/feedService';
 import { pickImage, pickVideo, uploadImage, uploadVideo, saveMediaToDatabase } from '../lib/mediaUpload';
@@ -9,12 +10,16 @@ import { analyzeTrickVideo, saveAnalysisResult, TrickAnalysisResult } from '../l
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
-export default function UploadMediaScreen({ navigation }: any) {
+export default function UploadMediaScreen({ route, navigation }: any) {
   const { user } = useAuthStore();
+  const initialTrickName = route.params?.initialTrickName || '';
+  const totwId = route.params?.totwId || null;
+  const bountyId = route.params?.bountyId || null;
+  
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
   const [caption, setCaption] = useState('');
-  const [trickName, setTrickName] = useState('');
+  const [trickName, setTrickName] = useState(initialTrickName);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<TrickAnalysisResult | null>(null);
@@ -60,6 +65,33 @@ export default function UploadMediaScreen({ navigation }: any) {
 
       if (analysis) await saveAnalysisResult(media.id, analysis);
 
+      if (totwId) {
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const weekNum = Math.ceil(
+          ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
+        );
+        
+        await supabase.from('clip_submissions').insert({
+          user_id: user.id,
+          media_id: media.id,
+          week_number: weekNum,
+          year: now.getFullYear(),
+          trick_name: trickName || analysis?.trickName || 'New Trick',
+          votes: 0
+        });
+      }
+
+      if (bountyId) {
+        await supabase.from('bounty_submissions').insert({
+          bounty_id: bountyId,
+          user_id: user.id,
+          media_id: media.id,
+          status: 'pending'
+        });
+      }
+
+      // Activity feed creation is handled by the service which now uses the correct table
       await feedService.create({
         user_id: user.id,
         activity_type: 'media_uploaded',

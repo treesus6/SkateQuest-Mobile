@@ -6,7 +6,7 @@ export const shopsService = {
   async getAll() {
     try {
       return await supabase
-        .from('shops')
+        .from('skate_shops')
         .select('*')
         .order('name', { ascending: true });
     } catch (error) {

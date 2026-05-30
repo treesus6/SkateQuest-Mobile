@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { Flame, Award, Bug } from 'lucide-react-native';
+import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Flame, Award, Bug, Trophy, Bell, Share2, MessageSquare, ShieldCheck, History, UserCheck, CalendarDays, Map } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { profilesService } from '../lib/profilesService';
@@ -20,6 +21,7 @@ interface LevelProgress {
 }
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { user, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
@@ -135,6 +137,30 @@ export default function ProfileScreen() {
           <Text className="text-lg font-bold text-brand-orange">{profile.streak} Day Streak</Text>
         </Card>
       ) : null}
+
+      <Card className="mx-4 p-0 overflow-hidden">
+        {[
+          { label: 'Achievements', icon: Trophy, screen: 'Achievements', color: '#fbbf24' },
+          { label: 'Notifications', icon: Bell, screen: 'Notifications', color: '#3b82f6' },
+          { label: 'Messages', icon: MessageSquare, screen: 'Messages', color: '#10b981' },
+          { label: 'Live Check-ins', icon: UserCheck, screen: 'LiveCheckIn', color: '#f97316' },
+          { label: 'Seasonal Events', icon: CalendarDays, screen: 'SeasonalEvents', color: '#ef4444' },
+          { label: 'The Scene', icon: Map, screen: 'Scene', color: '#d2673d' },
+          { label: 'Skate Passport', icon: History, screen: 'SkatePassport', color: '#6366f1' },
+          { label: 'Invite Friends', icon: Share2, screen: 'Referral', color: '#a855f7' },
+          { label: 'What\'s New', icon: History, screen: 'Changelog', color: '#6b7280' },
+        ].map((item, i) => (
+          <TouchableOpacity
+            key={i}
+            className={`flex-row items-center p-4 border-b border-gray-100 dark:border-gray-800`}
+            onPress={() => navigation.navigate(item.screen)}
+          >
+            <item.icon color={item.color} size={20} />
+            <Text className="flex-1 ml-3 text-base font-semibold text-gray-800 dark:text-gray-100">{item.label}</Text>
+            <Text className="text-gray-400">›</Text>
+          </TouchableOpacity>
+        ))}
+      </Card>
 
       {profile?.badges && Object.keys(profile.badges).length > 0 ? (
         <Card className="mx-4">
