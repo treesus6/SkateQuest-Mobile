@@ -226,19 +226,14 @@ export default function TrickTrackerScreen() {
       if (error) throw error;
 
       if (newStatus === 'landed' && trick.status === 'trying') {
+        // Activity feed creation is handled by the service which now uses the correct table
         await feedService.create({
           user_id: user.id,
           activity_type: 'trick_landed',
           title: `Landed a ${trick.trick_name}!`,
           xp_earned: 25,
         });
-        const { error: xpError } = await profilesService.incrementXp(user.id, 25);
-        if (xpError) {
-          const { data: userData } = await profilesService.getById(user.id);
-          if (userData) {
-            await profilesService.update(user.id, { xp: (userData.xp || 0) + 25 });
-          }
-        }
+        await profilesService.incrementXp(user.id, 25);
         Alert.alert('Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
       }
       refetch();

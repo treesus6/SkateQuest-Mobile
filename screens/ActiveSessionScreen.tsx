@@ -150,11 +150,10 @@ export default function ActiveSessionScreen() {
       // Log to activity feed
       await feedService.create({
         user_id: user.id,
-        activity_type: 'media_uploaded',
+        activity_type: 'skate_session',
         title: `Skated ${spotName} for ${durationMinutes} min`,
         description: `${trickCount} tricks logged · ~${calories} cal burned`,
         xp_earned: xpEarned,
-        spot_id: spotId,
       }).catch(() => {});
 
       // Sync to Apple Health / Google Fit

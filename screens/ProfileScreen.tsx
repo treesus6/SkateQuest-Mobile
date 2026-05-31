@@ -32,22 +32,11 @@ export default function ProfileScreen() {
     try {
       const { data, error } = await profilesService.getById(user.id);
       if (error && error.code === 'PGRST116') {
-        const newProfile = {
-          id: user.id,
-          username: `Skater${Math.floor(Math.random() * 10000)}`,
-          level: 1,
-          xp: 0,
-          spots_added: 0,
-          challenges_completed: [],
-          streak: 0,
-          badges: {},
-        };
-        const { data: created, error: createError } = await profilesService.create(newProfile);
-        if (createError) {
-          console.error('Error creating profile:', createError);
-        } else if (created) {
-          setProfile(created);
-        }
+        Alert.alert(
+          'Profile Missing',
+          'We couldn\'t find your profile. Please try signing out and back in, or contact support.',
+          [{ text: 'Sign Out', onPress: () => signOut() }]
+        );
       } else if (!error && data) {
         setProfile(data);
         if (data.xp !== undefined) {
@@ -176,39 +165,7 @@ export default function ProfileScreen() {
         </Card>
       ) : null}
 
-      {__DEV__ && (
-        <Card className="mx-4 border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-          <View className="flex-row items-center justify-center gap-2 mb-3">
-            <Bug color="#856404" size={18} />
-            <Text className="text-base font-bold text-yellow-700">Sentry Debug (Dev Only)</Text>
-          </View>
-          <Button
-            title="Test JS Crash"
-            variant="ghost"
-            size="sm"
-            className="mb-2"
-            onPress={() => {
-              throw new Error('Sentry Test Crash');
-            }}
-          />
-          <Button
-            title="Test Native Crash"
-            variant="ghost"
-            size="sm"
-            className="mb-2"
-            onPress={() => (Sentry as any).nativeCrash()}
-          />
-          <Button
-            title="Send Test Message"
-            variant="ghost"
-            size="sm"
-            onPress={() => {
-              Sentry.captureMessage('Test from ProfileScreen', 'info');
-              Alert.alert('Sent!');
-            }}
-          />
-        </Card>
-      )}
+
 
       <View className="mx-4 mb-8">
         <Button title="Sign Out" onPress={handleSignOut} variant="danger" size="lg" />

@@ -169,7 +169,7 @@ export default function LoginScreen({ navigation }: any) {
           {/* Sign Up */}
           <View style={s.signupRow}>
             <Text style={s.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
               <Text style={s.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
