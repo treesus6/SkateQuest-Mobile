@@ -13,6 +13,7 @@ import * as Location from 'expo-location';
 import { Crosshair, MapPin, Clock, Check, X, Ban } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
+import { useRoute } from '@react-navigation/native';
 import { callOutsService } from '../lib/callOutsService';
 import { profilesService } from '../lib/profilesService';
 import { Logger } from '../lib/logger';
@@ -33,15 +34,22 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function CallOutsScreen() {
   const { user } = useAuthStore();
+  const route = useRoute<any>();
   const [activeTab, setActiveTab] = useState<TabType>('received');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
-  const [selectedUser, setSelectedUser] = useState('');
+  const [selectedUser, setSelectedUser] = useState(route.params?.targetId || '');
   const [selectedSpot, setSelectedSpot] = useState('');
   const [trickName, setTrickName] = useState('');
   const [message, setMessage] = useState('');
   const [xpReward, setXpReward] = useState('100');
+
+  useEffect(() => {
+    if (route.params?.targetId) {
+      setShowCreateModal(true);
+    }
+  }, [route.params]);
 
   const queryFn = useCallback(() => {
     if (!user) return Promise.resolve({ data: [], error: null });
@@ -112,8 +120,8 @@ export default function CallOutsScreen() {
 
     try {
       const { error } = await callOutsService.create({
-        challenger_id: user.id,
-        challenged_user_id: selectedUser,
+        caller_id: user.id,
+        target_id: selectedUser,
         trick_name: trickName.trim(),
         spot_id: selectedSpot || undefined,
         message: message.trim() || undefined,

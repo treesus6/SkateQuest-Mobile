@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Flame, Award, Bug, Trophy, Bell, Share2, MessageSquare, ShieldCheck, History, UserCheck, CalendarDays, Map } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import * as Sentry from '@sentry/react-native';
+import { Flame, Award, Trophy, Bell, Share2, MessageSquare, History, UserCheck, CalendarDays, Map, Crosshair } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';
@@ -22,21 +21,30 @@ interface LevelProgress {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const targetUserId = route.params?.userId || user?.id;
+  const isOwnProfile = targetUserId === user?.id;
+
   const loadProfile = useCallback(async () => {
-    if (!user) return;
+    if (!targetUserId) return;
     try {
-      const { data, error } = await profilesService.getById(user.id);
+      const { data, error } = await profilesService.getById(targetUserId);
       if (error && error.code === 'PGRST116') {
-        Alert.alert(
-          'Profile Missing',
-          'We couldn\'t find your profile. Please try signing out and back in, or contact support.',
-          [{ text: 'Sign Out', onPress: () => signOut() }]
-        );
+        if (isOwnProfile) {
+          Alert.alert(
+            'Profile Missing',
+            'We couldn\'t find your profile. Please try signing out and back in, or contact support.',
+            [{ text: 'Sign Out', onPress: () => signOut() }]
+          );
+        } else {
+          Alert.alert('Error', 'User profile not found');
+          navigation.goBack();
+        }
       } else if (!error && data) {
         setProfile(data);
         if (data.xp !== undefined) {
@@ -53,7 +61,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId, isOwnProfile]);
 
   useEffect(() => {
     loadProfile();
@@ -80,7 +88,16 @@ export default function ProfileScreen() {
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
       <View className="bg-brand-terracotta p-8 items-center">
         <Text className="text-3xl font-bold text-white mb-1">{profile?.username || 'Skater'}</Text>
-        <Text className="text-sm text-white/80">{user?.email}</Text>
+        {isOwnProfile && <Text className="text-sm text-white/80">{user?.email}</Text>}
+        {!isOwnProfile && (
+          <TouchableOpacity 
+            className="mt-4 bg-white/20 px-6 py-2 rounded-full flex-row items-center gap-2"
+            onPress={() => navigation.navigate('CallOuts', { targetId: profile?.id, targetUsername: profile?.username })}
+          >
+            <Crosshair color="white" size={18} />
+            <Text className="text-white font-bold">Call Out</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Card className="flex-row mx-4 mt-4">

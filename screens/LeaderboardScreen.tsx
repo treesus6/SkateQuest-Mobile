@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { Trophy } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';
@@ -8,6 +9,7 @@ import Card from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
 
 export default function LeaderboardScreen() {
+  const navigation = useNavigation<any>();
   const {
     data: leaders,
     loading,
@@ -38,28 +40,30 @@ export default function LeaderboardScreen() {
     const medal = getMedal(rank);
 
     return (
-      <Card
-        className={`flex-row items-center ${rank <= 3 ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
-      >
-        <View className="min-w-[50px]">
-          {medal ? (
-            <View className="flex-row items-center">
-              <Trophy color={medal.color} size={20} />
-            </View>
-          ) : (
-            <Text className="text-xl font-bold text-brand-terracotta">#{rank}</Text>
-          )}
-        </View>
-        <View className="flex-1 ml-2">
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-            {item.username}
-          </Text>
-          <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Level {item.level} · {item.spots_added} spots
-          </Text>
-        </View>
-        <Text className="text-lg font-bold text-brand-green">{item.xp} XP</Text>
-      </Card>
+      <TouchableOpacity onPress={() => navigation.navigate('Profile', { userId: item.id })}>
+        <Card
+          className={`flex-row items-center ${rank <= 3 ? 'border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : ''}`}
+        >
+          <View className="min-w-[50px]">
+            {medal ? (
+              <View className="flex-row items-center">
+                <Trophy color={medal.color} size={20} />
+              </View>
+            ) : (
+              <Text className="text-xl font-bold text-brand-terracotta">#{rank}</Text>
+            )}
+          </View>
+          <View className="flex-1 ml-2">
+            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+              {item.username}
+            </Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Level {item.level} · {item.spots_added} spots
+            </Text>
+          </View>
+          <Text className="text-lg font-bold text-brand-green">{item.xp} XP</Text>
+        </Card>
+      </TouchableOpacity>
     );
   };
 

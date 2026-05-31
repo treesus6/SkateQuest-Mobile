@@ -9,11 +9,11 @@ export const callOutsService = {
         .from('call_outs')
         .select(`
           *,
-          challenger:profiles!call_outs_challenger_id_fkey(id, username, level, xp),
-          challenged_user:profiles!call_outs_challenged_user_id_fkey(id, username, level, xp),
+          challenger:profiles!caller_id(id, username, level, xp),
+          challenged_user:profiles!target_id(id, username, level, xp),
           spot:skate_spots(id, name, latitude, longitude)
         `)
-        .eq('challenger_id', userId)
+        .eq('caller_id', userId)
         .order('created_at', { ascending: false });
     } catch (error) {
       Logger.error('callOutsService.getSent failed', error);
@@ -27,11 +27,11 @@ export const callOutsService = {
         .from('call_outs')
         .select(`
           *,
-          challenger:profiles!call_outs_challenger_id_fkey(id, username, level, xp),
-          challenged_user:profiles!call_outs_challenged_user_id_fkey(id, username, level, xp),
+          challenger:profiles!caller_id(id, username, level, xp),
+          challenged_user:profiles!target_id(id, username, level, xp),
           spot:skate_spots(id, name, latitude, longitude)
         `)
-        .eq('challenged_user_id', userId)
+        .eq('target_id', userId)
         .order('created_at', { ascending: false });
     } catch (error) {
       Logger.error('callOutsService.getReceived failed', error);
@@ -40,15 +40,27 @@ export const callOutsService = {
   },
 
   async create(callOut: {
-    challenger_id: string;
-    challenged_user_id: string;
+    caller_id: string;
+    target_id: string;
     trick_name: string;
     spot_id?: string;
     message?: string;
     xp_reward: number;
   }) {
     try {
-      return await supabase.from('call_outs').insert([callOut]).select().single();
+      const { data, error } = await supabase.from('call_outs').insert([callOut]).select().single();
+      if (error) throw error;
+
+      // Create notification for the target user
+      await supabase.from('notifications').insert([{
+        user_id: callOut.target_id,
+        type: 'call_out',
+        title: 'New Call Out! 🛹',
+        body: `You've been called out to do a ${callOut.trick_name}!`,
+        data: { callOutId: data.id }
+      }]);
+
+      return { data, error: null };
     } catch (error) {
       Logger.error('callOutsService.create failed', error);
       throw new ServiceError('Failed to create callout', 'CALLOUTS_CREATE_FAILED', error);
