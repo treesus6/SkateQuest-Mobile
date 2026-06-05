@@ -55,7 +55,6 @@ jobs:
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
           RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
           GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
-          # Path is relative to android/app/ since Gradle runs from android/
           ANDROID_KEYSTORE_PATH: skatequest.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -68,6 +67,14 @@ jobs:
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
           if-no-files-found: error
+
+      - name: Upload Mapping File
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-mapping
+          path: android/app/build/outputs/mapping/release/mapping.txt
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Upload APK (if present)
         uses: actions/upload-artifact@v4
