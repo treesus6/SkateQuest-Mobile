@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: TypeScript typecheck
-        run: npx tsc --noEmit 2>&1 | grep -v node_modules | grep -v __tests__ || true
+        run: npx tsc --noEmit 2>&1 | grep -v node_modules | grep -v __tests__ | grep -v ".d.ts" | tee /tmp/ts-errors.txt; if grep -q "error TS" /tmp/ts-errors.txt; then echo "TypeScript errors found!"; exit 1; fi
 
       - name: ESLint
-        run: npx eslint . --max-warnings=9999 || true
+        run: npx eslint . --max-warnings=50
