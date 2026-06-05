@@ -46,6 +46,7 @@ module.exports = {
 
     android: {
       package: 'com.treesus6.skatequest',
+      enableProguardInReleaseBuilds: true,
       versionCode: 1,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
