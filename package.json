@@ -35,7 +35,7 @@
     "@sentry/react-native": "~7.2.0",
     "@supabase/supabase-js": "^2.89.0",
     "base64-arraybuffer": "^1.0.2",
-    "expo": "~54.0.34",
+    "expo": "~56.0.8",
     "expo-application": "~7.0.8",
     "expo-auth-session": "~7.0.11",
     "expo-av": "~16.0.8",

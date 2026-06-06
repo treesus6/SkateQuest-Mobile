@@ -22,31 +22,29 @@ interface LevelProgress {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user, signOut } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const targetUserId = route.params?.userId || user?.id;
+  const isOwnProfile = targetUserId === user?.id;
+
   const loadProfile = useCallback(async () => {
-    if (!user) return;
+    if (!targetUserId) return;
     try {
-      const { data, error } = await profilesService.getById(user.id);
+      const { data, error } = await profilesService.getById(targetUserId);
       if (error && error.code === 'PGRST116') {
-        const newProfile = {
-          id: user.id,
-          username: `Skater${Math.floor(Math.random() * 10000)}`,
-          level: 1,
-          xp: 0,
-          spots_added: 0,
-          challenges_completed: [],
-          streak: 0,
-          badges: {},
-        };
-        const { data: created, error: createError } = await profilesService.create(newProfile);
-        if (createError) {
-          console.error('Error creating profile:', createError);
-        } else if (created) {
-          setProfile(created);
+        if (isOwnProfile) {
+          Alert.alert(
+            'Profile Missing',
+            'We couldn\'t find your profile. Please try signing out and back in, or contact support.',
+            [{ text: 'Sign Out', onPress: () => signOut() }]
+          );
+        } else {
+          Alert.alert('Error', 'User profile not found');
+          navigation.goBack();
         }
       } else if (!error && data) {
         setProfile(data);
@@ -64,7 +62,7 @@ export default function ProfileScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId, isOwnProfile]);
 
   useEffect(() => {
     loadProfile();
@@ -91,7 +89,16 @@ export default function ProfileScreen() {
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
       <View className="bg-brand-terracotta p-8 items-center">
         <Text className="text-3xl font-bold text-white mb-1">{profile?.username || 'Skater'}</Text>
-        <Text className="text-sm text-white/80">{user?.email}</Text>
+        {isOwnProfile && <Text className="text-sm text-white/80">{user?.email}</Text>}
+        {!isOwnProfile && (
+          <TouchableOpacity 
+            className="mt-4 bg-white/20 px-6 py-2 rounded-full flex-row items-center gap-2"
+            onPress={() => navigation.navigate('CallOuts', { targetId: profile?.id, targetUsername: profile?.username })}
+          >
+            <Crosshair color="white" size={18} />
+            <Text className="text-white font-bold">Call Out</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <Card className="flex-row mx-4 mt-4">
@@ -176,39 +183,7 @@ export default function ProfileScreen() {
         </Card>
       ) : null}
 
-      {__DEV__ && (
-        <Card className="mx-4 border-2 border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20">
-          <View className="flex-row items-center justify-center gap-2 mb-3">
-            <Bug color="#856404" size={18} />
-            <Text className="text-base font-bold text-yellow-700">Sentry Debug (Dev Only)</Text>
-          </View>
-          <Button
-            title="Test JS Crash"
-            variant="ghost"
-            size="sm"
-            className="mb-2"
-            onPress={() => {
-              throw new Error('Sentry Test Crash');
-            }}
-          />
-          <Button
-            title="Test Native Crash"
-            variant="ghost"
-            size="sm"
-            className="mb-2"
-            onPress={() => (Sentry as any).nativeCrash()}
-          />
-          <Button
-            title="Send Test Message"
-            variant="ghost"
-            size="sm"
-            onPress={() => {
-              Sentry.captureMessage('Test from ProfileScreen', 'info');
-              Alert.alert('Sent!');
-            }}
-          />
-        </Card>
-      )}
+
 
       <View className="mx-4 mb-8">
         <Button title="Sign Out" onPress={handleSignOut} variant="danger" size="lg" />

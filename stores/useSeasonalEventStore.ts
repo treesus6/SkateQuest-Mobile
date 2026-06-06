@@ -54,60 +54,47 @@ export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) 
   initialize: (userId: string) => {
     set({ loading: true });
 
-    // Load active event
-    get()
-      .loadActiveEvent()
-      .catch(error => {
-        Logger.error('Failed to load active event', error);
-      });
-
-    // Load all events
-    get()
-      .loadAllEvents()
-      .catch(error => {
-        Logger.error('Failed to load all events', error);
-      });
-
-    // Load active event progress
-    const activeEvent = get().activeEvent;
-    if (activeEvent) {
-      get()
-        .loadUserProgress(userId, activeEvent.id)
-        .catch(error => {
-          Logger.error('Failed to load user progress', error);
-        });
-    }
-
-    // Load all user progress
-    get()
-      .loadAllUserProgress(userId)
-      .catch(error => {
-        Logger.error('Failed to load all user progress', error);
-      });
-
-    // Subscribe to progress updates
     let channel: { unsubscribe: () => void } | null = null;
-    seasonalEventsService
-      .subscribeToUserProgress(
-        userId,
-        activeEvent?.id || '',
-        (newProgress: UserSeasonalProgress) => {
-          Logger.info('Seasonal progress updated in real-time', { userId });
-          set({ userProgress: newProgress });
-        }
-      )
-      .then(sub => {
-        channel = sub;
-      })
-      .catch(error => {
-        Logger.error('Failed to subscribe to progress', error);
-      });
 
-    set({ loading: false });
+    const runInit = async () => {
+      try {
+        // Load events first
+        await Promise.all([
+          get().loadActiveEvent(),
+          get().loadAllEvents(),
+          get().loadAllUserProgress(userId)
+        ]);
+
+        // Now that activeEvent is loaded, load its progress
+        const activeEvent = get().activeEvent;
+        if (activeEvent) {
+          await get().loadUserProgress(userId, activeEvent.id);
+
+          // Subscribe to progress updates for this specific event
+          const sub = await seasonalEventsService.subscribeToUserProgress(
+            userId,
+            activeEvent.id,
+            (newProgress: UserSeasonalProgress) => {
+              Logger.info('Seasonal progress updated in real-time', { userId });
+              set({ userProgress: newProgress });
+            }
+          );
+          channel = sub;
+        }
+      } catch (error) {
+        Logger.error('Seasonal initialization failed', error);
+      } finally {
+        set({ loading: false });
+      }
+    };
+
+    runInit();
 
     // Return cleanup
     return () => {
-      channel?.unsubscribe();
+      if (channel) {
+        channel.unsubscribe();
+      }
     };
   },
 

@@ -6,7 +6,7 @@ export const feedService = {
   async getRecent(limit: number = 50) {
     try {
       return await supabase
-        .from('activities')
+        .from('activity_feed')
         .select('*, user:profiles(id, username, level, xp), media(*)')
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -22,12 +22,9 @@ export const feedService = {
     title: string;
     description?: string;
     xp_earned: number;
-    media_id?: string;
-    spot_id?: string;
-    challenge_id?: string;
   }) {
     try {
-      return await supabase.from('activities').insert([activity]).select().single();
+      return await supabase.from('activity_feed').insert([activity]).select().single();
     } catch (error) {
       Logger.error('feedService.create failed', error);
       throw new ServiceError('Failed to create activity', 'FEED_CREATE_FAILED', error);
@@ -37,7 +34,7 @@ export const feedService = {
   subscribeToFeed(callback: (payload: any) => void) {
     return supabase
       .channel('feed-updates')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities' }, callback)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, callback)
       .subscribe(status => {
         if (status === 'CHANNEL_ERROR') {
           Logger.error('Feed realtime subscription failed');

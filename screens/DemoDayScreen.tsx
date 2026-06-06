@@ -14,7 +14,7 @@ export default function DemoDayScreen() {
   const loadData = async () => {
     const { data } = await supabase
       .from('demo_days')
-      .select('*, skate_shops(name)')
+      .select('*, skate_shops!shop_id(name)')
       .gte('event_date', new Date().toISOString())
       .order('event_date');
     setDemos(data || []);
