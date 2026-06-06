@@ -9,11 +9,13 @@ import {
   StatusBar,
   Pressable,
   Alert,
+  Platform,
 } from 'react-native';
 import { CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { moderationService } from '../lib/moderationService';
 import Card from '../components/ui/Card';
+import { supabase } from '../lib/supabase';
 import { Logger } from '../lib/logger';
 
 interface PendingItem {
@@ -34,7 +36,7 @@ export default function ModerationQueueScreen({ navigation: _navigation }: any) 
   useEffect(() => {
     if (!user) return;
     const checkAdmin = async () => {
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)

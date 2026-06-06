@@ -55,6 +55,9 @@ export const spotsService = {
     difficulty?: string;
     obstacles?: string[];
     added_by: string;
+    spot_type?: string;
+    bust_risk?: string;
+    description?: string;
   }) {
     try {
       return await supabase.from('skate_spots').insert([spot]).select().single();

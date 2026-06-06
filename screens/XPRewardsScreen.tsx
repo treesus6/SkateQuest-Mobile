@@ -14,7 +14,6 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
-  ScrollView,
   RefreshControl,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -26,7 +25,6 @@ import {
   Copy,
   Clock,
   Star,
-  ChevronRight,
   Lock,
 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';

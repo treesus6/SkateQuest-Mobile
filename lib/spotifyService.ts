@@ -10,7 +10,7 @@
  * Spotify web URL: https://open.spotify.com/playlist/<id>
  */
 
-import { Linking, Platform } from 'react-native';
+import { Linking } from 'react-native';
 
 export interface SpotifyPlaylist {
   id: string;

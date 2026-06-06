@@ -41,7 +41,6 @@ import { profilesService } from '../lib/profilesService';
 import {
   SessionTimer,
   saveSkateSessionToHealth,
-  requestHealthPermissions,
   estimateCalories,
 } from '../lib/healthService';
 import { RootStackParamList } from '../types';

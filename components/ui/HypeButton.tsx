@@ -58,7 +58,6 @@ export default function HypeButton({
   const [pendingHype, setPendingHype] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(1)).current;
 
   const hypeColor = getHypeColor(myHype);
   const hypeLabel = getHypeLabel(myHype);

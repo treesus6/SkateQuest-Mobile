@@ -96,7 +96,7 @@ export default function FeedScreen({ navigation }: any) {
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  const handleHype = useCallback(async (activityId: string, mediaId: string, newUserHypeCount: number) => {
+  const handleHype = useCallback(async (_activityId: string, mediaId: string, newUserHypeCount: number) => {
     if (!user) return;
 
     // Upsert into media_hype_users

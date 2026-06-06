@@ -30,7 +30,7 @@ export default function MentorshipScreen() {
   const [tab, setTab] = useState<'find' | 'mentor'>('find');
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [activeRelationships, setActiveRelationships] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [_stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
 

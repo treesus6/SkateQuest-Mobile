@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Dimensions, StatusBar
+  StyleSheet, Animated, Dimensions, StatusBar
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function SplashScreen({ onDone }: { onDone: () => void }) {
   const logoScale = useRef(new Animated.Value(0.3)).current;

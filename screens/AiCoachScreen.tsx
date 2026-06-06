@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, TextInput, FlatList, KeyboardAvoidingView, Platform
+  TextInput, FlatList, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  getTrickCoaching, getAllTrickNames, getDifficulty,
-  getSkateBotResponse, searchTricks, getProgressionPath
+  getTrickCoaching, getDifficulty,
+  getSkateBotResponse, searchTricks
 } from '../lib/trickDatabase';
 
 type Tab = 'coach' | 'bot' | 'tricks';
@@ -19,7 +19,7 @@ interface Message {
 
 export default function AiCoachScreen() {
   const [tab, setTab] = useState<Tab>('coach');
-  const [selectedTrick, setSelectedTrick] = useState('');
+  const [_selectedTrick, setSelectedTrick] = useState('');
   const [coachData, setCoachData] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -27,7 +27,6 @@ export default function AiCoachScreen() {
   ]);
   const [input, setInput] = useState('');
 
-  const allTricks = getAllTrickNames();
   const filteredTricks = search ? searchTricks(search) : [];
 
   const lookupTrick = (name: string) => {

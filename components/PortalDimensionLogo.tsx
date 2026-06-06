@@ -7,7 +7,7 @@ interface Props { skateparkName?: string; }
 
 // Shows the Portal Dimension logo on spots near Newport OR
 // Tapping it opens their website and tracks the tap
-export default function PortalDimensionLogo({ skateparkName }: Props) {
+export default function PortalDimensionLogo({ skateparkName: _skateparkName }: Props) {
   const { user } = useAuthStore();
 
   const handleTap = async () => {

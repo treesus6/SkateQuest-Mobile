@@ -123,7 +123,7 @@ export async function downloadGoProClip(
   try {
     // Dynamically import expo-file-system to avoid hard dependency at module level
     const FileSystem = await import('expo-file-system');
-    const destUri = `${FileSystem.cacheDirectory}gopro_${item.filename}`;
+    const destUri = `${(FileSystem as any).cacheDirectory ?? "/tmp/"}gopro_${item.filename}`;
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.downloadUrl,

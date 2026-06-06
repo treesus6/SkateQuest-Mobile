@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Dimensions, Image, Modal, TextInput, Alert, ActivityIndicator,
+  Image, Modal, TextInput, Alert, ActivityIndicator,
   ScrollView, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase';
 import { uploadSkateTVClip } from '../lib/uploadMedia';
 import { useAuthStore } from '../stores/useAuthStore';
 
-const { width } = Dimensions.get('window');
 
 interface Clip {
   id: string;

@@ -165,12 +165,12 @@ export async function getRecommendedSpotsForTrick(
         };
       })
       // Sort: spots with matching obstacles first, then by distance
-      .sort((a, b) => {
+      .sort((a: { matchScore: number; distance?: number }, b: { matchScore: number; distance?: number }) => {
         if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
         return (a.distance || 999) - (b.distance || 999);
       })
       .slice(0, 5) // Return top 5 recommendations
-      .map(({ matchScore: _s, ...rest }) => rest);
+      .map(({ matchScore: _matchScore, ...rest }: { matchScore: number; distance?: number; [key: string]: unknown }) => rest);
 
     return scored;
   } catch (err) {

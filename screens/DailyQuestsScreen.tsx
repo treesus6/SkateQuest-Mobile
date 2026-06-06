@@ -112,17 +112,17 @@ export default function DailyQuestsScreen() {
 
     setSubmitting(true);
     try {
-      let proofUrl = null;
-      let lat = null;
-      let lng = null;
+      let _proofUrl = null;
+      let _lat = null;
+      let _lng = null;
 
       if (proofType === 'photo' && proofImage) {
         const { url: uploadUrl } = await uploadQuestProof(proofImage, proofModal.id, user.id);
-          proofUrl = uploadUrl || 'submitted';
+          _proofUrl = uploadUrl || 'submitted';
       } else if (proofType === 'location') {
         const loc = await Location.getCurrentPositionAsync({});
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
+        _lat = loc.coords.latitude;
+        _lng = loc.coords.longitude;
       }
 
       // Since the 'submit_quest_proof' RPC is missing in migration, we'll use direct insert for now
@@ -133,7 +133,10 @@ export default function DailyQuestsScreen() {
           user_id: user.id,
           quest_id: proofModal.id,
           date: today,
-          xp_earned: proofModal.xp_reward
+          xp_earned: proofModal.xp_reward,
+          proof_url: _proofUrl,
+          latitude: _lat,
+          longitude: _lng,
         });
 
       if (error) throw error;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Flame, Award, Bug, Trophy, Bell, Share2, MessageSquare, ShieldCheck, History, UserCheck, CalendarDays, Map } from 'lucide-react-native';
+import { Flame, Award, Bug, Trophy, Bell, Share2, MessageSquare, History, UserCheck, CalendarDays, Map } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from '../stores/useAuthStore';

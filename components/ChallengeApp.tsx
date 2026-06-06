@@ -12,7 +12,6 @@ import {
 import { Home, Trophy, MapPin, Users, User } from 'lucide-react-native';
 import { ChallengeProvider, useChallenges } from '../contexts/ChallengeContext';
 import AnimatedTabIcon from './ui/AnimatedTabIcon';
-import { Haptics } from '../lib/haptics';
 
 import HomeScreen from '../screens/HomeScreen';
 import SceneScreen from '../screens/SceneScreen';
@@ -68,6 +67,13 @@ import ChangelogScreen from '../screens/ChangelogScreen';
 // ── New Feature Screens (v2) ──────────────────────────────────────────────────
 import XPRewardsScreen from '../screens/XPRewardsScreen';
 import GoProImportScreen from '../screens/GoProImportScreen';
+import AiCoachScreen from "../screens/AiCoachScreen";
+import BountyBoardScreen from "../screens/BountyBoardScreen";
+import DemoDayScreen from "../screens/DemoDayScreen";
+import LiveCheckInScreen from "../screens/LiveCheckInScreen";
+import SkatePassportScreen from "../screens/SkatePassportScreen";
+import SkateForecastScreen from "../screens/SkateForecastScreen";
+import TrickOfWeekScreen from "../screens/TrickOfWeekScreen";
 import ActiveSessionScreen from '../screens/ActiveSessionScreen';
 
 

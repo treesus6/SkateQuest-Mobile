@@ -26,7 +26,7 @@ export async function uploadMedia(
 
     // Read file as base64
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Convert base64 to ArrayBuffer
@@ -37,7 +37,7 @@ export async function uploadMedia(
     }
     const byteArray = new Uint8Array(byteNumbers);
 
-    const { data, error } = await supabase.storage
+    const { data: _data, error } = await supabase.storage
       .from(bucket)
       .upload(filename, byteArray, {
         contentType,

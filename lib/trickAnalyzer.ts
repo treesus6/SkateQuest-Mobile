@@ -7,7 +7,15 @@ export interface TrickAnalysis {
   prerequisites: string[];
   xp_value: number;
   style_notes: string;
+  // Extended fields used by UploadMediaScreen
+  trickName?: string;
+  score?: number;
+  feedback?: string;
+  detectedElements?: string[];
 }
+
+// Alias for backward compatibility
+export type TrickAnalysisResult = TrickAnalysis;
 
 /**
  * Analyzes a trick via the Supabase Edge Function (analyze-trick).
@@ -43,6 +51,27 @@ export async function analyzeTrick(
   return res.json();
 }
 
+// Alias used by UploadMediaScreen
+export const analyzeTrickVideo = analyzeTrick;
+
+// Save analysis result to Supabase
+export async function saveAnalysisResult(
+  userId: string,
+  trickName: string,
+  analysis: TrickAnalysis,
+  videoUrl?: string
+): Promise<void> {
+  const { error } = await supabase.from('trick_analyses').insert({
+    user_id: userId,
+    trick_name: trickName,
+    difficulty: analysis.difficulty,
+    xp_value: analysis.xp_value,
+    style_notes: analysis.style_notes,
+    video_url: videoUrl ?? null,
+  });
+  if (error) throw error;
+}
+
 // Fallback for when edge function is unavailable
 export function getFallbackAnalysis(trickName: string): TrickAnalysis {
   return {
@@ -59,5 +88,9 @@ export function getFallbackAnalysis(trickName: string): TrickAnalysis {
     prerequisites: ['Ollie', 'Basic balance'],
     xp_value: 75,
     style_notes: `Keep working on ${trickName} — consistency comes with repetition.`,
+    trickName,
+    score: 0,
+    feedback: 'Keep practicing!',
+    detectedElements: [],
   };
 }

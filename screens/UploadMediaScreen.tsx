@@ -42,7 +42,7 @@ export default function UploadMediaScreen({ route, navigation }: any) {
     if (!mediaUri || mediaType !== 'video') return;
     setAnalyzing(true);
     try {
-      const result = await analyzeTrickVideo(mediaUri);
+      const result = await analyzeTrickVideo('Unknown Trick', undefined, mediaUri);
       setAnalysis(result);
       setTrickName(result.trickName);
       Alert.alert('Analysis Complete!', `Detected: ${result.trickName}\nScore: ${result.score}/100\n\n${result.feedback}`);
@@ -63,7 +63,7 @@ export default function UploadMediaScreen({ route, navigation }: any) {
         trickName: trickName || analysis?.trickName || undefined,
       });
 
-      if (analysis) await saveAnalysisResult(media.id, analysis);
+      if (analysis && user) await saveAnalysisResult(user.id, analysis.trickName ?? 'Unknown Trick', analysis, mediaUri);
 
       if (totwId) {
         const now = new Date();
@@ -179,10 +179,10 @@ export default function UploadMediaScreen({ route, navigation }: any) {
               </Text>
               <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Score: {analysis.score}/100</Text>
               <Text className="text-sm text-gray-800 dark:text-gray-200 italic mb-2.5">{analysis.feedback}</Text>
-              {analysis.detectedElements.length > 0 && (
+              {(analysis.detectedElements?.length ?? 0) > 0 && (
                 <View className="mt-2">
                   <Text className="text-xs font-bold text-gray-500 mb-1">Detected:</Text>
-                  {analysis.detectedElements.map((element, index) => (
+                  {(analysis.detectedElements ?? []).map((element: string, index: number) => (
                     <View key={index} className="flex-row items-center gap-1 ml-1 mb-0.5">
                       <Check color="#4CAF50" size={12} />
                       <Text className="text-xs text-gray-600 dark:text-gray-300">{element}</Text>

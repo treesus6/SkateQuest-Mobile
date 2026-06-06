@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Dimensions, TouchableOpacity,
-  Animated, FlatList, StatusBar
+  FlatList, StatusBar
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -45,7 +45,6 @@ const SLIDES = [
 export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList>(null);
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   const goNext = () => {
     if (activeIndex < SLIDES.length - 1) {
@@ -75,7 +74,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
         showsHorizontalScrollIndicator={false}
         scrollEnabled={false}
         keyExtractor={i => i.id}
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (
           <View style={[s.slide, { backgroundColor: item.bg }]}>
             {/* Background pattern */}
             <View style={[s.bgPattern, { borderColor: item.accent + '15' }]} />

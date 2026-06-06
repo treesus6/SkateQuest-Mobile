@@ -1,14 +1,12 @@
 import React, { useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  Animated, Dimensions, Platform, Modal
+  View, Text, TouchableOpacity, StyleSheet, Animated
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
-const { width } = Dimensions.get('window');
 
-export default function CustomTabBar({ state, descriptors, navigation }: any) {
+export default function CustomTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
   const scaleRefs = useRef(state.routes.map(() => new Animated.Value(1))).current;
   const postScale = useRef(new Animated.Value(1)).current;

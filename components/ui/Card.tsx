@@ -4,11 +4,12 @@ import { View, StyleSheet, ViewStyle } from 'react-native';
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
+  className?: string;
   variant?: 'default' | 'glow' | 'gradient' | 'glass';
   accentColor?: string;
 }
 
-export default function Card({ children, style, variant = 'default', accentColor = '#d2673d' }: CardProps) {
+export default function Card({ children, style, className: _className, variant = 'default', accentColor = '#d2673d' }: CardProps) {
   return (
     <View style={[
       s.base,

@@ -14,7 +14,7 @@ interface Props {
   onClose?: () => void;
 }
 
-export default function SceneMarker({ entry, onClose }: Props) {
+export default function SceneMarker({ entry, onClose: _onClose }: Props) {
   const { user } = useAuthStore();
   const emoji = CATEGORY_EMOJI[entry.category] || '🤙';
   const label = CATEGORY_LABELS[entry.category] || 'Community';

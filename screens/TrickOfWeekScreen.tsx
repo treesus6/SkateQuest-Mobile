@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -54,7 +54,7 @@ export default function TrickOfWeekScreen({ navigation }: any) {
     }
   };
 
-  const vote = async (subId: string, currentVotes: number) => {
+  const vote = async (subId: string, _currentVotes: number) => {
     if (!user || userVotes.has(subId)) return;
     setUserVotes(prev => new Set([...prev, subId]));
     setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, votes: s.votes + 1 } : s).sort((a,b) => b.votes - a.votes));

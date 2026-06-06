@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput,
+  View, Text, FlatList, RefreshControl, TextInput,
 } from 'react-native';
 import { MapPin, Search } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';

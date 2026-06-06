@@ -17,7 +17,7 @@ interface Bounty {
 }
 
 export default function BountyBoardScreen({ navigation }: any) {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(true);
 
