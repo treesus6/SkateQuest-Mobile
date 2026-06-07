@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Session, User } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react-native';
+import { analytics, SkateEvents } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -54,6 +55,10 @@ export const useAuthStore = create<AuthState>((set) => ({
           id: session.user.id,
           email: session.user.email,
         });
+        analytics.identify(session.user.id, {
+          email: session.user.email,
+        });
+        SkateEvents.signedIn();
         Sentry.addBreadcrumb({
           category: 'auth',
           message: 'User logged in',
@@ -61,6 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
       } else {
         Sentry.setUser(null);
+        analytics.reset();
+        SkateEvents.signedOut();
         Sentry.addBreadcrumb({
           category: 'auth',
           message: 'User logged out',

@@ -99,6 +99,7 @@ module.exports = {
     ],
 
     extra: {
+      posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
       eas: {
         projectId: '09a104b9-9e22-4ae0-9836-2701e366d8e5',
       },

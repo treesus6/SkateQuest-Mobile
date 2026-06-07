@@ -30,6 +30,8 @@ import * as Linking from 'expo-linking';
 
 // Added import for Vexo Analytics
 import { vexo } from 'vexo-analytics';
+import { analytics } from './lib/analytics';
+import { checkForOTAUpdate } from './lib/otaUpdates';
 
 // Keep splash screen visible while fonts/auth load
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -139,6 +141,9 @@ export default function App() {
         // Start background sync for key data and queued mutations
         startBackgroundSync();
 
+        // Check for OTA updates silently on launch
+        checkForOTAUpdate({ silent: true });
+
         Logger.info('SkateQuest Mobile app initialized');
       } catch (error) {
         Logger.error('App initialization failed:', error);
@@ -149,6 +154,7 @@ export default function App() {
       try {
         vexo(VEXO_API_KEY);
         Logger.info('Vexo analytics initialized');
+        analytics.track('app_launched');
       } catch (error) {
         Logger.error('Vexo analytics initialization failed:', error);
       }
