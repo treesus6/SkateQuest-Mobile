@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { Star, Trophy } from 'lucide-react-native';
 import Modal from './ui/Modal';
@@ -31,12 +31,11 @@ export default function AchievementUnlockModal({
   achievement,
   onClose,
 }: AchievementUnlockModalProps) {
-  const scaleAnim = new Animated.Value(0.3);
-  const opacityAnim = new Animated.Value(0);
+  const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      // Trigger entrance animation
       Animated.sequence([
         Animated.timing(scaleAnim, {
           toValue: 1.1,
@@ -59,7 +58,7 @@ export default function AchievementUnlockModal({
       scaleAnim.setValue(0.3);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim, opacityAnim]);
 
   if (!achievement) return null;
 

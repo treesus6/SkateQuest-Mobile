@@ -65,10 +65,23 @@ import MentorshipListScreen from '../screens/MentorshipListScreen';
 import ChangelogScreen from '../screens/ChangelogScreen';
 
 
-function ChallengeListScreen({ navigation }: any) {
+interface NavProp {
+  navigate: (screen: string, params?: Record<string, unknown>) => void;
+  goBack: () => void;
+}
+
+interface ChallengeItem {
+  id: string;
+  title: string;
+  description: string;
+  xp: number;
+  completed: boolean;
+}
+
+function ChallengeListScreen({ navigation }: { navigation: NavProp }) {
   const { challenges } = useChallenges();
 
-  const renderItem = ({ item }: any) => (
+  const renderItem = ({ item }: { item: ChallengeItem }) => (
     <TouchableOpacity
       className={`p-3 rounded-lg bg-gray-100 dark:bg-gray-800 mb-2 flex-row justify-between items-center ${item.completed ? 'opacity-60' : ''}`}
       onPress={() => navigation.navigate('ChallengeDetail', { id: item.id })}
@@ -88,10 +101,10 @@ function ChallengeListScreen({ navigation }: any) {
   );
 }
 
-function ChallengeDetailScreen({ route, navigation }: any) {
+function ChallengeDetailScreen({ route, navigation }: { route: { params: { id: string } }; navigation: NavProp }) {
   const { id } = route.params;
   const { challenges, completeChallenge } = useChallenges();
-  const challenge = challenges.find((c: any) => c.id === id);
+  const challenge = challenges.find((c) => c.id === id);
 
   if (!challenge) {
     return (

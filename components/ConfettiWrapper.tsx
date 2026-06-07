@@ -3,8 +3,24 @@ import { View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 
-let ConfettiCannon: any = null;
+interface ConfettiCannonRef {
+  start: () => void;
+}
+
+interface ConfettiCannonProps {
+  ref?: React.Ref<ConfettiCannonRef>;
+  count?: number;
+  origin?: { x: number; y: number };
+  autoStart?: boolean;
+  fadeOut?: boolean;
+  fallSpeed?: number;
+  explosionSpeed?: number;
+  colors?: string[];
+}
+
+let ConfettiCannon: React.ComponentType<ConfettiCannonProps> | null = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   ConfettiCannon = require('react-native-confetti-cannon').default;
 } catch (e) {
   console.log('ConfettiCannon not installed - install with: bun add react-native-confetti-cannon');
@@ -12,7 +28,7 @@ try {
 
 export default function ConfettiWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
-  const confettiRef = useRef<any>(null);
+  const confettiRef = useRef<ConfettiCannonRef>(null);
   const [shouldFireConfetti, setShouldFireConfetti] = useState(false);
 
   useEffect(() => {

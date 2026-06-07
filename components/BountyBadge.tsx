@@ -13,30 +13,30 @@ export default function BountyBadge({ challengeId, baseXP }: BountyBadgeProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const calculateBounty = async () => {
+      try {
+        const { data: challenge } = await supabase
+          .from('challenges')
+          .select('created_at')
+          .eq('id', challengeId)
+          .single();
+
+        if (challenge) {
+          const daysSinceCreated = Math.floor(
+            (Date.now() - new Date(challenge.created_at).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          const bonusMultiplier = Math.min(Math.floor(daysSinceCreated / 3) * 0.5, 4);
+          setMultiplier(1 + bonusMultiplier);
+        }
+      } catch (error) {
+        console.error('Error calculating bounty:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     calculateBounty();
   }, [challengeId]);
-
-  const calculateBounty = async () => {
-    try {
-      const { data: challenge } = await supabase
-        .from('challenges')
-        .select('created_at')
-        .eq('id', challengeId)
-        .single();
-
-      if (challenge) {
-        const daysSinceCreated = Math.floor(
-          (Date.now() - new Date(challenge.created_at).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const bonusMultiplier = Math.min(Math.floor(daysSinceCreated / 3) * 0.5, 4);
-        setMultiplier(1 + bonusMultiplier);
-      }
-    } catch (error) {
-      console.error('Error calculating bounty:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading || multiplier === 1) return null;
 

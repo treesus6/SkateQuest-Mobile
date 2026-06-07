@@ -26,7 +26,7 @@ interface Activity {
   avatar_url?: string;
 }
 
-const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
+const ACTIVITY_ICONS: Record<string, { icon: React.ComponentType<{ color: string; size: number }>; color: string }> = {
   qr_code_found: { icon: Crosshair, color: '#d2673d' },
   spot_claimed: { icon: Trophy, color: '#f59e0b' },
   challenge_completed: { icon: Target, color: '#4CAF50' },
@@ -54,10 +54,10 @@ export default function ActivityFeed() {
       if (error) throw error;
 
       const formatted =
-        data?.map((item: any) => ({
+        data?.map((item) => ({
           ...item,
-          username: item.profiles?.username || 'Unknown',
-          avatar_url: item.profiles?.avatar_url,
+          username: (item.profiles as { username?: string } | null)?.username || 'Unknown',
+          avatar_url: (item.profiles as { avatar_url?: string } | null)?.avatar_url,
         })) || [];
 
       setActivities(formatted);
