@@ -78,7 +78,6 @@ export default function ActiveSessionScreen() {
   const { user } = useAuthStore();
 
   const spotName = route.params?.spotName || 'Unknown Spot';
-  const spotId = route.params?.spotId;
 
   const timerRef = useRef(new SessionTimer());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

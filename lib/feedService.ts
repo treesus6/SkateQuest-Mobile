@@ -22,6 +22,7 @@ export const feedService = {
     title: string;
     description?: string;
     xp_earned: number;
+    media_id?: string;
   }) {
     try {
       return await supabase.from('activity_feed').insert([activity]).select().single();
