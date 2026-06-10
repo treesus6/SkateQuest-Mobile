@@ -64,6 +64,14 @@ module.exports = {
 
     plugins: [
       [
+        'expo-build-properties',
+        {
+          android: {
+            kotlinVersion: '2.2.0',
+          },
+        },
+      ],
+      [
         './plugins/withMapboxRepo',
         {
           RNMapboxMapsVersion: '11.20.1',
