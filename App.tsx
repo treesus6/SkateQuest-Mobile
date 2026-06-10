@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import './global.css';
 
 import ChallengeApp from './components/ChallengeApp';
@@ -28,10 +29,19 @@ import { useMutationQueueStore } from './stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from './lib/backgroundSync';
 import * as Linking from 'expo-linking';
 
-// Added import for Vexo Analytics
 import { vexo } from 'vexo-analytics';
 import { analytics } from './lib/analytics';
 import { checkForOTAUpdate } from './lib/otaUpdates';
+
+// ─── Sentry: initialize before any component code ────────────────────────────
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
+  enabled: !__DEV__,
+  tracesSampleRate: 1.0,
+  attachStacktrace: true,
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Keep splash screen visible while fonts/auth load
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -48,9 +58,9 @@ const linking = {
 };
 
 const Stack = createNativeStackNavigator();
-const VEXO_API_KEY = process.env.EXPO_PUBLIC_VEXO_API_KEY ?? '62a73927-b566-4be6-9ae6-0f062705b2f8';
+const VEXO_API_KEY =
+  process.env.EXPO_PUBLIC_VEXO_API_KEY ?? '62a73927-b566-4be6-9ae6-0f062705b2f8';
 
-// Root Navigator that handles auth state
 function RootNavigator() {
   const { user, loading } = useAuthStore();
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
@@ -70,7 +80,6 @@ function RootNavigator() {
     checkOnboarding();
   }, []);
 
-  // Hide splash screen once auth + onboarding check are both done
   useEffect(() => {
     if (!isCheckingOnboarding && !loading) {
       SplashScreen.hideAsync().catch(() => {});
@@ -81,7 +90,6 @@ function RootNavigator() {
     setIsOnboardingComplete(true);
   };
 
-  // Show loading indicator while checking onboarding or auth status (splash is still visible)
   if (isCheckingOnboarding || loading) {
     return (
       <View
@@ -97,12 +105,10 @@ function RootNavigator() {
     );
   }
 
-  // Show onboarding if not completed
   if (!isOnboardingComplete) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
-  // Show main app if user is logged in
   if (user) {
     return (
       <NavigationContainer>
@@ -111,7 +117,6 @@ function RootNavigator() {
     );
   }
 
-  // Show auth screens if not logged in
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
@@ -123,30 +128,31 @@ function RootNavigator() {
   );
 }
 
-export default function App() {
+function App() {
   useEffect(() => {
-    // Initialize stores
     const cleanupAuth = useAuthStore.getState().initialize();
     const cleanupNetwork = useNetworkStore.getState().initialize();
 
-    // Initialize app
     const initializeApp = async () => {
       try {
         validateEnvironment();
         await SystemUI.setBackgroundColorAsync('#d2673d');
-
-        // Rehydrate offline mutation queue from local storage
         await useMutationQueueStore.getState().rehydrate();
-
-        // Start background sync for key data and queued mutations
         startBackgroundSync();
 
         // Check for OTA updates silently on launch
         checkForOTAUpdate({ silent: true });
-
         Logger.info('SkateQuest Mobile app initialized');
+        Sentry.addBreadcrumb({
+          category: 'app',
+          message: 'App initialized successfully',
+          level: 'info',
+        });
       } catch (error) {
         Logger.error('App initialization failed:', error);
+        Sentry.captureException(error, {
+          tags: { error_type: 'app_init_failure' },
+        });
       }
     };
 
@@ -154,11 +160,14 @@ export default function App() {
       try {
         vexo(VEXO_API_KEY);
         Logger.info('Vexo analytics initialized');
-        analytics.track('app_launched');
       } catch (error) {
         Logger.error('Vexo analytics initialization failed:', error);
       }
     }
+
+    analytics.track('app_launched', {
+      environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
+    });
 
     setupGlobalErrorHandler();
     initializeApp();
@@ -180,3 +189,6 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+// Wrap with Sentry.wrap for native crash reporting + automatic RN breadcrumbs
+export default Sentry.wrap(App);
