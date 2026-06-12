@@ -1,50 +1,81 @@
 // Navigation types (shared across all navigators)
 export type RootStackParamList = {
-  Auth: undefined;
-  Map: undefined;
-  Profile: undefined;
-  Challenges: undefined;
-  ChallengesTab: undefined;
-  AddSpot: { latitude?: number; longitude?: number };
-  Leaderboard: undefined;
-  Shops: undefined;
-  Community: undefined;
-  Crews: undefined;
-  Events: undefined;
-  Feed: undefined;
-  UploadMedia: undefined;
-  TrickTracker: undefined;
-  SkateGame: undefined;
-  Playlists: undefined;
-  GameDetail: { gameId: string };
-  SpotDetail: { spotId: string };
-  QRScanner: undefined;
-  CallOuts: undefined;
-  JudgesBooth: undefined;
-  SkateTV: undefined;
-  SpotReviews: { spotId: string; spotName: string };
-  CheckIn: { spotId: string; spotName: string; latitude: number; longitude: number };
-  CrewBattles: undefined;
-  Mentorship: undefined;
-  TrickBingo: undefined;
-  SpotConquer: undefined;
-  SeasonalPass: undefined;
-  Streaks: undefined;
-  WeatherSpots: undefined;
-  HiddenGems: undefined;
-  SpotOfTheDay: undefined;
-  ClipOfWeek: undefined;
-  TrickTutorials: { initialSearch?: string } | undefined;
-  DonateXP: undefined;
-  SponsorLeaderboard: undefined;
-  Sessions: { spotId?: string; spotName?: string; autoCreate?: boolean } | undefined;
+  // ── Auth screens ────────────────────────────────────────────────
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
-  // ── New Features (v2) ──────────────────────────────────────────
+  // ── Tab root ────────────────────────────────────────────────────
+  Tabs: undefined;
+  Auth: undefined;
+  Map: undefined;
+  Profile: undefined;
+  Community: undefined;
+  ChallengesTab: undefined;
+  // ── Spots ───────────────────────────────────────────────────────
+  AddSpot: { latitude?: number; longitude?: number };
+  SpotDetail: { spotId: string };
+  SpotReviews: { spotId: string; spotName: string };
+  SpotClaims: undefined;
+  SpotConquer: undefined;
+  SpotOfTheDay: undefined;
+  HiddenGems: undefined;
+  WeatherSpots: undefined;
+  SkateForecast: undefined;
+  CheckIn: { spotId: string; spotName: string; latitude: number; longitude: number };
+  LiveCheckIn: undefined;
+  // ── Social & Community ──────────────────────────────────────────
+  Feed: undefined;
+  Crews: undefined;
+  CrewBattles: undefined;
+  CallOuts: undefined;
+  Scene: undefined;
+  Referral: undefined;
+  Shops: undefined;
+  Messages: undefined;
+  Notifications: undefined;
+  // ── Gamification & XP ──────────────────────────────────────────
+  Leaderboard: undefined;
+  SponsorLeaderboard: undefined;
+  Achievements: undefined;
   XPRewards: undefined;
+  DonateXP: undefined;
+  DailyQuests: undefined;
+  BountyBoard: undefined;
+  Challenges: undefined;
+  ChallengeDetail: undefined;
+  Streaks: undefined;
+  SeasonalEvents: undefined;
+  SeasonalPass: undefined;
+  // ── Tricks & Skills ────────────────────────────────────────────
+  TrickOfWeek: undefined;
+  TrickTracker: undefined;
+  TrickTutorials: { initialSearch?: string } | undefined;
+  TrickBingo: undefined;
+  AiCoach: undefined;
+  JudgesBooth: undefined;
+  // ── Skate Games & Events ───────────────────────────────────────
+  SkateGame: undefined;
+  GameDetail: { gameId: string };
+  Events: undefined;
+  DemoDay: undefined;
+  ClipOfWeek: undefined;
+  // ── Media & Content ────────────────────────────────────────────
+  SkateTV: undefined;
+  UploadMedia: undefined;
+  Playlists: undefined;
   GoProImport: undefined;
+  // ── Profile & Identity ─────────────────────────────────────────
+  SkatePassport: undefined;
+  Sessions: { spotId?: string; spotName?: string; autoCreate?: boolean } | undefined;
   ActiveSession: { spotId?: string; spotName?: string } | undefined;
+  Mentorship: undefined;
+  MentorshipList: undefined;
+  // ── Utility & Admin ────────────────────────────────────────────
+  QRScanner: undefined;
+  ModerationQueue: undefined;
+  Changelog: undefined;
+  // ── Misc ───────────────────────────────────────────────────────
+  TrickTracker2: undefined;
 };
 
 export interface SkateSpot {
@@ -82,11 +113,11 @@ export interface CallOut {
   id: string;
   challenger_id: string;
   challenged_id: string;
-  challenged_user_id?: string; // Alias for challenged_id used in some places
-  target_id?: string; // Also used as alias in database
+  challenged_user_id?: string;
+  target_id?: string;
   spot_id?: string;
   trick_name: string;
-  trick?: string; // Database uses 'trick' column
+  trick?: string;
   message?: string;
   xp_reward: number;
   status: 'pending' | 'accepted' | 'completed' | 'declined' | 'failed';
