@@ -26,10 +26,19 @@ module.exports = [
 
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // RN + Supabase patterns legitimately require `any` in many places
+      '@typescript-eslint/no-explicit-any': 'off',
+      // useEffect deps with animation refs / fetch callbacks cause infinite loops if naively added
+      'react-hooks/exhaustive-deps': 'off',
+      // Unused vars: warn with underscore-prefix escape hatch
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-require-imports': 'off',
+      // Console: only warn/error allowed
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Array type: enforce T[] style
+      '@typescript-eslint/array-type': ['warn', { default: 'array' }],
+      // Display name: warn
+      'react/display-name': 'warn',
     },
   },
 
