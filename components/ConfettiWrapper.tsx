@@ -6,8 +6,8 @@ import { useAuthStore } from '../stores/useAuthStore';
 let ConfettiCannon: any = null;
 try {
   ConfettiCannon = require('react-native-confetti-cannon').default;
-} catch (e) {
-  console.log('ConfettiCannon not installed - install with: bun add react-native-confetti-cannon');
+} catch (_e) {
+  // confetti-cannon not installed - graceful degradation
 }
 
 export default function ConfettiWrapper({ children }: { children: React.ReactNode }) {
