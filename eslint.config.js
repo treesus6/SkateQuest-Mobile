@@ -26,19 +26,23 @@ module.exports = [
 
   {
     rules: {
-      // RN + Supabase patterns legitimately require `any` in many places
+      // RN + Supabase legitimately need `any` in many places (navigation params, DB responses)
       '@typescript-eslint/no-explicit-any': 'off',
-      // useEffect deps with animation refs / fetch callbacks cause infinite loops if naively added
+      // Animation refs and fetch callbacks in useEffect deps cause infinite loops if naively added
       'react-hooks/exhaustive-deps': 'off',
-      // Unused vars: warn with underscore-prefix escape hatch
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // Unused vars: warn with underscore-prefix escape hatch for both vars and args
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
       '@typescript-eslint/no-require-imports': 'off',
-      // Console: only warn/error allowed
+      // Console: only warn/error allowed (no console.log)
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      // Array type: enforce T[] style
-      '@typescript-eslint/array-type': ['warn', { default: 'array' }],
-      // Display name: warn
-      'react/display-name': 'warn',
+      // Display name not required in RN (DevTools behave differently than web React)
+      'react/display-name': 'off',
+      // Array type: off for now (Array<T> vs T[] is stylistic, not a bug)
+      '@typescript-eslint/array-type': 'off',
     },
   },
 
