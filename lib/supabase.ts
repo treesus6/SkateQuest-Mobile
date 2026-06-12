@@ -13,7 +13,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ SUPABASE CREDENTIALS MISSING! Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to a .env.local file for local dev, or to eas.json for builds.');
 }
 
-console.log('✅ Initializing Supabase for SkateQuest...');
+console.warn('✅ Supabase: initializing...');
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
@@ -30,4 +30,4 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   },
 });
 
-console.log('✅ Supabase client ready');
+console.warn('✅ Supabase: client ready');
