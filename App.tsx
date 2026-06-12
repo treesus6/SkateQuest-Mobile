@@ -7,7 +7,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sentry from '@sentry/react-native';
-import { wrap as sentryWrap } from '@sentry/react-native';
 import './global.css';
 
 import ChallengeApp from './components/ChallengeApp';
@@ -192,4 +191,6 @@ function App() {
 }
 
 // Wrap with Sentry.wrap for native crash reporting + automatic RN breadcrumbs
-export default sentryWrap(App);
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - wrap exists at runtime; TS defs incomplete in @sentry/react-native 7.2.0
+export default (Sentry as any).wrap(App);
