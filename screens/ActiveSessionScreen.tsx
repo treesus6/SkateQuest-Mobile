@@ -174,7 +174,7 @@ export default function ActiveSessionScreen() {
         `${durationMinutes} min · ${trickCount} tricks · +${xpEarned} XP${healthResult.success ? '\n✓ Saved to Health app' : ''}`,
         [{ text: 'Awesome!', onPress: () => navigation.goBack() }]
       );
-    } catch (err) {
+    } catch (_err) {
       Alert.alert('Error', 'Could not save session. Your XP may not have been updated.');
     } finally {
       setSaving(false);
