@@ -1,9 +1,65 @@
-.claude/
+# Development tooling
 .agents/
+.claude/
+.github/
+.husky/
+.vscode/
+.expo/
+.expo-shared/
+
+# Dependencies (not needed for fingerprint - package.json is enough)
+node_modules/
+pnpm-lock.yaml
+
+# Native dirs (managed by EAS/Expo CNG - not part of fingerprint)
+android/
+ios/
+
+# Tests
+__tests__/
+coverage/
+
+# Scripts and admin
+scripts/
+admin/
+dataconnect/
+supabase/
+
+# Documentation (not part of the app)
+*.md
+APP_STORE_PREP.md
+APP_STORE_SUBMISSION.md
+BUSINESS_PLAN.md
+CHANGELOG.md
+CLAUDE.md
+FEATURES.md
+GOOGLE_PLAY_SUBMISSION.md
+LAUNCH_GUIDE.md
+LAUNCH_PLAN.md
+PITCH_DECK.md
+PORTAL_DIMENSION_SETUP.md
+PRESS_KIT.md
+PRIVACY_POLICY.md
+RELEASE_NOTES.md
+SECURITY.md
+SKATEQUEST_INTEGRATION_GUIDE.md
+SPONSORSHIP_PROPOSAL.md
+STYLE_GUIDE.md
+TERMS_OF_SERVICE.md
+README.md
+LICENSE
+
+# HTML pages (web, not mobile build)
+*.html
+beta.html
+delete-account.html
+feedback.html
+index.html
+privacy-policy.html
+
+# Misc
 *.bat
 *.ps1
-scripts/resolve_conflicts.ps1
-node_modules/
-.git/
+*.log
 netlify.toml
-web/
+pnpm-workspace.yaml
