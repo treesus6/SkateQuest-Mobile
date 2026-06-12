@@ -7,6 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Sentry from '@sentry/react-native';
+import { wrap as sentryWrap } from '@sentry/react-native';
 import './global.css';
 
 import ChallengeApp from './components/ChallengeApp';
@@ -191,4 +192,4 @@ function App() {
 }
 
 // Wrap with Sentry.wrap for native crash reporting + automatic RN breadcrumbs
-export default Sentry.wrap(App);
+export default sentryWrap(App);
