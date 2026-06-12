@@ -10,7 +10,7 @@ jest.mock('expo-camera', () => {
   const React = require('react');
   return {
     __esModule: true,
-    CameraView: React.forwardRef(({ onBarcodeScanned, ...props }, ref) => (
+    CameraView: React.forwardRef(({ onBarcodeScanned: _onBarcodeScanned, ...props }, ref) => (
       React.createElement('CameraView', { ref, ...props })
     )),
     useCameraPermissions: jest.fn(() => [
@@ -172,7 +172,7 @@ jest.mock('expo-av', () => ({
     },
   },
   Video: {
-    useVideoPlayer: jest.fn((source) => ({
+    useVideoPlayer: jest.fn((_source) => ({
       player: null,
       status: 'idle',
     })),
