@@ -39,7 +39,6 @@ export function useSupabaseQuery<T>(
       if (!cached.isStale) setLoading(false);
     });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persist, cacheKey]);
 
   const fetchWithRetry = useCallback(async (attempt: number = 0): Promise<void> => {
@@ -64,7 +63,6 @@ export function useSupabaseQuery<T>(
       if (attempt < retries) { await new Promise(r => setTimeout(r, RETRY_DELAY * Math.pow(2, attempt))); return fetchWithRetry(attempt + 1); }
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   const fetch = useCallback(async () => {
