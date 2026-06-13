@@ -147,6 +147,12 @@ export function sanitizeInput(input: string): string {
     .trim();
 }
 
+// Raw-text elements whose content bypasses htmlparser2's tag-parsing pass,
+// allowing XSS vectors to slip through sanitize-html's default tag blocklist.
+// Strip them before passing to the library (defense-in-depth workaround for
+// the <xmp> passthrough vulnerability in sanitize-html <=2.17.3).
+const RAW_TEXT_ELEMENT_RE = /<(xmp|listing|plaintext)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
+
 /**
  * Sanitize HTML content
  */
@@ -155,8 +161,8 @@ export function sanitizeHtml(html: string): string {
     return '';
   }
 
-  // Use a robust HTML sanitizer to remove potentially dangerous content
-  const sanitized = sanitizeHtmlLib(html);
+  const stripped = html.replace(RAW_TEXT_ELEMENT_RE, '');
+  const sanitized = sanitizeHtmlLib(stripped);
   return sanitized.trim();
 }
 
