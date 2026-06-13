@@ -19,6 +19,9 @@
     "production": {
       "distribution": "store",
       "channel": "production",
+      "android": {
+        "image": "ubuntu-22.04-jdk-17-ndk-r26b"
+      },
       "env": {
         "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1",
         "EAS_SKIP_AUTO_FINGERPRINT": "1"
