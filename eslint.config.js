@@ -1,9 +1,5 @@
-/* eslint-disable no-undef */
-const { FlatCompat } = require('@eslint/eslintrc');
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
+const typescriptParser = require('@typescript-eslint/parser');
 
 module.exports = [
   {
@@ -13,30 +9,33 @@ module.exports = [
     ],
   },
 
-  ...compat.extends('expo', 'plugin:@typescript-eslint/recommended'),
-
   {
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: {
+      '@typescript-eslint': typescriptPlugin,
+    },
     rules: {
-      // RN + Supabase legitimately need `any` (navigation params, DB responses)
+      // TypeScript
       '@typescript-eslint/no-explicit-any': 'off',
-      // Animation refs and fetch callbacks cause infinite loops if deps naively added
-      'react-hooks/exhaustive-deps': 'off',
-      // Unused vars: allow underscore-prefix escape hatch
       '@typescript-eslint/no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_',
       }],
       '@typescript-eslint/no-require-imports': 'off',
-      // Only warn/error console calls allowed
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
-      // Not required in RN (DevTools behave differently than web)
-      'react/display-name': 'off',
-      // Stylistic - not a bug
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/array-type': 'off',
-      // React Compiler rules - project does not use React Compiler (Forget)
-      // These fire false positives on valid RN patterns
-      'react-compiler/react-compiler': 'off',
+      // Console
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
 
@@ -54,8 +53,6 @@ module.exports = [
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-require-imports': 'off',
       'no-undef': 'off',
-      '@typescript-eslint/triple-slash-reference': 'off',
-      'react-compiler/react-compiler': 'off',
     },
   },
 ];
