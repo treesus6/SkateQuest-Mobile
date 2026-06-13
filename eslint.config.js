@@ -5,7 +5,8 @@ module.exports = [
   {
     ignores: [
       'node_modules/**', '.expo/**', 'coverage/**', 'dist/**',
-      'website/**', 'scripts/**', '.claude/**', 'metro.config.js', '*.d.ts',
+      'website/**', 'scripts/**', '.claude/**', '.agents/**',
+      'metro.config.js', '*.d.ts',
     ],
   },
 
@@ -23,7 +24,6 @@ module.exports = [
       '@typescript-eslint': typescriptPlugin,
     },
     rules: {
-      // TypeScript
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
@@ -34,12 +34,10 @@ module.exports = [
       '@typescript-eslint/no-var-requires': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/array-type': 'off',
-      // Console
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
 
-  // Test files
   {
     files: ['**/__tests__/**/*', '**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/jest.setup.*', '**/jest.config.*'],
     languageOptions: {
