@@ -191,6 +191,5 @@ function App() {
 }
 
 // Wrap with Sentry.wrap for native crash reporting + automatic RN breadcrumbs
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - wrap exists at runtime; TS defs incomplete in @sentry/react-native 7.2.0
+// @ts-ignore - Sentry.wrap exists at runtime; TS defs incomplete in @sentry/react-native 7.2.0
 export default (Sentry as any).wrap(App);
