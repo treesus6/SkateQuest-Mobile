@@ -96,7 +96,7 @@
     "jest-expo": "~56.0.5",
     "lint-staged": "^15.0.0",
     "prettier": "^3.0.0",
-    "react-test-renderer": "19.2.3",
+    "react-test-renderer": "19.2.7",
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.3"
   },
