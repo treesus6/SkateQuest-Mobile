@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Keep npm dependencies up to date
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      expo-packages:
+        patterns:
+          - "expo*"
+          - "@expo/*"
+      react-native-packages:
+        patterns:
+          - "react-native*"
+          - "@react-native/*"
+      supabase:
+        patterns:
+          - "@supabase/*"
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
