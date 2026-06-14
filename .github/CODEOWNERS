@@ -1,0 +1,20 @@
+# CODEOWNERS for SkateQuest Mobile
+# GitHub will auto-request review from these owners when files are changed.
+# Format: <file pattern> <GitHub username(s)>
+
+# Default owner for everything
+* @treesus6
+
+# GitHub Actions workflows
+.github/workflows/ @treesus6
+
+# Supabase migrations (critical - always review)
+supabase/migrations/ @treesus6
+
+# Security-sensitive files
+SECURITY.md @treesus6
+.github/dependabot.yml @treesus6
+
+# App configuration
+app.config.js @treesus6
+eas.json @treesus6
