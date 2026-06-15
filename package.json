@@ -83,7 +83,7 @@
     "@eslint/js": "^10.0.1",
     "@expo/config-plugins": "~56.0.0",
     "@testing-library/jest-native": "^5.4.3",
-    "@testing-library/react-native": "^13.3.3",
+    "@testing-library/react-native": "^14.0.0",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.14",
     "@types/sanitize-html": "^2.13.0",
