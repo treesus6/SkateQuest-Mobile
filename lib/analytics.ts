@@ -5,8 +5,15 @@
  * All tracking is anonymous by default — no PII without explicit user consent.
  */
 
+import Constants from 'expo-constants';
+
 const POSTHOG_HOST = 'https://us.i.posthog.com';
-const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '';
+// Read from Expo Constants (set via app.config.js extra.posthogKey)
+// Falls back to process.env for local dev with .env file
+const POSTHOG_KEY: string =
+  (Constants.expoConfig?.extra?.posthogKey as string) ??
+  process.env.EXPO_PUBLIC_POSTHOG_KEY ??
+  '';
 
 type EventPropertyValue = string | number | boolean | null | undefined | Record<string, unknown>;
 interface EventProperties {
