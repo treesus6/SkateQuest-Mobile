@@ -1,5 +1,6 @@
 const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
 const typescriptParser = require('@typescript-eslint/parser');
+const reactHooksPlugin = require('eslint-plugin-react-hooks');
 
 module.exports = [
   {
@@ -22,6 +23,7 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': typescriptPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
@@ -35,6 +37,8 @@ module.exports = [
       '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/array-type': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 
