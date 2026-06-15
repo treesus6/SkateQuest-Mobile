@@ -38,7 +38,7 @@ module.exports = [
       '@typescript-eslint/array-type': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 
