@@ -108,7 +108,7 @@ export default function SessionsScreen() {
     if (routeParams?.autoCreate) {
       setCreateVisible(true);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadSessions = useCallback(async () => {
     if (!user?.id) return;
