@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { Camera, MapPin, Star, Target, AlertTriangle } from 'lucide-react-native';
+import { Camera, MapPin, Star, Target, AlertTriangle, CalendarDays, Users } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
@@ -42,6 +42,30 @@ const CONDITION_OPTIONS = [
   { value: 'under_construction', label: 'Construction' },
 ];
 
+const SESSION_STATUS_COLORS: Record<string, string> = {
+  upcoming: '#6B4CE6',
+  live: '#10B981',
+  ended: '#9CA3AF',
+};
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  upcoming: 'Upcoming',
+  live: 'LIVE NOW',
+  ended: 'Ended',
+};
+
+interface SpotSession {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  creator_username: string | null;
+  attendee_count: number;
+  max_attendees: number | null;
+  status: 'upcoming' | 'live' | 'ended';
+  is_attending: boolean;
+}
+
 const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const { spotId } = route.params;
   const { user } = useAuthStore();
@@ -56,6 +80,9 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const [comments, setComments] = useState<SpotComment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [sessions, setSessions] = useState<SpotSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [rsvpingId, setRsvpingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSpotData();
@@ -81,11 +108,113 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         .order('created_at', { ascending: false })
         .limit(50);
       setComments(commentsData || []);
+
+      loadSpotSessions(spotData?.name);
     } catch (error: any) {
       console.error('Error loading spot:', error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSpotSessions = async (spotName?: string) => {
+    if (!user?.id) return;
+    setLoadingSessions(true);
+    try {
+      const orParts = [`spot_id.eq.${spotId}`];
+      if (spotName) {
+        orParts.push(`spot_name.eq."${spotName.replace(/"/g, '')}"`);
+      }
+
+      const { data: rawSessions } = await supabase
+        .from('skate_sessions')
+        .select(`
+          id, title, spot_id, spot_name, date, time,
+          created_by, max_attendees,
+          profiles!skate_sessions_created_by_fkey(username)
+        `)
+        .or(orParts.join(','))
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .order('time', { ascending: true })
+        .limit(5);
+
+      if (!rawSessions || rawSessions.length === 0) {
+        setSessions([]);
+        return;
+      }
+
+      const sessionIds = rawSessions.map((s: any) => s.id);
+      const [attendeesRes, myRsvpsRes] = await Promise.all([
+        supabase.from('session_attendees').select('session_id').in('session_id', sessionIds),
+        supabase
+          .from('session_attendees')
+          .select('session_id')
+          .eq('user_id', user.id)
+          .in('session_id', sessionIds),
+      ]);
+
+      const attendeeMap: Record<string, number> = {};
+      (attendeesRes.data ?? []).forEach(({ session_id }: { session_id: string }) => {
+        attendeeMap[session_id] = (attendeeMap[session_id] ?? 0) + 1;
+      });
+      const mySessionIds = new Set(
+        (myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id)
+      );
+
+      setSessions(
+        rawSessions.map((s: any) => ({
+          id: s.id,
+          title: s.title,
+          date: s.date,
+          time: s.time,
+          creator_username: s.profiles?.username ?? null,
+          attendee_count: attendeeMap[s.id] ?? 0,
+          max_attendees: s.max_attendees,
+          status: getSessionStatus(s.date, s.time),
+          is_attending: mySessionIds.has(s.id),
+        }))
+      );
+    } catch {
+      // sessions are supplemental — don't surface load errors
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const toggleSessionRSVP = async (session: SpotSession) => {
+    if (!user?.id || session.status === 'ended') return;
+    setRsvpingId(session.id);
+    try {
+      if (session.is_attending) {
+        await supabase
+          .from('session_attendees')
+          .delete()
+          .eq('session_id', session.id)
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('session_attendees')
+          .insert({ session_id: session.id, user_id: user.id });
+      }
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === session.id
+            ? {
+                ...s,
+                is_attending: !session.is_attending,
+                attendee_count: session.is_attending
+                  ? s.attendee_count - 1
+                  : s.attendee_count + 1,
+              }
+            : s
+        )
+      );
+    } catch {
+      Alert.alert('Error', 'Could not update RSVP');
+    } finally {
+      setRsvpingId(null);
     }
   };
 
@@ -382,6 +511,103 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         </Card>
       )}
 
+      {/* Sessions at this spot */}
+      <Card className="mx-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center gap-2">
+            <CalendarDays color="#6B4CE6" size={18} />
+            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+              Sessions Here
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Sessions', { spotId, spotName: spot.name })}
+          >
+            <Text className="text-sm font-bold text-brand-terracotta">See all →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loadingSessions ? (
+          <ActivityIndicator color="#6B4CE6" size="small" style={{ marginBottom: 12 }} />
+        ) : sessions.length === 0 ? (
+          <Text className="text-sm text-gray-400 text-center mb-3">
+            No upcoming sessions — be the first to plan one!
+          </Text>
+        ) : (
+          sessions.map(s => (
+            <View
+              key={s.id}
+              className="py-2.5 border-b border-gray-100 dark:border-gray-700"
+            >
+              <View className="flex-row items-start justify-between">
+                <View className="flex-1 mr-3">
+                  <Text className="text-[15px] font-bold text-gray-800 dark:text-gray-100">
+                    {s.title}
+                  </Text>
+                  <Text className="text-xs text-gray-400 mt-0.5">
+                    {formatSessionDate(s.date, s.time)}
+                  </Text>
+                  <View className="flex-row items-center gap-2 mt-1">
+                    <View
+                      className="px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: SESSION_STATUS_COLORS[s.status] + '22' }}
+                    >
+                      <Text
+                        style={{ color: SESSION_STATUS_COLORS[s.status] }}
+                        className="text-[11px] font-bold"
+                      >
+                        {SESSION_STATUS_LABELS[s.status]}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-1">
+                      <Users size={11} color="#9CA3AF" />
+                      <Text className="text-xs text-gray-400">
+                        {s.attendee_count}
+                        {s.max_attendees ? `/${s.max_attendees}` : ''} going
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {s.status !== 'ended' && (
+                  <TouchableOpacity
+                    className={`px-3 py-1.5 rounded-full ${s.is_attending ? 'bg-brand-green' : 'border border-[#6B4CE6]'}`}
+                    onPress={() => toggleSessionRSVP(s)}
+                    disabled={rsvpingId === s.id}
+                  >
+                    {rsvpingId === s.id ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={s.is_attending ? '#fff' : '#6B4CE6'}
+                      />
+                    ) : (
+                      <Text
+                        className={`text-xs font-bold ${s.is_attending ? 'text-white' : 'text-[#6B4CE6]'}`}
+                      >
+                        {s.is_attending ? 'Going ✓' : 'RSVP'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))
+        )}
+
+        <Button
+          title="+ Plan a Session Here"
+          onPress={() =>
+            navigation.navigate('Sessions', {
+              spotId,
+              spotName: spot.name,
+              autoCreate: true,
+            })
+          }
+          variant="primary"
+          size="sm"
+          className="bg-[#6B4CE6] mt-3"
+        />
+      </Card>
+
       <Card className="mx-4">
         <View className="flex-row items-center gap-2 mb-3">
           <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
@@ -488,6 +714,24 @@ function getTimeAgo(dateString: string): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function getSessionStatus(date: string, time: string): 'upcoming' | 'live' | 'ended' {
+  const sessionTime = new Date(`${date}T${time}`);
+  const now = new Date();
+  const diff = sessionTime.getTime() - now.getTime();
+  if (diff > 2 * 60 * 60 * 1000) return 'upcoming';
+  if (diff > -2 * 60 * 60 * 1000) return 'live';
+  return 'ended';
+}
+
+function formatSessionDate(dateStr: string, timeStr: string): string {
+  const d = new Date(`${dateStr}T${timeStr}`);
+  return (
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' · ' +
+    d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  );
 }
 
 export default SpotDetailScreen;
