@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo start*)",
+      "Bash(npx jest*)",
+      "Bash(eas build:inspect*)",
+      "Bash(eas diagnostics*)",
+      "Bash(eas whoami*)",
+      "Bash(npx expo doctor*)",
+      "Bash(npx expo install*)",
+      "Bash(npx tsc*)",
+      "Bash(npm run lint*)",
+      "Bash(npm test*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(eas build*)",
+      "Bash(eas submit*)",
+      "Bash(eas update*)",
+      "Bash(eas secret*)"
+    ]
+  }
+}
