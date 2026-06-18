@@ -256,9 +256,6 @@ export default function AiCoachScreen() {
           })}
         </ScrollView>
       )}
-    </SafeAreaView>
-  );
-}
 
       {/* AI ANALYZE TAB */}
       {tab === 'analyze' && (
