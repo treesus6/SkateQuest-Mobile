@@ -105,6 +105,12 @@ module.exports = {
       'expo-web-browser',
     ],
 
+    web: {
+      bundler: 'metro',
+      output: 'static',
+      favicon: './assets/icon.png',
+    },
+
     extra: {
       posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
       eas: {
