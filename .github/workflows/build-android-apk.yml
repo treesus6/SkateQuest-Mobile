@@ -32,7 +32,7 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --clean
