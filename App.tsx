@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import type { NavigationState, PartialState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -31,6 +32,7 @@ import * as Linking from 'expo-linking';
 
 import { vexo } from 'vexo-analytics';
 import { analytics } from './lib/analytics';
+import { logNavigation } from './lib/sentryUtils';
 import { checkForOTAUpdate } from './lib/otaUpdates';
 
 // ─── Sentry: initialize before any component code ────────────────────────────
@@ -38,9 +40,47 @@ Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
   enabled: !__DEV__,
-  tracesSampleRate: 1.0,
+  // 20% sample rate — enough for perf insights without noise or cost
+  tracesSampleRate: __DEV__ ? 0 : 0.2,
   attachStacktrace: true,
+  // Filter out common RN false positives to keep Sentry signal clean
+  ignoreErrors: [
+    'Non-Error promise rejection captured',
+    'Network request failed',
+    'Load failed',
+    'The network connection was lost',
+    'TimeoutError',
+    'AbortError',
+  ],
+  beforeSend(event: any) {
+    if (__DEV__) return null;
+    return event;
+  },
 });
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Navigation ref: shared across auth + main navigators ───────────────────
+// Only one NavigationContainer mounts at a time so a single ref is safe.
+const navigationRef = createNavigationContainerRef();
+
+/** Walk nested nav state to get the currently active route name */
+function getActiveRouteName(
+  state: NavigationState | PartialState<NavigationState> | undefined
+): string {
+  if (!state || typeof state.index !== 'number') return 'Unknown';
+  const route = state.routes[state.index];
+  if (route.state) {
+    return getActiveRouteName(route.state as NavigationState);
+  }
+  return route.name ?? 'Unknown';
+}
+
+/** Fires on every nav state change — posts to PostHog + Sentry breadcrumb */
+function onNavigationStateChange(state: NavigationState | undefined) {
+  const routeName = getActiveRouteName(state);
+  analytics.screen(routeName);   // PostHog: automatic screen view tracking
+  logNavigation(routeName);      // Sentry: breadcrumb for error attribution
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Keep splash screen visible while fonts/auth load
@@ -111,14 +151,14 @@ function RootNavigator() {
 
   if (user) {
     return (
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef} onStateChange={onNavigationStateChange}>
         <ChallengeApp />
       </NavigationContainer>
     );
   }
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer linking={linking} ref={navigationRef} onStateChange={onNavigationStateChange}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
@@ -191,5 +231,5 @@ function App() {
 }
 
 // Wrap with Sentry.wrap for native crash reporting + automatic RN breadcrumbs
-// @ts-ignore - Sentry.wrap exists at runtime; TS defs incomplete in @sentry/react-native 7.2.0
+// @ts-ignore - Sentry.wrap exists at runtime; TS defs may be incomplete
 export default (Sentry as any).wrap(App);
