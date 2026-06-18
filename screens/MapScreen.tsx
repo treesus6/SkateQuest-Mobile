@@ -42,6 +42,7 @@ import { spotsService } from '../lib/spotsService';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { SkateEvents } from '../lib/analytics';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
@@ -136,6 +137,8 @@ export default function MapScreen() {
   const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
+    // PostHog: track map screen opened
+    SkateEvents.mapOpened();
     requestLocationPermission();
     AsyncStorage.getItem(SAVED_SPOTS_KEY).then((raw: string | null) => {
       if (raw) {
