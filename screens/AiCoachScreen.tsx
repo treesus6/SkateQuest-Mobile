@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, FlatList, KeyboardAvoidingView, Platform
+  TextInput, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   getTrickCoaching, getDifficulty,
   getSkateBotResponse, searchTricks
 } from '../lib/trickDatabase';
+import { analyzeTrick, getFallbackAnalysis, TrickAnalysis } from '../lib/trickAnalyzer';
+import { useAuthStore } from '../stores/useAuthStore';
 
-type Tab = 'coach' | 'bot' | 'tricks';
+type Tab = 'coach' | 'bot' | 'tricks' | 'analyze';
 
 interface Message {
   id: string;
@@ -26,6 +28,13 @@ export default function AiCoachScreen() {
     { id: '0', role: 'bot', text: "Whats up! I'm your skate coach. Ask me about any trick — foot position, common mistakes, what to learn next. What are you working on?" }
   ]);
   const [input, setInput] = useState('');
+  // AI Analyze tab state
+  const { user } = useAuthStore();
+  const [analyzeInput, setAnalyzeInput] = useState('');
+  const [analyzeDescription, setAnalyzeDescription] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeResult, setAnalyzeResult] = useState<TrickAnalysis | null>(null);
+  const [analyzeError, setAnalyzeError] = useState('');
 
   const filteredTricks = search ? searchTricks(search) : [];
 
@@ -45,10 +54,32 @@ export default function AiCoachScreen() {
     setInput('');
   };
 
+  const handleAnalyze = async () => {
+    if (!analyzeInput.trim()) return;
+    setAnalyzing(true);
+    setAnalyzeResult(null);
+    setAnalyzeError('');
+    try {
+      const result = await analyzeTrick(
+        analyzeInput.trim(),
+        analyzeDescription.trim() || undefined,
+      );
+      setAnalyzeResult(result);
+    } catch (err) {
+      // Edge function unavailable — use offline fallback
+      const fallback = getFallbackAnalysis(analyzeInput.trim());
+      setAnalyzeResult(fallback);
+      setAnalyzeError('Using offline analysis (server unavailable)');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const tabs = [
     { key: 'coach', label: '🛹 Coach' },
     { key: 'bot', label: '🤖 Ask Bot' },
     { key: 'tricks', label: '📚 Tricks' },
+    { key: 'analyze', label: '⚡ AI' },
   ];
 
   return (
@@ -229,6 +260,120 @@ export default function AiCoachScreen() {
   );
 }
 
+      {/* AI ANALYZE TAB */}
+      {tab === 'analyze' && (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 60 }}>
+            <View style={s.analyzeCard}>
+              <Text style={s.sectionTitle}>⚡ AI Trick Analyzer</Text>
+              <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 16 }}>
+                Server-side AI analysis. Enter a trick name and optionally describe what you're struggling with.
+              </Text>
+              <TextInput
+                style={s.searchInput}
+                placeholder="Trick name (e.g. Kickflip, 360 Flip)"
+                placeholderTextColor="#4B5563"
+                value={analyzeInput}
+                onChangeText={setAnalyzeInput}
+              />
+              <TextInput
+                style={[s.searchInput, { marginTop: 10, minHeight: 80, textAlignVertical: 'top' }]}
+                placeholder="Optional: describe what you're working on (e.g. my back foot keeps slipping)"
+                placeholderTextColor="#4B5563"
+                value={analyzeDescription}
+                onChangeText={setAnalyzeDescription}
+                multiline
+              />
+              <TouchableOpacity
+                style={[s.analyzeBtn, (!analyzeInput.trim() || analyzing) && { opacity: 0.5 }]}
+                onPress={handleAnalyze}
+                disabled={!analyzeInput.trim() || analyzing}
+              >
+                {analyzing
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={s.analyzeBtnTxt}>⚡ Analyze</Text>}
+              </TouchableOpacity>
+            </View>
+
+            {analyzeError ? (
+              <Text style={{ color: '#F59E0B', fontSize: 12, textAlign: 'center' }}>{analyzeError}</Text>
+            ) : null}
+
+            {analyzeResult && (
+              <>
+                <View style={s.trickCard}>
+                  <View style={s.trickHeader}>
+                    <Text style={s.trickName}>{analyzeResult.trickName ?? analyzeInput}</Text>
+                    <View style={s.diffBadge}>
+                      <Text style={s.diffTxt}>{analyzeResult.difficulty}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Text style={{ color: '#d2673d', fontWeight: '900', fontSize: 18 }}>
+                      +{analyzeResult.xp_value} XP
+                    </Text>
+                    {analyzeResult.score != null && analyzeResult.score > 0 && (
+                      <Text style={{ color: '#6B7280', fontSize: 13 }}>
+                        Score: {analyzeResult.score}/100
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                {analyzeResult.tips?.length > 0 && (
+                  <View style={s.section}>
+                    <Text style={s.sectionTitle}>💡 Tips</Text>
+                    {analyzeResult.tips.map((tip, i) => (
+                      <Text key={i} style={s.tipText}>• {tip}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {analyzeResult.common_mistakes?.length > 0 && (
+                  <View style={s.section}>
+                    <Text style={s.sectionTitle}>❌ Common Mistakes</Text>
+                    {analyzeResult.common_mistakes.map((m, i) => (
+                      <Text key={i} style={s.mistakeText}>• {m}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {analyzeResult.prerequisites?.length > 0 && (
+                  <View style={s.section}>
+                    <Text style={s.sectionTitle}>📋 Prerequisites</Text>
+                    <View style={s.progGrid}>
+                      {analyzeResult.prerequisites.map(t => (
+                        <TouchableOpacity key={t} style={s.progChip} onPress={() => { setTab('coach'); lookupTrick(t); }}>
+                          <Text style={s.progTxt}>{t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {analyzeResult.style_notes ? (
+                  <View style={s.section}>
+                    <Text style={s.sectionTitle}>🎨 Style Notes</Text>
+                    <Text style={s.tipText}>{analyzeResult.style_notes}</Text>
+                  </View>
+                ) : null}
+
+                {analyzeResult.feedback ? (
+                  <View style={s.section}>
+                    <Text style={s.sectionTitle}>🤖 AI Feedback</Text>
+                    <Text style={s.tipText}>{analyzeResult.feedback}</Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#05070B' },
   header: { padding: 20, paddingBottom: 8 },
@@ -289,4 +434,10 @@ const s = StyleSheet.create({
   diffDots: { flexDirection: 'row', gap: 4 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1a2030' },
   dotOn: { backgroundColor: '#d2673d' },
+  analyzeCard: { backgroundColor: '#111827', borderRadius: 12, padding: 16 },
+  analyzeBtn: {
+    backgroundColor: '#d2673d', borderRadius: 10, paddingVertical: 14,
+    alignItems: 'center', marginTop: 14,
+  },
+  analyzeBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '900' },
 });
