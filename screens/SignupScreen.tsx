@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { SkateEvents } from '../lib/analytics';
 
 export default function SignupScreen({ navigation }: any) {
   const { signUp, loading } = useAuthStore();
@@ -21,6 +22,9 @@ export default function SignupScreen({ navigation }: any) {
     const { error: signUpError } = await signUp(email.trim(), password);
     if (signUpError) {
       setError(signUpError.message || 'Failed to create account');
+    } else {
+      // PostHog: track new user signup
+      SkateEvents.signedUp();
     }
   };
 
