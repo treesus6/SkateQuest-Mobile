@@ -9,7 +9,6 @@ import {
   getSkateBotResponse, searchTricks
 } from '../lib/trickDatabase';
 import { analyzeTrick, getFallbackAnalysis, TrickAnalysis } from '../lib/trickAnalyzer';
-import { useAuthStore } from '../stores/useAuthStore';
 
 type Tab = 'coach' | 'bot' | 'tricks' | 'analyze';
 
@@ -29,7 +28,6 @@ export default function AiCoachScreen() {
   ]);
   const [input, setInput] = useState('');
   // AI Analyze tab state
-  const { user } = useAuthStore();
   const [analyzeInput, setAnalyzeInput] = useState('');
   const [analyzeDescription, setAnalyzeDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
