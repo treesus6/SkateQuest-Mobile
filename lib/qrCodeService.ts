@@ -2,7 +2,69 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
+function generateQRCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'SKQ-';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 export const qrCodeService = {
+  // Create + hide a new charity QR code. Returns the created row (including
+  // the .code value needed to render the QR image for printing).
+  async create(params: {
+    userId: string;
+    userName: string;
+    latitude: number;
+    longitude: number;
+    locationDescription?: string;
+    trickChallenge?: string;
+    challengeMessage?: string;
+    xpReward?: number;
+    bonusReward?: string;
+    proofRequired?: boolean;
+  }) {
+    try {
+      return await supabase
+        .from('qr_codes')
+        .insert({
+          code: generateQRCode(),
+          purchased_by: params.userId,
+          purchaser_name: params.userName,
+          purchase_price: 0,
+          status: 'hidden',
+          hidden_at: new Date().toISOString(),
+          hidden_location_lat: params.latitude,
+          hidden_location_lng: params.longitude,
+          hidden_location_description: params.locationDescription || null,
+          xp_reward: params.xpReward ?? 100,
+          bonus_reward: params.bonusReward || null,
+          trick_challenge: params.trickChallenge || null,
+          challenge_message: params.challengeMessage || null,
+          proof_required: params.proofRequired ?? false,
+        })
+        .select()
+        .single();
+    } catch (error) {
+      Logger.error('qrCodeService.create failed', error);
+      throw new ServiceError('Failed to create QR code', 'QR_CREATE_FAILED', error);
+    }
+  },
+
+  // Get all QR codes a user has hidden (so they can track if any have been found)
+  async getMyHiddenCodes(userId: string) {
+    try {
+      return await supabase
+        .from('qr_codes')
+        .select('*')
+        .eq('purchased_by', userId)
+        .order('created_at', { ascending: false });
+    } catch (error) {
+      Logger.error('qrCodeService.getMyHiddenCodes failed', error);
+      throw new ServiceError('Failed to fetch hidden codes', 'QR_MY_CODES_FAILED', error);
+    }
+  },
+
   async getByCode(code: string) {
     try {
       return await supabase
