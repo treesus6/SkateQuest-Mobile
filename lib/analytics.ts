@@ -103,6 +103,16 @@ export const SkateEvents = {
   sceneEntryViewed: (entryId: string, category: string) =>
     analytics.track('scene_entry_viewed', { entry_id: entryId, category }),
 
+  // QR Geocaching
+  qrCodeHidden: () => analytics.track('qr_code_hidden'),
+  qrCodeFound: () => analytics.track('qr_code_found'),
+
+  // Crew Battles
+  crewBattleCreated: (trickName: string) =>
+    analytics.track('crew_battle_created', { trick_name: trickName }),
+  crewBattleVoted: (battleId: string, crew: 'a' | 'b') =>
+    analytics.track('crew_battle_voted', { battle_id: battleId, crew }),
+
   // Auth
   signedUp: () => analytics.track('signed_up'),
   signedIn: () => analytics.track('signed_in'),
