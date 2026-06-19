@@ -8,6 +8,7 @@ import { qrCodeService } from '../lib/qrCodeService';
 import { profilesService } from '../lib/profilesService';
 import { feedService } from '../lib/feedService';
 import { useAuthStore } from '../stores/useAuthStore';
+import { SkateEvents } from '../lib/analytics';
 import Button from '../components/ui/Button';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -87,6 +88,7 @@ export default function QRCodeScannerScreen() {
       if (!profile) throw new Error('Profile not found');
 
       await qrCodeService.markFound(qrData.id, user.id, profile.username);
+      SkateEvents.qrCodeFound();
 
       const newXP = (profile.xp || 0) + qrData.xp_reward;
       await profilesService.update(user.id, { xp: newXP });
