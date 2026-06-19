@@ -32,6 +32,7 @@ import ShopsScreen from '../screens/ShopsScreen';
 import CrewsScreen from '../screens/CrewsScreen';
 import EventsScreen from '../screens/EventsScreen';
 import QRCodeScannerScreen from '../screens/QRCodeScannerScreen';
+import HideQRCodeScreen from '../screens/HideQRCodeScreen';
 import UploadMediaScreen from '../screens/UploadMediaScreen';
 import AddSpotScreen from '../screens/AddSpotScreen';
 import SpotDetailScreen from '../screens/SpotDetailScreen';
@@ -248,6 +249,7 @@ function InnerApp() {
         <Stack.Screen name="Crews" component={CrewsScreen} options={{ headerShown: true, title: 'Crews' }} />
         <Stack.Screen name="Events" component={EventsScreen} options={{ headerShown: true, title: 'Events' }} />
         <Stack.Screen name="QRScanner" component={QRCodeScannerScreen} options={{ headerShown: true, title: 'Scan QR' }} />
+        <Stack.Screen name="HideQRCode" component={HideQRCodeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="UploadMedia" component={UploadMediaScreen} options={{ headerShown: true, title: 'Upload Media' }} />
         <Stack.Screen name="AddSpot" component={AddSpotScreen} options={{ headerShown: true, title: 'Add Spot' }} />
         <Stack.Screen name="SpotDetail" component={SpotDetailScreen} options={{ headerShown: true, title: 'Spot Detail' }} />
