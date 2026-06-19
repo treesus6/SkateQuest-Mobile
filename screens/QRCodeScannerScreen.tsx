@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, Alert, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -157,6 +157,14 @@ export default function QRCodeScannerScreen() {
             <Text className="text-base text-gray-300 text-center">
               Find charity QR codes hidden around town!
             </Text>
+            <TouchableOpacity
+              className="mt-3"
+              onPress={() => navigation.navigate('HideQRCode')}
+            >
+              <Text className="text-[#d2673d] text-sm font-semibold underline">
+                Got one to hide? Tap here →
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View className="flex-1 justify-center items-center my-12">
