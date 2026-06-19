@@ -21,6 +21,7 @@ import {
   CheckCircle2,
 } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
+import { SkateEvents } from '../lib/analytics'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -389,6 +390,7 @@ function CreateBattleModal({ visible, onClose, onCreated, crews }: CreateBattleM
         winner_crew_id: null,
       })
       if (error) throw error
+      SkateEvents.crewBattleCreated(trick.trim())
       reset()
       onCreated()
       onClose()
@@ -662,6 +664,7 @@ export default function CrewBattlesScreen() {
         crew_voted: side,
       })
       if (voteError) throw voteError
+      SkateEvents.crewBattleVoted(battleId, side)
 
       // Increment vote count
       const voteField = side === 'a' ? 'votes_a' : 'votes_b'
