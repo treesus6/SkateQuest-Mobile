@@ -12,6 +12,7 @@ import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
 import { NativeStackNavigationProp } from '../lib/useNavigation'
 import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
+import { streaksService } from '../lib/streaksService'
 import { RootStackParamList } from '../types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ export default function CheckInScreen() {
       setJustEarnedXP(true)
       setShowSessionPrompt(true)
       fetchCheckIns()
+      streaksService.updateOnActivity(user.id).catch(() => {})
 
       setTimeout(() => setJustEarnedXP(false), 4000)
     } catch (err: unknown) {
