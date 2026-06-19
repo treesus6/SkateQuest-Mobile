@@ -63,7 +63,7 @@ export default function AiCoachScreen() {
         analyzeDescription.trim() || undefined,
       );
       setAnalyzeResult(result);
-    } catch (err) {
+    } catch (_err) {
       // Edge function unavailable — use offline fallback
       const fallback = getFallbackAnalysis(analyzeInput.trim());
       setAnalyzeResult(fallback);
