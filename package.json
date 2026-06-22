@@ -79,7 +79,7 @@
     "react-native-qrcode-svg": "^6.3.15"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
+    "@babel/core": "^8.0.1",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^10.0.1",
     "@expo/config-plugins": "~56.0.0",
