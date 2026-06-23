@@ -11,8 +11,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Crown, Users, UserPlus, X, Search, Zap, Trophy, LogOut } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import Card from '../components/ui/Card';
 import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
 import { EmptyStates } from '../components/EmptyState';

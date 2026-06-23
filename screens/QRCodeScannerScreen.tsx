@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Alert, ActivityIndicator, Dimensions, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList, QRCode } from '../types';
 import { qrCodeService } from '../lib/qrCodeService';
 import { profilesService } from '../lib/profilesService';

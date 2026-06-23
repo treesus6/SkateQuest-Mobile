@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Youtube, ExternalLink, Bookmark, X, Send, Search } from 'lucide-react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp } from '../lib/useNavigation';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 

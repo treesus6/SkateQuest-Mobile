@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList, SkateSpot } from '../types';
 import {
   Crosshair,

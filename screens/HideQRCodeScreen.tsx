@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import QRCode from 'react-native-qrcode-svg';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { ChevronLeft, MapPin, Check } from 'lucide-react-native';
 import { RootStackParamList } from '../types';
 import { qrCodeService } from '../lib/qrCodeService';

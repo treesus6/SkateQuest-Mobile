@@ -4,7 +4,7 @@
 React Native / Expo app mapping 27,000+ skateparks globally. Community-first, built for skaters by skaters. Features: interactive map, XP/leveling, check-ins, video uploads, daily tricks, city wars, crew battles, skate shop directory. Donate 10% of profits to kids who can't afford boards. Support DIY skate spots.
 
 **Repo**: `treesus6/SkateQuest-Mobile`
-**Stack**: React Native 0.81.5 · Expo SDK 54 · Expo Router v4 · NativeWind v4 · Supabase · Mapbox v11 · Sentry · Zustand 5.x · react-native-reanimated v3
+**Stack**: React Native 0.86.0 · Expo SDK 56 · Expo Router v4 · NativeWind v4 · Supabase · Mapbox v11 · Sentry · Zustand 5.x · react-native-reanimated v3
 
 ---
 

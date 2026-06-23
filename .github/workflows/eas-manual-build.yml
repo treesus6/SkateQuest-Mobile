@@ -23,21 +23,19 @@ jobs:
   build:
     name: EAS Build (${{ github.event.inputs.platform }} / ${{ github.event.inputs.profile }})
     runs-on: ubuntu-latest
-    # 90 min: EAS Android production builds typically take 20-45 min
-    # Submit adds ~5 min on top; leaving plenty of headroom
     timeout-minutes: 90
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node 20
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Setup Expo + EAS
-        uses: expo/expo-github-action@v9
+        uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
@@ -45,9 +43,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Removed --no-wait: wait for build completion before submitting.
-      # Previously the submit step ran immediately (before the build finished),
-      # causing "submission canceled" failures.
       - name: EAS Build
         run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive
         env:
@@ -62,7 +57,6 @@ jobs:
         if: ${{ github.event.inputs.profile == 'production' && github.event.inputs.platform == 'android' }}
         run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > ./google-service-account.json
 
-      # Runs only after build above completes successfully
       - name: EAS Submit to Play Store (production only)
         if: ${{ github.event.inputs.profile == 'production' && github.event.inputs.platform == 'android' }}
         run: eas submit --platform android --profile production --latest --non-interactive

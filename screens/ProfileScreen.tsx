@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Flame, Award, Trophy, Crosshair, Bell, Share2, MessageSquare, History, UserCheck, CalendarDays, Map } from 'lucide-react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';

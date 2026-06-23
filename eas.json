@@ -20,7 +20,7 @@
       "distribution": "store",
       "channel": "production",
       "android": {
-        "image": "ubuntu-22.04-jdk-17-ndk-r26b"
+        "image": "ubuntu-22.04-jdk-21-ndk-r26b"
       },
       "env": {
         "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1",

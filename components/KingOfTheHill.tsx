@@ -3,7 +3,7 @@ import { View, Text, Alert, ActivityIndicator, Modal } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Crown } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from '../lib/useNavigation';
 import Card from './ui/Card';
 import Button from './ui/Button';
 import { supabase } from '../lib/supabase';

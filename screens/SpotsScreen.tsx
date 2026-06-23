@@ -3,7 +3,7 @@ import {
   View, Text, FlatList, RefreshControl, TextInput,
 } from 'react-native';
 import { MapPin, Search } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from '../lib/useNavigation';
 import { spotsService } from '../lib/spotsService';
 import { SkateSpot } from '../types';
 import Card from '../components/ui/Card';

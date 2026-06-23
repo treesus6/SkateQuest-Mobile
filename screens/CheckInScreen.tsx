@@ -8,8 +8,8 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
+import { NativeStackNavigationProp } from '../lib/useNavigation'
 import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
 import { RootStackParamList } from '../types'

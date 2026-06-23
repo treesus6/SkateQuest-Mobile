@@ -20,7 +20,7 @@ import {
   CheckCircle,
   Circle,
 } from 'lucide-react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';

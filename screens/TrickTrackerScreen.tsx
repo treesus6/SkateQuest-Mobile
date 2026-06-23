@@ -10,8 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { Target, Star, Zap, Plus, Trash2, CheckCircle, BookOpen } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';

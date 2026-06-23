@@ -26,8 +26,8 @@ import {
   RefreshCw,
   Info,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import {
   checkGoProConnection,
   listGoProMedia,

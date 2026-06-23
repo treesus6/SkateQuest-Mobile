@@ -11,8 +11,8 @@ import {
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { MapPin } from 'lucide-react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';

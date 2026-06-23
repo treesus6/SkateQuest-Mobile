@@ -10,7 +10,7 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
 import { ChevronLeft, Star, X, PenLine } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
 

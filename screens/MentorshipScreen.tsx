@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from '../lib/useNavigation';
 import { ChevronLeft, Star, UserCheck, Users, Zap, Award, MessageSquare } from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';

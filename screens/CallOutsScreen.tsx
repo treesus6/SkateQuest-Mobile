@@ -13,7 +13,7 @@ import * as Location from 'expo-location';
 import { Crosshair, MapPin, Clock, Check, X, Ban } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
-import { useRoute } from '@react-navigation/native';
+import { useRoute } from '../lib/useNavigation';
 import { callOutsService } from '../lib/callOutsService';
 import { profilesService } from '../lib/profilesService';
 import { Logger } from '../lib/logger';

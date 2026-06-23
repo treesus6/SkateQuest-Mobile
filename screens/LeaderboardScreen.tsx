@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { Trophy } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from '../lib/useNavigation';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { profilesService } from '../lib/profilesService';
 import { UserProfile } from '../types';
