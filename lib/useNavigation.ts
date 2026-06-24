@@ -144,11 +144,7 @@ export function useNavigation<_T = any>() {
 }
 
 // ─── useRoute shim ────────────────────────────────────────────────────────────
-export function useRoute<T extends Record<string, string | undefined> = any>() {
-  const params = useLocalSearchParams() as unknown as T;
-  return {
-    params,
-    key: '',
-    name: '',
-  };
+export function useRoute<T = any>(): T {
+  const params = useLocalSearchParams();
+  return { params, key: '', name: '' } as unknown as T;
 }
