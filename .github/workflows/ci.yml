@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Configure Mapbox npm registry
+        run: |
+          echo "//api.mapbox.com/downloads/v2/:_authToken=${MAPBOX_DOWNLOADS_TOKEN}" >> ~/.npmrc
+          echo "@rnmapbox:registry=https://api.mapbox.com/downloads/v2/" >> ~/.npmrc
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
