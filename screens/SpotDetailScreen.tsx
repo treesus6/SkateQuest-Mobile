@@ -17,6 +17,8 @@ import {
 import Mapbox from '@rnmapbox/maps';
 import { Camera, MapPin, Star, Target, AlertTriangle, CalendarDays, Users } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useNetworkStore } from '../stores/useNetworkStore';
+import { useMutationQueueStore } from '../stores/useMutationQueueStore';
 import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
 import { challengesService } from '../lib/challengesService';
@@ -186,32 +188,60 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const toggleSessionRSVP = async (session: SpotSession) => {
     if (!user?.id || session.status === 'ended') return;
     setRsvpingId(session.id);
+
+    // Optimistic update first
+    setSessions(prev =>
+      prev.map(s =>
+        s.id === session.id
+          ? {
+              ...s,
+              is_attending: !session.is_attending,
+              attendee_count: session.is_attending
+                ? s.attendee_count - 1
+                : s.attendee_count + 1,
+            }
+          : s
+      )
+    );
+
     try {
-      if (session.is_attending) {
-        await supabase
-          .from('session_attendees')
-          .delete()
-          .eq('session_id', session.id)
-          .eq('user_id', user.id);
+      const { isConnected } = useNetworkStore.getState();
+      const { enqueue } = useMutationQueueStore.getState();
+
+      if (isConnected) {
+        if (session.is_attending) {
+          const { error } = await supabase
+            .from('session_attendees')
+            .delete()
+            .eq('session_id', session.id)
+            .eq('user_id', user.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('session_attendees')
+            .insert({ session_id: session.id, user_id: user.id });
+          if (error) throw error;
+        }
       } else {
-        await supabase
-          .from('session_attendees')
-          .insert({ session_id: session.id, user_id: user.id });
+        await enqueue(
+          session.is_attending ? 'delete' : 'create',
+          'session_attendees',
+          { session_id: session.id, user_id: user.id }
+        );
       }
+    } catch {
+      // Revert optimistic update on failure
       setSessions(prev =>
         prev.map(s =>
           s.id === session.id
             ? {
                 ...s,
-                is_attending: !session.is_attending,
-                attendee_count: session.is_attending
-                  ? s.attendee_count - 1
-                  : s.attendee_count + 1,
+                is_attending: session.is_attending,
+                attendee_count: session.attendee_count,
               }
             : s
         )
       );
-    } catch {
       Alert.alert('Error', 'Could not update RSVP');
     } finally {
       setRsvpingId(null);
@@ -368,14 +398,16 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           >
             <Text className="text-white text-xs font-bold">{spot.difficulty || 'Unknown'}</Text>
           </View>
-          {spot.rating && (
-            <View className="flex-row items-center gap-1">
-              <Star color="#FFD700" size={16} />
-              <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">
-                {spot.rating.toFixed(1)}
-              </Text>
-            </View>
-          )}
+          <TouchableOpacity
+            className="flex-row items-center gap-1"
+            onPress={() => navigation.navigate('SpotReviews', { spotId, spotName: spot.name })}
+          >
+            <Star color="#FFD700" size={16} fill="#FFD700" />
+            <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">
+              {spot.rating ? spot.rating.toFixed(1) : '—'}
+            </Text>
+            <Text className="text-xs text-brand-terracotta font-semibold ml-0.5">Reviews →</Text>
+          </TouchableOpacity>
         </View>
         {spot.tricks && spot.tricks.length > 0 && (
           <View className="mt-2.5">
