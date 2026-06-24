@@ -10,6 +10,10 @@
 
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
+// Re-export React Navigation types that legacy screens still import from here
+export type { RouteProp } from '@react-navigation/native';
+export type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 // ─── Screen name → Expo Router path map ──────────────────────────────────────
 const SCREEN_MAP: Record<string, string> = {
   // Auth
@@ -105,7 +109,7 @@ export function useNavigation<_T = any>() {
     navigate: (screenName: string, params?: Record<string, unknown>) => {
       const path = resolveRoute(screenName);
       if (params) {
-        router.push({ pathname: path as any, params });
+        router.push({ pathname: path as any, params: params as any });
       } else {
         router.push(path as any);
       }
@@ -113,7 +117,7 @@ export function useNavigation<_T = any>() {
     push: (screenName: string, params?: Record<string, unknown>) => {
       const path = resolveRoute(screenName);
       if (params) {
-        router.push({ pathname: path as any, params });
+        router.push({ pathname: path as any, params: params as any });
       } else {
         router.push(path as any);
       }
@@ -121,7 +125,7 @@ export function useNavigation<_T = any>() {
     replace: (screenName: string, params?: Record<string, unknown>) => {
       const path = resolveRoute(screenName);
       if (params) {
-        router.replace({ pathname: path as any, params });
+        router.replace({ pathname: path as any, params: params as any });
       } else {
         router.replace(path as any);
       }
@@ -140,11 +144,7 @@ export function useNavigation<_T = any>() {
 }
 
 // ─── useRoute shim ────────────────────────────────────────────────────────────
-export function useRoute<T extends Record<string, string | undefined> = any>() {
-  const params = useLocalSearchParams<T>();
-  return {
-    params,
-    key: '',
-    name: '',
-  };
+export function useRoute<T = any>(): T {
+  const params = useLocalSearchParams();
+  return { params, key: '', name: '' } as unknown as T;
 }
