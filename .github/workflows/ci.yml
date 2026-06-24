@@ -32,7 +32,7 @@ jobs:
           mkdir -p node_modules/@rnmapbox/maps
           echo '{"name":"@rnmapbox/maps","version":"11.20.1","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
           echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
-          printf 'declare const Mapbox: any;\nexport default Mapbox;\n' > node_modules/@rnmapbox/maps/index.d.ts
+          printf 'declare namespace MapboxGL {\n  type Camera = any;\n  type MapView = any;\n  const StyleURL: { [key: string]: string };\n  const MapView: any;\n  const Camera: any;\n  const UserLocation: any;\n  const ShapeSource: any;\n  const CircleLayer: any;\n  const SymbolLayer: any;\n  function setAccessToken(token: string | undefined): void;\n}\nexport = MapboxGL;\n' > node_modules/@rnmapbox/maps/index.d.ts
 
       - name: TypeScript typecheck
         run: npx tsc --noEmit 2>&1 | grep -v node_modules | grep -v __tests__ | grep -v ".d.ts" | tee /tmp/ts-errors.txt; if grep -q "error TS" /tmp/ts-errors.txt; then echo "TypeScript errors found!"; exit 1; fi
