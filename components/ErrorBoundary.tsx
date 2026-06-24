@@ -47,7 +47,7 @@ class ErrorBoundary extends Component<Props, State> {
           <View style={styles.inner}>
             <Text style={styles.title}>Something went wrong</Text>
             <Text style={styles.subtitle}>We've been notified and are working on a fix.</Text>
-            {this.state.error && (
+            {__DEV__ && this.state.error && (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{this.state.error.toString()}</Text>
               </View>

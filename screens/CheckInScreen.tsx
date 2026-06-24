@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
 import { NativeStackNavigationProp } from '../lib/useNavigation'
+import { useAuthStore } from '../stores/useAuthStore'
 import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
 import { streaksService } from '../lib/streaksService'
@@ -71,6 +72,7 @@ export default function CheckInScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>()
   const { spotId, spotName, latitude, longitude } = route.params
+  const { user } = useAuthStore()
 
   const [allCheckIns, setAllCheckIns] = useState<CheckInRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,18 +81,13 @@ export default function CheckInScreen() {
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
   const [justEarnedXP, setJustEarnedXP] = useState(false)
   const [showSessionPrompt, setShowSessionPrompt] = useState(false)
-  const [_currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const fetchCheckIns = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
       const uid = user?.id ?? null
-      setCurrentUserId(uid)
 
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
@@ -125,16 +122,13 @@ export default function CheckInScreen() {
   }, [fetchCheckIns])
 
   const handleCheckIn = async () => {
+    if (!user) {
+      Alert.alert('Login required', 'Please log in to check in.')
+      navigation.replace('Login')
+      return
+    }
     try {
       setCheckingIn(true)
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        Alert.alert('Login required', 'Please log in to check in.')
-        return
-      }
 
       const { error: insertError } = await supabase.from('check_ins').insert({
         spot_id: spotId,
