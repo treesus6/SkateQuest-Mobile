@@ -39,6 +39,8 @@ module.exports = {
           'SkateQuest needs camera access to record your tricks and upload videos.',
         NSPhotoLibraryUsageDescription:
           'SkateQuest needs photo library access to upload photos and videos of your tricks.',
+        NSPhotoLibraryAddUsageDescription:
+          'SkateQuest needs permission to save trick videos and photos to your library.',
         NSMicrophoneUsageDescription:
           'SkateQuest needs microphone access to record audio with your trick videos.',
       },
@@ -57,6 +59,8 @@ module.exports = {
         'CAMERA',
         'READ_EXTERNAL_STORAGE',
         'WRITE_EXTERNAL_STORAGE',
+        'READ_MEDIA_IMAGES',
+        'READ_MEDIA_VIDEO',
         'RECORD_AUDIO',
       ],
     },
@@ -103,6 +107,12 @@ module.exports = {
         },
       ],
       'expo-web-browser',
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'SkateQuest needs access to your photos to upload trick videos.',
+        },
+      ],
     ],
 
     web: {
@@ -113,6 +123,8 @@ module.exports = {
 
     extra: {
       posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
+      sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+      mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
       eas: {
         projectId: '09a104b9-9e22-4ae0-9836-2701e366d8e5',
       },

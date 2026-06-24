@@ -9,7 +9,9 @@ import {
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { ChevronUp, Play, Upload, Trophy } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/useAuthStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -143,24 +145,25 @@ function SmallThumbnail({ uri }: { uri: string | null }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ClipOfWeekScreen({ navigation }: any) {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuthStore();
+  const currentUserId = user?.id ?? null;
+
   const { week, year } = getCurrentWeekAndYear();
   const prevWeek = week === 1 ? 52 : week - 1;
   const prevYear = week === 1 ? year - 1 : year;
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<ClipSubmission[]>([]);
   const [lastWeekWinner, setLastWeekWinner] = useState<ClipSubmission | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [votingId, setVotingId] = useState<string | null>(null);
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id ?? null);
-    });
-  }, []);
+    if (!authLoading && !user) {
+      router.replace('/(auth)/login' as any);
+    }
+  }, [authLoading, user, router]);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 

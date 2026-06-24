@@ -86,14 +86,7 @@ function AuthGuard() {
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: '#05070B',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+      <View className="flex-1 bg-[#05070B] justify-center items-center">
         <ActivityIndicator size="large" color="#d2673d" />
       </View>
     );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { useNavigation } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
@@ -48,7 +49,11 @@ import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '');
+Mapbox.setAccessToken(
+  (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+  ''
+);
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
