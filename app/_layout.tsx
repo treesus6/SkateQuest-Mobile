@@ -21,8 +21,9 @@ import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
 import { validateEnvironment } from '../lib/envValidation';
 import { Logger } from '../lib/logger';
 import { analytics } from '../lib/analytics';
-import { useMutationQueueStore } from '../stores/useMutationQueueStore';
+import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
+import { supabase } from '../lib/supabase';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
 
 import '../global.css';
@@ -112,7 +113,23 @@ function RootLayout() {
         validateEnvironment();
         await SystemUI.setBackgroundColorAsync('#d2673d');
         await useMutationQueueStore.getState().rehydrate();
-        startBackgroundSync();
+        const mutationExecutor = async (mutation: OfflineMutation) => {
+          if (mutation.table === 'session_attendees') {
+            if (mutation.type === 'create') {
+              const { error } = await supabase.from('session_attendees').insert(mutation.payload);
+              if (error) throw error;
+            } else if (mutation.type === 'delete') {
+              const { session_id, user_id } = mutation.payload;
+              const { error } = await supabase
+                .from('session_attendees')
+                .delete()
+                .eq('session_id', session_id)
+                .eq('user_id', user_id);
+              if (error) throw error;
+            }
+          }
+        };
+        startBackgroundSync([], mutationExecutor);
         checkForOTAUpdate({ silent: true });
         Logger.info('SkateQuest initialized');
         Sentry.addBreadcrumb({
