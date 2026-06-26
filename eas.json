@@ -7,28 +7,27 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "node": "22.13.0"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "node": "22.13.0",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "MAPBOX_DOWNLOADS_TOKEN": "secret:MAPBOX_DOWNLOADS_TOKEN"
       }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
+      "node": "22.13.0",
       "android": {
         "image": "ubuntu-22.04-jdk-21-ndk-r26b"
       },
       "env": {
         "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1",
-        "EAS_SKIP_AUTO_FINGERPRINT": "1",
-        "MAPBOX_DOWNLOADS_TOKEN": "secret:MAPBOX_DOWNLOADS_TOKEN"
+        "EAS_SKIP_AUTO_FINGERPRINT": "1"
       }
     }
   },
