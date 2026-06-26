@@ -8,12 +8,12 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "node": "24.11.0"
+      "node": "20.19.4"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "node": "24.11.0",
+      "node": "20.19.4",
       "android": {
         "buildType": "apk"
       }
@@ -21,7 +21,7 @@
     "production": {
       "distribution": "store",
       "channel": "production",
-      "node": "24.11.0",
+      "node": "20.19.4",
       "env": {
         "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1",
         "EAS_SKIP_AUTO_FINGERPRINT": "1"
