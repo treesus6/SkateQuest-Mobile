@@ -7,7 +7,7 @@
     "android": "eas build --platform android --profile preview",
     "ios": "eas build --platform ios --profile preview",
     "test": "jest",
-    "test:watch": "jest --watch",h
+    "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
