@@ -3,7 +3,7 @@
 �
 
 ╔══════════════════════════════════════════════════════╗
-║          BORN TO LURK / FORCED TO WORK               ║
+║ BORN TO LURK / FORCED TO WORK ║
 ╚══════════════════════════════════════════════════════╝
 🛹 Tree
 Skateboarder · Builder · Brand Founder
@@ -31,9 +31,9 @@ Community gear, local shop support
 📺 SkateTV
 Community video feed built into the app
 Tech Stack
-React Native  ·  Expo SDK 54  ·  TypeScript
-Supabase (PostgreSQL + PostGIS)  ·  NativeWind
-Mapbox  ·  Sentry  ·  EAS Build
+React Native · Expo SDK 56 · TypeScript
+Supabase (PostgreSQL + PostGIS) · NativeWind
+Mapbox · Sentry · EAS Build
 GitHub: SkateQuest-Mobile
 👕 Lurkwear
 Underground skate apparel since 2010.
@@ -43,8 +43,8 @@ Original designs rooted in authentic skate culture. Not corporate. Not manufactu
 10% of profits go toward getting boards into the hands of kids who can't afford them and supporting DIY skate spots
 Available on Amazon & TikTok Shop
 🛠️ Tools I Use
-Chromebook + Linux  ·  Termux (Android)  ·  micro editor
-Supabase  ·  GitHub Actions  ·  EAS / Expo  ·  TypeScript
+Chromebook + Linux · Termux (Android) · micro editor
+Supabase · GitHub Actions · EAS / Expo · TypeScript
 Terminal-based workflow. No VS Code. Built different.
 🤝 Community First
 Grew up in Lincoln City, OR — helped build the local skatepark as a kid.

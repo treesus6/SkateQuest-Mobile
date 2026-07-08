@@ -2,20 +2,24 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+We currently provide security updates for the active SkateQuest Mobile release line.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | ✅        |
+| < 1.0   | ❌        |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please report suspected vulnerabilities privately using GitHub's **Private Vulnerability Reporting** for this repository:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- https://github.com/treesus6/SkateQuest-Mobile/security/advisories/new
+
+If private reporting is temporarily unavailable, contact the repository owner directly and include:
+
+1. A clear description of the issue
+2. Reproduction steps or proof of concept
+3. Impact assessment
+4. Suggested remediation (if available)
+
+We aim to acknowledge new reports within 72 hours and provide status updates until resolution.
