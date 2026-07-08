@@ -26,7 +26,10 @@ export const PersistentCache = {
   },
 
   /** Retrieve cached data. Returns null if not found or expired beyond stale window. */
-  async get<T>(key: string, staleWindow: number = 0): Promise<{ data: T; isStale: boolean } | null> {
+  async get<T>(
+    key: string,
+    staleWindow: number = 0
+  ): Promise<{ data: T; isStale: boolean } | null> {
     try {
       const raw = await AsyncStorage.getItem(CACHE_PREFIX + key);
       if (!raw) return null;
@@ -66,9 +69,9 @@ export const PersistentCache = {
   async clearAll(): Promise<void> {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
-      const cacheKeys = allKeys.filter((k) => k.startsWith(CACHE_PREFIX));
+      const cacheKeys = allKeys.filter(k => k.startsWith(CACHE_PREFIX));
       if (cacheKeys.length > 0) {
-        await AsyncStorage.multiRemove(cacheKeys);
+        await AsyncStorage.removeMany(cacheKeys);
       }
       Logger.info(`PersistentCache cleared ${cacheKeys.length} entries`);
     } catch (err) {
