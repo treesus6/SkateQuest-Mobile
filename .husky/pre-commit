@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+if [ -z "$husky_skip_init" ]; then
+  export husky_skip_init=true
+  . "$(dirname "$0")/_/husky.sh"
+fi
 
-npx lint-staged
+exec lint-staged
