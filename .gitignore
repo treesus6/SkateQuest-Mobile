@@ -87,7 +87,3 @@ logs/
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/*.js
-
-# Lock files - EAS and CI generate fresh installs from package.json
-
-pnpm-lock.yaml
