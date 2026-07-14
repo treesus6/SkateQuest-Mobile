@@ -23,7 +23,6 @@
       "channel": "production",
       "node": "24.11.0",
       "env": {
-        "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK": "1",
         "EAS_SKIP_AUTO_FINGERPRINT": "1"
       },
       "android": {

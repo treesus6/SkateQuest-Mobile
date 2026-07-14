@@ -9,8 +9,12 @@
  *
  * SDK 56's expo-router is no longer compatible with @react-navigation installed
  * as a direct dependency, so RouteProp / NativeStackNavigationProp are defined
- * locally here (structurally identical to the react-navigation originals) rather
- * than imported from the package.
+ * locally here instead of imported from the package. RouteProp matches the real
+ * react-navigation shape ({ key, name, params }) exactly. NativeStackNavigationProp
+ * is NOT a full match — it's a minimal subset covering only what the useNavigation()
+ * shim below actually returns: navigate/push/replace take a plain `string` screen
+ * name and untyped params, not the route-name-checked, per-route-typed-params
+ * overloads react-navigation's real type provides.
  */
 
 import { useRouter, useLocalSearchParams } from 'expo-router';
