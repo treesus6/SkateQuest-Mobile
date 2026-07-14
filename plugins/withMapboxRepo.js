@@ -3,7 +3,7 @@ const {
   withGradleProperties,
   withAppBuildGradle,
   withProjectBuildGradle,
-} = require('@expo/config-plugins');
+} = require('expo/config-plugins');
 
 // Appended to android/build.gradle so Gradle can resolve Mapbox artifacts.
 // Only adds credentials when a token env var is present; otherwise tries anonymously
@@ -114,7 +114,7 @@ module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
 
 // Export a separate signing plugin for GitHub Actions builds
 module.exports.withAndroidSigning = function withAndroidSigning(config) {
-  const { withAppBuildGradle } = require('@expo/config-plugins');
+  const { withAppBuildGradle } = require('expo/config-plugins');
 
   return withAppBuildGradle(config, cfg => {
     if (cfg.modResults.language !== 'groovy') return cfg;
