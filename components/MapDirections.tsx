@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import Constants from 'expo-constants';
 import Mapbox from '@rnmapbox/maps';
 import { Navigation, X } from 'lucide-react-native';
 
@@ -26,7 +27,9 @@ export default function MapDirections({ from, to, onClose }: MapDirectionsProps)
     try {
       setLoading(true);
       setError(null);
-      const accessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
+      const accessToken =
+        (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+        process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${from[0]},${from[1]};${to[0]},${to[1]}?geometries=geojson&access_token=${accessToken}`;
 
       const response = await fetch(url);
