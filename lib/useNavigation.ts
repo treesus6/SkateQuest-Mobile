@@ -6,13 +6,39 @@
  * react-navigation one and every screen works without touching navigation calls.
  *
  * Maps old ChallengeApp screen names → Expo Router paths.
+ *
+ * SDK 56's expo-router is no longer compatible with @react-navigation installed
+ * as a direct dependency, so RouteProp / NativeStackNavigationProp are defined
+ * locally here (structurally identical to the react-navigation originals) rather
+ * than imported from the package.
  */
 
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-// Re-export React Navigation types that legacy screens still import from here
-export type { RouteProp } from '@react-navigation/native';
-export type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+type ParamListBase = Record<string, object | undefined>;
+
+export type RouteProp<
+  ParamList extends ParamListBase,
+  RouteName extends keyof ParamList = keyof ParamList
+> = {
+  key: string;
+  name: RouteName;
+  params: ParamList[RouteName];
+};
+
+export type NativeStackNavigationProp<
+  ParamList extends ParamListBase = ParamListBase,
+  _RouteName extends keyof ParamList = keyof ParamList
+> = {
+  navigate: (screenName: string, params?: Record<string, unknown>) => void;
+  push: (screenName: string, params?: Record<string, unknown>) => void;
+  replace: (screenName: string, params?: Record<string, unknown>) => void;
+  goBack: () => void;
+  canGoBack: () => boolean;
+  setOptions: (options: Record<string, unknown>) => void;
+  addListener: (event: string, callback: () => void) => { remove: () => void };
+  emit: (event: Record<string, unknown>) => { defaultPrevented: boolean };
+};
 
 // ─── Screen name → Expo Router path map ──────────────────────────────────────
 const SCREEN_MAP: Record<string, string> = {
