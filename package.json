@@ -119,7 +119,17 @@
     "install": {
       "exclude": [
         "expo-splash-screen",
-        "react-native-worklets"
+        "react-native-worklets",
+        "@react-native-async-storage/async-storage",
+        "@sentry/react-native",
+        "react-native",
+        "react-native-gesture-handler",
+        "react-native-reanimated",
+        "react-native-safe-area-context",
+        "react",
+        "react-native-svg",
+        "jest",
+        "@types/jest"
       ]
     },
     "doctor": {
