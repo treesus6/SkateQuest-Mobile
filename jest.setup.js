@@ -1,9 +1,39 @@
 import '@testing-library/jest-native/extend-expect';
 
+// Required for React 18+ concurrent mode in tests — prevents state update leakage between tests
+global.IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock AsyncStorage - required by persistentCache and useMutationQueueStore
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest')
 );
+
+// Mock expo-web-browser - used by LoginScreen OAuth
+jest.mock('expo-web-browser', () => ({
+  __esModule: true,
+  maybeCompleteAuthSession: jest.fn(),
+  openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
+  openBrowserAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
+  dismissBrowser: jest.fn(),
+  dismissAuthSession: jest.fn(),
+  warmUpAsync: jest.fn().mockResolvedValue(undefined),
+  coolDownAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Mock expo-auth-session - used by LoginScreen OAuth
+jest.mock('expo-auth-session', () => ({
+  __esModule: true,
+  makeRedirectUri: jest.fn().mockReturnValue('skatequest://auth/callback'),
+  useAuthRequest: jest.fn().mockReturnValue([null, null, jest.fn()]),
+  useAutoDiscovery: jest.fn().mockReturnValue(null),
+  loadAsync: jest.fn().mockResolvedValue(null),
+  startAsync: jest.fn().mockResolvedValue({ type: 'cancel' }),
+  exchangeCodeAsync: jest.fn().mockResolvedValue({}),
+  refreshAsync: jest.fn().mockResolvedValue({}),
+  revokeAsync: jest.fn().mockResolvedValue(true),
+  ResponseType: { Code: 'code', Token: 'token' },
+  Prompt: { Login: 'login', Consent: 'consent' },
+}));
 
 // ✅ REAL Expo Camera Integration
 jest.mock('expo-camera', () => {
@@ -350,6 +380,10 @@ jest.mock('./lib/supabase', () => ({
         data: { subscription: { unsubscribe: jest.fn() } },
       })),
       resetPasswordForEmail: jest.fn().mockResolvedValue({ error: null }),
+      signInWithOAuth: jest.fn().mockResolvedValue({
+        data: { url: null, provider: 'google' },
+        error: null,
+      }),
     },
     from: jest.fn(() => ({
       select: jest.fn().mockReturnThis(),
@@ -377,6 +411,9 @@ jest.mock('./lib/supabase', () => ({
         remove: jest.fn().mockResolvedValue({ data: null, error: null }),
         list: jest.fn().mockResolvedValue({ data: [], error: null }),
       })),
+    },
+    functions: {
+      invoke: jest.fn().mockResolvedValue({ data: {}, error: null }),
     },
   },
 }));

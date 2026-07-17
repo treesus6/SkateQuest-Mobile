@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, ScrollView, Platform,
-  StyleSheet, ActivityIndicator,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -78,14 +84,21 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <SafeAreaView style={s.container}>
       <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView style={s.flex} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-
+        <ScrollView
+          style={s.flex}
+          contentContainerStyle={s.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Logo */}
           <View style={s.logoWrap}>
             <Text style={s.logoEmoji}>🛹</Text>
             <Text style={s.logoText}>SKATEQUEST</Text>
             <Text style={s.tagline}>Find Your Spot</Text>
           </View>
+
+          {/* Welcome heading */}
+          <Text style={s.welcomeHeading}>Welcome Back</Text>
+          <Text style={s.welcomeSubtitle}>Sign in to continue your SkateQuest</Text>
 
           {error ? (
             <View style={s.errorBox}>
@@ -156,24 +169,23 @@ export default function LoginScreen({ navigation }: any) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="white" size="small" />
+              <Text style={s.loginTxt}>Loading...</Text>
             ) : (
               <Text style={s.loginTxt}>Sign In</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-            <Text style={s.forgotTxt}>Forgot password?</Text>
+            <Text style={s.forgotTxt}>Forgot your password?</Text>
           </TouchableOpacity>
 
           {/* Sign Up */}
-          <View style={s.signupRow}>
-            <Text style={s.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={s.signupLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
-
+          <TouchableOpacity style={s.signupRow} onPress={() => navigation.navigate('Signup')}>
+            <Text style={s.signupText}>
+              {"Don't have an account? "}
+              <Text style={s.signupLink}>Sign up</Text>
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -187,55 +199,100 @@ const s = StyleSheet.create({
   logoWrap: { alignItems: 'center', marginBottom: 36 },
   logoEmoji: { fontSize: 56, marginBottom: 8 },
   logoText: {
-    fontSize: 32, fontWeight: '900', color: '#F3F4F6',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#F3F4F6',
     letterSpacing: 4,
   },
   tagline: { fontSize: 14, color: '#d2673d', marginTop: 4 },
+  welcomeHeading: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#F3F4F6',
+    textAlign: 'center',
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  welcomeSubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 10,
-    padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
   },
   errorText: { color: '#FCA5A5', fontSize: 14, textAlign: 'center' },
   googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'white', borderRadius: 12, padding: 14,
-    marginBottom: 10, gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    gap: 10,
   },
   googleIcon: {
-    fontSize: 18, fontWeight: '900', color: '#4285F4',
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#4285F4',
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   googleTxt: { color: '#333', fontWeight: '700', fontSize: 15 },
   facebookBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#1877F2', borderRadius: 12, padding: 14,
-    marginBottom: 10, gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1877F2',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    gap: 10,
   },
   facebookIcon: { fontSize: 20, fontWeight: '900', color: 'white' },
   facebookTxt: { color: 'white', fontWeight: '700', fontSize: 15 },
   divider: {
-    flexDirection: 'row', alignItems: 'center',
-    marginVertical: 16, gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+    gap: 10,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#1F2937' },
   dividerText: { color: '#6B7280', fontSize: 13 },
   input: {
-    backgroundColor: '#111827', color: '#F3F4F6',
-    borderRadius: 12, padding: 14, fontSize: 15,
-    marginBottom: 10, borderWidth: 1, borderColor: '#1F2937',
+    backgroundColor: '#111827',
+    color: '#F3F4F6',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#1F2937',
   },
   loginBtn: {
-    backgroundColor: '#d2673d', borderRadius: 12,
-    padding: 16, alignItems: 'center', marginTop: 4,
+    backgroundColor: '#d2673d',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 4,
   },
   btnDis: { opacity: 0.5 },
   loginTxt: { color: 'white', fontWeight: '700', fontSize: 16 },
   forgotTxt: {
-    color: '#6B7280', fontSize: 14,
-    textAlign: 'center', marginTop: 12,
+    color: '#6B7280',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 12,
   },
   signupRow: {
-    flexDirection: 'row', justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: 20,
   },
   signupText: { color: '#6B7280', fontSize: 14 },

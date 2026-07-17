@@ -89,28 +89,19 @@ export async function analyzeTrick(
   description?: string,
   videoUrl?: string
 ): Promise<TrickAnalysis> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const res = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-trick`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `******`,
-    },
-    body: JSON.stringify({
+  const { data, error } = await supabase.functions.invoke('analyze-trick', {
+    body: {
       trick_name: trickName,
       description,
       video_url: videoUrl,
-    }),
+    },
   });
 
-  if (!res.ok) {
-    throw new Error(`Trick analysis failed: ${res.status}`);
+  if (error) {
+    throw new Error(`Trick analysis failed: ${error.message}`);
   }
 
-  return res.json();
+  return data as TrickAnalysis;
 }
 
 /**
