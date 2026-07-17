@@ -6,13 +6,43 @@
  * react-navigation one and every screen works without touching navigation calls.
  *
  * Maps old ChallengeApp screen names → Expo Router paths.
+ *
+ * SDK 56's expo-router is no longer compatible with @react-navigation installed
+ * as a direct dependency, so RouteProp / NativeStackNavigationProp are defined
+ * locally here instead of imported from the package. RouteProp matches the real
+ * react-navigation shape ({ key, name, params }) exactly. NativeStackNavigationProp
+ * is NOT a full match — it's a minimal subset covering only what the useNavigation()
+ * shim below actually returns: navigate/push/replace take a plain `string` screen
+ * name and untyped params, not the route-name-checked, per-route-typed-params
+ * overloads react-navigation's real type provides.
  */
 
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-// Re-export React Navigation types that legacy screens still import from here
-export type { RouteProp } from '@react-navigation/native';
-export type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+type ParamListBase = Record<string, object | undefined>;
+
+export type RouteProp<
+  ParamList extends ParamListBase,
+  RouteName extends keyof ParamList = keyof ParamList
+> = {
+  key: string;
+  name: RouteName;
+  params: ParamList[RouteName];
+};
+
+export type NativeStackNavigationProp<
+  ParamList extends ParamListBase = ParamListBase,
+  _RouteName extends keyof ParamList = keyof ParamList
+> = {
+  navigate: (screenName: string, params?: Record<string, unknown>) => void;
+  push: (screenName: string, params?: Record<string, unknown>) => void;
+  replace: (screenName: string, params?: Record<string, unknown>) => void;
+  goBack: () => void;
+  canGoBack: () => boolean;
+  setOptions: (options: Record<string, unknown>) => void;
+  addListener: (event: string, callback: () => void) => { remove: () => void };
+  emit: (event: Record<string, unknown>) => { defaultPrevented: boolean };
+};
 
 // ─── Screen name → Expo Router path map ──────────────────────────────────────
 const SCREEN_MAP: Record<string, string> = {
