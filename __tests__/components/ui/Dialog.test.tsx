@@ -8,16 +8,16 @@ jest.mock('lucide-react-native', () => ({
 }));
 
 describe('Dialog', () => {
-  it('renders title and message when visible', () => {
-    const { getByText } = render(
+  it('renders title and message when visible', async () => {
+    const { getByText } = await render(
       <Dialog visible={true} onClose={jest.fn()} title="Confirm" message="Are you sure?" />
     );
     expect(getByText('Confirm')).toBeTruthy();
     expect(getByText('Are you sure?')).toBeTruthy();
   });
 
-  it('shows confirm and cancel buttons when onConfirm provided', () => {
-    const { getByText } = render(
+  it('shows confirm and cancel buttons when onConfirm provided', async () => {
+    const { getByText } = await render(
       <Dialog
         visible={true}
         onClose={jest.fn()}
@@ -30,18 +30,18 @@ describe('Dialog', () => {
     expect(getByText('Cancel')).toBeTruthy();
   });
 
-  it('shows only OK button when no onConfirm', () => {
-    const { getByText, queryByText } = render(
+  it('shows only OK button when no onConfirm', async () => {
+    const { getByText, queryByText } = await render(
       <Dialog visible={true} onClose={jest.fn()} title="Info" message="Something happened" />
     );
     expect(getByText('OK')).toBeTruthy();
     expect(queryByText('Cancel')).toBeNull();
   });
 
-  it('calls onConfirm and onClose when confirm is pressed', () => {
+  it('calls onConfirm and onClose when confirm is pressed', async () => {
     const onConfirm = jest.fn();
     const onClose = jest.fn();
-    const { getByText } = render(
+    const { getByText } = await render(
       <Dialog
         visible={true}
         onClose={onClose}
@@ -55,8 +55,8 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('uses custom button labels', () => {
-    const { getByText } = render(
+  it('uses custom button labels', async () => {
+    const { getByText } = await render(
       <Dialog
         visible={true}
         onClose={jest.fn()}

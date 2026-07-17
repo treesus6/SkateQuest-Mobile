@@ -19,8 +19,8 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
-  it('renders reset password form', () => {
-    const { getByText, getByPlaceholderText } = render(
+  it('renders reset password form', async () => {
+    const { getByText, getByPlaceholderText } = await render(
       <ForgotPasswordScreen navigation={mockNavigation} />
     );
     expect(getByText('Reset Password')).toBeTruthy();
@@ -29,7 +29,7 @@ describe('ForgotPasswordScreen', () => {
   });
 
   it('shows validation error for empty email', async () => {
-    const { getByText } = render(<ForgotPasswordScreen navigation={mockNavigation} />);
+    const { getByText } = await render(<ForgotPasswordScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Send Reset Link'));
     await waitFor(() => {
       expect(getByText('Please enter your email address')).toBeTruthy();
@@ -40,7 +40,7 @@ describe('ForgotPasswordScreen', () => {
     const mockReset = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <ForgotPasswordScreen navigation={mockNavigation} />
     );
 
@@ -56,7 +56,7 @@ describe('ForgotPasswordScreen', () => {
     const mockReset = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <ForgotPasswordScreen navigation={mockNavigation} />
     );
 
@@ -74,7 +74,7 @@ describe('ForgotPasswordScreen', () => {
     });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <ForgotPasswordScreen navigation={mockNavigation} />
     );
 
@@ -86,8 +86,8 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
-  it('navigates back to login', () => {
-    const { getByText } = render(<ForgotPasswordScreen navigation={mockNavigation} />);
+  it('navigates back to login', async () => {
+    const { getByText } = await render(<ForgotPasswordScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Back to Sign In'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
   });

@@ -20,8 +20,10 @@ describe('LoginScreen', () => {
     });
   });
 
-  it('renders login form', () => {
-    const { getByPlaceholderText, getByText } = render(<LoginScreen navigation={mockNavigation} />);
+  it('renders login form', async () => {
+    const { getByPlaceholderText, getByText } = await render(
+      <LoginScreen navigation={mockNavigation} />
+    );
     expect(getByText('Welcome Back')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
@@ -29,7 +31,7 @@ describe('LoginScreen', () => {
   });
 
   it('shows validation error for empty fields', async () => {
-    const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Sign In'));
     await waitFor(() => {
       expect(getByText('Please enter both email and password')).toBeTruthy();
@@ -40,7 +42,9 @@ describe('LoginScreen', () => {
     const mockSignIn = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    const { getByPlaceholderText, getByText } = await render(
+      <LoginScreen navigation={mockNavigation} />
+    );
 
     fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
@@ -57,7 +61,9 @@ describe('LoginScreen', () => {
     });
     mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    const { getByPlaceholderText, getByText } = await render(
+      <LoginScreen navigation={mockNavigation} />
+    );
 
     fireEvent.changeText(getByPlaceholderText('Email'), 'bad@example.com');
     fireEvent.changeText(getByPlaceholderText('Password'), 'wrong');
@@ -68,24 +74,24 @@ describe('LoginScreen', () => {
     });
   });
 
-  it('navigates to Signup screen', () => {
-    const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+  it('navigates to Signup screen', async () => {
+    const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
     fireEvent.press(getByText("Don't have an account? Sign up"));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Signup');
   });
 
-  it('navigates to ForgotPassword screen', () => {
-    const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+  it('navigates to ForgotPassword screen', async () => {
+    const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Forgot your password?'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
   });
 
-  it('shows loading state', () => {
+  it('shows loading state', async () => {
     mockUseAuthStore.mockReturnValue({
       signIn: jest.fn(),
       loading: true,
     });
-    const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
     expect(getByText('Loading...')).toBeTruthy();
   });
 });

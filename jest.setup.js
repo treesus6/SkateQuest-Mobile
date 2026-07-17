@@ -2,7 +2,7 @@ import '@testing-library/jest-native/extend-expect';
 
 // Mock AsyncStorage - required by persistentCache and useMutationQueueStore
 jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+  require('@react-native-async-storage/async-storage/jest')
 );
 
 // ✅ REAL Expo Camera Integration
@@ -10,15 +10,17 @@ jest.mock('expo-camera', () => {
   const React = require('react');
   return {
     __esModule: true,
-    CameraView: React.forwardRef(({ onBarcodeScanned: _onBarcodeScanned, ...props }, ref) => (
+    CameraView: React.forwardRef(({ onBarcodeScanned: _onBarcodeScanned, ...props }, ref) =>
       React.createElement('CameraView', { ref, ...props })
-    )),
+    ),
     useCameraPermissions: jest.fn(() => [
       { granted: true, status: 'granted', expires: 1 },
       jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
     ]),
     Camera: {
-      requestCameraPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+      requestCameraPermissionsAsync: jest
+        .fn()
+        .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
       getAvailableCameraTypes: jest.fn().mockResolvedValue(['front', 'back']),
     },
     CameraType: {
@@ -31,8 +33,12 @@ jest.mock('expo-camera', () => {
 // ✅ REAL Expo Location Integration
 jest.mock('expo-location', () => ({
   __esModule: true,
-  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
-  requestBackgroundPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+  requestForegroundPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+  requestBackgroundPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
   getCurrentPositionAsync: jest.fn().mockResolvedValue({
     coords: {
       latitude: 34.0522,
@@ -69,7 +75,9 @@ jest.mock('expo-location', () => ({
 // ✅ REAL Expo Notifications Integration
 jest.mock('expo-notifications', () => ({
   __esModule: true,
-  requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+  requestPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
   setNotificationHandler: jest.fn().mockResolvedValue(undefined),
   setNotificationCategoryAsync: jest.fn().mockResolvedValue(undefined),
   dismissAllNotificationsAsync: jest.fn().mockResolvedValue(undefined),
@@ -89,7 +97,9 @@ jest.mock('expo-notifications', () => ({
 jest.mock('expo-av', () => ({
   __esModule: true,
   Audio: {
-    requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+    requestPermissionsAsync: jest
+      .fn()
+      .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
     setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
     Sound: {
       createAsync: jest.fn().mockResolvedValue({
@@ -172,7 +182,7 @@ jest.mock('expo-av', () => ({
     },
   },
   Video: {
-    useVideoPlayer: jest.fn((_source) => ({
+    useVideoPlayer: jest.fn(_source => ({
       player: null,
       status: 'idle',
     })),
@@ -182,8 +192,12 @@ jest.mock('expo-av', () => ({
 // ✅ REAL Expo Image Picker Integration
 jest.mock('expo-image-picker', () => ({
   __esModule: true,
-  requestMediaLibraryPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
-  requestCameraPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+  requestMediaLibraryPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
+  requestCameraPermissionsAsync: jest
+    .fn()
+    .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
   launchImageLibraryAsync: jest.fn().mockResolvedValue({
     assets: [
       {
@@ -220,8 +234,8 @@ jest.mock('expo-image-picker', () => ({
 // ✅ REAL Expo Linking Integration
 jest.mock('expo-linking', () => ({
   __esModule: true,
-  createURL: jest.fn((path) => `skatequest://${path}`),
-  parseURL: jest.fn((url) => ({ path: url, params: {} })),
+  createURL: jest.fn(path => `skatequest://${path}`),
+  parseURL: jest.fn(url => ({ path: url, params: {} })),
   getInitialURL: jest.fn().mockResolvedValue(null),
   addEventListener: jest.fn(() => jest.fn()),
 }));
@@ -268,11 +282,11 @@ jest.mock('lucide-react-native', () => ({
 jest.mock('@sentry/react-native', () => ({
   __esModule: true,
   init: jest.fn(),
-  captureException: jest.fn((error) => {
+  captureException: jest.fn(error => {
     console.error('Sentry captured:', error);
     return 'mock-event-id';
   }),
-  captureMessage: jest.fn((message) => {
+  captureMessage: jest.fn(message => {
     console.warn('Sentry message:', message);
     return 'mock-event-id';
   }),
@@ -285,7 +299,7 @@ jest.mock('@sentry/react-native', () => ({
     setTag: jest.fn(),
     finish: jest.fn(),
   })),
-  withProfiler: jest.fn((Component) => Component),
+  withProfiler: jest.fn(Component => Component),
 }));
 
 // Mock React Native modules
@@ -300,7 +314,10 @@ try {
     const React = require('react');
     return {
       __esModule: true,
-      default: Object.assign(React.forwardRef(() => null), { displayName: 'MockMapView' }),
+      default: Object.assign(
+        React.forwardRef(() => null),
+        { displayName: 'MockMapView' }
+      ),
       Marker: () => null,
       Callout: () => null,
     };
@@ -318,7 +335,10 @@ jest.mock('./lib/supabase', () => ({
         error: null,
       }),
       signInWithPassword: jest.fn().mockResolvedValue({
-        data: { user: { id: 'mock-user-id', email: 'test@example.com' }, session: { access_token: 'mock-token' } },
+        data: {
+          user: { id: 'mock-user-id', email: 'test@example.com' },
+          session: { access_token: 'mock-token' },
+        },
         error: null,
       }),
       signOut: jest.fn().mockResolvedValue({ error: null }),

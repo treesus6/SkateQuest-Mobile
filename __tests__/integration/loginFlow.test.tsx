@@ -28,36 +28,36 @@ describe('LoginScreen - Integration Flow', () => {
   });
 
   describe('rendering', () => {
-    it('should render the welcome text and subtitle', () => {
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should render the welcome text and subtitle', async () => {
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText('Welcome Back')).toBeTruthy();
       expect(getByText('Sign in to continue your SkateQuest')).toBeTruthy();
     });
 
-    it('should render email and password input fields', () => {
-      const { getByPlaceholderText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should render email and password input fields', async () => {
+      const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByPlaceholderText('Email')).toBeTruthy();
       expect(getByPlaceholderText('Password')).toBeTruthy();
     });
 
-    it('should render the Sign In button', () => {
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should render the Sign In button', async () => {
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText('Sign In')).toBeTruthy();
     });
 
-    it('should render the sign up navigation link', () => {
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should render the sign up navigation link', async () => {
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText("Don't have an account? Sign up")).toBeTruthy();
     });
   });
 
   describe('input handling', () => {
-    it('should update email field when typing', () => {
-      const { getByPlaceholderText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should update email field when typing', async () => {
+      const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       const emailInput = getByPlaceholderText('Email');
       fireEvent.changeText(emailInput, 'skater@test.com');
@@ -65,8 +65,8 @@ describe('LoginScreen - Integration Flow', () => {
       expect(emailInput.props.value).toBe('skater@test.com');
     });
 
-    it('should update password field when typing', () => {
-      const { getByPlaceholderText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should update password field when typing', async () => {
+      const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       const passwordInput = getByPlaceholderText('Password');
       fireEvent.changeText(passwordInput, 'mypassword123');
@@ -74,15 +74,15 @@ describe('LoginScreen - Integration Flow', () => {
       expect(passwordInput.props.value).toBe('mypassword123');
     });
 
-    it('should have the password field set as secure text entry', () => {
-      const { getByPlaceholderText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should have the password field set as secure text entry', async () => {
+      const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       const passwordInput = getByPlaceholderText('Password');
       expect(passwordInput.props.secureTextEntry).toBe(true);
     });
 
-    it('should have autoCapitalize set to none on email field', () => {
-      const { getByPlaceholderText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should have autoCapitalize set to none on email field', async () => {
+      const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       const emailInput = getByPlaceholderText('Email');
       expect(emailInput.props.autoCapitalize).toBe('none');
@@ -93,7 +93,7 @@ describe('LoginScreen - Integration Flow', () => {
     it('should call signIn with trimmed email and password on button press', async () => {
       mockSignIn.mockResolvedValue({ error: null });
 
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = await render(
         <LoginScreen navigation={mockNavigation} />
       );
 
@@ -107,7 +107,7 @@ describe('LoginScreen - Integration Flow', () => {
     });
 
     it('should show validation error when fields are empty', async () => {
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       fireEvent.press(getByText('Sign In'));
 
@@ -122,7 +122,7 @@ describe('LoginScreen - Integration Flow', () => {
     it('should call signIn only once per button press', async () => {
       mockSignIn.mockResolvedValue({ error: null });
 
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = await render(
         <LoginScreen navigation={mockNavigation} />
       );
 
@@ -137,35 +137,35 @@ describe('LoginScreen - Integration Flow', () => {
   });
 
   describe('loading state', () => {
-    it('should display Loading... text when loading is true', () => {
+    it('should display Loading... text when loading is true', async () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: true,
       });
 
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText('Loading...')).toBeTruthy();
     });
 
-    it('should display Sign In text when loading is false', () => {
+    it('should display Sign In text when loading is false', async () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: false,
       });
 
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText('Sign In')).toBeTruthy();
     });
 
-    it('should show Loading text instead of Sign In when loading is true', () => {
+    it('should show Loading text instead of Sign In when loading is true', async () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: true,
       });
 
-      const { getByText, queryByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText, queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       expect(getByText('Loading...')).toBeTruthy();
       expect(queryByText('Sign In')).toBeNull();
@@ -173,18 +173,18 @@ describe('LoginScreen - Integration Flow', () => {
   });
 
   describe('navigation', () => {
-    it('should navigate to Signup screen when sign up link is pressed', () => {
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+    it('should navigate to Signup screen when sign up link is pressed', async () => {
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       fireEvent.press(getByText("Don't have an account? Sign up"));
 
       expect(mockNavigate).toHaveBeenCalledWith('Signup');
     });
 
-    it('should not navigate to Signup when sign in button is pressed', () => {
+    it('should not navigate to Signup when sign in button is pressed', async () => {
       mockSignIn.mockResolvedValue({ error: null });
 
-      const { getByText } = render(<LoginScreen navigation={mockNavigation} />);
+      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       fireEvent.press(getByText('Sign In'));
 
@@ -196,7 +196,7 @@ describe('LoginScreen - Integration Flow', () => {
     it('should handle a full successful login flow', async () => {
       mockSignIn.mockResolvedValue({ error: null });
 
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = await render(
         <LoginScreen navigation={mockNavigation} />
       );
 
@@ -213,7 +213,7 @@ describe('LoginScreen - Integration Flow', () => {
       const mockError = { message: 'Invalid login credentials' };
       mockSignIn.mockResolvedValue({ error: mockError });
 
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByText } = await render(
         <LoginScreen navigation={mockNavigation} />
       );
 

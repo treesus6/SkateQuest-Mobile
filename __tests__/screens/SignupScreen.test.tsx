@@ -19,8 +19,8 @@ describe('SignupScreen', () => {
     });
   });
 
-  it('renders signup form', () => {
-    const { getByText, getByPlaceholderText } = render(
+  it('renders signup form', async () => {
+    const { getByText, getByPlaceholderText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
     expect(getByText('Create Account')).toBeTruthy();
@@ -30,7 +30,7 @@ describe('SignupScreen', () => {
   });
 
   it('shows validation error for empty fields', async () => {
-    const { getByText } = render(<SignupScreen navigation={mockNavigation} />);
+    const { getByText } = await render(<SignupScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Sign Up'));
     await waitFor(() => {
       expect(getByText('Please enter both email and password')).toBeTruthy();
@@ -38,7 +38,7 @@ describe('SignupScreen', () => {
   });
 
   it('shows error for short password', async () => {
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
     fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
@@ -54,7 +54,7 @@ describe('SignupScreen', () => {
     const mockSignUp = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ signUp: mockSignUp, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
 
@@ -73,7 +73,7 @@ describe('SignupScreen', () => {
     });
     mockUseAuthStore.mockReturnValue({ signUp: mockSignUp, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
 
@@ -86,8 +86,8 @@ describe('SignupScreen', () => {
     });
   });
 
-  it('navigates to Login screen', () => {
-    const { getByText } = render(<SignupScreen navigation={mockNavigation} />);
+  it('navigates to Login screen', async () => {
+    const { getByText } = await render(<SignupScreen navigation={mockNavigation} />);
     fireEvent.press(getByText('Already have an account? Sign in'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
   });

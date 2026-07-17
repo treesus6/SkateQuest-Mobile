@@ -17,7 +17,7 @@ export const eventsService = {
   async getUpcoming() {
     try {
       return await supabase
-        .from('skate_sessions')
+        .from('events')
         .select('*')
         .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true })
@@ -34,19 +34,15 @@ export const eventsService = {
 
   async rsvp(eventId: string, userId: string) {
     try {
-      return await supabase.from('session_attendees').insert([
+      return await supabase.from('event_rsvps').insert([
         {
-          session_id: eventId,
+          event_id: eventId,
           user_id: userId,
         },
       ]);
     } catch (error) {
       Logger.error('eventsService.rsvp failed', error);
-      throw new ServiceError(
-        'Failed to RSVP to event',
-        'EVENTS_RSVP_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to RSVP to event', 'EVENTS_RSVP_FAILED', error);
     }
   },
 };
