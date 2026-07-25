@@ -16,8 +16,6 @@ import { supabase } from '../lib/supabase'
 import { streaksService } from '../lib/streaksService'
 import { RootStackParamList } from '../types'
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
 type CheckInRouteParams = {
   CheckIn: {
     spotId: string
@@ -40,8 +38,6 @@ interface CheckInRecord {
   created_at: string
   profiles: CheckInProfile
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -66,8 +62,6 @@ function formatDateTime(iso: string): string {
 
 const XP_PER_CHECKIN = 25
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
-
 export default function CheckInScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>()
@@ -88,7 +82,6 @@ export default function CheckInScreen() {
       setError(null)
 
       const uid = user?.id ?? null
-
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
       const { data, error: fetchError } = await supabase
@@ -130,19 +123,34 @@ export default function CheckInScreen() {
     try {
       setCheckingIn(true)
 
+      const nowIso = new Date().toISOString()
+
       const { error: insertError } = await supabase.from('check_ins').insert({
         spot_id: spotId,
         user_id: user.id,
         latitude,
         longitude,
-        created_at: new Date().toISOString(),
+        created_at: nowIso,
       })
       if (insertError) throw insertError
 
-      await supabase.rpc('increment_user_xp', {
-        uid: user.id,
-        amount: XP_PER_CHECKIN,
+      try {
+        await supabase.from('park_visits').insert({
+          user_id: user.id,
+          park_id: spotId,
+          session_start: nowIso,
+        })
+      } catch (visitErr) {
+        console.warn('park_visits insert failed (non-fatal)', visitErr)
+      }
+
+      const { error: xpError } = await supabase.rpc('increment_xp', {
+        p_user_id: user.id,
+        p_xp_amount: XP_PER_CHECKIN,
+        p_park_id: spotId,
+        p_source: 'check_in',
       })
+      if (xpError) throw xpError
 
       setAlreadyCheckedIn(true)
       setJustEarnedXP(true)
@@ -164,7 +172,6 @@ export default function CheckInScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-      {/* Header */}
       <View
         style={{
           flexDirection: 'row',
@@ -196,7 +203,6 @@ export default function CheckInScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-          {/* XP earned badge */}
           {justEarnedXP && (
             <View
               style={{
@@ -218,7 +224,6 @@ export default function CheckInScreen() {
             </View>
           )}
 
-          {/* Session suggestion — appears after successful check-in */}
           {showSessionPrompt && (
             <View
               style={{
@@ -281,7 +286,6 @@ export default function CheckInScreen() {
             </View>
           )}
 
-          {/* Big check-in button */}
           <View style={{ alignItems: 'center', marginBottom: 32, marginTop: 12 }}>
             <TouchableOpacity
               onPress={handleCheckIn}
@@ -338,7 +342,6 @@ export default function CheckInScreen() {
             )}
           </View>
 
-          {/* Who's here now */}
           <View
             style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16, marginBottom: 16 }}
           >
@@ -392,7 +395,6 @@ export default function CheckInScreen() {
             )}
           </View>
 
-          {/* Recent check-ins */}
           <View style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Clock size={18} color="#666" />
