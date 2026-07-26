@@ -8,12 +8,18 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "node": "20.18.0"
+      "node": "20.18.0",
+      "env": {
+        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+      }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "node": "20.18.0",
+      "env": {
+        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+      },
       "android": {
         "buildType": "apk"
       }
@@ -34,7 +40,7 @@
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "alpha"
+        "track": "internal"
       }
     }
   }
