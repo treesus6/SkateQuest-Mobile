@@ -19,8 +19,8 @@ describe('SignupScreen', () => {
     });
   });
 
-  it('renders signup form', () => {
-    const { getByText, getByPlaceholderText } = render(
+  it('renders signup form', async () => {
+    const { getByText, getByPlaceholderText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
     expect(getByText('Create Account')).toBeTruthy();
@@ -30,20 +30,20 @@ describe('SignupScreen', () => {
   });
 
   it('shows validation error for empty fields', async () => {
-    const { getByText } = render(<SignupScreen navigation={mockNavigation} />);
-    fireEvent.press(getByText('Sign Up'));
+    const { getByText } = await render(<SignupScreen navigation={mockNavigation} />);
+    await fireEvent.press(getByText('Sign Up'));
     await waitFor(() => {
       expect(getByText('Please enter both email and password')).toBeTruthy();
     });
   });
 
   it('shows error for short password', async () => {
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
-    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), '12345');
-    fireEvent.press(getByText('Sign Up'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), '12345');
+    await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
       expect(getByText('Password must be at least 6 characters')).toBeTruthy();
@@ -54,13 +54,13 @@ describe('SignupScreen', () => {
     const mockSignUp = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ signUp: mockSignUp, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
-    fireEvent.press(getByText('Sign Up'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
+    await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'password123');
@@ -73,22 +73,22 @@ describe('SignupScreen', () => {
     });
     mockUseAuthStore.mockReturnValue({ signUp: mockSignUp, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByText } = await render(
       <SignupScreen navigation={mockNavigation} />
     );
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'taken@example.com');
-    fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
-    fireEvent.press(getByText('Sign Up'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'taken@example.com');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
+    await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
       expect(getByText('Email already in use')).toBeTruthy();
     });
   });
 
-  it('navigates to Login screen', () => {
-    const { getByText } = render(<SignupScreen navigation={mockNavigation} />);
-    fireEvent.press(getByText('Already have an account? Sign in'));
+  it('navigates to Login screen', async () => {
+    const { getByText } = await render(<SignupScreen navigation={mockNavigation} />);
+    await fireEvent.press(getByText('Already have an account? Sign in'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
   });
 });

@@ -8,10 +8,10 @@ describe('useSupabaseQuery', () => {
     jest.clearAllMocks();
   });
 
-  it('should start with loading true and data null', () => {
+  it('should start with loading true and data null', async () => {
     const queryFn = jest.fn().mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn));
 
     expect(result.current.loading).toBe(true);
     expect(result.current.data).toBeNull();
@@ -22,7 +22,7 @@ describe('useSupabaseQuery', () => {
     const mockData = [{ id: '1', name: 'Test Item' }];
     const queryFn = jest.fn().mockResolvedValue({ data: mockData, error: null });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -37,11 +37,14 @@ describe('useSupabaseQuery', () => {
     const mockError = { message: 'Permission denied' };
     const queryFn = jest.fn().mockResolvedValue({ data: null, error: mockError });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(result.current.loading).toBe(false);
+      },
+      { timeout: 3000 }
+    );
 
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBe('Permission denied');
@@ -51,11 +54,14 @@ describe('useSupabaseQuery', () => {
     const mockError = {};
     const queryFn = jest.fn().mockResolvedValue({ data: null, error: mockError });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(result.current.loading).toBe(false);
+      },
+      { timeout: 3000 }
+    );
 
     expect(result.current.error).toBe('An error occurred');
   });
@@ -63,11 +69,14 @@ describe('useSupabaseQuery', () => {
   it('should handle exceptions thrown by the query function', async () => {
     const queryFn = jest.fn().mockRejectedValue(new Error('Network failure'));
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(result.current.loading).toBe(false);
+      },
+      { timeout: 3000 }
+    );
 
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBe('Network failure');
@@ -76,11 +85,14 @@ describe('useSupabaseQuery', () => {
   it('should handle exceptions without a message', async () => {
     const queryFn = jest.fn().mockRejectedValue({});
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(result.current.loading).toBe(false);
+      },
+      { timeout: 3000 }
+    );
 
     expect(result.current.error).toBe('An unexpected error occurred');
   });
@@ -95,7 +107,7 @@ describe('useSupabaseQuery', () => {
       });
     });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -115,12 +127,12 @@ describe('useSupabaseQuery', () => {
     let resolveQuery: (value: { data: unknown; error: null }) => void;
     const queryFn = jest.fn().mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise(resolve => {
           resolveQuery = resolve as (value: { data: unknown; error: null }) => void;
         })
     );
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn));
 
     // Resolve initial fetch
     await act(async () => {
@@ -151,7 +163,7 @@ describe('useSupabaseQuery', () => {
       .mockResolvedValueOnce({ data: null, error: { message: 'First call failed' } })
       .mockResolvedValueOnce({ data: [{ id: '1' }], error: null });
 
-    const { result } = renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
+    const { result } = await renderHook(() => useSupabaseQuery(queryFn, [], { retries: 0 }));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -172,7 +184,9 @@ describe('useSupabaseQuery', () => {
     const queryFn2 = jest.fn().mockResolvedValue({ data: 'result-2', error: null });
 
     let dep = 'a';
-    const { result, rerender } = renderHook(() => useSupabaseQuery(dep === 'a' ? queryFn1 : queryFn2, [dep]));
+    const { result, rerender } = await renderHook(() =>
+      useSupabaseQuery(dep === 'a' ? queryFn1 : queryFn2, [dep])
+    );
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -181,7 +195,7 @@ describe('useSupabaseQuery', () => {
     expect(result.current.data).toBe('result-1');
 
     dep = 'b';
-    rerender({});
+    await rerender({});
 
     await waitFor(() => {
       expect(result.current.data).toBe('result-2');
@@ -191,14 +205,14 @@ describe('useSupabaseQuery', () => {
   it('should return the refetch function as a stable reference within the same deps', async () => {
     const queryFn = jest.fn().mockResolvedValue({ data: 'test', error: null });
 
-    const { result, rerender } = renderHook(() => useSupabaseQuery(queryFn, []));
+    const { result, rerender } = await renderHook(() => useSupabaseQuery(queryFn, []));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
     const firstRefetch = result.current.refetch;
-    rerender({});
+    await rerender({});
     const secondRefetch = result.current.refetch;
 
     expect(firstRefetch).toBe(secondRefetch);

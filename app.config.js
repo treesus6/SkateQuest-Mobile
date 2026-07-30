@@ -117,6 +117,8 @@ module.exports = {
       posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
       mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
       eas: {
         projectId: '09a104b9-9e22-4ae0-9836-2701e366d8e5',
       },
