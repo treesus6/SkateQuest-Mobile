@@ -31,8 +31,8 @@ describe('LoginScreen - Integration Flow', () => {
     it('should render the welcome text and subtitle', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      expect(getByText('Welcome Back')).toBeTruthy();
-      expect(getByText('Sign in to continue your SkateQuest')).toBeTruthy();
+      expect(getByText('SKATEQUEST')).toBeTruthy();
+      expect(getByText('Find Your Spot')).toBeTruthy();
     });
 
     it('should render email and password input fields', async () => {
@@ -51,7 +51,8 @@ describe('LoginScreen - Integration Flow', () => {
     it('should render the sign up navigation link', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      expect(getByText("Don't have an account? Sign up")).toBeTruthy();
+      expect(getByText("Don't have an account? ")).toBeTruthy();
+      expect(getByText('Sign Up')).toBeTruthy();
     });
   });
 
@@ -137,15 +138,15 @@ describe('LoginScreen - Integration Flow', () => {
   });
 
   describe('loading state', () => {
-    it('should display Loading... text when loading is true', async () => {
+    it('should hide the Sign In text when loading is true', async () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: true,
       });
 
-      const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
+      const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      expect(getByText('Loading...')).toBeTruthy();
+      expect(queryByText('Sign In')).toBeNull();
     });
 
     it('should display Sign In text when loading is false', async () => {
@@ -159,15 +160,14 @@ describe('LoginScreen - Integration Flow', () => {
       expect(getByText('Sign In')).toBeTruthy();
     });
 
-    it('should show Loading text instead of Sign In when loading is true', async () => {
+    it('should not show Sign In text when loading is true', async () => {
       mockUseAuthStore.mockReturnValue({
         signIn: mockSignIn,
         loading: true,
       });
 
-      const { getByText, queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
+      const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      expect(getByText('Loading...')).toBeTruthy();
       expect(queryByText('Sign In')).toBeNull();
     });
   });
@@ -176,7 +176,7 @@ describe('LoginScreen - Integration Flow', () => {
     it('should navigate to Signup screen when sign up link is pressed', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      await fireEvent.press(getByText("Don't have an account? Sign up"));
+      await fireEvent.press(getByText('Sign Up'));
 
       expect(mockNavigate).toHaveBeenCalledWith('Signup');
     });

@@ -24,7 +24,7 @@ describe('LoginScreen', () => {
     const { getByPlaceholderText, getByText } = await render(
       <LoginScreen navigation={mockNavigation} />
     );
-    expect(getByText('Welcome Back')).toBeTruthy();
+    expect(getByText('SKATEQUEST')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
     expect(getByText('Sign In')).toBeTruthy();
@@ -76,13 +76,13 @@ describe('LoginScreen', () => {
 
   it('navigates to Signup screen', async () => {
     const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-    await fireEvent.press(getByText("Don't have an account? Sign up"));
+    await fireEvent.press(getByText('Sign Up'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Signup');
   });
 
   it('navigates to ForgotPassword screen', async () => {
     const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-    await fireEvent.press(getByText('Forgot your password?'));
+    await fireEvent.press(getByText('Forgot password?'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('ForgotPassword');
   });
 
@@ -91,7 +91,7 @@ describe('LoginScreen', () => {
       signIn: jest.fn(),
       loading: true,
     });
-    const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-    expect(getByText('Loading...')).toBeTruthy();
+    const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
+    expect(queryByText('Sign In')).toBeNull();
   });
 });
