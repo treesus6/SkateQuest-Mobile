@@ -254,29 +254,20 @@ jest.mock('@rnmapbox/maps', () => ({
   PointAnnotation: 'PointAnnotation',
 }));
 
-// Mock lucide-react-native - UI icons
-jest.mock('lucide-react-native', () => ({
-  Home: () => null,
-  Trophy: () => null,
-  MapPin: () => null,
-  Users: () => null,
-  User: () => null,
-  Calendar: () => null,
-  X: () => null,
-  Crosshair: () => null,
-  Navigation: () => null,
-  Plus: () => null,
-  Star: () => null,
-  QrCode: () => null,
-  Gamepad2: () => null,
-  Music: () => null,
-  ShoppingBag: () => null,
-  Zap: () => null,
-  BarChart3: () => null,
-  Flame: () => null,
-  Award: () => null,
-  Bug: () => null,
-}));
+// Mock lucide-react-native - UI icons.
+// A no-op component for every icon name via Proxy, instead of a fixed allowlist
+// that silently resolves to `undefined` (and crashes on render) for any icon
+// not explicitly listed — this project imports 100+ distinct icon names across
+// screens, and hardcoding each one here is a trap.
+jest.mock('lucide-react-native', () => {
+  const MockIcon = () => null;
+  return new Proxy(
+    {},
+    {
+      get: (_target, prop) => (prop === '__esModule' ? true : MockIcon),
+    }
+  );
+});
 
 // ✅ REAL Sentry Integration
 jest.mock('@sentry/react-native', () => ({

@@ -19,7 +19,7 @@ const mockGetById = profilesService.getById as jest.Mock;
 const mockCreate = profilesService.create as jest.Mock;
 const mockGetLevelProgress = profilesService.getLevelProgress as jest.Mock;
 
-jest.spyOn(Alert, 'alert');
+jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 type MockBadges = Record<string, boolean>;
 interface MockProfile {
@@ -284,20 +284,22 @@ describe('ProfileScreen - Integration', () => {
     });
   });
 
-  describe('profile creation flow', () => {
-    it('should create a new profile when PGRST116 error is returned', async () => {
+  describe('missing profile flow', () => {
+    it('should prompt the user to sign out when their own profile is missing (PGRST116)', async () => {
       mockGetById.mockResolvedValue({
         data: null,
         error: { code: 'PGRST116', message: 'No rows found' },
       });
-      mockCreate.mockResolvedValue({
-        data: { ...mockProfile, username: 'Skater1234' },
-        error: null,
-      });
       await render(<ProfileScreen />);
       await waitFor(() => {
-        expect(mockCreate).toHaveBeenCalled();
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'Profile Missing',
+          "We couldn't find your profile. Please try signing out and back in, or contact support.",
+          expect.arrayContaining([expect.objectContaining({ text: 'Sign Out' })])
+        );
       });
+      // The component does not attempt to auto-create a replacement profile.
+      expect(mockCreate).not.toHaveBeenCalled();
     });
   });
 

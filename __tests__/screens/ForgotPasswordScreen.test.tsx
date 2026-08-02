@@ -12,7 +12,7 @@ jest.mock('../../lib/useNavigation', () => ({
   useNavigation: () => ({ goBack: mockGoBack }),
 }));
 
-jest.spyOn(Alert, 'alert');
+jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 describe('ForgotPasswordScreen', () => {
   beforeEach(() => {
