@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ForgotPasswordScreen from '../../screens/ForgotPasswordScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -6,9 +7,12 @@ import { useAuthStore } from '../../stores/useAuthStore';
 jest.mock('../../stores/useAuthStore');
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 
-const mockNavigation = {
-  navigate: jest.fn(),
-};
+const mockGoBack = jest.fn();
+jest.mock('../../lib/useNavigation', () => ({
+  useNavigation: () => ({ goBack: mockGoBack }),
+}));
+
+jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 describe('ForgotPasswordScreen', () => {
   beforeEach(() => {
@@ -19,20 +23,18 @@ describe('ForgotPasswordScreen', () => {
     });
   });
 
-  it('renders reset password form', () => {
-    const { getByText, getByPlaceholderText } = render(
-      <ForgotPasswordScreen navigation={mockNavigation} />
-    );
+  it('renders reset password form', async () => {
+    const { getByText, getByPlaceholderText } = await render(<ForgotPasswordScreen />);
     expect(getByText('Reset Password')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByText('Send Reset Link')).toBeTruthy();
   });
 
-  it('shows validation error for empty email', async () => {
-    const { getByText } = render(<ForgotPasswordScreen navigation={mockNavigation} />);
-    fireEvent.press(getByText('Send Reset Link'));
+  it('shows an alert for empty email', async () => {
+    const { getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.press(getByText('Send Reset Link'));
     await waitFor(() => {
-      expect(getByText('Please enter your email address')).toBeTruthy();
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Please enter your email');
     });
   });
 
@@ -40,55 +42,52 @@ describe('ForgotPasswordScreen', () => {
     const mockReset = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
-      <ForgotPasswordScreen navigation={mockNavigation} />
-    );
+    const { getByPlaceholderText, getByText } = await render(<ForgotPasswordScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.press(getByText('Send Reset Link'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    await fireEvent.press(getByText('Send Reset Link'));
 
     await waitFor(() => {
       expect(mockReset).toHaveBeenCalledWith('test@example.com');
     });
   });
 
-  it('shows success screen after reset', async () => {
+  it('shows the sent confirmation and hides the form after reset', async () => {
     const mockReset = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
-      <ForgotPasswordScreen navigation={mockNavigation} />
+    const { getByPlaceholderText, getByText, queryByPlaceholderText } = await render(
+      <ForgotPasswordScreen />
     );
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    fireEvent.press(getByText('Send Reset Link'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
+    await fireEvent.press(getByText('Send Reset Link'));
 
     await waitFor(() => {
-      expect(getByText('Check Your Email')).toBeTruthy();
+      expect(getByText('Check your email for a reset link.')).toBeTruthy();
     });
+    expect(queryByPlaceholderText('Email')).toBeNull();
   });
 
-  it('shows error from reset failure', async () => {
+  it('shows an alert for reset failure', async () => {
     const mockReset = jest.fn().mockResolvedValue({
       error: { message: 'User not found' },
     });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
 
-    const { getByPlaceholderText, getByText } = render(
-      <ForgotPasswordScreen navigation={mockNavigation} />
-    );
+    const { getByPlaceholderText, getByText } = await render(<ForgotPasswordScreen />);
 
-    fireEvent.changeText(getByPlaceholderText('Email'), 'bad@example.com');
-    fireEvent.press(getByText('Send Reset Link'));
+    await fireEvent.changeText(getByPlaceholderText('Email'), 'bad@example.com');
+    await fireEvent.press(getByText('Send Reset Link'));
 
     await waitFor(() => {
-      expect(getByText('User not found')).toBeTruthy();
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'User not found');
     });
   });
 
-  it('navigates back to login', () => {
-    const { getByText } = render(<ForgotPasswordScreen navigation={mockNavigation} />);
-    fireEvent.press(getByText('Back to Sign In'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
+  it('goes back to the previous screen', async () => {
+    const { getByText } = await render(<ForgotPasswordScreen />);
+    await fireEvent.press(getByText('← Back to Sign In'));
+    expect(mockGoBack).toHaveBeenCalledTimes(1);
   });
 });
