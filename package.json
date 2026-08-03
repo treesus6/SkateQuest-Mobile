@@ -60,7 +60,7 @@
     "lucide-react-native": "^0.563.0",
     "nativewind": "^4.2.3",
     "react": "19.2.7",
-    "react-native": "0.86.0",
+    "react-native": "0.86.2",
     "react-native-gesture-handler": "~3.1.0",
     "react-native-logs": "^5.5.0",
     "react-native-qrcode-svg": "^6.3.15",
@@ -79,7 +79,7 @@
     "@babel/core": "^7.29.7",
     "@eslint/eslintrc": "^3.3.6",
     "@eslint/js": "^10.0.1",
-    "@react-native/jest-preset": "^0.86.0",
+    "@react-native/jest-preset": "^0.86.2",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^14.0.0",
     "@types/jest": "^29.5.14",
@@ -113,7 +113,7 @@
   "overrides": {
     "@xmldom/xmldom": "0.8.13",
     "react": "19.2.7",
-    "react-native": "0.86.0",
+    "react-native": "0.86.2",
     "shell-quote": ">=1.8.2",
     "fast-uri": ">=3.1.0"
   },
