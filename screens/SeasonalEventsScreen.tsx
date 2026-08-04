@@ -15,22 +15,17 @@ import SeasonalProgressBar from '../components/SeasonalProgressBar';
 import Card from '../components/ui/Card';
 import { Logger } from '../lib/logger';
 
-export default function SeasonalEventsScreen({ navigation }: any) {
+export default function SeasonalEventsScreen() {
   const { user } = useAuthStore();
-  const { activeEvent, allEvents, userProgress, loading, loadUserProgress, refreshUserProgress } =
+  const { activeEvent, allEvents, userProgress, loading, initialize, refreshUserProgress } =
     useSeasonalEventStore();
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!user?.id || !activeEvent) return;
-      loadUserProgress(user.id, activeEvent.id).catch(error => {
-        Logger.error('Failed to load user progress', error);
-      });
-    });
-
-    return unsubscribe;
-  }, [navigation, user?.id, activeEvent?.id]);
+    if (!user?.id) return;
+    const cleanup = initialize(user.id);
+    return cleanup;
+  }, [user?.id, initialize]);
 
   const handleRefresh = useCallback(async () => {
     if (!user?.id) return;

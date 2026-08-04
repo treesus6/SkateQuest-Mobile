@@ -44,8 +44,7 @@ function getWeekDateRange(week: number, year: number): string {
   const dayOffset = (week - 1) * 7 - startOfYear.getDay() + 1;
   const start = new Date(year, 0, dayOffset);
   const end = new Date(year, 0, dayOffset + 6);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${fmt(start)} – ${fmt(end)}, ${year}`;
 }
 
@@ -72,23 +71,15 @@ function UpvoteButton({
       onPress={onPress}
       disabled={loading}
       className={`flex-row items-center gap-1 px-3 py-2 rounded-full border ${
-        hasVoted
-          ? 'bg-orange-500 border-orange-500'
-          : 'bg-transparent border-neutral-600'
+        hasVoted ? 'bg-orange-500 border-orange-500' : 'bg-transparent border-neutral-600'
       }`}
     >
       {loading ? (
         <ActivityIndicator size="small" color={hasVoted ? '#fff' : '#FF6B35'} />
       ) : (
-        <ChevronUp
-          size={iconSize}
-          color={hasVoted ? '#fff' : '#FF6B35'}
-          strokeWidth={2.5}
-        />
+        <ChevronUp size={iconSize} color={hasVoted ? '#fff' : '#FF6B35'} strokeWidth={2.5} />
       )}
-      <Text
-        className={`font-bold ${textSize} ${hasVoted ? 'text-white' : 'text-orange-500'}`}
-      >
+      <Text className={`font-bold ${textSize} ${hasVoted ? 'text-white' : 'text-orange-500'}`}>
         {votes}
       </Text>
     </TouchableOpacity>
@@ -144,7 +135,7 @@ function SmallThumbnail({ uri }: { uri: string | null }) {
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export default function ClipOfWeekScreen({ navigation }: any) {
+export default function ClipOfWeekScreen() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthStore();
   const currentUserId = user?.id ?? null;
@@ -258,9 +249,7 @@ export default function ClipOfWeekScreen({ navigation }: any) {
   useEffect(() => {
     if (!currentUserId) return;
     setLoading(true);
-    Promise.all([fetchSubmissions(), fetchLastWeekWinner()]).finally(() =>
-      setLoading(false)
-    );
+    Promise.all([fetchSubmissions(), fetchLastWeekWinner()]).finally(() => setLoading(false));
   }, [currentUserId, fetchSubmissions, fetchLastWeekWinner]);
 
   const onRefresh = useCallback(async () => {
@@ -296,8 +285,8 @@ export default function ClipOfWeekScreen({ navigation }: any) {
           await supabase.rpc('increment_clip_votes', { submission_id: submissionId });
         }
 
-        setSubmissions((prev) =>
-          prev.map((s) =>
+        setSubmissions(prev =>
+          prev.map(s =>
             s.id === submissionId
               ? {
                   ...s,
@@ -335,11 +324,7 @@ export default function ClipOfWeekScreen({ navigation }: any) {
       className="flex-1 bg-[#0a0a0a]"
       contentContainerClassName="pb-10"
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#FF6B35"
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
       }
     >
       {/* ── Header ── */}
@@ -347,12 +332,8 @@ export default function ClipOfWeekScreen({ navigation }: any) {
         <Text className="text-orange-500 text-xs font-bold tracking-widest uppercase">
           Community Vote
         </Text>
-        <Text className="text-white text-3xl font-black mt-1">
-          CLIP OF THE WEEK
-        </Text>
-        <Text className="text-neutral-400 text-sm mt-1">
-          {getWeekDateRange(week, year)}
-        </Text>
+        <Text className="text-white text-3xl font-black mt-1">CLIP OF THE WEEK</Text>
+        <Text className="text-neutral-400 text-sm mt-1">{getWeekDateRange(week, year)}</Text>
       </View>
 
       {/* ── Top Submission ── */}
@@ -369,12 +350,8 @@ export default function ClipOfWeekScreen({ navigation }: any) {
 
             <View className="flex-row items-center justify-between mt-4">
               <View className="flex-1 mr-3">
-                <Text className="text-white text-xl font-bold">
-                  {topClip.trick_name}
-                </Text>
-                <Text className="text-neutral-400 text-sm mt-0.5">
-                  by @{topClip.username}
-                </Text>
+                <Text className="text-white text-xl font-bold">{topClip.trick_name}</Text>
+                <Text className="text-neutral-400 text-sm mt-0.5">by @{topClip.username}</Text>
               </View>
               <UpvoteButton
                 votes={topClip.votes}
@@ -397,10 +374,8 @@ export default function ClipOfWeekScreen({ navigation }: any) {
       {/* ── All Submissions ── */}
       {restClips.length > 0 && (
         <View className="mx-4 mt-6">
-          <Text className="text-white text-lg font-bold mb-3">
-            All Submissions
-          </Text>
-          {restClips.map((clip) => (
+          <Text className="text-white text-lg font-bold mb-3">All Submissions</Text>
+          {restClips.map(clip => (
             <View
               key={clip.id}
               className="flex-row items-center bg-[#1a1a1a] rounded-xl p-3 mb-2 border border-neutral-800"
@@ -410,9 +385,7 @@ export default function ClipOfWeekScreen({ navigation }: any) {
                 <Text className="text-white font-semibold text-sm" numberOfLines={1}>
                   {clip.trick_name}
                 </Text>
-                <Text className="text-neutral-500 text-xs mt-0.5">
-                  @{clip.username}
-                </Text>
+                <Text className="text-neutral-500 text-xs mt-0.5">@{clip.username}</Text>
               </View>
               <UpvoteButton
                 votes={clip.votes}
@@ -446,12 +419,8 @@ export default function ClipOfWeekScreen({ navigation }: any) {
                     <Text className="text-black text-xs font-black">CHAMPION</Text>
                   </View>
                 </View>
-                <Text className="text-white font-bold text-base">
-                  {lastWeekWinner.trick_name}
-                </Text>
-                <Text className="text-neutral-400 text-sm">
-                  @{lastWeekWinner.username}
-                </Text>
+                <Text className="text-white font-bold text-base">{lastWeekWinner.trick_name}</Text>
+                <Text className="text-neutral-400 text-sm">@{lastWeekWinner.username}</Text>
               </View>
               <View className="items-center">
                 <Text className="text-yellow-400 text-xl font-black">+200</Text>
@@ -465,7 +434,7 @@ export default function ClipOfWeekScreen({ navigation }: any) {
       {/* ── Submit CTA ── */}
       <View className="mx-4 mt-6">
         <TouchableOpacity
-          onPress={() => navigation.navigate('UploadMedia')}
+          onPress={() => router.push('/(screens)/upload-media' as any)}
           className="bg-orange-500 rounded-2xl py-4 flex-row items-center justify-center gap-3"
         >
           <Upload size={22} color="#fff" />

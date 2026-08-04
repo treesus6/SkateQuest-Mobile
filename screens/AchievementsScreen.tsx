@@ -15,7 +15,7 @@ import AchievementCard from '../components/AchievementCard';
 import AchievementUnlockModal from '../components/AchievementUnlockModal';
 import { Logger } from '../lib/logger';
 
-export default function AchievementsScreen({ navigation }: any) {
+export default function AchievementsScreen() {
   const { user } = useAuthStore();
   const {
     achievements,
@@ -31,15 +31,11 @@ export default function AchievementsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!user?.id) return;
-      loadUserAchievements(user.id).catch(error => {
-        Logger.error('Failed to load user achievements', error);
-      });
+    if (!user?.id) return;
+    loadUserAchievements(user.id).catch(error => {
+      Logger.error('Failed to load user achievements', error);
     });
-
-    return unsubscribe;
-  }, [navigation, user?.id]);
+  }, [user?.id, loadUserAchievements]);
 
   useEffect(() => {
     if (achievements.length === 0) {
