@@ -8,8 +8,10 @@ import { SkateGame } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
+import { useNavigation } from '../lib/useNavigation';
 
-export default function SkateGameScreen({ navigation }: any) {
+export default function SkateGameScreen() {
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const [showNewGameModal, setShowNewGameModal] = useState(false);
   const [opponentUsername, setOpponentUsername] = useState('');

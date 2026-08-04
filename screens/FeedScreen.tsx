@@ -1,12 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import {
   MapPin,
@@ -25,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { Activity } from '../types';
 import Card from '../components/ui/Card';
 import HypeButton from '../components/ui/HypeButton';
+import { useNavigation } from '../lib/useNavigation';
 
 const ACTIVITY_ICONS: Record<string, { icon: typeof MapPin; color: string }> = {
   spot_added: { icon: MapPin, color: '#d2673d' },
@@ -40,7 +34,8 @@ interface HypeState {
   [activityId: string]: { total: number; mine: number };
 }
 
-export default function FeedScreen({ navigation }: any) {
+export default function FeedScreen() {
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const {
     data: activities,
@@ -58,9 +53,7 @@ export default function FeedScreen({ navigation }: any) {
   // Load initial hype counts from media_likes when activities load
   useEffect(() => {
     if (!activities || !user) return;
-    const mediaIds = activities
-      .filter(a => a.media_id)
-      .map(a => a.media_id as string);
+    const mediaIds = activities.filter(a => a.media_id).map(a => a.media_id as string);
     if (mediaIds.length === 0) return;
 
     (async () => {
@@ -83,7 +76,7 @@ export default function FeedScreen({ navigation }: any) {
         const totalRow = totals?.find(t => t.media_id === a.media_id);
         const myRow = myHypes?.find(m => m.media_id === a.media_id);
         newState[a.id] = {
-          total: totalRow?.total_hype ?? (a.media?.likes_count ?? 0),
+          total: totalRow?.total_hype ?? a.media?.likes_count ?? 0,
           mine: myRow?.hype_count ?? 0,
         };
       }
@@ -93,28 +86,34 @@ export default function FeedScreen({ navigation }: any) {
 
   useEffect(() => {
     const subscription = feedService.subscribeToFeed(() => refetchRef.current());
-    return () => { subscription.unsubscribe(); };
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleHype = useCallback(async (_activityId: string, mediaId: string, newUserHypeCount: number) => {
-    if (!user) return;
+  const handleHype = useCallback(
+    async (_activityId: string, mediaId: string, newUserHypeCount: number) => {
+      if (!user) return;
 
-    // Upsert into media_hype_users
-    await supabase
-      .from('media_hype_users')
-      .upsert({
-        media_id: mediaId,
-        user_id: user.id,
-        hype_count: newUserHypeCount,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'media_id,user_id' });
+      // Upsert into media_hype_users
+      await supabase.from('media_hype_users').upsert(
+        {
+          media_id: mediaId,
+          user_id: user.id,
+          hype_count: newUserHypeCount,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'media_id,user_id' }
+      );
 
-    // Update total in media_hype
-    await supabase.rpc('increment_media_hype', {
-      p_media_id: mediaId,
-      p_increment: 1,
-    });
-  }, [user]);
+      // Update total in media_hype
+      await supabase.rpc('increment_media_hype', {
+        p_media_id: mediaId,
+        p_increment: 1,
+      });
+    },
+    [user]
+  );
 
   const renderActivityIcon = (type: string) => {
     const config = ACTIVITY_ICONS[type] || { icon: Sparkles, color: '#999' };
@@ -203,9 +202,7 @@ export default function FeedScreen({ navigation }: any) {
             }}
             size="md"
           />
-          <Text className="text-xs text-gray-400">
-            {item.activity_type.replace(/_/g, ' ')}
-          </Text>
+          <Text className="text-xs text-gray-400">{item.activity_type.replace(/_/g, ' ')}</Text>
         </View>
       </Card>
     );

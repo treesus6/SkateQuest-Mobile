@@ -1,8 +1,17 @@
 import { uploadQuestProof } from '../lib/uploadMedia';
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Modal, TextInput, Alert, ActivityIndicator, Image, ScrollView
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,7 +45,9 @@ export default function DailyQuestsScreen() {
   const [proofNote, setProofNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     if (!user) return;
@@ -53,7 +64,9 @@ export default function DailyQuestsScreen() {
       .select('quest_id')
       .eq('user_id', user.id);
     const map = new Map<string, Submission>();
-    s?.forEach(sub => map.set(sub.quest_id, { quest_id: sub.quest_id, status: 'approved', xp_awarded: true }));
+    s?.forEach(sub =>
+      map.set(sub.quest_id, { quest_id: sub.quest_id, status: 'approved', xp_awarded: true })
+    );
     setSubmissions(map);
     setLoading(false);
   };
@@ -101,8 +114,6 @@ export default function DailyQuestsScreen() {
     Alert.alert('Location captured', 'Your location will be submitted as proof.');
   };
 
-
-
   const submitProof = async () => {
     if (!proofModal || !user) return;
     if (!proofType) {
@@ -118,7 +129,7 @@ export default function DailyQuestsScreen() {
 
       if (proofType === 'photo' && proofImage) {
         const { url: uploadUrl } = await uploadQuestProof(proofImage, proofModal.id, user.id);
-          _proofUrl = uploadUrl || 'submitted';
+        _proofUrl = uploadUrl || 'submitted';
       } else if (proofType === 'location') {
         const loc = await Location.getCurrentPositionAsync({});
         _lat = loc.coords.latitude;
@@ -127,31 +138,34 @@ export default function DailyQuestsScreen() {
 
       // Since the 'submit_quest_proof' RPC is missing in migration, we'll use direct insert for now
       const today = new Date().toISOString().split('T')[0];
-      const { error } = await supabase
-        .from('daily_quest_completions')
-        .insert({
-          user_id: user.id,
-          quest_id: proofModal.id,
-          date: today,
-          xp_earned: proofModal.xp_reward,
-          proof_url: _proofUrl,
-          latitude: _lat,
-          longitude: _lng,
-        });
+      const { error } = await supabase.from('daily_quest_completions').insert({
+        user_id: user.id,
+        quest_id: proofModal.id,
+        date: today,
+        xp_earned: proofModal.xp_reward,
+        proof_url: _proofUrl,
+        latitude: _lat,
+        longitude: _lng,
+      });
 
       if (error) throw error;
 
       // Also increment user XP in profile
-      await supabase.rpc('increment_xp', { 
-        p_user_id: user.id, 
-        p_amount: proofModal.xp_reward 
+      const { error: xpError } = await supabase.rpc('increment_xp', {
+        user_id: user.id,
+        amount: proofModal.xp_reward,
       });
+      if (xpError) throw xpError;
 
-      Alert.alert(
-        '🛹 Quest Complete!',
-        `+${proofModal.xp_reward} XP earned! Keep shredding.`,
-        [{ text: 'Let\'s go!', onPress: () => { setProofModal(null); loadData(); } }]
-      );
+      Alert.alert('🛹 Quest Complete!', `+${proofModal.xp_reward} XP earned! Keep shredding.`, [
+        {
+          text: "Let's go!",
+          onPress: () => {
+            setProofModal(null);
+            loadData();
+          },
+        },
+      ]);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to submit proof');
     } finally {
@@ -168,8 +182,12 @@ export default function DailyQuestsScreen() {
 
   const questTypeIcon = (type: string) => {
     const icons: Record<string, string> = {
-      location: '📍', tricks: '🛹', challenge: '🎯',
-      social: '👥', exploration: '🗺', general: '⚡'
+      location: '📍',
+      tricks: '🛹',
+      challenge: '🎯',
+      social: '👥',
+      exploration: '🗺',
+      general: '⚡',
     };
     return icons[type] || '⚡';
   };
@@ -213,9 +231,20 @@ export default function DailyQuestsScreen() {
         <Text style={s.title}>⚡ Daily Quests</Text>
         <Text style={s.sub}>Submit proof to claim your XP. Resets every day.</Text>
         <View style={s.progressRow}>
-          <Text style={s.progressTxt}>{submissions.size} / {quests.length} completed today</Text>
+          <Text style={s.progressTxt}>
+            {submissions.size} / {quests.length} completed today
+          </Text>
           <View style={s.progressBar}>
-            <View style={[s.progressFill, { width: quests.length ? `${(submissions.size/quests.length)*100}%` as any : '0%' }]} />
+            <View
+              style={[
+                s.progressFill,
+                {
+                  width: quests.length
+                    ? (`${(submissions.size / quests.length) * 100}%` as any)
+                    : '0%',
+                },
+              ]}
+            />
           </View>
         </View>
       </View>
@@ -231,7 +260,9 @@ export default function DailyQuestsScreen() {
               <Text style={s.emptyIcon}>⚡</Text>
               <Text style={s.emptyTxt}>No quests today. Check back soon!</Text>
             </View>
-          ) : <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
+          ) : (
+            <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
+          )
         }
       />
 
@@ -254,15 +285,24 @@ export default function DailyQuestsScreen() {
 
               {/* Photo options */}
               <View style={s.proofOptions}>
-                <TouchableOpacity style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]} onPress={takePhoto}>
+                <TouchableOpacity
+                  style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]}
+                  onPress={takePhoto}
+                >
                   <Text style={s.proofOptionIcon}>📷</Text>
                   <Text style={s.proofOptionTxt}>Take Photo</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]} onPress={pickImage}>
+                <TouchableOpacity
+                  style={[s.proofOption, proofType === 'photo' && s.proofOptionOn]}
+                  onPress={pickImage}
+                >
                   <Text style={s.proofOptionIcon}>🖼</Text>
                   <Text style={s.proofOptionTxt}>Upload Photo</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.proofOption, proofType === 'location' && s.proofOptionOn]} onPress={useLocation}>
+                <TouchableOpacity
+                  style={[s.proofOption, proofType === 'location' && s.proofOptionOn]}
+                  onPress={useLocation}
+                >
                   <Text style={s.proofOptionIcon}>📍</Text>
                   <Text style={s.proofOptionTxt}>Check-in Location</Text>
                 </TouchableOpacity>
@@ -272,7 +312,13 @@ export default function DailyQuestsScreen() {
               {proofImage && (
                 <View style={s.imagePreview}>
                   <Image source={{ uri: proofImage }} style={s.previewImg} resizeMode="cover" />
-                  <TouchableOpacity style={s.removeImg} onPress={() => { setProofImage(null); setProofType(null); }}>
+                  <TouchableOpacity
+                    style={s.removeImg}
+                    onPress={() => {
+                      setProofImage(null);
+                      setProofType(null);
+                    }}
+                  >
                     <Text style={s.removeImgTxt}>✕ Remove</Text>
                   </TouchableOpacity>
                 </View>
@@ -298,7 +344,10 @@ export default function DailyQuestsScreen() {
 
               {/* XP reminder */}
               <View style={s.xpReminder}>
-                <Text style={s.xpReminderTxt}>🏆 You'll earn <Text style={s.xpReminderNum}>+{proofModal?.xp_reward} XP</Text> when approved</Text>
+                <Text style={s.xpReminderTxt}>
+                  🏆 You'll earn <Text style={s.xpReminderNum}>+{proofModal?.xp_reward} XP</Text>{' '}
+                  when approved
+                </Text>
               </View>
 
               <TouchableOpacity
@@ -329,7 +378,13 @@ const s = StyleSheet.create({
   progressTxt: { color: '#d2673d', fontSize: 12, fontWeight: '700' },
   progressBar: { height: 4, backgroundColor: '#1a1f3a', borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#d2673d', borderRadius: 2 },
-  card: { backgroundColor: '#111827', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1a2030' },
+  card: {
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#1a2030',
+  },
   cardDone: { borderColor: '#166534', backgroundColor: 'rgba(22,101,52,0.1)' },
   cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
   questIcon: { fontSize: 28, marginTop: 2 },
@@ -337,47 +392,141 @@ const s = StyleSheet.create({
   questTitle: { color: '#F3F4F6', fontSize: 15, fontWeight: '700', marginBottom: 3 },
   questTitleDone: { color: '#4ade80' },
   questDesc: { color: '#6B7280', fontSize: 13, lineHeight: 18 },
-  xpBadge: { alignItems: 'center', backgroundColor: 'rgba(210,103,61,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(210,103,61,0.4)', minWidth: 48 },
+  xpBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(210,103,61,0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.4)',
+    minWidth: 48,
+  },
   xpText: { color: '#d2673d', fontWeight: '900', fontSize: 16 },
   xpLabel: { color: '#d2673d', fontSize: 9, fontWeight: '600' },
-  cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderColor: '#1a2030' },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderColor: '#1a2030',
+  },
   proofRequired: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   proofIcon: { fontSize: 14 },
   proofText: { color: '#4B5563', fontSize: 11 },
-  submitBtn: { backgroundColor: '#d2673d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  submitBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   submitTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
-  doneBtn: { backgroundColor: 'rgba(22,101,52,0.3)', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#166834' },
+  doneBtn: {
+    backgroundColor: 'rgba(22,101,52,0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#166834',
+  },
   doneTxt: { color: '#4ade80', fontWeight: '700', fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTxt: { color: '#4B5563', fontSize: 15 },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#111827', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: '#1a2030' },
+  modal: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderColor: '#1a2030',
+  },
   modalTitle: { color: '#F3F4F6', fontSize: 18, fontWeight: '900' },
   closeBtn: { color: '#6B7280', fontSize: 18, fontWeight: '700' },
   modalBody: { padding: 20 },
   modalQuest: { color: '#d2673d', fontSize: 18, fontWeight: '900', marginBottom: 6 },
   modalDesc: { color: '#9CA3AF', fontSize: 14, lineHeight: 20, marginBottom: 20 },
-  proofSectionTitle: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  proofSectionTitle: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
   proofOptions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  proofOption: { flex: 1, backgroundColor: '#0a0e1a', borderRadius: 12, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#1a2030' },
+  proofOption: {
+    flex: 1,
+    backgroundColor: '#0a0e1a',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1a2030',
+  },
   proofOptionOn: { borderColor: '#d2673d', backgroundColor: 'rgba(210,103,61,0.1)' },
   proofOptionIcon: { fontSize: 24 },
   proofOptionTxt: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', textAlign: 'center' },
   imagePreview: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   previewImg: { width: '100%', height: 200 },
-  removeImg: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  removeImg: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
   removeImgTxt: { color: 'white', fontSize: 12, fontWeight: '600' },
-  locationConfirm: { backgroundColor: 'rgba(210,103,61,0.1)', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(210,103,61,0.3)' },
+  locationConfirm: {
+    backgroundColor: 'rgba(210,103,61,0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.3)',
+  },
   locationTxt: { color: '#d2673d', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   noteLbl: { color: '#9CA3AF', fontSize: 13, fontWeight: '700', marginBottom: 8 },
-  noteInput: { backgroundColor: '#0a0e1a', color: '#F3F4F6', borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, borderColor: '#1a2030', minHeight: 80, textAlignVertical: 'top', marginBottom: 16 },
-  xpReminder: { backgroundColor: 'rgba(210,103,61,0.08)', borderRadius: 10, padding: 12, marginBottom: 16, alignItems: 'center' },
+  noteInput: {
+    backgroundColor: '#0a0e1a',
+    color: '#F3F4F6',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#1a2030',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  xpReminder: {
+    backgroundColor: 'rgba(210,103,61,0.08)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
   xpReminderTxt: { color: '#9CA3AF', fontSize: 13 },
   xpReminderNum: { color: '#d2673d', fontWeight: '900', fontSize: 15 },
-  submitProofBtn: { backgroundColor: '#d2673d', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 20 },
+  submitProofBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   submitProofBtnDis: { opacity: 0.5 },
   submitProofTxt: { color: 'white', fontWeight: '700', fontSize: 16 },
 });

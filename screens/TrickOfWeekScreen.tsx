@@ -3,14 +3,18 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useNavigation } from '../lib/useNavigation';
 
-export default function TrickOfWeekScreen({ navigation }: any) {
+export default function TrickOfWeekScreen() {
+  const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const [current, setCurrent] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -28,19 +32,19 @@ export default function TrickOfWeekScreen({ navigation }: any) {
       const weekNum = Math.ceil(
         ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
       );
-      
+
       const { data: subs } = await supabase
         .from('clip_submissions')
         .select('*, media(url), profile:user_id(username)')
         .eq('week_number', weekNum)
         .eq('year', now.getFullYear())
         .order('votes', { ascending: false });
-      
+
       const formattedSubs = (subs || []).map((s: any) => ({
         id: s.id, // Use clip_submission id for voting
         media_id: s.media_id,
         votes: s.votes,
-        username: s.profile?.username || 'Skater'
+        username: s.profile?.username || 'Skater',
       }));
       setSubmissions(formattedSubs);
 
@@ -57,36 +61,45 @@ export default function TrickOfWeekScreen({ navigation }: any) {
   const vote = async (subId: string, _currentVotes: number) => {
     if (!user || userVotes.has(subId)) return;
     setUserVotes(prev => new Set([...prev, subId]));
-    setSubmissions(prev => prev.map(s => s.id === subId ? { ...s, votes: s.votes + 1 } : s).sort((a,b) => b.votes - a.votes));
-    
+    setSubmissions(prev =>
+      prev
+        .map(s => (s.id === subId ? { ...s, votes: s.votes + 1 } : s))
+        .sort((a, b) => b.votes - a.votes)
+    );
+
     await supabase.from('clip_votes').insert({ user_id: user.id, submission_id: subId });
     await supabase.rpc('increment_clip_votes', { submission_id: subId });
   };
 
-  if (!current) return (
-    <SafeAreaView style={s.container}>
-      <View style={s.center}>
-        <Text style={s.bigIcon}>🛹</Text>
-        <Text style={s.noTrick}>No trick of the week set yet.</Text>
-        <Text style={s.noTrickSub}>Check back Monday!</Text>
-      </View>
-    </SafeAreaView>
-  );
+  if (!current)
+    return (
+      <SafeAreaView style={s.container}>
+        <View style={s.center}>
+          <Text style={s.bigIcon}>🛹</Text>
+          <Text style={s.noTrick}>No trick of the week set yet.</Text>
+          <Text style={s.noTrickSub}>Check back Monday!</Text>
+        </View>
+      </SafeAreaView>
+    );
 
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <View style={s.badge}><Text style={s.badgeTxt}>THIS WEEK</Text></View>
+        <View style={s.badge}>
+          <Text style={s.badgeTxt}>THIS WEEK</Text>
+        </View>
         <Text style={s.trick}>{current.trick_name}</Text>
         {current.description && <Text style={s.desc}>{current.description}</Text>}
         <Text style={s.ends}>Voting ends: {new Date(current.week_end).toLocaleDateString()}</Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={s.submitMainBtn}
-          onPress={() => navigation.navigate('UploadMedia', { 
-            initialTrickName: current.trick_name,
-            totwId: current.id 
-          })}
+          onPress={() =>
+            navigation.navigate('UploadMedia', {
+              initialTrickName: current.trick_name,
+              totwId: current.id,
+            })
+          }
         >
           <Text style={s.submitMainBtnTxt}>Submit Your Clip</Text>
         </TouchableOpacity>
@@ -132,20 +145,59 @@ const s = StyleSheet.create({
   bigIcon: { fontSize: 64, marginBottom: 12 },
   noTrick: { color: '#F3F4F6', fontSize: 18, fontWeight: '700' },
   noTrickSub: { color: '#6B7280', fontSize: 14, marginTop: 4 },
-  header: { padding: 20, backgroundColor: 'rgba(210,103,61,0.1)', borderBottomWidth: 1, borderColor: 'rgba(210,103,61,0.2)' },
-  badge: { backgroundColor: '#d2673d', alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 10 },
+  header: {
+    padding: 20,
+    backgroundColor: 'rgba(210,103,61,0.1)',
+    borderBottomWidth: 1,
+    borderColor: 'rgba(210,103,61,0.2)',
+  },
+  badge: {
+    backgroundColor: '#d2673d',
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginBottom: 10,
+  },
   badgeTxt: { color: 'white', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   trick: { fontSize: 32, fontWeight: '900', color: '#F3F4F6', marginBottom: 6 },
   desc: { color: '#9CA3AF', fontSize: 14, marginBottom: 8 },
   ends: { color: '#6B7280', fontSize: 12 },
-  sectionTitle: { color: '#6B7280', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, padding: 16, paddingBottom: 4 },
-  card: { backgroundColor: '#111827', borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rank: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(210,103,61,0.2)', alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    padding: 16,
+    paddingBottom: 4,
+  },
+  card: {
+    backgroundColor: '#111827',
+    borderRadius: 10,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(210,103,61,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rankNum: { color: '#d2673d', fontWeight: '900', fontSize: 13 },
   cardMain: { flex: 1 },
   submitter: { color: '#F3F4F6', fontWeight: '700', fontSize: 14 },
   voteCount: { color: '#6B7280', fontSize: 12, marginTop: 2 },
-  voteBtn: { backgroundColor: '#d2673d', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  voteBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   votedBtn: { backgroundColor: '#1a2030' },
   voteBtnTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
   empty: { paddingTop: 40, alignItems: 'center' },

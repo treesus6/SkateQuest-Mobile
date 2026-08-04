@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,123 +7,123 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
-} from 'react-native'
-import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
-import { NativeStackNavigationProp } from '../lib/useNavigation'
-import { useAuthStore } from '../stores/useAuthStore'
-import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native'
-import { supabase } from '../lib/supabase'
-import { streaksService } from '../lib/streaksService'
-import { RootStackParamList } from '../types'
+} from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
+import { NativeStackNavigationProp } from '../lib/useNavigation';
+import { useAuthStore } from '../stores/useAuthStore';
+import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
+import { streaksService } from '../lib/streaksService';
+import { RootStackParamList } from '../types';
 
 type CheckInRouteParams = {
   CheckIn: {
-    spotId: string
-    spotName: string
-    latitude: number
-    longitude: number
-  }
-}
+    spotId: string;
+    spotName: string;
+    latitude: number;
+    longitude: number;
+  };
+};
 
 interface CheckInProfile {
-  username: string
+  username: string;
 }
 
 interface CheckInRecord {
-  id: string
-  spot_id: string
-  user_id: string
-  latitude: number
-  longitude: number
-  created_at: string
-  profiles: CheckInProfile
+  id: string;
+  spot_id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  created_at: string;
+  profiles: CheckInProfile;
 }
 
 function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(iso);
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-  })
+  });
 }
 
-const XP_PER_CHECKIN = 25
+const XP_PER_CHECKIN = 25;
 
 export default function CheckInScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>()
-  const { spotId, spotName, latitude, longitude } = route.params
-  const { user } = useAuthStore()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>();
+  const { spotId, spotName, latitude, longitude } = route.params;
+  const { user } = useAuthStore();
 
-  const [allCheckIns, setAllCheckIns] = useState<CheckInRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [checkingIn, setCheckingIn] = useState(false)
-  const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
-  const [justEarnedXP, setJustEarnedXP] = useState(false)
-  const [showSessionPrompt, setShowSessionPrompt] = useState(false)
+  const [allCheckIns, setAllCheckIns] = useState<CheckInRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
+  const [justEarnedXP, setJustEarnedXP] = useState(false);
+  const [showSessionPrompt, setShowSessionPrompt] = useState(false);
 
   const fetchCheckIns = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const uid = user?.id ?? null
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const uid = user?.id ?? null;
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const { data, error: fetchError } = await supabase
         .from('check_ins')
         .select('*, profiles(username)')
         .eq('spot_id', spotId)
         .gte('created_at', sevenDaysAgo)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
 
-      if (fetchError) throw fetchError
-      const records = (data as CheckInRecord[]) ?? []
-      setAllCheckIns(records)
+      if (fetchError) throw fetchError;
+      const records = (data as CheckInRecord[]) ?? [];
+      setAllCheckIns(records);
 
       if (uid) {
-        const todayStart = new Date()
-        todayStart.setHours(0, 0, 0, 0)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
         const checkedToday = records.some(
           (c: CheckInRecord) => c.user_id === uid && new Date(c.created_at) >= todayStart
-        )
-        setAlreadyCheckedIn(checkedToday)
+        );
+        setAlreadyCheckedIn(checkedToday);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load check-ins')
+      setError(err instanceof Error ? err.message : 'Failed to load check-ins');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [spotId])
+  }, [spotId]);
 
   useEffect(() => {
-    fetchCheckIns()
-  }, [fetchCheckIns])
+    fetchCheckIns();
+  }, [fetchCheckIns]);
 
   const handleCheckIn = async () => {
     if (!user) {
-      Alert.alert('Login required', 'Please log in to check in.')
-      navigation.replace('Login')
-      return
+      Alert.alert('Login required', 'Please log in to check in.');
+      navigation.replace('Login');
+      return;
     }
     try {
-      setCheckingIn(true)
+      setCheckingIn(true);
 
-      const nowIso = new Date().toISOString()
+      const nowIso = new Date().toISOString();
 
       const { error: insertError } = await supabase.from('check_ins').insert({
         spot_id: spotId,
@@ -131,44 +131,42 @@ export default function CheckInScreen() {
         latitude,
         longitude,
         created_at: nowIso,
-      })
-      if (insertError) throw insertError
+      });
+      if (insertError) throw insertError;
 
       try {
         await supabase.from('park_visits').insert({
           user_id: user.id,
           park_id: spotId,
           session_start: nowIso,
-        })
+        });
       } catch (visitErr) {
-        console.warn('park_visits insert failed (non-fatal)', visitErr)
+        console.warn('park_visits insert failed (non-fatal)', visitErr);
       }
 
       const { error: xpError } = await supabase.rpc('increment_xp', {
-        p_user_id: user.id,
-        p_xp_amount: XP_PER_CHECKIN,
-        p_park_id: spotId,
-        p_source: 'check_in',
-      })
-      if (xpError) throw xpError
+        user_id: user.id,
+        amount: XP_PER_CHECKIN,
+      });
+      if (xpError) throw xpError;
 
-      setAlreadyCheckedIn(true)
-      setJustEarnedXP(true)
-      setShowSessionPrompt(true)
-      fetchCheckIns()
-      streaksService.updateOnActivity(user.id).catch(() => {})
+      setAlreadyCheckedIn(true);
+      setJustEarnedXP(true);
+      setShowSessionPrompt(true);
+      fetchCheckIns();
+      streaksService.updateOnActivity(user.id).catch(() => {});
 
-      setTimeout(() => setJustEarnedXP(false), 4000)
+      setTimeout(() => setJustEarnedXP(false), 4000);
     } catch (err: unknown) {
-      Alert.alert('Check-in failed', err instanceof Error ? err.message : 'Please try again.')
+      Alert.alert('Check-in failed', err instanceof Error ? err.message : 'Please try again.');
     } finally {
-      setCheckingIn(false)
+      setCheckingIn(false);
     }
-  }
+  };
 
-  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-  const hereNow = allCheckIns.filter((c: CheckInRecord) => c.created_at >= threeHoursAgo)
-  const recentHistory = allCheckIns.filter((c: CheckInRecord) => c.created_at < threeHoursAgo)
+  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const hereNow = allCheckIns.filter((c: CheckInRecord) => c.created_at >= threeHoursAgo);
+  const recentHistory = allCheckIns.filter((c: CheckInRecord) => c.created_at < threeHoursAgo);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
@@ -235,7 +233,9 @@ export default function CheckInScreen() {
                 borderColor: '#6B4CE640',
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}
+              >
                 <CalendarDays size={18} color="#6B4CE6" />
                 <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
                   Anyone else skating here?
@@ -347,9 +347,7 @@ export default function CheckInScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Users size={18} color="#FF6B35" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-                Who's Here Now
-              </Text>
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Who's Here Now</Text>
               <View
                 style={{
                   backgroundColor: '#FF6B35',
@@ -365,7 +363,9 @@ export default function CheckInScreen() {
             </View>
 
             {hereNow.length === 0 ? (
-              <Text style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}>
+              <Text
+                style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}
+              >
                 Nobody checked in recently — be the first!
               </Text>
             ) : (
@@ -405,7 +405,9 @@ export default function CheckInScreen() {
             </View>
 
             {recentHistory.length === 0 ? (
-              <Text style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}>
+              <Text
+                style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}
+              >
                 No recent check-ins at this spot.
               </Text>
             ) : (
@@ -434,5 +436,5 @@ export default function CheckInScreen() {
         </ScrollView>
       )}
     </SafeAreaView>
-  )
+  );
 }

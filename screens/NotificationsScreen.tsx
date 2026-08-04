@@ -100,7 +100,7 @@ function NotificationItem({ notification, onMarkAsRead, onDelete }: Notification
   );
 }
 
-export default function NotificationsScreen({ navigation }: any) {
+export default function NotificationsScreen() {
   const { user } = useAuthStore();
   const {
     notifications,
@@ -114,16 +114,11 @@ export default function NotificationsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (!user?.id) return;
-      // Refresh when screen is focused
-      refreshNotifications(user.id).catch(error => {
-        Logger.error('Failed to refresh notifications', error);
-      });
+    if (!user?.id) return;
+    refreshNotifications(user.id).catch(error => {
+      Logger.error('Failed to refresh notifications', error);
     });
-
-    return unsubscribe;
-  }, [navigation, user?.id]);
+  }, [user?.id, refreshNotifications]);
 
   const handleRefresh = useCallback(async () => {
     if (!user?.id) return;

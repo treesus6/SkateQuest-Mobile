@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useNavigation } from '../lib/useNavigation';
 
 interface Bounty {
   id: string;
@@ -16,12 +17,15 @@ interface Bounty {
   crews: { name: string };
 }
 
-export default function BountyBoardScreen({ navigation }: any) {
+export default function BountyBoardScreen() {
+  const navigation = useNavigation<any>();
   const { user: _user } = useAuthStore();
   const [bounties, setBounties] = useState<Bounty[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadBounties(); }, []);
+  useEffect(() => {
+    loadBounties();
+  }, []);
 
   const loadBounties = async () => {
     const { data } = await supabase
@@ -43,15 +47,16 @@ export default function BountyBoardScreen({ navigation }: any) {
       'Claim Bounty',
       `Land "${bounty.trick_name}" and upload your clip to claim ${bounty.xp_reward} XP!`,
       [
-        { 
-          text: 'Upload Clip', 
-          onPress: () => (navigation as any).navigate('UploadMedia', { 
-            initialTrickName: bounty.trick_name,
-            bountyId: bounty.id,
-            spotName: bounty.park_name
-          }) 
+        {
+          text: 'Upload Clip',
+          onPress: () =>
+            navigation.navigate('UploadMedia', {
+              initialTrickName: bounty.trick_name,
+              bountyId: bounty.id,
+              spotName: bounty.park_name,
+            }),
         },
-        { text: 'Cancel', style: 'cancel' }
+        { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
@@ -102,9 +107,27 @@ const s = StyleSheet.create({
   header: { padding: 20 },
   title: { fontSize: 24, fontWeight: '900', color: '#F3F4F6' },
   sub: { fontSize: 13, color: '#6B7280', marginTop: 4 },
-  card: { backgroundColor: '#111827', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#1a2030' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  xpBadge: { backgroundColor: 'rgba(210,103,61,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#d2673d' },
+  card: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1a2030',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  xpBadge: {
+    backgroundColor: 'rgba(210,103,61,0.2)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#d2673d',
+  },
   xpText: { color: '#d2673d', fontWeight: '900', fontSize: 14 },
   expires: { color: '#6B7280', fontSize: 12 },
   trick: { color: '#F3F4F6', fontSize: 20, fontWeight: '900', marginBottom: 6 },
