@@ -7,7 +7,9 @@ export const skateGameService = {
     try {
       return await supabase
         .from('skate_games')
-        .select('*, challenger:profiles!challenger_id(id, username, level), opponent:profiles!opponent_id(id, username, level)')
+        .select(
+          '*, challenger:profiles!challenger_id(id, username, level), opponent:profiles!opponent_id(id, username, level)'
+        )
         .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
         .order('created_at', { ascending: false });
     } catch (error) {
@@ -20,7 +22,9 @@ export const skateGameService = {
     try {
       return await supabase
         .from('skate_games')
-        .select('*, challenger:profiles!challenger_id(id, username, level), opponent:profiles!opponent_id(id, username, level)')
+        .select(
+          '*, challenger:profiles!challenger_id(id, username, level), opponent:profiles!opponent_id(id, username, level)'
+        )
         .eq('id', gameId)
         .single();
     } catch (error) {
@@ -44,13 +48,20 @@ export const skateGameService = {
 
   async create(challengerId: string, opponentId: string) {
     try {
-      return await supabase.from('skate_games').insert([{
-        challenger_id: challengerId,
-        opponent_id: opponentId,
-        status: 'pending',
-        challenger_letters: '',
-        opponent_letters: '',
-      }]).select().single();
+      return await supabase
+        .from('skate_games')
+        .insert([
+          {
+            challenger_id: challengerId,
+            opponent_id: opponentId,
+            status: 'active',
+            current_turn: challengerId,
+            challenger_letters: '',
+            opponent_letters: '',
+          },
+        ])
+        .select()
+        .single();
     } catch (error) {
       Logger.error('skateGameService.create failed', error);
       throw new ServiceError('Failed to create game', 'SKATE_GAME_CREATE_FAILED', error);
@@ -74,12 +85,7 @@ export const skateGameService = {
 
   async updateGame(gameId: string, updates: Record<string, any>) {
     try {
-      return await supabase
-        .from('skate_games')
-        .update(updates)
-        .eq('id', gameId)
-        .select()
-        .single();
+      return await supabase.from('skate_games').update(updates).eq('id', gameId).select().single();
     } catch (error) {
       Logger.error('skateGameService.updateGame failed', error);
       throw new ServiceError('Failed to update game', 'SKATE_GAME_UPDATE_FAILED', error);
