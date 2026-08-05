@@ -150,12 +150,14 @@ export default function DailyQuestsScreen() {
 
       if (error) throw error;
 
-      // Also increment user XP in profile
+      // Also increment user XP in profile (non-fatal — quest is already recorded)
       const { error: xpError } = await supabase.rpc('increment_xp', {
         user_id: user.id,
         amount: proofModal.xp_reward,
       });
-      if (xpError) throw xpError;
+      if (xpError) {
+        console.warn('XP increment failed (quest still recorded):', xpError.message);
+      }
 
       Alert.alert('🛹 Quest Complete!', `+${proofModal.xp_reward} XP earned! Keep shredding.`, [
         {
