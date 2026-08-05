@@ -55,11 +55,15 @@ function daysElapsed(startDate: string): number {
 const DAILY_CHALLENGES: DailyChallenge[] = [
   { title: 'Land 3 Tricks in a Row', description: 'No bails allowed.', xp: 75 },
   { title: 'Film a Line', description: 'Record at least 3 tricks in one run.', xp: 100 },
-  { title: 'Visit a New Spot', description: 'Check in at a skatepark you\'ve never logged.', xp: 125 },
+  {
+    title: 'Visit a New Spot',
+    description: "Check in at a skatepark you've never logged.",
+    xp: 125,
+  },
   { title: 'Challenge a Crew Member', description: 'Send a callout and get a response.', xp: 80 },
   { title: 'Land Your Hardest Trick', description: 'Log a trick rated Hard or above.', xp: 150 },
-  { title: 'Post a Session Clip', description: 'Upload video from today\'s session.', xp: 90 },
-  { title: 'Vote on 5 Clips', description: 'Judge other skaters\' submissions.', xp: 50 },
+  { title: 'Post a Session Clip', description: "Upload video from today's session.", xp: 90 },
+  { title: 'Vote on 5 Clips', description: "Judge other skaters' submissions.", xp: 50 },
 ];
 
 function getDailyChallenge(dayIndex: number): DailyChallenge {
@@ -199,6 +203,19 @@ export default function SeasonalPassScreen() {
           .single();
         if (data) updatedProgress.id = data.id;
       }
+
+      // Actually grant the milestone's XP reward — previously the pass
+      // progress was updated and the button flipped to "Claimed Today"
+      // without ever crediting the XP shown on the milestone.
+      const milestone = pass.milestones.find(m => m.day === currentDay);
+      if (milestone?.xp) {
+        const { error: xpError } = await supabase.rpc('increment_xp', {
+          user_id: userId,
+          amount: milestone.xp,
+        });
+        if (xpError) throw xpError;
+      }
+
       setProgress(updatedProgress);
       setClaimedToday(true);
     } finally {
@@ -233,11 +250,7 @@ export default function SeasonalPassScreen() {
               </View>
             ) : (
               <View className="w-11 h-11 rounded-full bg-[#222] border border-[#444] items-center justify-center">
-                {isLocked ? (
-                  <Lock size={18} color="#555" />
-                ) : (
-                  <Gift size={18} color="#555" />
-                )}
+                {isLocked ? <Lock size={18} color="#555" /> : <Gift size={18} color="#555" />}
               </View>
             )}
           </View>
@@ -282,7 +295,9 @@ export default function SeasonalPassScreen() {
   if (!pass) {
     return (
       <View className="flex-1 bg-[#0a0a0a] items-center justify-center px-8">
-        <Text className="text-white text-lg text-center">No active season right now. Check back soon!</Text>
+        <Text className="text-white text-lg text-center">
+          No active season right now. Check back soon!
+        </Text>
       </View>
     );
   }
@@ -290,10 +305,12 @@ export default function SeasonalPassScreen() {
   const remaining = daysRemaining(pass.end_date);
   const currentDay = progress?.current_day ?? 1;
   const dailyChallenge = getDailyChallenge(currentDay - 1);
-  const milestones: Milestone[] = pass.milestones ?? Array.from({ length: 30 }, (_, i) => ({
-    day: i + 1,
-    reward: i === 29 ? 'Season Badge' : `${(i + 1) * 25} XP`,
-  }));
+  const milestones: Milestone[] =
+    pass.milestones ??
+    Array.from({ length: 30 }, (_, i) => ({
+      day: i + 1,
+      reward: i === 29 ? 'Season Badge' : `${(i + 1) * 25} XP`,
+    }));
 
   // Final badge milestone
   const finalMilestone = milestones[milestones.length - 1];
@@ -314,8 +331,7 @@ export default function SeasonalPassScreen() {
             <Text className="text-[#FF6B35] font-bold text-sm">{remaining}d remaining</Text>
           </View>
           <Text className="text-[#666] text-sm">
-            Day{' '}
-            <Text className="text-white font-bold">{currentDay}</Text> / 30
+            Day <Text className="text-white font-bold">{currentDay}</Text> / 30
           </Text>
         </View>
 
@@ -348,9 +364,7 @@ export default function SeasonalPassScreen() {
           <TouchableOpacity
             onPress={handleClaimReward}
             disabled={claimedToday || claiming}
-            className={`rounded-xl px-5 py-2 ${
-              claimedToday ? 'bg-[#333]' : 'bg-[#FF6B35]'
-            }`}
+            className={`rounded-xl px-5 py-2 ${claimedToday ? 'bg-[#333]' : 'bg-[#FF6B35]'}`}
           >
             {claiming ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -370,7 +384,7 @@ export default function SeasonalPassScreen() {
       <FlatList
         ref={trackRef}
         data={milestones}
-        keyExtractor={(item) => String(item.day)}
+        keyExtractor={item => String(item.day)}
         renderItem={renderMilestoneNode}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -386,13 +400,14 @@ export default function SeasonalPassScreen() {
         </View>
         <Text className="text-[#FFD700] font-extrabold text-lg">Season Finale Badge</Text>
         <Text className="text-[#666] text-sm text-center mt-1">
-          Complete all 30 days to unlock: <Text className="text-white font-semibold">{finalMilestone?.reward ?? 'Exclusive Badge'}</Text>
+          Complete all 30 days to unlock:{' '}
+          <Text className="text-white font-semibold">
+            {finalMilestone?.reward ?? 'Exclusive Badge'}
+          </Text>
         </Text>
         <View className="mt-3 bg-[#0a0a0a] rounded-xl px-4 py-2">
           <Text className="text-[#666] text-xs text-center">
-            {currentDay < 30
-              ? `${30 - currentDay} days to go`
-              : 'You completed the season!'}
+            {currentDay < 30 ? `${30 - currentDay} days to go` : 'You completed the season!'}
           </Text>
         </View>
       </View>
