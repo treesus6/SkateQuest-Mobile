@@ -37,7 +37,7 @@ describe('playlistsService', () => {
       const result = await playlistsService.getPublic();
 
       expect(mockFrom).toHaveBeenCalledWith('playlists');
-      expect(mockSelect).toHaveBeenCalledWith('*, user:users(id, username, level)');
+      expect(mockSelect).toHaveBeenCalledWith('*, user:profiles(id, username, level)');
       expect(mockEq).toHaveBeenCalledWith('is_public', true);
       expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
       expect(result.data).toEqual(mockPlaylists);
@@ -147,7 +147,12 @@ describe('playlistsService', () => {
         youtube_url: 'https://youtube.com/playlist?list=789',
       };
 
-      const mockInsert = jest.fn().mockResolvedValue({ data: { id: 'pl-cross', ...newPlaylist, is_public: true }, error: null });
+      const mockInsert = jest
+        .fn()
+        .mockResolvedValue({
+          data: { id: 'pl-cross', ...newPlaylist, is_public: true },
+          error: null,
+        });
       mockFrom.mockReturnValue({ insert: mockInsert });
 
       const result = await playlistsService.create(newPlaylist);
@@ -184,7 +189,10 @@ describe('playlistsService', () => {
     });
 
     it('should return an error when liking the same playlist twice', async () => {
-      const mockError = { message: 'duplicate key value violates unique constraint', code: '23505' };
+      const mockError = {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+      };
       const mockInsert = jest.fn().mockResolvedValue({ data: null, error: mockError });
       mockFrom.mockReturnValue({ insert: mockInsert });
 
