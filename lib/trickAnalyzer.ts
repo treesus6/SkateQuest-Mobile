@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { supabase } from './supabase';
 
 export interface TrickAnalysis {
@@ -26,23 +27,25 @@ export async function analyzeTrick(
   description?: string,
   videoUrl?: string
 ): Promise<TrickAnalysis> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  const res = await fetch(
-    `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-trick`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({
-        trick_name: trickName,
-        description,
-        video_url: videoUrl,
-      }),
-    }
-  );
+  const supabaseUrl =
+    (Constants.expoConfig?.extra?.supabaseUrl as string) || process.env.EXPO_PUBLIC_SUPABASE_URL;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/analyze-trick`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify({
+      trick_name: trickName,
+      description,
+      video_url: videoUrl,
+    }),
+  });
 
   if (!res.ok) {
     throw new Error(`Trick analysis failed: ${res.status}`);
@@ -81,10 +84,7 @@ export function getFallbackAnalysis(trickName: string): TrickAnalysis {
       'Snap hard off your back foot',
       'Keep your eyes on the landing',
     ],
-    common_mistakes: [
-      'Not popping high enough',
-      'Catching too early',
-    ],
+    common_mistakes: ['Not popping high enough', 'Catching too early'],
     prerequisites: ['Ollie', 'Basic balance'],
     xp_value: 75,
     style_notes: `Keep working on ${trickName} — consistency comes with repetition.`,

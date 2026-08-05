@@ -43,7 +43,7 @@ describe('eventsService', () => {
 
       const result = await eventsService.getUpcoming();
 
-      expect(mockFrom).toHaveBeenCalledWith('events');
+      expect(mockFrom).toHaveBeenCalledWith('skate_sessions');
       expect(mockSelect).toHaveBeenCalledWith('*');
       expect(mockGte).toHaveBeenCalledWith('date', expect.any(String));
       expect(mockOrderDate).toHaveBeenCalledWith('date', { ascending: true });
@@ -94,22 +94,22 @@ describe('eventsService', () => {
   });
 
   describe('rsvp', () => {
-    it('should insert an event_rsvps record with correct event_id and user_id', async () => {
+    it('should insert a session_attendees record with correct session_id and user_id', async () => {
       const eventId = 'evt-100';
       const userId = 'user-200';
 
       const mockInsert = jest.fn().mockResolvedValue({
-        data: { event_id: eventId, user_id: userId },
+        data: { session_id: eventId, user_id: userId },
         error: null,
       });
       mockFrom.mockReturnValue({ insert: mockInsert });
 
       const result = await eventsService.rsvp(eventId, userId);
 
-      expect(mockFrom).toHaveBeenCalledWith('event_rsvps');
+      expect(mockFrom).toHaveBeenCalledWith('session_attendees');
       expect(mockInsert).toHaveBeenCalledWith([
         {
-          event_id: eventId,
+          session_id: eventId,
           user_id: userId,
         },
       ]);
@@ -117,7 +117,10 @@ describe('eventsService', () => {
     });
 
     it('should return an error when a user RSVPs to the same event twice', async () => {
-      const mockError = { message: 'duplicate key value violates unique constraint', code: '23505' };
+      const mockError = {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+      };
       const mockInsert = jest.fn().mockResolvedValue({ data: null, error: mockError });
       mockFrom.mockReturnValue({ insert: mockInsert });
 

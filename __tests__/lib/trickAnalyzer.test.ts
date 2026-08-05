@@ -1,84 +1,121 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
 import {
+  analyzeTrick,
   analyzeTrickVideo,
   saveAnalysisResult,
-  TrickAnalysisResult,
+  getFallbackAnalysis,
+  TrickAnalysis,
 } from '../../lib/trickAnalyzer';
 import { supabase } from '../../lib/supabase';
 
-describe('TrickAnalyzer', () => {
+const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
+
+describe('trickAnalyzer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = jest.fn();
   });
 
-  describe('analyzeTrickVideo', () => {
-    it('analyzes video and returns trick analysis', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/kickflip.mp4');
+  describe('analyzeTrick / analyzeTrickVideo', () => {
+    const mockAnalysis: TrickAnalysis = {
+      difficulty: 'Intermediate',
+      tips: ['Snap harder'],
+      common_mistakes: ['Catching early'],
+      prerequisites: ['Ollie'],
+      xp_value: 75,
+      style_notes: 'Looking solid',
+    };
 
-      expect(result).toHaveProperty('trickName');
-      expect(result).toHaveProperty('confidence');
-      expect(result).toHaveProperty('difficulty');
-      expect(result).toHaveProperty('score');
-      expect(result).toHaveProperty('feedback');
-      expect(result).toHaveProperty('detectedElements');
-      expect(result.score).toBeGreaterThanOrEqual(0);
-      expect(result.score).toBeLessThanOrEqual(100);
+    it('POSTs to the analyze-trick edge function with the trick name, description, and video URL', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockAnalysis,
+      });
+
+      const result = await analyzeTrick('Kickflip', 'Landed clean', 'file:///video.mp4');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/functions/v1/analyze-trick'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer mock-token',
+          }),
+          body: JSON.stringify({
+            trick_name: 'Kickflip',
+            description: 'Landed clean',
+            video_url: 'file:///video.mp4',
+          }),
+        })
+      );
+      expect(result).toEqual(mockAnalysis);
     });
 
-    it('detects trick from filename', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/kickflip-attempt.mp4');
-      expect(result.trickName).toBe('Kickflip');
+    it('is exported as analyzeTrickVideo for backward compatibility', () => {
+      expect(analyzeTrickVideo).toBe(analyzeTrick);
     });
 
-    it('returns a valid difficulty level', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/ollie.mp4');
-      expect(['Beginner', 'Intermediate', 'Advanced']).toContain(result.difficulty);
-    });
+    it('throws when the edge function responds with a non-ok status', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
 
-    it('returns confidence between 0.65 and 0.9', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/heelflip.mp4');
-      expect(result.confidence).toBeGreaterThanOrEqual(0.65);
-      expect(result.confidence).toBeLessThanOrEqual(0.9);
-    });
-
-    it('detects boardslide from filename', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/boardslide.mp4');
-      expect(result.trickName).toBe('Boardslide');
-    });
-
-    it('falls back to a random trick when filename is unrecognized', async () => {
-      const result = await analyzeTrickVideo('file:///path/to/unknown-clip.mp4');
-      expect(result.trickName).toBeTruthy();
-      expect(result.detectedElements.length).toBeGreaterThan(0);
+      await expect(analyzeTrick('Kickflip')).rejects.toThrow('Trick analysis failed: 500');
     });
   });
 
   describe('saveAnalysisResult', () => {
-    it('saves analysis to database', async () => {
-      const analysis: TrickAnalysisResult = {
-        trickName: 'Kickflip',
-        confidence: 0.85,
-        difficulty: 'Intermediate',
-        score: 82,
-        feedback: 'Great job!',
-        detectedElements: ['Good rotation', 'Clean landing'],
+    it('inserts the analysis into trick_analyses with the given user, trick name, and video URL', async () => {
+      const mockInsert = jest.fn().mockResolvedValue({ error: null });
+      mockFrom.mockReturnValue({ insert: mockInsert });
+
+      const analysis: TrickAnalysis = {
+        difficulty: 'Advanced',
+        tips: [],
+        common_mistakes: [],
+        prerequisites: [],
+        xp_value: 100,
+        style_notes: 'Clean execution',
       };
 
-      const mockUpdate = jest.fn().mockReturnThis();
-      const mockEq = jest.fn().mockResolvedValue({ data: {}, error: null });
+      await saveAnalysisResult('user-123', 'Tre Flip', analysis, 'file:///video.mp4');
 
-      (supabase.from as unknown as { mockReturnValue: (...args: any[]) => any }).mockReturnValue({
-        update: mockUpdate,
-        eq: mockEq,
+      expect(mockFrom).toHaveBeenCalledWith('trick_analyses');
+      expect(mockInsert).toHaveBeenCalledWith({
+        user_id: 'user-123',
+        trick_name: 'Tre Flip',
+        difficulty: 'Advanced',
+        xp_value: 100,
+        style_notes: 'Clean execution',
+        video_url: 'file:///video.mp4',
       });
+    });
 
-      await saveAnalysisResult('media-123', analysis);
+    it('throws when the insert fails', async () => {
+      const mockError = { message: 'insert failed' };
+      const mockInsert = jest.fn().mockResolvedValue({ error: mockError });
+      mockFrom.mockReturnValue({ insert: mockInsert });
 
-      expect(supabase.from).toHaveBeenCalledWith('media');
-      expect(mockUpdate).toHaveBeenCalledWith({
-        trick_name: 'Kickflip',
-      });
-      expect(mockEq).toHaveBeenCalledWith('id', 'media-123');
+      await expect(
+        saveAnalysisResult('user-123', 'Tre Flip', {
+          difficulty: 'Advanced',
+          tips: [],
+          common_mistakes: [],
+          prerequisites: [],
+          xp_value: 100,
+          style_notes: '',
+        })
+      ).rejects.toEqual(mockError);
+    });
+  });
+
+  describe('getFallbackAnalysis', () => {
+    it('returns a usable generic analysis referencing the trick name', () => {
+      const result = getFallbackAnalysis('Kickflip');
+
+      expect(result.trickName).toBe('Kickflip');
+      expect(result.difficulty).toBe('Intermediate');
+      expect(result.style_notes).toContain('Kickflip');
+      expect(result.tips.length).toBeGreaterThan(0);
     });
   });
 });

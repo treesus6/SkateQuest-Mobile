@@ -9,13 +9,26 @@ describe('useSupabaseQuery', () => {
   });
 
   it('should start with loading true and data null', async () => {
-    const queryFn = jest.fn().mockResolvedValue({ data: null, error: null });
+    // An immediately-resolving mock races with renderHook's internal act()
+    // flush, so the transient "loading" state is only observable if the
+    // query is still pending when we check.
+    let resolveQuery: (value: { data: null; error: null }) => void;
+    const queryFn = jest.fn().mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveQuery = resolve;
+        })
+    );
 
     const { result } = await renderHook(() => useSupabaseQuery(queryFn));
 
     expect(result.current.loading).toBe(true);
     expect(result.current.data).toBeNull();
     expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      resolveQuery({ data: null, error: null });
+    });
   });
 
   it('should set data and loading false after a successful query', async () => {
@@ -143,8 +156,12 @@ describe('useSupabaseQuery', () => {
 
     // Start refetch - loading should go back to true
     let refetchPromise: Promise<void>;
-    act(() => {
+    await act(async () => {
       refetchPromise = result.current.refetch();
+      // Yield one microtask so refetch's synchronous setLoading(true) at the
+      // top flushes before we assert, without waiting for the whole refetch
+      // (which is still blocked on the unresolved queryFn promise).
+      await Promise.resolve();
     });
 
     expect(result.current.loading).toBe(true);
