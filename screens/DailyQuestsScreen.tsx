@@ -150,22 +150,28 @@ export default function DailyQuestsScreen() {
 
       if (error) throw error;
 
-      // Also increment user XP in profile
+      // Also increment user XP in profile (non-fatal — quest is already recorded)
       const { error: xpError } = await supabase.rpc('increment_xp', {
         user_id: user.id,
         amount: proofModal.xp_reward,
       });
-      if (xpError) throw xpError;
+      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
 
-      Alert.alert('🛹 Quest Complete!', `+${proofModal.xp_reward} XP earned! Keep shredding.`, [
-        {
-          text: "Let's go!",
-          onPress: () => {
-            setProofModal(null);
-            loadData();
+      Alert.alert(
+        '🛹 Quest Complete!',
+        xpError
+          ? 'Quest recorded! XP update may be delayed.'
+          : `+${proofModal.xp_reward} XP earned! Keep shredding.`,
+        [
+          {
+            text: "Let's go!",
+            onPress: () => {
+              setProofModal(null);
+              loadData();
+            },
           },
-        },
-      ]);
+        ]
+      );
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to submit proof');
     } finally {

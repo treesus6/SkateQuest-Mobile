@@ -148,10 +148,10 @@ export default function CheckInScreen() {
         user_id: user.id,
         amount: XP_PER_CHECKIN,
       });
-      if (xpError) throw xpError;
+      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
 
       setAlreadyCheckedIn(true);
-      setJustEarnedXP(true);
+      setJustEarnedXP(!xpError);
       setShowSessionPrompt(true);
       fetchCheckIns();
       streaksService.updateOnActivity(user.id).catch(() => {});
