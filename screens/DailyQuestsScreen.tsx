@@ -155,9 +155,13 @@ export default function DailyQuestsScreen() {
         user_id: user.id,
         amount: proofModal.xp_reward,
       });
-      if (xpError) throw xpError;
+      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
 
-      Alert.alert('🛹 Quest Complete!', `+${proofModal.xp_reward} XP earned! Keep shredding.`, [
+      Alert.alert(
+        '🛹 Quest Complete!',
+        xpError
+          ? `Quest recorded! XP update may be delayed.`
+          : `+${proofModal.xp_reward} XP earned! Keep shredding.`, [
         {
           text: "Let's go!",
           onPress: () => {
