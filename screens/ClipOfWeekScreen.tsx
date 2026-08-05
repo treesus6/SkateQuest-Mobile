@@ -434,7 +434,7 @@ export default function ClipOfWeekScreen() {
       {/* ── Submit CTA ── */}
       <View className="mx-4 mt-6">
         <TouchableOpacity
-          onPress={() => router.push('/(screens)/upload-media' as any)}
+          onPress={() => router.push('/(screens)/upload-media')}
           className="bg-orange-500 rounded-2xl py-4 flex-row items-center justify-center gap-3"
         >
           <Upload size={22} color="#fff" />
