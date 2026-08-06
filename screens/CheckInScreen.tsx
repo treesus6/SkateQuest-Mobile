@@ -148,7 +148,11 @@ export default function CheckInScreen() {
         user_id: user.id,
         amount: XP_PER_CHECKIN,
       });
-      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
+      if (xpError) {
+        console.warn(
+          `XP increment failed (non-fatal): ${xpError.code ?? 'unknown'} ${xpError.message}`
+        );
+      }
 
       setAlreadyCheckedIn(true);
       setJustEarnedXP(!xpError);

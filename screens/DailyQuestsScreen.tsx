@@ -155,7 +155,11 @@ export default function DailyQuestsScreen() {
         user_id: user.id,
         amount: proofModal.xp_reward,
       });
-      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
+      if (xpError) {
+        console.warn(
+          `XP increment failed (non-fatal): ${xpError.code ?? 'unknown'} ${xpError.message}`
+        );
+      }
 
       Alert.alert(
         '🛹 Quest Complete!',
