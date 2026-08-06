@@ -1,15 +1,12 @@
 import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
+import { awardXp } from './awardXp';
 
 export const profilesService = {
   async getById(userId: string) {
     try {
-      return await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      return await supabase.from('profiles').select('*').eq('id', userId).single();
     } catch (error) {
       Logger.error('profilesService.getById failed', error);
       throw new ServiceError('Failed to fetch profile', 'PROFILES_GET_BY_ID_FAILED', error);
@@ -36,12 +33,7 @@ export const profilesService = {
 
   async update(userId: string, updates: Record<string, any>) {
     try {
-      return await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+      return await supabase.from('profiles').update(updates).eq('id', userId).select().single();
     } catch (error) {
       Logger.error('profilesService.update failed', error);
       throw new ServiceError('Failed to update profile', 'PROFILES_UPDATE_FAILED', error);
@@ -53,17 +45,26 @@ export const profilesService = {
       return await supabase.rpc('get_level_progress', { user_xp: userXp });
     } catch (error) {
       Logger.error('profilesService.getLevelProgress failed', error);
-      throw new ServiceError('Failed to get level progress', 'PROFILES_LEVEL_PROGRESS_FAILED', error);
+      throw new ServiceError(
+        'Failed to get level progress',
+        'PROFILES_LEVEL_PROGRESS_FAILED',
+        error
+      );
     }
   },
 
+  /**
+   * Grant XP via the shared non-throwing helper.
+   * Returns Supabase-shaped `{ data, error }` so existing screens keep working.
+   * Prefer importing `awardXp` directly in new code.
+   */
   async incrementXp(userId: string, amount: number) {
-    try {
-      return await supabase.rpc('increment_xp', { user_id: userId, amount });
-    } catch (error) {
-      Logger.error('profilesService.incrementXp failed', error);
-      throw new ServiceError('Failed to increment XP', 'PROFILES_INCREMENT_XP_FAILED', error);
-    }
+    const result = await awardXp({
+      userId,
+      amount,
+      context: 'profilesService.incrementXp',
+    });
+    return { data: result.awarded ? true : null, error: result.error };
   },
 
   async getLeaderboard(limit: number = 50) {

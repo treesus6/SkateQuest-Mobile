@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Star, Gift, Zap, Lock, CheckCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { awardXp } from '../lib/awardXp';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -204,16 +205,15 @@ export default function SeasonalPassScreen() {
         if (data) updatedProgress.id = data.id;
       }
 
-      // Actually grant the milestone's XP reward — previously the pass
-      // progress was updated and the button flipped to "Claimed Today"
-      // without ever crediting the XP shown on the milestone.
+      // Grant milestone XP as a side effect. Progress is already saved —
+      // do not throw if XP fails or the claim UI looks broken after a real claim.
       const milestone = pass.milestones.find(m => m.day === currentDay);
       if (milestone?.xp) {
-        const { error: xpError } = await supabase.rpc('increment_xp', {
-          user_id: userId,
+        await awardXp({
+          userId,
           amount: milestone.xp,
+          context: 'seasonal_pass',
         });
-        if (xpError) throw xpError;
       }
 
       setProgress(updatedProgress);

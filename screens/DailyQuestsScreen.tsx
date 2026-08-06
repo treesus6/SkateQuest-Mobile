@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
+import { awardXp } from '../lib/awardXp';
 import { useAuthStore } from '../stores/useAuthStore';
 
 interface Quest {
@@ -150,18 +151,18 @@ export default function DailyQuestsScreen() {
 
       if (error) throw error;
 
-      // Also increment user XP in profile (non-fatal — quest is already recorded)
-      const { error: xpError } = await supabase.rpc('increment_xp', {
-        user_id: user.id,
+      // XP is a side effect — quest completion is already recorded
+      const { awarded: xpAwarded } = await awardXp({
+        userId: user.id,
         amount: proofModal.xp_reward,
+        context: 'daily_quest',
       });
-      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
 
       Alert.alert(
         '🛹 Quest Complete!',
-        xpError
-          ? 'Quest recorded! XP update may be delayed.'
-          : `+${proofModal.xp_reward} XP earned! Keep shredding.`,
+        xpAwarded
+          ? `+${proofModal.xp_reward} XP earned! Keep shredding.`
+          : 'Quest recorded! XP update may be delayed.',
         [
           {
             text: "Let's go!",

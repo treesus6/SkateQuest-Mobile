@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { awardXp } from '../lib/awardXp';
 import { streaksService } from '../lib/streaksService';
 import { RootStackParamList } from '../types';
 
@@ -144,14 +145,15 @@ export default function CheckInScreen() {
         console.warn('park_visits insert failed (non-fatal)', visitErr);
       }
 
-      const { error: xpError } = await supabase.rpc('increment_xp', {
-        user_id: user.id,
+      // XP is a side effect — check-in row already saved above
+      const { awarded: xpAwarded } = await awardXp({
+        userId: user.id,
         amount: XP_PER_CHECKIN,
+        context: 'check_in',
       });
-      if (xpError) console.warn('XP increment failed (non-fatal)', xpError);
 
       setAlreadyCheckedIn(true);
-      setJustEarnedXP(!xpError);
+      setJustEarnedXP(xpAwarded);
       setShowSessionPrompt(true);
       fetchCheckIns();
       streaksService.updateOnActivity(user.id).catch(() => {});

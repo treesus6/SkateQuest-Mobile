@@ -37,12 +37,8 @@ import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { feedService } from '../lib/feedService';
-import { profilesService } from '../lib/profilesService';
-import {
-  SessionTimer,
-  saveSkateSessionToHealth,
-  estimateCalories,
-} from '../lib/healthService';
+import { awardXp } from '../lib/awardXp';
+import { SessionTimer, saveSkateSessionToHealth, estimateCalories } from '../lib/healthService';
 import { RootStackParamList } from '../types';
 
 // XP awarded per minute of skating (capped at 60 min = 120 XP per session)
@@ -140,19 +136,25 @@ export default function ActiveSessionScreen() {
     const durationMinutes = timerRef.current.getDurationMinutes();
 
     try {
-      // Award XP
+      // Award XP (side effect — session end continues even if XP fails)
       if (xpEarned > 0) {
-        await profilesService.incrementXp(user.id, xpEarned).catch(() => {});
+        await awardXp({
+          userId: user.id,
+          amount: xpEarned,
+          context: 'active_session',
+        });
       }
 
       // Log to activity feed
-      await feedService.create({
-        user_id: user.id,
-        activity_type: 'skate_session',
-        title: `Skated ${spotName} for ${durationMinutes} min`,
-        description: `${trickCount} tricks logged · ~${calories} cal burned`,
-        xp_earned: xpEarned,
-      }).catch(() => {});
+      await feedService
+        .create({
+          user_id: user.id,
+          activity_type: 'skate_session',
+          title: `Skated ${spotName} for ${durationMinutes} min`,
+          description: `${trickCount} tricks logged · ~${calories} cal burned`,
+          xp_earned: xpEarned,
+        })
+        .catch(() => {});
 
       // Sync to Apple Health / Google Fit
       const startTime = timerRef.current.getStartTime() || new Date();
@@ -299,7 +301,12 @@ export default function ActiveSessionScreen() {
       </ScrollView>
 
       {/* End Session Confirmation Modal */}
-      <Modal visible={showEndModal} transparent animationType="fade" onRequestClose={() => setShowEndModal(false)}>
+      <Modal
+        visible={showEndModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEndModal(false)}
+      >
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="bg-gray-800 rounded-3xl p-6 w-full">
             <Text className="text-white text-xl font-black text-center mb-1">End Session?</Text>
@@ -338,7 +345,12 @@ export default function ActiveSessionScreen() {
       </Modal>
 
       {/* Spotify Playlist Modal */}
-      <Modal visible={showPlaylistModal} transparent animationType="slide" onRequestClose={() => setShowPlaylistModal(false)}>
+      <Modal
+        visible={showPlaylistModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPlaylistModal(false)}
+      >
         <View className="flex-1 bg-black/60 justify-end">
           <View className="bg-gray-800 rounded-t-3xl p-6">
             <Text className="text-white text-xl font-black mb-1">Skate Playlists</Text>

@@ -369,6 +369,7 @@ jest.mock('./lib/supabase', () => ({
         list: jest.fn().mockResolvedValue({ data: [], error: null }),
       })),
     },
+    rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
   },
 }));
 
