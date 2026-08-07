@@ -72,10 +72,10 @@ function SkateQuestTabBar({ state, navigation }: any) {
         >
           <View style={[s.postMenu, { bottom: 80 + insets.bottom }]}>
             {POST_ACTIONS.map((action, i) => (
-              <Animated.View
-                key={i}
-                style={{ transform: [{ scale: scaleRefs[i] || new Animated.Value(1) }] }}
-              >
+<Animated.View
+  key={i}
+  style={{ transform: [{ scale: 1 }] }}
+>
                 <TouchableOpacity
                   style={[s.postAction, { borderColor: action.color + '60' }]}
                   onPress={() => {
