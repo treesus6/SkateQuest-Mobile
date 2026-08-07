@@ -42,6 +42,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
   const TAB_CONFIG = [
     { icon: '🏠', label: 'Home', name: 'index' },
     { icon: '🗺', label: 'Map', name: 'map' },
+    { icon: null, label: '', name: 'spacer', isSpacer: true },
     { icon: null, label: '', name: 'POST', isPost: true },
     { icon: '⚡', label: 'Quests', name: 'quests' },
     { icon: '👥', label: 'Crew', name: 'crew' },
@@ -59,6 +60,8 @@ function SkateQuestTabBar({ state, navigation }: any) {
     <>
       {postOpen && (
         <TouchableOpacity
+          accessible={false}
+          importantForAccessibility="no"
           style={s.overlay}
           activeOpacity={1}
           onPress={() => {
@@ -72,10 +75,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
         >
           <View style={[s.postMenu, { bottom: 80 + insets.bottom }]}>
             {POST_ACTIONS.map((action, i) => (
-<Animated.View
-  key={i}
-  style={{ transform: [{ scale: 1 }] }}
->
+              <Animated.View key={i} style={{ transform: [{ scale: 1 }] }}>
                 <TouchableOpacity
                   style={[s.postAction, { borderColor: action.color + '60' }]}
                   onPress={() => {
@@ -101,11 +101,18 @@ function SkateQuestTabBar({ state, navigation }: any) {
         <View style={s.border} />
         <View style={s.row}>
           {TAB_CONFIG.map(tab => {
+            if (tab.isSpacer) {
+              return <View key={tab.name} style={s.tab} accessible={false} />;
+            }
+
             if (tab.isPost) {
               return (
                 <View key="post" style={s.postWrap}>
                   <Animated.View style={{ transform: [{ scale: postScale }] }}>
                     <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Create post"
+                      accessibilityState={{ expanded: postOpen }}
                       onPress={handlePostPress}
                       style={s.postBtn}
                       activeOpacity={0.9}
