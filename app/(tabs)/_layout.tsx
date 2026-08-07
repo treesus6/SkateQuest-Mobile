@@ -64,6 +64,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
           importantForAccessibility="no"
           style={s.overlay}
           activeOpacity={1}
+          accessible={false}
           onPress={() => {
             setPostOpen(false);
             Animated.timing(postRotate, {
