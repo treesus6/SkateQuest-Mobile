@@ -39,7 +39,7 @@ Husky (`pre-commit`, `pre-push`, `post-checkout`, `post-commit`, `post-merge`) +
 
 ## Architecture: routes are thin re-exports of `screens/`
 
-Every route file under `app/(screens)/*.tsx` and `app/(tabs)/*.tsx` is a **one-line re-export**, not a real screen implementation:
+Every route file under `app/(screens)/*.tsx` and `app/(tabs)/*.tsx` (excluding each group's `_layout.tsx`, which defines the actual Stack/Tabs navigator) is a **one-line re-export**, not a real screen implementation:
 
 ```tsx
 // app/(screens)/achievements.tsx
@@ -85,7 +85,7 @@ const { id } = useLocalSearchParams<{ id: string }>();
 This app does **not** use TanStack Query / React Query. Data access follows this pattern instead:
 
 1. **`lib/<feature>Service.ts`** — one file per domain (e.g. `spotsService.ts`, `crewsService.ts`, `achievementsService.ts`, `challengesService.ts`) wraps `supabase.from(...)` calls and returns `{ data, error }`.
-2. **`hooks/useSupabaseQuery.ts`** — generic hook that wraps a service call with in-memory caching (TTL), optional persisted caching (`lib/persistentCache.ts`, stale-while-revalidate), and exponential-backoff retries (skips retry on 4xx). Screens call it directly:
+2. **`hooks/useSupabaseQuery.ts`** — generic hook that wraps a service call with in-memory caching (TTL), optional persisted caching (`lib/persistentCache.ts`, stale-while-revalidate), and exponential-backoff retries (skips retry when the Supabase error's `code` starts with `'4'` — a Postgres/PostgREST error code like `42501`, not an HTTP status). Screens call it directly:
    ```tsx
    const { data, loading, error, refetch } = useSupabaseQuery(
      () => spotsService.getNearby(lat, lng),
@@ -106,7 +106,7 @@ This app does **not** use TanStack Query / React Query. Data access follows this
 - `EXPO_PUBLIC_SENTRY_DSN`
 - `EXPO_TOKEN` — EAS robot token (CI)
 - `GOOGLE_SERVICE_ACCOUNT_KEY` — written to `./google-service-account.json` for EAS/Play Store submission
-- `EXPO_PUBLIC_POSTHOG_API_KEY` / `EXPO_PUBLIC_POSTHOG_HOST` — analytics (optional)
+- `EXPO_PUBLIC_POSTHOG_KEY` — analytics (optional); read by `app.config.js` into `extra.posthogKey` and consumed by `lib/analytics.ts` (PostHog host is hardcoded there, not configurable via env). Note: `lib/envValidation.ts` and `.env.example` instead reference `EXPO_PUBLIC_POSTHOG_API_KEY`/`EXPO_PUBLIC_POSTHOG_HOST` — those aren't read anywhere at runtime; this is a pre-existing naming mismatch in the codebase, not a typo in this doc.
 
 > **IMPORTANT**: In EAS production builds, `process.env.EXPO_PUBLIC_*` is NOT available at runtime.
 > Always read runtime config from `Constants.expoConfig?.extra?.keyName` (set in `app.config.js` `extra{}`).
@@ -180,7 +180,7 @@ const token = await getExpoPushTokenAsync({ projectId: Constants.expoConfig.extr
 ---
 
 ## Database (Supabase — hreeuqdgrwvnxquxohod)
-Key tables: `skateparks`/`skate_spots` · `profiles` · `skate_shops` · `shop_members` · `user_crews` · `city_war_stats` · `daily_tricks` · `blocked_users` (see `supabase/migrations/` for the full, ordered schema history — 20+ migrations covering gamification, messaging, moderation, seasonal events, and a security-hardening pass).
+Key tables: `skateparks`/`skate_spots` · `profiles` · `skate_shops` · `shop_members` · `user_crews` · `city_war_stats` · `daily_tricks` · `blocked_users` (see `supabase/migrations/` for the full, ordered schema history — covering gamification, messaging, moderation, seasonal events, and a security-hardening pass).
 **All new tables must have RLS enabled + policies.**
 `spatial_ref_sys` — run `ALTER TABLE public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;` in the Supabase SQL editor.
 
