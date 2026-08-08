@@ -1,5 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Logger } from './logger';
 
 /**
@@ -163,21 +164,21 @@ export async function optimizeVideo(uri: string): Promise<{ uri: string; fileSiz
 /**
  * Generate video thumbnail (extract first frame)
  */
-export async function generateVideoThumbnail(videoUri: string): Promise<string> {
+/**
+ * Generate a thumbnail image for a video.
+ * Never throws — returns null on failure so callers (upload/content flows)
+ * can safely fall back to a placeholder instead of crashing.
+ */
+export async function generateVideoThumbnail(
+  videoUri: string,
+  timeMs: number = 1000
+): Promise<string | null> {
   try {
-    // This requires expo-video-thumbnails or similar
-    // For now, return a placeholder
-    Logger.info('Video thumbnail generation', { videoUri });
-
-    // In production, use:
-    // import { getThumbnailAsync } from 'expo-video-thumbnails';
-    // const { uri } = await getThumbnailAsync(videoUri, { time: 1000 });
-    // return uri;
-
-    throw new Error('Video thumbnail generation not implemented - requires expo-video-thumbnails');
+    const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, { time: timeMs });
+    return uri;
   } catch (error) {
     Logger.error('Video thumbnail generation failed', error);
-    throw error;
+    return null;
   }
 }
 
