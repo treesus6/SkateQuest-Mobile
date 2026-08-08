@@ -22,6 +22,26 @@ updates:
       supabase:
         patterns:
           - "@supabase/*"
+    ignore:
+      # @babel/core v8 bump caused 4 days of broken EAS builds — never auto-PR majors again
+      - dependency-name: "@babel/core"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-router"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@rnmapbox/maps"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-reanimated"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-worklets"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # Keep GitHub Actions up to date
   - package-ecosystem: "github-actions"
