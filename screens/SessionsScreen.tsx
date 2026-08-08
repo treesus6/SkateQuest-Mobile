@@ -33,6 +33,17 @@ interface Session {
   is_attending: boolean;
 }
 
+interface RawSession {
+  id: string;
+  title: string;
+  spot_id: string | null;
+  scheduled_time: string;
+  description: string | null;
+  creator_id: string;
+  max_participants: number | null;
+  participants: string[] | null;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   upcoming: '#6B4CE6',
   live: '#10B981',
@@ -103,7 +114,7 @@ export default function SessionsScreen() {
       const { data: rawSessions, error: sessionsError } = await supabase
         .from('skate_sessions')
         .select(
-          'id, title, spot_id, scheduled_time, description, creator_id, max_participants, status'
+          'id, title, spot_id, scheduled_time, description, creator_id, max_participants, participants'
         )
         .order('scheduled_time', { ascending: true });
 
@@ -113,17 +124,12 @@ export default function SessionsScreen() {
         return;
       }
 
-      const creatorIds = [...new Set(rawSessions.map((s: any) => s.creator_id).filter(Boolean))];
-      const spotIds = [...new Set(rawSessions.map((s: any) => s.spot_id).filter(Boolean))];
-      const [attendeesRes, myRsvpsRes, profilesRes, spotsRes] = await Promise.all([
-        supabase
-          .from('session_attendees')
-          .select('session_id')
-          .in(
-            'session_id',
-            rawSessions.map(s => s.id)
-          ),
-        supabase.from('session_attendees').select('session_id').eq('user_id', user.id),
+      const typedSessions = rawSessions as RawSession[];
+      const creatorIds = [...new Set(typedSessions.map(s => s.creator_id).filter(Boolean))];
+      const spotIds = [
+        ...new Set(typedSessions.map(s => s.spot_id).filter((v): v is string => !!v)),
+      ];
+      const [profilesRes, spotsRes] = await Promise.all([
         creatorIds.length
           ? supabase.from('profiles').select('id, username').in('id', creatorIds)
           : Promise.resolve({ data: [], error: null }),
@@ -132,20 +138,14 @@ export default function SessionsScreen() {
           : Promise.resolve({ data: [], error: null }),
       ]);
 
-      if (attendeesRes.error) throw attendeesRes.error;
-      if (myRsvpsRes.error) throw myRsvpsRes.error;
-
-      const attendeeMap: Record<string, number> = {};
-      (attendeesRes.data ?? []).forEach(({ session_id }: { session_id: string }) => {
-        attendeeMap[session_id] = (attendeeMap[session_id] ?? 0) + 1;
-      });
-      const mySessionIds = new Set(
-        (myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id)
+      const profileMap = new Map(
+        (profilesRes.data ?? []).map((p: { id: string; username: string }) => [p.id, p.username])
       );
-      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p.username]));
-      const spotMap = new Map((spotsRes.data ?? []).map((s: any) => [s.id, s.name]));
+      const spotMap = new Map(
+        (spotsRes.data ?? []).map((s: { id: string; name: string }) => [s.id, s.name])
+      );
 
-      const mapped: Session[] = rawSessions.map((s: any) => ({
+      const mapped: Session[] = typedSessions.map(s => ({
         id: s.id,
         title: s.title,
         spot_id: s.spot_id,
@@ -154,10 +154,10 @@ export default function SessionsScreen() {
         description: s.description,
         created_by: s.creator_id,
         creator_username: profileMap.get(s.creator_id) ?? null,
-        attendee_count: attendeeMap[s.id] ?? 0,
+        attendee_count: s.participants?.length ?? 0,
         max_attendees: s.max_participants,
         status: getStatus(s.scheduled_time),
-        is_attending: mySessionIds.has(s.id),
+        is_attending: (s.participants ?? []).includes(user.id),
       }));
 
       setSessions(mapped);
@@ -207,17 +207,31 @@ export default function SessionsScreen() {
     );
 
     try {
-      const result = wasAttending
-        ? await supabase
-            .from('session_attendees')
-            .delete()
-            .eq('session_id', session.id)
-            .eq('user_id', user.id)
-        : await supabase
-            .from('session_attendees')
-            .insert({ session_id: session.id, user_id: user.id });
-
-      if (result.error) throw result.error;
+      const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_session_rsvp', {
+        p_session_id: session.id,
+        p_user_id: user.id,
+      });
+      const result = rpcData as {
+        error?: string;
+        is_attending?: boolean;
+        attendee_count?: number;
+      } | null;
+      if (rpcError || result?.error) {
+        throw new Error(result?.error ?? rpcError?.message ?? 'RSVP failed');
+      }
+      if (result) {
+        setSessions(prev =>
+          prev.map(s =>
+            s.id === session.id
+              ? {
+                  ...s,
+                  is_attending: !!result.is_attending,
+                  attendee_count: result.attendee_count ?? s.attendee_count,
+                }
+              : s
+          )
+        );
+      }
     } catch (err) {
       console.error('toggleRSVP error', err);
       setSessions(prev =>
@@ -231,7 +245,12 @@ export default function SessionsScreen() {
             : s
         )
       );
-      Alert.alert('RSVP failed', 'Your RSVP was not saved. Please try again.');
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'full') {
+        Alert.alert('Full', 'This session is now full.');
+      } else {
+        Alert.alert('RSVP failed', 'Your RSVP was not saved. Please try again.');
+      }
     }
   };
 
@@ -273,11 +292,11 @@ export default function SessionsScreen() {
           .limit(1)
           .maybeSingle();
         if (spotError) throw spotError;
-        if (!matchedSpot) throw new Error(`No skate spot found named “${spotName.trim()}”.`);
+        if (!matchedSpot) throw new Error(`No skate spot found named "${spotName.trim()}".`);
         resolvedSpotId = matchedSpot.id;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('skate_sessions')
         .insert({
           title: title.trim(),
@@ -286,15 +305,12 @@ export default function SessionsScreen() {
           description: description.trim() || null,
           creator_id: user.id,
           max_participants: parsedMaxAttendees,
+          participants: [user.id],
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      const { error: attendeeError } = await supabase
-        .from('session_attendees')
-        .insert({ session_id: data.id, user_id: user.id });
 
       setCreateVisible(false);
       setTitle('');
@@ -302,16 +318,9 @@ export default function SessionsScreen() {
       setDescription('');
       setMaxAttendees('');
       await loadSessions();
-
-      if (attendeeError) {
-        console.error('session creator RSVP failed', attendeeError);
-        Alert.alert(
-          'Session created',
-          'The session was created, but your RSVP was not added. Open the session and tap “I’m In” to retry.'
-        );
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Could not create session.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not create session.';
+      Alert.alert('Error', msg);
     } finally {
       setCreating(false);
     }
