@@ -51,6 +51,8 @@ import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 Mapbox.setAccessToken(
   (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+  (Constants.expoConfig?.extra?.mapboxToken as string) ??
+  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
   process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
   ''
 );

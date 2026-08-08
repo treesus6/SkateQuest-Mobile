@@ -29,6 +29,8 @@ export default function MapDirections({ from, to, onClose }: MapDirectionsProps)
       setError(null);
       const accessToken =
         (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+        (Constants.expoConfig?.extra?.mapboxToken as string) ??
+        process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
         process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${from[0]},${from[1]};${to[0]},${to[1]}?geometries=geojson&access_token=${accessToken}`;
 

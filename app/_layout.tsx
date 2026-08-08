@@ -33,9 +33,14 @@ const sentryDsn =
   (Constants.expoConfig?.extra?.sentryDsn as string | undefined) ??
   process.env.EXPO_PUBLIC_SENTRY_DSN;
 
+const appEnvironment =
+  (Constants.expoConfig?.extra?.env as string | undefined) ??
+  process.env.EXPO_PUBLIC_ENV ??
+  'development';
+
 Sentry.init({
   dsn: sentryDsn,
-  environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
+  environment: appEnvironment,
   enabled: !__DEV__,
   tracesSampleRate: __DEV__ ? 0 : 0.2,
   attachStacktrace: true,
@@ -139,7 +144,7 @@ function RootLayout() {
     };
 
     analytics.track('app_launched', {
-      environment: process.env.EXPO_PUBLIC_ENV ?? 'development',
+      environment: appEnvironment,
     });
 
     setupGlobalErrorHandler();

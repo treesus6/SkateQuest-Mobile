@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Text, ScrollView, StyleSheet } from 'react-native';
+import Constants from 'expo-constants';
 
 export default function DebugScreen() {
   const [logs, setLogs] = useState<string[]>([]);
 
   useEffect(() => {
+    const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
+
     const checks = [
-      `SUPABASE_URL: ${process.env.EXPO_PUBLIC_SUPABASE_URL ? 'OK' : 'MISSING'}`,
-      `SUPABASE_KEY: ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'OK' : 'MISSING'}`,
-      `SENTRY_DSN: ${process.env.EXPO_PUBLIC_SENTRY_DSN ? 'OK' : 'MISSING'}`,
-      `MAPBOX_TOKEN: ${process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ? 'OK' : 'MISSING'}`,
+      `SUPABASE_URL: ${(extra.supabaseUrl as string) ? 'OK' : 'MISSING'}`,
+      `SUPABASE_KEY: ${(extra.supabaseAnonKey as string) ? 'OK' : 'MISSING'}`,
+      `SENTRY_DSN: ${(extra.sentryDsn as string) ? 'OK' : 'MISSING'}`,
+      `MAPBOX_TOKEN: ${((extra.mapboxAccessToken as string) || (extra.mapboxToken as string)) ? 'OK' : 'MISSING'}`,
     ];
     setLogs(checks);
   }, []);

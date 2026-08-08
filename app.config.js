@@ -1,3 +1,13 @@
+const mapboxPublicToken =
+  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
+  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+  '';
+
+const posthogPublicKey =
+  process.env.EXPO_PUBLIC_POSTHOG_KEY ??
+  process.env.EXPO_PUBLIC_POSTHOG_API_KEY ??
+  '';
+
 module.exports = {
   expo: {
     name: 'SkateQuest',
@@ -115,9 +125,11 @@ module.exports = {
     },
 
     extra: {
-      posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
+      env: process.env.EXPO_PUBLIC_ENV ?? 'development',
+      posthogKey: posthogPublicKey,
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
-      mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
+      mapboxAccessToken: mapboxPublicToken,
+      mapboxToken: mapboxPublicToken,
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
       eas: {

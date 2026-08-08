@@ -11,43 +11,30 @@ permissions:
 
 jobs:
   lint-and-typecheck:
-    name: Lint & Typecheck
+    name: Lint, Typecheck, Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
-      - name: Setup Node 18
-        uses: actions/setup-node@v7
+      - name: Setup Node 20.19.4
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.19.4'
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          # Remove rnmapbox (not available on public npm)
-          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.dependencies['@rnmapbox/maps'];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
+        run: npm ci
 
-          # Clean reproducible install
-          npm ci
-
-          # Stub rnmapbox so TS doesn't explode
-          mkdir -p node_modules/@rnmapbox/maps
-          echo '{"name":"@rnmapbox/maps","version":"11.20.1","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
-          echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
-          printf 'declare namespace MapboxGL {\n  type Camera = any;\n  type MapView = any;\n  const StyleURL: { [key: string]: string };\n  const MapView: any;\n  const Camera: any;\n  const UserLocation: any;\n  const ShapeSource: any;\n  const CircleLayer: any;\n  const SymbolLayer: any;\n  const LineLayer: any;\n  const PointAnnotation: any;\n  const Images: any;\n  const MarkerView: any;\n  const Callout: any;\n  function setAccessToken(token: string | undefined): void;\n}\nexport = MapboxGL;\n' > node_modules/@rnmapbox/maps/index.d.ts
+      - name: Expo doctor
+        run: npx expo-doctor
 
       - name: TypeScript typecheck
-        run: |
-          npx tsc --noEmit 2>&1 \
-            | grep -v node_modules \
-            | grep -v __tests__ \
-            | grep -v ".d.ts" \
-            | tee /tmp/ts-errors.txt
-          if grep -q "error TS" /tmp/ts-errors.txt; then
-            echo "TypeScript errors found!"
-            exit 1
-          fi
+        run: npx tsc --noEmit
 
       - name: ESLint
-        run: npx eslint . --max-warnings=0
+        run: npm run lint
+
+      - name: Tests
+        run: npm test -- --ci --passWithNoTests

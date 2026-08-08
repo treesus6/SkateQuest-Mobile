@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Logger } from './logger';
 
 export interface EnvConfig {
@@ -10,14 +11,30 @@ export interface EnvConfig {
   ENV?: 'development' | 'staging' | 'production';
 }
 
+const EXTRA = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
+
 const RAW_ENV = {
-  EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
-  EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN,
-  EXPO_PUBLIC_POSTHOG_API_KEY: process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
+  EXPO_PUBLIC_SUPABASE_URL:
+    (typeof EXTRA.supabaseUrl === 'string' ? EXTRA.supabaseUrl : undefined) ??
+    process.env.EXPO_PUBLIC_SUPABASE_URL,
+  EXPO_PUBLIC_SUPABASE_ANON_KEY:
+    (typeof EXTRA.supabaseAnonKey === 'string' ? EXTRA.supabaseAnonKey : undefined) ??
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  EXPO_PUBLIC_SENTRY_DSN:
+    (typeof EXTRA.sentryDsn === 'string' ? EXTRA.sentryDsn : undefined) ??
+    process.env.EXPO_PUBLIC_SENTRY_DSN,
+  EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN:
+    (typeof EXTRA.mapboxAccessToken === 'string' ? EXTRA.mapboxAccessToken : undefined) ??
+    (typeof EXTRA.mapboxToken === 'string' ? EXTRA.mapboxToken : undefined) ??
+    process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
+    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN,
+  EXPO_PUBLIC_POSTHOG_API_KEY:
+    (typeof EXTRA.posthogKey === 'string' ? EXTRA.posthogKey : undefined) ??
+    process.env.EXPO_PUBLIC_POSTHOG_KEY ??
+    process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
   EXPO_PUBLIC_POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST,
-  EXPO_PUBLIC_ENV: process.env.EXPO_PUBLIC_ENV,
+  EXPO_PUBLIC_ENV:
+    (typeof EXTRA.env === 'string' ? EXTRA.env : undefined) ?? process.env.EXPO_PUBLIC_ENV,
 } as const;
 
 type RequiredEnvKey =

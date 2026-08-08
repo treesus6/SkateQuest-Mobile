@@ -95,7 +95,7 @@ Play the classic SKATE game with other users:
 **Screens:**
 
 - `SkateGameScreen.tsx` - Game list & challenges
-- `GameDetailScreen.tsx` - Individual game view (to be added)
+- `GameDetailScreen.tsx` - Individual game view
 
 ---
 
