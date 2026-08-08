@@ -83,6 +83,20 @@ export const skateGameService = {
     }
   },
 
+  async judgeTurn(turnId: string, matched: boolean) {
+    try {
+      return await supabase
+        .from('skate_game_turns')
+        .update({ matched })
+        .eq('id', turnId)
+        .select()
+        .single();
+    } catch (error) {
+      Logger.error('skateGameService.judgeTurn failed', error);
+      throw new ServiceError('Failed to judge turn', 'SKATE_GAME_JUDGE_TURN_FAILED', error);
+    }
+  },
+
   async updateGame(gameId: string, updates: Record<string, any>) {
     try {
       return await supabase.from('skate_games').update(updates).eq('id', gameId).select().single();
