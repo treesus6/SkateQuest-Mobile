@@ -74,6 +74,7 @@ export const skateGameService = {
     trick_name: string;
     media_id?: string;
     turn_number: number;
+    matched?: boolean;
   }) {
     try {
       return await supabase.from('skate_game_turns').insert([turn]).select().single();

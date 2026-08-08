@@ -49,40 +49,75 @@ const GameDetailScreen = memo(({ route }: any) => {
     return display;
   };
 
+  const finishTurn = async (landed: boolean, mediaId?: string) => {
+    if (!user || !game || !opponent?.id) return;
+
+    const turnNumber = (turns?.length || 0) + 1;
+    await skateGameService.submitTurn({
+      game_id: gameId,
+      player_id: user.id,
+      trick_name: landed ? 'Trick' : 'Missed attempt',
+      media_id: mediaId,
+      turn_number: turnNumber,
+      matched: landed,
+    });
+
+    if (landed) {
+      await skateGameService.updateGame(gameId, { current_turn: opponent.id });
+      Alert.alert('Landed', 'Trick recorded. Your opponent is up.');
+    } else {
+      const nextLetter = 'SKATE'[myLetters.length];
+      const updatedLetters = nextLetter ? `${myLetters}${nextLetter}` : myLetters;
+      const completed = updatedLetters.length >= 5;
+      const updates: Record<string, any> = {
+        current_turn: completed ? null : opponent.id,
+        [isChallenger ? 'challenger_letters' : 'opponent_letters']: updatedLetters,
+      };
+
+      if (completed) {
+        updates.status = 'completed';
+        updates.winner_id = opponent.id;
+        updates.completed_at = new Date().toISOString();
+      }
+
+      await skateGameService.updateGame(gameId, updates);
+      Alert.alert(
+        completed ? 'Game Over' : `Letter: ${nextLetter}`,
+        completed
+          ? `${opponent.username || 'Your opponent'} wins this game of SKATE.`
+          : 'Missed attempt recorded. Turn passed.'
+      );
+    }
+
+    await Promise.all([refetchGame(), refetchTurns()]);
+  };
+
   const recordTrick = async () => {
     if (!user || !game) return;
 
     try {
       setUploading(true);
       const result = await pickVideo();
-      if (!result) {
-        setUploading(false);
-        return;
-      }
+      if (!result) return;
 
       const videoResult = await uploadVideo(result.uri, 'game_videos', user.id);
       const media = await saveMediaToDatabase(user.id, videoResult, {
         caption: `SKATE Game vs ${opponent?.username}`,
       });
 
-      await skateGameService.submitTurn({
-        game_id: gameId,
-        player_id: user.id,
-        trick_name: 'Trick',
-        media_id: media.id,
-        turn_number: (turns?.length || 0) + 1,
-      });
+      await finishTurn(true, media.id);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
-      // Pass the turn to the opponent — previously nothing ever updated
-      // current_turn after a submission, so the game got stuck forever
-      // on whoever moved first.
-      if (opponent?.id) {
-        await skateGameService.updateGame(gameId, { current_turn: opponent.id });
-      }
-
-      Alert.alert('Success', 'Trick recorded! Waiting for opponent response.');
-      refetchGame();
-      refetchTurns();
+  const recordMiss = async () => {
+    if (!user || !game) return;
+    try {
+      setUploading(true);
+      await finishTurn(false);
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
@@ -151,15 +186,25 @@ const GameDetailScreen = memo(({ route }: any) => {
 
       {/* Turn Action */}
       {game.status === 'active' && isMyTurn && (
-        <View className="mx-4 mt-4">
+        <View className="mx-4 mt-4 gap-2">
           <Button
-            title={uploading ? 'Uploading...' : 'Record Your Trick'}
+            title={uploading ? 'Saving...' : 'Landed — Upload Trick'}
             onPress={recordTrick}
             variant="primary"
             size="lg"
             className="bg-brand-green"
             disabled={uploading}
           />
+          <Button
+            title="Missed — Take a Letter"
+            onPress={recordMiss}
+            variant="secondary"
+            size="lg"
+            disabled={uploading}
+          />
+          <Text className="text-xs text-gray-400 text-center">
+            Self-report the result of your attempt. Five misses spells SKATE and ends the game.
+          </Text>
         </View>
       )}
 
@@ -186,7 +231,11 @@ const GameDetailScreen = memo(({ route }: any) => {
                 <Text className="text-base font-bold text-brand-terracotta">
                   Turn {turn.turn_number} - {turn.player?.username || 'Player'}
                 </Text>
-                <Text className="text-sm text-gray-400">{turn.trick_name}</Text>
+                <Text
+                  className={`text-sm font-semibold ${turn.matched === false ? 'text-red-500' : 'text-green-500'}`}
+                >
+                  {turn.matched === false ? 'MISS' : 'LANDED'}
+                </Text>
               </View>
               {turn.media?.url && (
                 <Video
