@@ -11,9 +11,7 @@ import LevelUpModal from '../../components/LevelUpModal';
 function SkateQuestTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const scaleRefs = React.useRef(
-    state.routes.map(() => new Animated.Value(1))
-  ).current;
+  const scaleRefs = React.useRef(state.routes.map(() => new Animated.Value(1))).current;
   const postScale = React.useRef(new Animated.Value(1)).current;
   const postRotate = React.useRef(new Animated.Value(0)).current;
   const [postOpen, setPostOpen] = React.useState(false);
@@ -42,18 +40,19 @@ function SkateQuestTabBar({ state, navigation }: any) {
   });
 
   const TAB_CONFIG = [
-    { icon: '🏠', label: 'Home',    name: 'index' },
-    { icon: '🗺',  label: 'Map',    name: 'map' },
-    { icon: null,  label: '',       name: 'POST', isPost: true },
-    { icon: '⚡',  label: 'Quests', name: 'quests' },
-    { icon: '👤',  label: 'Me',     name: 'profile' },
+    { icon: '🏠', label: 'Home', name: 'index' },
+    { icon: '🗺', label: 'Map', name: 'map' },
+    { icon: null, label: '', name: 'POST', isPost: true },
+    { icon: '⚡', label: 'Quests', name: 'quests' },
+    { icon: '👥', label: 'Crew', name: 'crew' },
+    { icon: '👤', label: 'Me', name: 'profile' },
   ];
 
   const POST_ACTIONS = [
-    { icon: '🎥', label: 'Post Clip',  screen: '/(screens)/upload-media', color: '#d2673d' },
-    { icon: '📍', label: 'Check In',   screen: '/(screens)/live-check-in', color: '#4ade80' },
-    { icon: '🛹', label: 'Log Trick',  screen: '/(screens)/trick-tracker', color: '#a855f7' },
-    { icon: '🤖', label: 'AI Coach',   screen: '/(screens)/ai-coach',      color: '#3b82f6' },
+    { icon: '🎥', label: 'Post Clip', screen: '/(screens)/upload-media', color: '#d2673d' },
+    { icon: '📍', label: 'Check In', screen: '/(screens)/live-check-in', color: '#4ade80' },
+    { icon: '🛹', label: 'Log Trick', screen: '/(screens)/trick-tracker', color: '#a855f7' },
+    { icon: '🤖', label: 'AI Coach', screen: '/(screens)/ai-coach', color: '#3b82f6' },
   ];
 
   return (
@@ -64,19 +63,34 @@ function SkateQuestTabBar({ state, navigation }: any) {
           activeOpacity={1}
           onPress={() => {
             setPostOpen(false);
-            Animated.timing(postRotate, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+            Animated.timing(postRotate, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }).start();
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Close post menu"
         >
           <View style={[s.postMenu, { bottom: 80 + insets.bottom }]}>
             {POST_ACTIONS.map((action, i) => (
-              <Animated.View key={i} style={{ transform: [{ scale: scaleRefs[i] || new Animated.Value(1) }] }}>
+              <Animated.View
+                key={action.screen}
+                style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}
+              >
                 <TouchableOpacity
                   style={[s.postAction, { borderColor: action.color + '60' }]}
                   onPress={() => {
                     setPostOpen(false);
-                    Animated.timing(postRotate, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+                    Animated.timing(postRotate, {
+                      toValue: 0,
+                      duration: 200,
+                      useNativeDriver: true,
+                    }).start();
                     router.push(action.screen as any);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
                 >
                   <Text style={s.postActionIcon}>{action.icon}</Text>
                   <Text style={[s.postActionLabel, { color: action.color }]}>{action.label}</Text>
@@ -90,12 +104,19 @@ function SkateQuestTabBar({ state, navigation }: any) {
       <View style={[s.container, { paddingBottom: Math.max(insets.bottom - 4, 4) }]}>
         <View style={s.border} />
         <View style={s.row}>
-          {TAB_CONFIG.map((tab, i) => {
+          {TAB_CONFIG.map(tab => {
             if (tab.isPost) {
               return (
                 <View key="post" style={s.postWrap}>
                   <Animated.View style={{ transform: [{ scale: postScale }] }}>
-                    <TouchableOpacity onPress={handlePostPress} style={s.postBtn} activeOpacity={0.9}>
+                    <TouchableOpacity
+                      onPress={handlePostPress}
+                      style={s.postBtn}
+                      activeOpacity={0.9}
+                      accessibilityRole="button"
+                      accessibilityLabel={postOpen ? 'Close post menu' : 'Open post menu'}
+                      accessibilityState={{ expanded: postOpen }}
+                    >
                       <Animated.Text style={[s.postPlus, { transform: [{ rotate: spin }] }]}>+</Animated.Text>
                     </TouchableOpacity>
                   </Animated.View>
@@ -104,12 +125,14 @@ function SkateQuestTabBar({ state, navigation }: any) {
             }
 
             const routeIdx = state.routes.findIndex((r: any) => r.name === tab.name);
+            if (routeIdx < 0 || !scaleRefs[routeIdx]) return null;
+
+            const scale = scaleRefs[routeIdx];
             const isFocused = state.index === routeIdx;
 
             const onPress = () => {
-              if (routeIdx < 0) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              bounce(scaleRefs[i]);
+              bounce(scale);
               const event = navigation.emit({
                 type: 'tabPress',
                 target: state.routes[routeIdx]?.key,
@@ -121,8 +144,15 @@ function SkateQuestTabBar({ state, navigation }: any) {
             };
 
             return (
-              <Animated.View key={tab.name} style={[s.tab, { transform: [{ scale: scaleRefs[i] }] }]}>
-                <TouchableOpacity onPress={onPress} style={s.tabInner} activeOpacity={0.7}>
+              <Animated.View key={tab.name} style={[s.tab, { transform: [{ scale }] }]}>
+                <TouchableOpacity
+                  onPress={onPress}
+                  style={s.tabInner}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={tab.label}
+                  accessibilityState={{ selected: isFocused }}
+                >
                   <View style={[s.iconWrap, isFocused && s.iconWrapActive]}>
                     <Text style={[s.tabIcon, isFocused && s.tabIconActive]}>{tab.icon}</Text>
                   </View>
@@ -162,10 +192,7 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
 export default function TabsLayout() {
   return (
     <LevelUpWrapper>
-      <Tabs
-        tabBar={(props) => <SkateQuestTabBar {...props} />}
-        screenOptions={{ headerShown: false }}
-      >
+      <Tabs tabBar={props => <SkateQuestTabBar {...props} />} screenOptions={{ headerShown: false }}>
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
         <Tabs.Screen name="map" options={{ title: 'Map' }} />
         <Tabs.Screen name="quests" options={{ title: 'Quests' }} />
@@ -177,23 +204,77 @@ export default function TabsLayout() {
 }
 
 const s = StyleSheet.create({
-  container: { backgroundColor: '#080B14', borderTopWidth: 0, paddingTop: 8, position: 'relative' },
-  border: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'transparent', borderTopWidth: 1, borderColor: 'rgba(210,103,61,0.15)' },
+  container: {
+    backgroundColor: '#080B14',
+    borderTopWidth: 0,
+    paddingTop: 8,
+    position: 'relative',
+  },
+  border: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderColor: 'rgba(210,103,61,0.15)',
+  },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   tab: { flex: 1 },
   tabInner: { alignItems: 'center', paddingVertical: 4, gap: 3 },
-  iconWrap: { width: 36, height: 28, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
+  iconWrap: {
+    width: 36,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+  },
   iconWrapActive: { backgroundColor: 'rgba(210,103,61,0.15)' },
   tabIcon: { fontSize: 20, opacity: 0.5 },
   tabIconActive: { opacity: 1 },
   tabLabel: { fontSize: 10, color: '#4B5563', fontWeight: '600', letterSpacing: 0.3 },
   tabLabelActive: { color: '#d2673d' },
   postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -22 },
-  postBtn: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#d2673d', justifyContent: 'center', alignItems: 'center', shadowColor: '#d2673d', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 12, borderWidth: 3, borderColor: '#080B14' },
+  postBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#d2673d',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#d2673d',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 3,
+    borderColor: '#080B14',
+  },
   postPlus: { color: 'white', fontSize: 32, fontWeight: '200', marginTop: -2, lineHeight: 36 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
-  postMenu: { position: 'absolute', right: 16, flexDirection: 'column', gap: 10, alignItems: 'flex-end' },
-  postAction: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#111827', borderRadius: 28, paddingVertical: 12, paddingHorizontal: 18, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+  postMenu: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'column',
+    gap: 10,
+    alignItems: 'flex-end',
+  },
+  postAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#111827',
+    borderRadius: 28,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   postActionIcon: { fontSize: 20 },
   postActionLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
 });
