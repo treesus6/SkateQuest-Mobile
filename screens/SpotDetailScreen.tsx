@@ -15,7 +15,15 @@ import {
   Platform,
 } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { Camera, MapPin, Star, Target, AlertTriangle, CalendarDays, Users } from 'lucide-react-native';
+import {
+  Camera,
+  MapPin,
+  Star,
+  Target,
+  AlertTriangle,
+  CalendarDays,
+  Users,
+} from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useMutationQueueStore } from '../stores/useMutationQueueStore';
@@ -59,8 +67,7 @@ const SESSION_STATUS_LABELS: Record<string, string> = {
 interface SpotSession {
   id: string;
   title: string;
-  date: string;
-  time: string;
+  scheduled_time: string;
   creator_username: string | null;
   attendee_count: number;
   max_attendees: number | null;
@@ -120,26 +127,16 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     }
   };
 
-  const loadSpotSessions = async (spotName?: string) => {
+  const loadSpotSessions = async (_spotName?: string) => {
     if (!user?.id) return;
     setLoadingSessions(true);
     try {
-      const orParts = [`spot_id.eq.${spotId}`];
-      if (spotName) {
-        orParts.push(`spot_name.eq."${spotName.replace(/"/g, '')}"`);
-      }
-
       const { data: rawSessions } = await supabase
         .from('skate_sessions')
-        .select(`
-          id, title, spot_id, spot_name, date, time,
-          created_by, max_attendees,
-          profiles!skate_sessions_created_by_fkey(username)
-        `)
-        .or(orParts.join(','))
-        .gte('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: true })
-        .order('time', { ascending: true })
+        .select('id, title, spot_id, scheduled_time, creator_id, max_participants')
+        .eq('spot_id', spotId)
+        .gte('scheduled_time', new Date().toISOString())
+        .order('scheduled_time', { ascending: true })
         .limit(5);
 
       if (!rawSessions || rawSessions.length === 0) {
@@ -148,13 +145,17 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       }
 
       const sessionIds = rawSessions.map((s: any) => s.id);
-      const [attendeesRes, myRsvpsRes] = await Promise.all([
+      const creatorIds = [...new Set(rawSessions.map((s: any) => s.creator_id).filter(Boolean))];
+      const [attendeesRes, myRsvpsRes, profilesRes] = await Promise.all([
         supabase.from('session_attendees').select('session_id').in('session_id', sessionIds),
         supabase
           .from('session_attendees')
           .select('session_id')
           .eq('user_id', user.id)
           .in('session_id', sessionIds),
+        creatorIds.length
+          ? supabase.from('profiles').select('id, username').in('id', creatorIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       const attendeeMap: Record<string, number> = {};
@@ -164,17 +165,17 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       const mySessionIds = new Set(
         (myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id)
       );
+      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p.username]));
 
       setSessions(
         rawSessions.map((s: any) => ({
           id: s.id,
           title: s.title,
-          date: s.date,
-          time: s.time,
-          creator_username: s.profiles?.username ?? null,
+          scheduled_time: s.scheduled_time,
+          creator_username: profileMap.get(s.creator_id) ?? null,
           attendee_count: attendeeMap[s.id] ?? 0,
-          max_attendees: s.max_attendees,
-          status: getSessionStatus(s.date, s.time),
+          max_attendees: s.max_participants,
+          status: getSessionStatus(s.scheduled_time),
           is_attending: mySessionIds.has(s.id),
         }))
       );
@@ -196,9 +197,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           ? {
               ...s,
               is_attending: !session.is_attending,
-              attendee_count: session.is_attending
-                ? s.attendee_count - 1
-                : s.attendee_count + 1,
+              attendee_count: session.is_attending ? s.attendee_count - 1 : s.attendee_count + 1,
             }
           : s
       )
@@ -223,11 +222,10 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           if (error) throw error;
         }
       } else {
-        await enqueue(
-          session.is_attending ? 'delete' : 'create',
-          'session_attendees',
-          { session_id: session.id, user_id: user.id }
-        );
+        await enqueue(session.is_attending ? 'delete' : 'create', 'session_attendees', {
+          session_id: session.id,
+          user_id: user.id,
+        });
       }
     } catch {
       // Revert optimistic update on failure
@@ -286,11 +284,13 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     if (!user || !commentText.trim()) return;
     try {
       setSubmittingComment(true);
-      const { error } = await supabase.from('spot_comments').insert([{
-        spot_id: spotId,
-        user_id: user.id,
-        content: commentText.trim(),
-      }]);
+      const { error } = await supabase.from('spot_comments').insert([
+        {
+          spot_id: spotId,
+          user_id: user.id,
+          content: commentText.trim(),
+        },
+      ]);
       if (error) throw error;
       setCommentText('');
       loadSpotData();
@@ -567,17 +567,14 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           </Text>
         ) : (
           sessions.map(s => (
-            <View
-              key={s.id}
-              className="py-2.5 border-b border-gray-100 dark:border-gray-700"
-            >
+            <View key={s.id} className="py-2.5 border-b border-gray-100 dark:border-gray-700">
               <View className="flex-row items-start justify-between">
                 <View className="flex-1 mr-3">
                   <Text className="text-[15px] font-bold text-gray-800 dark:text-gray-100">
                     {s.title}
                   </Text>
                   <Text className="text-xs text-gray-400 mt-0.5">
-                    {formatSessionDate(s.date, s.time)}
+                    {formatSessionDate(s.scheduled_time)}
                   </Text>
                   <View className="flex-row items-center gap-2 mt-1">
                     <View
@@ -607,10 +604,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
                     disabled={rsvpingId === s.id}
                   >
                     {rsvpingId === s.id ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={s.is_attending ? '#fff' : '#6B4CE6'}
-                      />
+                      <ActivityIndicator size="small" color={s.is_attending ? '#fff' : '#6B4CE6'} />
                     ) : (
                       <Text
                         className={`text-xs font-bold ${s.is_attending ? 'text-white' : 'text-[#6B4CE6]'}`}
@@ -683,10 +677,11 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
                 onPress={submitComment}
                 disabled={submittingComment || !commentText.trim()}
               >
-                {submittingComment
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text className="text-white font-bold text-sm">Post</Text>
-                }
+                {submittingComment ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text className="text-white font-bold text-sm">Post</Text>
+                )}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
@@ -748,8 +743,8 @@ function getTimeAgo(dateString: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-function getSessionStatus(date: string, time: string): 'upcoming' | 'live' | 'ended' {
-  const sessionTime = new Date(`${date}T${time}`);
+function getSessionStatus(scheduledTime: string): 'upcoming' | 'live' | 'ended' {
+  const sessionTime = new Date(scheduledTime);
   const now = new Date();
   const diff = sessionTime.getTime() - now.getTime();
   if (diff > 2 * 60 * 60 * 1000) return 'upcoming';
@@ -757,8 +752,8 @@ function getSessionStatus(date: string, time: string): 'upcoming' | 'live' | 'en
   return 'ended';
 }
 
-function formatSessionDate(dateStr: string, timeStr: string): string {
-  const d = new Date(`${dateStr}T${timeStr}`);
+function formatSessionDate(scheduledTime: string): string {
+  const d = new Date(scheduledTime);
   return (
     d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
     ' · ' +

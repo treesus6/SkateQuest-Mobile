@@ -11,29 +11,19 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import {
-  CalendarDays,
-  MapPin,
-  Users,
-  Plus,
-  X,
-  CheckCircle,
-  Circle,
-} from 'lucide-react-native';
+import { CalendarDays, MapPin, Users, Plus, X, CheckCircle, Circle } from 'lucide-react-native';
 import { useRoute, RouteProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
 
-
 interface Session {
   id: string;
   title: string;
   spot_id: string | null;
   spot_name: string | null;
-  date: string;
-  time: string;
+  scheduled_time: string;
   description: string | null;
   created_by: string;
   creator_username: string | null;
@@ -60,15 +50,12 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function formatTime(timeStr: string): string {
-  const [h, m] = timeStr.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hour = h % 12 || 12;
-  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function getStatus(date: string, time: string): 'upcoming' | 'live' | 'ended' {
-  const sessionTime = new Date(`${date}T${time}`);
+function getStatus(scheduledTime: string): 'upcoming' | 'live' | 'ended' {
+  const sessionTime = new Date(scheduledTime);
   const now = new Date();
   const diff = sessionTime.getTime() - now.getTime();
   if (diff > 2 * 60 * 60 * 1000) return 'upcoming';
@@ -115,13 +102,10 @@ export default function SessionsScreen() {
     try {
       const { data: rawSessions, error: sessionsError } = await supabase
         .from('skate_sessions')
-        .select(`
-          id, title, spot_id, spot_name, date, time, description,
-          created_by, max_attendees,
-          profiles!skate_sessions_created_by_fkey(username)
-        `)
-        .order('date', { ascending: true })
-        .order('time', { ascending: true });
+        .select(
+          'id, title, spot_id, scheduled_time, description, creator_id, max_participants, status'
+        )
+        .order('scheduled_time', { ascending: true });
 
       if (sessionsError) throw sessionsError;
       if (!rawSessions?.length) {
@@ -129,15 +113,23 @@ export default function SessionsScreen() {
         return;
       }
 
-      const [attendeesRes, myRsvpsRes] = await Promise.all([
+      const creatorIds = [...new Set(rawSessions.map((s: any) => s.creator_id).filter(Boolean))];
+      const spotIds = [...new Set(rawSessions.map((s: any) => s.spot_id).filter(Boolean))];
+      const [attendeesRes, myRsvpsRes, profilesRes, spotsRes] = await Promise.all([
         supabase
           .from('session_attendees')
           .select('session_id')
-          .in('session_id', rawSessions.map(s => s.id)),
-        supabase
-          .from('session_attendees')
-          .select('session_id')
-          .eq('user_id', user.id),
+          .in(
+            'session_id',
+            rawSessions.map(s => s.id)
+          ),
+        supabase.from('session_attendees').select('session_id').eq('user_id', user.id),
+        creatorIds.length
+          ? supabase.from('profiles').select('id, username').in('id', creatorIds)
+          : Promise.resolve({ data: [], error: null }),
+        spotIds.length
+          ? supabase.from('skate_spots').select('id, name').in('id', spotIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (attendeesRes.error) throw attendeesRes.error;
@@ -150,20 +142,21 @@ export default function SessionsScreen() {
       const mySessionIds = new Set(
         (myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id)
       );
+      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p.username]));
+      const spotMap = new Map((spotsRes.data ?? []).map((s: any) => [s.id, s.name]));
 
       const mapped: Session[] = rawSessions.map((s: any) => ({
         id: s.id,
         title: s.title,
         spot_id: s.spot_id,
-        spot_name: s.spot_name,
-        date: s.date,
-        time: s.time,
+        spot_name: s.spot_id ? (spotMap.get(s.spot_id) ?? null) : null,
+        scheduled_time: s.scheduled_time,
         description: s.description,
-        created_by: s.created_by,
-        creator_username: s.profiles?.username ?? null,
+        created_by: s.creator_id,
+        creator_username: profileMap.get(s.creator_id) ?? null,
         attendee_count: attendeeMap[s.id] ?? 0,
-        max_attendees: s.max_attendees,
-        status: getStatus(s.date, s.time),
+        max_attendees: s.max_participants,
+        status: getStatus(s.scheduled_time),
         is_attending: mySessionIds.has(s.id),
       }));
 
@@ -262,22 +255,37 @@ export default function SessionsScreen() {
       parsedMaxAttendees !== null &&
       (!Number.isInteger(parsedMaxAttendees) || parsedMaxAttendees < 1)
     ) {
-      Alert.alert('Invalid max attendees', 'Enter a whole number greater than 0, or leave it blank.');
+      Alert.alert(
+        'Invalid max attendees',
+        'Enter a whole number greater than 0, or leave it blank.'
+      );
       return;
     }
 
     setCreating(true);
     try {
+      let resolvedSpotId = routeParams?.spotId ?? null;
+      if (!resolvedSpotId && spotName.trim()) {
+        const { data: matchedSpot, error: spotError } = await supabase
+          .from('skate_spots')
+          .select('id')
+          .ilike('name', spotName.trim())
+          .limit(1)
+          .maybeSingle();
+        if (spotError) throw spotError;
+        if (!matchedSpot) throw new Error(`No skate spot found named “${spotName.trim()}”.`);
+        resolvedSpotId = matchedSpot.id;
+      }
+
       const { data, error } = await supabase
         .from('skate_sessions')
         .insert({
           title: title.trim(),
-          spot_name: spotName.trim() || null,
-          date,
-          time,
+          spot_id: resolvedSpotId,
+          scheduled_time: new Date(`${date}T${time}:00`).toISOString(),
           description: description.trim() || null,
-          created_by: user.id,
-          max_attendees: parsedMaxAttendees,
+          creator_id: user.id,
+          max_participants: parsedMaxAttendees,
         })
         .select()
         .single();
@@ -309,9 +317,8 @@ export default function SessionsScreen() {
     }
   };
 
-  const displayedSessions = tab === 'mine'
-    ? sessions.filter(s => s.created_by === user?.id || s.is_attending)
-    : sessions;
+  const displayedSessions =
+    tab === 'mine' ? sessions.filter(s => s.created_by === user?.id || s.is_attending) : sessions;
 
   const renderSession = ({ item, index }: { item: Session; index: number }) => {
     const statusColor = STATUS_COLORS[item.status];
@@ -324,14 +331,20 @@ export default function SessionsScreen() {
           <View className="p-4">
             <View className="flex-row items-start justify-between mb-2">
               <View className="flex-1 mr-3">
-                <Text className="text-lg font-bold text-gray-800 dark:text-gray-100" numberOfLines={1}>
+                <Text
+                  className="text-lg font-bold text-gray-800 dark:text-gray-100"
+                  numberOfLines={1}
+                >
                   {item.title}
                 </Text>
                 <Text className="text-xs text-gray-400 mt-0.5">
                   by @{item.creator_username ?? 'unknown'}
                 </Text>
               </View>
-              <View style={{ backgroundColor: statusColor + '20' }} className="px-2 py-1 rounded-full">
+              <View
+                style={{ backgroundColor: statusColor + '20' }}
+                className="px-2 py-1 rounded-full"
+              >
                 <Text style={{ color: statusColor }} className="text-xs font-bold">
                   {STATUS_LABELS[item.status]}
                 </Text>
@@ -342,13 +355,15 @@ export default function SessionsScreen() {
               <View className="flex-row items-center gap-2">
                 <CalendarDays size={14} color="#9CA3AF" />
                 <Text className="text-sm text-gray-500 dark:text-gray-400">
-                  {formatDate(item.date)} · {formatTime(item.time)}
+                  {formatDate(item.scheduled_time)} · {formatTime(item.scheduled_time)}
                 </Text>
               </View>
               {item.spot_name ? (
                 <View className="flex-row items-center gap-2">
                   <MapPin size={14} color="#9CA3AF" />
-                  <Text className="text-sm text-gray-500 dark:text-gray-400" numberOfLines={1}>{item.spot_name}</Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400" numberOfLines={1}>
+                    {item.spot_name}
+                  </Text>
                 </View>
               ) : null}
               <View className="flex-row items-center gap-2">
@@ -371,12 +386,19 @@ export default function SessionsScreen() {
               <TouchableOpacity
                 onPress={() => toggleRSVP(item)}
                 className="flex-row items-center justify-center gap-2 rounded-xl py-2.5"
-                style={{ backgroundColor: item.is_attending ? '#10B98120' : isFull ? '#F3F4F6' : '#6B4CE620' }}
+                style={{
+                  backgroundColor: item.is_attending
+                    ? '#10B98120'
+                    : isFull
+                      ? '#F3F4F6'
+                      : '#6B4CE620',
+                }}
               >
-                {item.is_attending
-                  ? <CheckCircle size={16} color="#10B981" />
-                  : <Circle size={16} color={isFull ? '#9CA3AF' : '#6B4CE6'} />
-                }
+                {item.is_attending ? (
+                  <CheckCircle size={16} color="#10B981" />
+                ) : (
+                  <Circle size={16} color={isFull ? '#9CA3AF' : '#6B4CE6'} />
+                )}
                 <Text
                   className="font-semibold text-sm"
                   style={{ color: item.is_attending ? '#10B981' : isFull ? '#9CA3AF' : '#6B4CE6' }}
@@ -398,8 +420,12 @@ export default function SessionsScreen() {
         <View className="px-4 pt-4 pb-2">
           <View className="flex-row items-center justify-between mb-3">
             <View>
-              <Text className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">Sessions</Text>
-              <Text className="text-sm text-gray-500 dark:text-gray-400">Organise meetups at spots</Text>
+              <Text className="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+                Sessions
+              </Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400">
+                Organise meetups at spots
+              </Text>
             </View>
             <TouchableOpacity
               className="bg-purple-600 w-11 h-11 rounded-full items-center justify-center"
@@ -446,7 +472,9 @@ export default function SessionsScreen() {
                   {tab === 'mine' ? 'No sessions yet' : 'No sessions scheduled'}
                 </Text>
                 <Text className="text-sm text-gray-400 text-center mt-1">
-                  {tab === 'mine' ? 'Create one or RSVP to join a sesh' : 'Be the first to organise a sesh!'}
+                  {tab === 'mine'
+                    ? 'Create one or RSVP to join a sesh'
+                    : 'Be the first to organise a sesh!'}
                 </Text>
                 <TouchableOpacity
                   className="mt-4 bg-purple-600 px-6 py-3 rounded-full"
@@ -475,13 +503,17 @@ export default function SessionsScreen() {
 
             <ScrollView className="px-6" contentContainerStyle={{ paddingBottom: 40 }}>
               <View className="flex-row items-center justify-between py-4">
-                <Text className="text-xl font-bold text-gray-800 dark:text-gray-100">New Session</Text>
+                <Text className="text-xl font-bold text-gray-800 dark:text-gray-100">
+                  New Session
+                </Text>
                 <TouchableOpacity onPress={() => setCreateVisible(false)}>
                   <X size={22} color="#9CA3AF" />
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Session Title *</Text>
+              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                Session Title *
+              </Text>
               <TextInput
                 className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100 mb-4"
                 placeholder="e.g. Saturday Ledge Session"
@@ -490,7 +522,9 @@ export default function SessionsScreen() {
                 onChangeText={setTitle}
               />
 
-              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Spot / Location</Text>
+              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                Spot / Location
+              </Text>
               <TextInput
                 className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100 mb-4"
                 placeholder="e.g. Downtown Plaza, Venice Beach"
@@ -501,7 +535,9 @@ export default function SessionsScreen() {
 
               <View className="flex-row gap-3 mb-4">
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Date *</Text>
+                  <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                    Date *
+                  </Text>
                   <TextInput
                     className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100"
                     placeholder="YYYY-MM-DD"
@@ -512,7 +548,9 @@ export default function SessionsScreen() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Time *</Text>
+                  <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                    Time *
+                  </Text>
                   <TextInput
                     className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100"
                     placeholder="HH:MM"
@@ -524,7 +562,9 @@ export default function SessionsScreen() {
                 </View>
               </View>
 
-              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Description</Text>
+              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                Description
+              </Text>
               <TextInput
                 className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100 mb-4"
                 placeholder="What's the plan? Tricks to work on, vibe, etc."
@@ -536,7 +576,9 @@ export default function SessionsScreen() {
                 textAlignVertical="top"
               />
 
-              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Max Attendees (optional)</Text>
+              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                Max Attendees (optional)
+              </Text>
               <TextInput
                 className="bg-gray-100 dark:bg-gray-800 rounded-xl px-4 py-3 text-gray-800 dark:text-gray-100 mb-6"
                 placeholder="Leave blank for unlimited"
@@ -551,10 +593,11 @@ export default function SessionsScreen() {
                 onPress={createSession}
                 disabled={creating}
               >
-                {creating
-                  ? <ActivityIndicator color="white" />
-                  : <Text className="text-white font-bold text-base">Create Session</Text>
-                }
+                {creating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-bold text-base">Create Session</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </View>
