@@ -44,6 +44,8 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
 };
 
+export type SpotType = 'park' | 'street' | 'diy' | 'quest' | 'shop';
+
 export interface SkateSpot {
   id: string;
   name: string;
@@ -57,6 +59,9 @@ export interface SkateSpot {
   created_at?: string;
   sponsor_name?: string;
   sponsor_url?: string;
+  // Stored as free text in the DB (existing rows are seeded as e.g. "PARK") — normalize with
+  // .toLowerCase() before comparing against SpotType/MapFilters keys.
+  spot_type?: string | null;
   spot_photos?: SpotPhoto[];
   spot_conditions?: SpotCondition[];
 }
@@ -204,7 +209,7 @@ export interface SkateGameTurn {
   player_id: string;
   media_id?: string;
   trick_name: string;
-  matched?: boolean;
+  matched?: boolean | null;
   turn_number: number;
   created_at: string;
   media?: Media;
