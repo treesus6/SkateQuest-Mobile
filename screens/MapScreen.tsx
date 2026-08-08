@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { useNavigation } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
-import { RootStackParamList, SkateSpot } from '../types';
+import { RootStackParamList, SkateSpot, Shop } from '../types';
 import {
   Crosshair,
   Navigation,
@@ -40,6 +40,7 @@ import {
   BookmarkCheck,
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
+import { shopsService } from '../lib/shopsService';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -123,6 +124,7 @@ export default function MapScreen() {
   const mapRef = useRef<Mapbox.MapView>(null);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(
@@ -130,6 +132,7 @@ export default function MapScreen() {
   );
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState({ park: true, street: true, diy: true, quest: true, shop: true });
@@ -196,6 +199,7 @@ export default function MapScreen() {
 
   const loadSpots = async (lat: number, lng: number) => {
     const cacheKey = `spots_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
+    const shopCacheKey = `shops_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
     const CACHE_TTL = 60 * 60 * 1000;
     const STALE_WINDOW = 23 * 60 * 60 * 1000;
 
@@ -203,12 +207,19 @@ export default function MapScreen() {
 
     try {
       if (!isConnected) {
-        const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
-        if (cached) setSpots(cached.data);
+        const [cachedSpots, cachedShops] = await Promise.all([
+          PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW),
+          PersistentCache.get<Shop[]>(shopCacheKey, STALE_WINDOW),
+        ]);
+        if (cachedSpots) setSpots(cachedSpots.data);
+        if (cachedShops) setShops(cachedShops.data);
         return;
       }
 
-      const { data, error } = await spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000);
+      const [{ data, error }, shopsResult] = await Promise.all([
+        spotsService.getNearby(lat, lng, SEARCH_RADIUS_KM * 1000),
+        shopsService.getNearby(lat, lng, SEARCH_RADIUS_KM).catch(() => ({ data: [], error: null })),
+      ]);
       if (error) {
         const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
         if (cached) {
@@ -219,10 +230,18 @@ export default function MapScreen() {
         setSpots(spotsData);
         await PersistentCache.set(cacheKey, spotsData, CACHE_TTL);
       }
+
+      const shopsData = (shopsResult.data || []) as Shop[];
+      setShops(shopsData);
+      await PersistentCache.set(shopCacheKey, shopsData, CACHE_TTL);
     } catch (error) {
-      const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
-      if (cached) {
-        setSpots(cached.data);
+      const [cachedSpots, cachedShops] = await Promise.all([
+        PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW),
+        PersistentCache.get<Shop[]>(shopCacheKey, STALE_WINDOW),
+      ]);
+      if (cachedSpots) {
+        setSpots(cachedSpots.data);
+        if (cachedShops) setShops(cachedShops.data);
       } else {
         console.error('Error loading spots:', error);
         Alert.alert('Error', 'Could not load skate spots. Please try again.');
@@ -276,6 +295,16 @@ export default function MapScreen() {
     }
   };
 
+  const filteredSpots = useMemo(() => spots.filter(spot => {
+    const type = spot.spot_type ?? 'park';
+    return activeFilters[type] ?? false;
+  }), [spots, activeFilters]);
+
+  const filteredShops = useMemo(
+    () => (activeFilters.shop ? shops : []),
+    [shops, activeFilters.shop]
+  );
+
   if (loading) {
     return (
       <View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center">
@@ -310,7 +339,7 @@ export default function MapScreen() {
           clusterMaxZoomLevel={14}
           shape={{
             type: 'FeatureCollection',
-            features: spots.map(spot => ({
+            features: filteredSpots.map(spot => ({
               type: 'Feature',
               id: spot.id,
               geometry: { type: 'Point', coordinates: [spot.longitude, spot.latitude] },
@@ -324,8 +353,11 @@ export default function MapScreen() {
           onPress={(event: any) => {
             const f = event.features[0];
             if (f?.properties && !f.properties.cluster) {
-              const s = spots.find((sp: SkateSpot) => sp.id === f.properties!.spotId);
-              if (s) setSelectedSpot(s);
+              const s = filteredSpots.find((sp: SkateSpot) => sp.id === f.properties!.spotId);
+              if (s) {
+                setSelectedShop(null);
+                setSelectedSpot(s);
+              }
             }
           }}
         >
@@ -371,13 +403,48 @@ export default function MapScreen() {
             }}
           />
         </Mapbox.ShapeSource>
-        {showDirections && selectedSpot && userLocation && (
+        {filteredShops.length > 0 && (
+          <Mapbox.ShapeSource
+            id="skate-shops"
+            shape={{
+              type: 'FeatureCollection',
+              features: filteredShops.map(shop => ({
+                type: 'Feature',
+                id: shop.id,
+                geometry: { type: 'Point', coordinates: [shop.longitude, shop.latitude] },
+                properties: { shopId: shop.id, name: shop.name },
+              })),
+            }}
+            onPress={(event: any) => {
+              const f = event.features[0];
+              const shop = filteredShops.find(item => item.id === f?.properties?.shopId);
+              if (shop) {
+                setSelectedSpot(null);
+                setSelectedShop(shop);
+              }
+            }}
+          >
+            <Mapbox.CircleLayer
+              id="shop-points"
+              style={{
+                circleColor: '#795548',
+                circleRadius: 9,
+                circleStrokeWidth: 2,
+                circleStrokeColor: '#ffffff',
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+        {showDirections && userLocation && (selectedSpot || selectedShop) && (
           <MapDirections
             from={[userLocation.coords.longitude, userLocation.coords.latitude]}
-            to={[selectedSpot.longitude, selectedSpot.latitude]}
+            to={selectedSpot
+              ? [selectedSpot.longitude, selectedSpot.latitude]
+              : [selectedShop!.longitude, selectedShop!.latitude]}
             onClose={() => {
               setShowDirections(false);
               setSelectedSpot(null);
+              setSelectedShop(null);
             }}
           />
         )}
@@ -409,7 +476,7 @@ export default function MapScreen() {
       )}
 
       <View className="absolute top-[50px] left-5 bg-brand-terracotta px-4 py-2 rounded-full shadow-lg">
-        <Text className="text-white font-bold text-sm">{spots.length} spots nearby</Text>
+        <Text className="text-white font-bold text-sm">{filteredSpots.length} spots{activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby</Text>
       </View>
 
       {savedSpotIds.size > 0 && (
@@ -504,6 +571,42 @@ export default function MapScreen() {
             >
               <Text className="text-gray-800 dark:text-gray-100 font-semibold text-sm">
                 View Details
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {selectedShop && !showDirections && (
+        <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg z-10">
+          <View className="flex-row justify-between items-start mb-3">
+            <View className="flex-1 mr-2">
+              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{selectedShop.name}</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedShop.address}</Text>
+              {selectedShop.verified && (
+                <Text className="text-xs text-green-600 dark:text-green-400 mt-1 font-semibold">Verified skate shop</Text>
+              )}
+            </View>
+            <TouchableOpacity onPress={() => setSelectedShop(null)}>
+              <Text className="text-xl text-gray-500">✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View className="flex-row gap-2.5">
+            <TouchableOpacity
+              className="flex-1 bg-brand-terracotta p-3 rounded-lg items-center flex-row justify-center gap-1.5"
+              onPress={() => setShowDirections(true)}
+            >
+              <Navigation color="#fff" size={14} />
+              <Text className="text-white font-semibold text-sm">Directions</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-brand-beige dark:bg-gray-700 p-3 rounded-lg items-center"
+              disabled={!selectedShop.website}
+              onPress={() => selectedShop.website && Linking.openURL(selectedShop.website)}
+              style={{ opacity: selectedShop.website ? 1 : 0.5 }}
+            >
+              <Text className="text-gray-800 dark:text-gray-100 font-semibold text-sm">
+                {selectedShop.website ? 'Website' : 'No Website'}
               </Text>
             </TouchableOpacity>
           </View>

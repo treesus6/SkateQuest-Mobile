@@ -50,6 +50,7 @@ export interface SkateSpot {
   latitude: number;
   longitude: number;
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+  spot_type?: 'park' | 'street' | 'diy' | 'quest' | 'shop';
   tricks?: string[];
   rating?: number;
   image_url?: string;
