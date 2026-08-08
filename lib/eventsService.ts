@@ -16,12 +16,32 @@ export interface Event {
 export const eventsService = {
   async getUpcoming() {
     try {
-      return await supabase
+      const result = await supabase
         .from('skate_sessions')
-        .select('*')
-        .gte('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: true })
-        .order('time', { ascending: true });
+        .select(
+          'id, title, description, spot_id, scheduled_time, creator_id, session_attendees(user_id)'
+        )
+        .gte('scheduled_time', new Date().toISOString())
+        .order('scheduled_time', { ascending: true });
+
+      if (result.error || !result.data) return result;
+
+      return {
+        ...result,
+        data: result.data.map((row: any) => {
+          const scheduled = new Date(row.scheduled_time);
+          return {
+            id: row.id,
+            title: row.title,
+            description: row.description,
+            location: row.spot_id ?? 'Location TBD',
+            date: scheduled.toISOString().split('T')[0],
+            time: scheduled.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            created_by: row.creator_id,
+            attendee_count: row.session_attendees?.length ?? 0,
+          } satisfies Event;
+        }),
+      };
     } catch (error) {
       Logger.error('eventsService.getUpcoming failed', error);
       throw new ServiceError(
@@ -42,11 +62,7 @@ export const eventsService = {
       ]);
     } catch (error) {
       Logger.error('eventsService.rsvp failed', error);
-      throw new ServiceError(
-        'Failed to RSVP to event',
-        'EVENTS_RSVP_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to RSVP to event', 'EVENTS_RSVP_FAILED', error);
     }
   },
 };
