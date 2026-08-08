@@ -161,24 +161,19 @@ export async function optimizeVideo(uri: string): Promise<{ uri: string; fileSiz
 }
 
 /**
- * Generate video thumbnail (extract first frame)
+ * Generate a safe thumbnail value for video content.
+ *
+ * Expo SDK 57's recommended video API returns native image references from
+ * `generateThumbnailsAsync`, while the rest of SkateQuest currently expects a
+ * string URI. Until the media pipeline is migrated to that API, return a tiny
+ * embedded image instead of throwing and breaking uploads/content rendering.
  */
 export async function generateVideoThumbnail(videoUri: string): Promise<string> {
-  try {
-    // This requires expo-video-thumbnails or similar
-    // For now, return a placeholder
-    Logger.info('Video thumbnail generation', { videoUri });
+  Logger.warn('Video thumbnail frame extraction is unavailable; using fallback image', {
+    videoUri,
+  });
 
-    // In production, use:
-    // import { getThumbnailAsync } from 'expo-video-thumbnails';
-    // const { uri } = await getThumbnailAsync(videoUri, { time: 1000 });
-    // return uri;
-
-    throw new Error('Video thumbnail generation not implemented - requires expo-video-thumbnails');
-  } catch (error) {
-    Logger.error('Video thumbnail generation failed', error);
-    throw error;
-  }
+  return 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 }
 
 /**
