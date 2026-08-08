@@ -10,28 +10,27 @@ permissions:
   contents: read
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Typecheck
+  lint-typecheck-test:
+    name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node 18
+      - name: Setup Node 20.19.4
         uses: actions/setup-node@v7
         with:
-          node-version: '18'
+          node-version: '20.19.4'
+          cache: npm
 
       - name: Install dependencies
         run: |
-          # Remove rnmapbox (not available on public npm)
+          # Remove rnmapbox for CI install, then provide a lightweight type/runtime stub.
           node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.dependencies['@rnmapbox/maps'];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
 
-          # Clean reproducible install
           npm ci
 
-          # Stub rnmapbox so TS doesn't explode
           mkdir -p node_modules/@rnmapbox/maps
           echo '{"name":"@rnmapbox/maps","version":"11.20.1","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
           echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
@@ -51,3 +50,6 @@ jobs:
 
       - name: ESLint
         run: npx eslint . --max-warnings=0
+
+      - name: Jest
+        run: npm test -- --runInBand
