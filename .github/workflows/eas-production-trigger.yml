@@ -1,0 +1,84 @@
+name: EAS Android Production Trigger
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .eas-trigger/android-production
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: EAS Build (android / production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release preflight
+        run: |
+          node -e "const p=require('./package.json');if(p.dependencies?.['expo-av'])throw new Error('Unsupported expo-av dependency detected')"
+          npm run type-check
+          npm test -- --runInBand
+          npx expo-doctor
+
+      - name: Prepare remote build environment
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          EXPO_PUBLIC_ENV: production
+        run: |
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const required = [
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
+            'EXPO_PUBLIC_SENTRY_DSN',
+            'MAPBOX_DOWNLOADS_TOKEN',
+          ];
+          const missing = required.filter((name) => !process.env[name]);
+          if (missing.length) throw new Error(`Missing GitHub build secrets: ${missing.join(', ')}`);
+          const names = [...required, 'EXPO_PUBLIC_ENV'];
+          const contents = names.map((name) => `${name}=${JSON.stringify(process.env[name] || '')}`).join('\n');
+          writeFileSync('.env.local', `${contents}\n`, { mode: 0o600 });
+          NODE
+
+      - name: EAS Build
+        run: eas build --platform android --profile production --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+      - name: Write Google Service Account key
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > ./google-service-account.json
+
+      - name: EAS Submit to Play Store internal track
+        run: eas submit --platform android --profile production --latest --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
