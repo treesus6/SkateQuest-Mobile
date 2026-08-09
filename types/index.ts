@@ -29,6 +29,7 @@ export type RootStackParamList = {
   Mentorship: undefined;
   TrickBingo: undefined;
   SpotConquer: undefined;
+  SpotMissionRoutes: undefined;
   SeasonalPass: undefined;
   Streaks: undefined;
   WeatherSpots: undefined;
@@ -49,7 +50,7 @@ export interface SkateSpot {
   name: string;
   latitude: number;
   longitude: number;
-  spot_type?: 'park' | 'street' | 'diy' | 'quest';
+  spot_type?: 'park' | 'street' | 'diy' | 'quest' | 'shop';
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
   tricks?: string[];
   rating?: number;

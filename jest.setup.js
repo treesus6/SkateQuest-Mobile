@@ -276,6 +276,7 @@ jest.mock('./lib/supabase', () => ({
       single: jest.fn().mockResolvedValue({ data: {}, error: null }),
       maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
     })),
+    rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
     storage: {
       from: jest.fn(() => ({
         upload: jest.fn().mockResolvedValue({ data: { path: 'mock-path' }, error: null }),
