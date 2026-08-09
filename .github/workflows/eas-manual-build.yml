@@ -15,13 +15,17 @@ on:
         default: production
         type: choice
         options: [preview, production]
+  push:
+    branches: [main]
+    paths:
+      - .eas-trigger/android-preview
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: EAS Build (${{ github.event.inputs.platform }} / ${{ github.event.inputs.profile }})
+    name: EAS Build (${{ github.event.inputs.platform || 'android' }} / ${{ github.event.inputs.profile || 'preview' }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -29,10 +33,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node 20
+      - name: Setup Node 22.22.1
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22.22.1'
 
       - name: Setup Expo + EAS
         uses: expo/expo-github-action@v9
@@ -44,7 +48,7 @@ jobs:
         run: npm install
 
       - name: EAS Build
-        run: eas build --platform ${{ github.event.inputs.platform }} --profile ${{ github.event.inputs.profile }} --non-interactive
+        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
