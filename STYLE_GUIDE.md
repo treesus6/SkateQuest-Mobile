@@ -43,7 +43,7 @@ This document establishes mandatory coding standards for all AI coding agents an
 ### Expo SDK Alignment
 - **Always** use Expo SDK-compatible versions
 - Prefer Expo-managed packages over bare React Native packages
-- Example: Use `expo-av` instead of `react-native-video`
+- Example: Use `expo-video` instead of `react-native-video`
 - Check compatibility: https://docs.expo.dev/versions/latest/
 
 ### Modern Libraries (Preferred)

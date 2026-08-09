@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from '../components/VideoPlayer';
 import {
   MapPin,
   Target,

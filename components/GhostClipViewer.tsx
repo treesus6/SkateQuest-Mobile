@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from './VideoPlayer';
 import { Ghost, Film, Lock, Play } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import Card from './ui/Card';

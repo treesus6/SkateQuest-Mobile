@@ -93,100 +93,16 @@ jest.mock('expo-notifications', () => ({
   getNotificationChannelAsync: jest.fn().mockResolvedValue(null),
 }));
 
-// ✅ REAL Expo AV (Audio/Video) Integration
-jest.mock('expo-av', () => ({
+// Expo Video is native; expose the small surface used by VideoPlayer in tests.
+jest.mock('expo-video', () => ({
   __esModule: true,
-  Audio: {
-    requestPermissionsAsync: jest
-      .fn()
-      .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),
-    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
-    Sound: {
-      createAsync: jest.fn().mockResolvedValue({
-        sound: {
-          playAsync: jest.fn().mockResolvedValue(undefined),
-          pauseAsync: jest.fn().mockResolvedValue(undefined),
-          stopAsync: jest.fn().mockResolvedValue(undefined),
-          setPositionAsync: jest.fn().mockResolvedValue(undefined),
-          setVolumeAsync: jest.fn().mockResolvedValue(undefined),
-          setRateAsync: jest.fn().mockResolvedValue(undefined),
-          setIsLoopingAsync: jest.fn().mockResolvedValue(undefined),
-          unloadAsync: jest.fn().mockResolvedValue(undefined),
-        },
-        status: {
-          isLoaded: true,
-          isPlaying: false,
-          durationMillis: 1000,
-          positionMillis: 0,
-        },
-      }),
-    },
-    Recording: {
-      createAsync: jest.fn().mockResolvedValue({
-        recording: {
-          recordAsync: jest.fn().mockResolvedValue(undefined),
-          pauseAsync: jest.fn().mockResolvedValue(undefined),
-          stopAndUnloadAsync: jest.fn().mockResolvedValue(undefined),
-          getURI: jest.fn().mockReturnValue('file:///mock-audio.m4a'),
-        },
-        status: {
-          isLoaded: true,
-          isRecording: false,
-          durationMillis: 0,
-        },
-      }),
-    },
-    RecordingOptionsPresets: {
-      HIGH_QUALITY: {
-        isMeteringEnabled: true,
-        android: {
-          extension: '.m4a',
-          outputFormat: 'MPEG_4',
-          audioEncoder: 'AAC',
-          sampleRate: 48000,
-          numberOfChannels: 2,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: '.m4a',
-          audioQuality: 'max',
-          sampleRate: 48000,
-          numberOfChannels: 2,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-      },
-      LOW_QUALITY: {
-        isMeteringEnabled: true,
-        android: {
-          extension: '.m4a',
-          outputFormat: 'MPEG_4',
-          audioEncoder: 'AAC',
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 32000,
-        },
-        ios: {
-          extension: '.m4a',
-          audioQuality: 'min',
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 32000,
-          linearPCMBitDepth: 8,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-      },
-    },
-  },
-  Video: {
-    useVideoPlayer: jest.fn(_source => ({
-      player: null,
-      status: 'idle',
-    })),
-  },
+  VideoView: 'VideoView',
+  useVideoPlayer: jest.fn(() => ({
+    loop: false,
+    muted: false,
+    play: jest.fn(),
+    pause: jest.fn(),
+  })),
 }));
 
 // ✅ REAL Expo Image Picker Integration

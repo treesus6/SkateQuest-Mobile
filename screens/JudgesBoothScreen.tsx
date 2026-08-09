@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from '../components/VideoPlayer';
 import { ThumbsUp, ThumbsDown } from 'lucide-react-native';
 import { challengesService } from '../lib/challengesService';
 import { profilesService } from '../lib/profilesService';
@@ -30,8 +30,6 @@ export default function JudgesBoothScreen() {
   const [voting, setVoting] = useState(false);
   const [votesThisSession, setVotesThisSession] = useState(0);
   const [xpEarned, setXpEarned] = useState(0);
-  const videoRef = useRef<Video>(null);
-
   useEffect(() => {
     fetchPendingSubmissions();
   }, []);
@@ -151,7 +149,6 @@ export default function JudgesBoothScreen() {
   return (
     <View className="flex-1 bg-black">
       <Video
-        ref={videoRef}
         source={{ uri: currentSubmission.video_url }}
         style={{ width, height }}
         resizeMode={ResizeMode.COVER}

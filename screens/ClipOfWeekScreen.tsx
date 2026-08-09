@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from '../components/VideoPlayer';
 import { ChevronUp, Play, Upload, Trophy } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -87,8 +87,6 @@ function UpvoteButton({
 }
 
 function VideoThumbnail({ uri }: { uri: string | null }) {
-  const videoRef = useRef<any>(null);
-
   if (!uri) {
     return (
       <View className="w-full aspect-video bg-neutral-800 rounded-xl items-center justify-center">
@@ -101,7 +99,6 @@ function VideoThumbnail({ uri }: { uri: string | null }) {
   return (
     <View className="w-full aspect-video rounded-xl overflow-hidden bg-black">
       <Video
-        ref={videoRef}
         source={{ uri }}
         style={{ width: '100%', height: '100%' }}
         resizeMode={ResizeMode.CONTAIN}

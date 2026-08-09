@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from '../components/VideoPlayer';
 import { Trophy } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';

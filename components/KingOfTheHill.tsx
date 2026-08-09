@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Alert, ActivityIndicator, Modal } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from './VideoPlayer';
 import { Crown } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigation } from '../lib/useNavigation';

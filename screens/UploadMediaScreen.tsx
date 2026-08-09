@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode } from '../components/VideoPlayer';
 import { Camera, Film, ImageIcon, Video as VideoIcon, Bot, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';

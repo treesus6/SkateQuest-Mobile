@@ -45,7 +45,14 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Release preflight
+        run: |
+          node -e "const p=require('./package.json');if(p.dependencies?.['expo-av'])throw new Error('Unsupported expo-av dependency detected')"
+          npm run type-check
+          npm test -- --runInBand
+          npx expo-doctor
 
       - name: Prepare remote build environment
         env:

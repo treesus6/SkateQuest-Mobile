@@ -49,6 +49,7 @@ export interface SkateSpot {
   name: string;
   latitude: number;
   longitude: number;
+  spot_type?: 'park' | 'street' | 'diy' | 'quest';
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
   tricks?: string[];
   rating?: number;
