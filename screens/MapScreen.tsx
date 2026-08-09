@@ -93,7 +93,8 @@ const FEATURES = [
   { key: 'Mentorship', icon: UserCheck, color: '#8e44ad', screen: 'Mentorship' },
   // Gamification
   { key: 'Bingo', icon: Grid3x3, color: '#27ae60', screen: 'TrickBingo' },
-  { key: 'Conquer', icon: Flag, color: '#c0392b', screen: 'SpotConquer' },
+  { key: 'Mission Route', icon: Navigation, color: '#f97316', screen: 'SpotMissionRoutes' },
+  { key: 'Crew Territory', icon: Flag, color: '#c0392b', screen: 'SpotConquer' },
   { key: 'Skate Pass', icon: Ticket, color: '#2980b9', screen: 'SeasonalPass' },
   { key: 'Streaks', icon: Flame, color: '#e67e22', screen: 'Streaks' },
   // Discovery

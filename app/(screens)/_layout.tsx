@@ -51,6 +51,7 @@ export default function ScreensLayout() {
       <Stack.Screen name="spot-claims"        options={{ title: 'Spot Claims' }} />
       <Stack.Screen name="trick-of-week"      options={{ title: 'Trick of the Week' }} />
       <Stack.Screen name="spots"              options={{ title: 'Spots' }} />
+      <Stack.Screen name="spot-mission-routes" options={{ title: 'Spot Mission Route' }} />
 
       {/* headerShown: false screens (full-screen / immersive) */}
       <Stack.Screen name="skate-tv"           options={{ headerShown: false }} />

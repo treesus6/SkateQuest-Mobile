@@ -88,6 +88,7 @@ const SCREEN_MAP: Record<string, string> = {
   Mentorship:       '/(screens)/mentorship',
   TrickBingo:       '/(screens)/trick-bingo',
   SpotConquer:      '/(screens)/spot-conquer',
+  SpotMissionRoutes: '/(screens)/spot-mission-routes',
   SeasonalPass:     '/(screens)/seasonal-pass',
   Streaks:          '/(screens)/streaks',
   WeatherSpots:     '/(screens)/weather-spots',
