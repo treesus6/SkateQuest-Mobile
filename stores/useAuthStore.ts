@@ -12,6 +12,7 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
@@ -94,6 +95,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
+  },
+
+  deleteAccount: async () => {
+    try {
+      const { error } = await supabase.functions.invoke('delete-account', {
+        method: 'POST',
+      });
+      if (error) return { error };
+
+      await supabase.auth.signOut().catch(() => undefined);
+      set({ user: null, session: null, loading: false });
+      Sentry.setUser(null);
+      analytics.reset();
+      return { error: null };
+    } catch (error) {
+      return { error };
+    }
   },
 
   resetPassword: async (email: string) => {
