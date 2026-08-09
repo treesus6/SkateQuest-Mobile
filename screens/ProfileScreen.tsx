@@ -22,10 +22,11 @@ interface LevelProgress {
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, deleteAccount } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [levelProgress, setLevelProgress] = useState<LevelProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const targetUserId = route.params?.userId || user?.id;
   const isOwnProfile = targetUserId === user?.id;
@@ -74,6 +75,45 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleDeleteAccount = () => {
+    if (deletingAccount) return;
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your SkateQuest account and associated account data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Delete Permanently?',
+              'Your profile, activity, messages, progress, and other account-linked data will be removed.',
+              [
+                { text: 'Keep Account', style: 'cancel' },
+                {
+                  text: 'Delete Permanently',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeletingAccount(true);
+                    const { error } = await deleteAccount();
+                    setDeletingAccount(false);
+                    if (error) {
+                      Alert.alert(
+                        'Could Not Delete Account',
+                        'Your account was not deleted. Please try again or use the account-deletion request link in the Play Store listing.'
+                      );
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
@@ -90,7 +130,7 @@ export default function ProfileScreen() {
         <Text className="text-3xl font-bold text-white mb-1">{profile?.username || 'Skater'}</Text>
         {isOwnProfile && <Text className="text-sm text-white/80">{user?.email}</Text>}
         {!isOwnProfile && (
-          <TouchableOpacity 
+          <TouchableOpacity
             className="mt-4 bg-white/20 px-6 py-2 rounded-full flex-row items-center gap-2"
             onPress={() => navigation.navigate('CallOuts', { targetId: profile?.id, targetUsername: profile?.username })}
           >
@@ -158,7 +198,7 @@ export default function ProfileScreen() {
         ].map((item, i) => (
           <TouchableOpacity
             key={i}
-            className={`flex-row items-center p-4 border-b border-gray-100 dark:border-gray-800`}
+            className="flex-row items-center p-4 border-b border-gray-100 dark:border-gray-800"
             onPress={() => navigation.navigate(item.screen)}
           >
             <item.icon color={item.color} size={20} />
@@ -182,11 +222,17 @@ export default function ProfileScreen() {
         </Card>
       ) : null}
 
-
-
-      <View className="mx-4 mb-8">
-        <Button title="Sign Out" onPress={handleSignOut} variant="danger" size="lg" />
-      </View>
+      {isOwnProfile && (
+        <View className="mx-4 mb-8 gap-3">
+          <Button title="Sign Out" onPress={handleSignOut} variant="danger" size="lg" />
+          <Button
+            title={deletingAccount ? 'Deleting Account…' : 'Delete Account Permanently'}
+            onPress={handleDeleteAccount}
+            variant="danger"
+            size="lg"
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }
