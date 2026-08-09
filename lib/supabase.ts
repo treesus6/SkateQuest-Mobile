@@ -22,7 +22,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 console.warn('✅ Supabase: initializing...');
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+// Keep the process alive long enough to show/report a configuration problem.
+const clientUrl = supabaseUrl || 'https://configuration-missing.supabase.co';
+const clientAnonKey = supabaseAnonKey || 'configuration-missing';
+
+export const supabase = createClient(clientUrl, clientAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
