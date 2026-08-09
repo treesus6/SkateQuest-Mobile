@@ -50,12 +50,6 @@ import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
-Mapbox.setAccessToken(
-  (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
-  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
-  ''
-);
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const INITIAL_COORDINATES = [-122.4324, 37.78825];
@@ -145,6 +139,15 @@ export default function MapScreen() {
   const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
+    // Expo Router discovers route modules during startup. Calling into Mapbox at
+    // module scope initializes the native SDK before this screen is opened and
+    // can terminate low-memory Android devices. Keep native initialization here.
+    Mapbox.setAccessToken(
+      (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+      process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+      ''
+    );
+
     // PostHog: track map screen opened
     SkateEvents.mapOpened();
     requestLocationPermission();
