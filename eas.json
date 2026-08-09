@@ -28,6 +28,7 @@
       "distribution": "store",
       "channel": "production",
       "node": "22.22.1",
+      "autoIncrement": true,
       "env": {
         "EAS_SKIP_AUTO_FINGERPRINT": "1"
       },
