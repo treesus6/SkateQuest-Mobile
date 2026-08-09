@@ -1,131 +1,57 @@
-# Privacy Policy for SkateQuest
+# SkateQuest Privacy Policy
 
-**Last Updated: December 15, 2024**
+**Effective date:** August 9, 2026
 
-## Introduction
+SkateQuest is a skateboarding community application that helps users discover skate spots, participate in challenges and sessions, track skating progress, upload skate media, communicate with other users, and use location-based features.
 
-SkateQuest ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and share information when you use our mobile application.
+## Information SkateQuest may collect
 
-## Information We Collect
+Depending on the features you use, SkateQuest may process:
 
-### Information You Provide
+- **Account information:** email address, user ID, username, display name, authentication information, and profile settings.
+- **Profile and community information:** bio, skill level, stance, XP, levels, achievements, crews, challenge activity, session activity, comments, messages, reports, ratings, and other content you choose to submit.
+- **Location information:** approximate or precise device location when you grant location permission, plus skate-spot/check-in location data used for maps and location-based features.
+- **Photos, videos, camera and microphone data:** media you choose to capture or upload for posts, trick submissions, challenges, spot photos, or other community features.
+- **Device and app diagnostics:** crash reports, error diagnostics, app version, device/platform information, performance information, and usage events used to operate and improve SkateQuest.
+- **Notification information:** push-notification tokens and notification preferences when notifications are enabled.
+- **Age/safety information:** birthdate, minor-account status, parental-consent status, or parent/guardian contact information when required for age-appropriate account handling.
 
-- **Account Information**: Username, email address, password (encrypted)
-- **Profile Information**: Bio, skill level, avatar image
-- **Content**: Photos and videos you upload, comments, ratings, and reviews
-- **Location Data**: GPS coordinates when you add or search for skateparks
+## How information is used
 
-### Automatically Collected Information
+SkateQuest uses information to provide authentication, profiles, maps, skate-spot discovery, sessions, challenges, crews, media uploads, messaging, moderation, safety features, progress tracking, notifications, diagnostics, fraud/abuse prevention, and app improvement.
 
-- **Device Information**: Device model, operating system, app version
-- **Usage Data**: Features you use, time spent in app, interactions
-- **Location Data**: Approximate location for finding nearby skateparks (only when you grant permission)
-- **Error Logs**: Crash reports and technical diagnostics
+## Service providers
 
-## How We Use Your Information
+SkateQuest uses third-party infrastructure and SDKs to operate the service. These may include Supabase for authentication, database, storage and server functions; Expo/EAS for application delivery and updates; Mapbox for map functionality; and Sentry for crash and performance diagnostics. Those providers may process data needed to provide their services under their own terms and privacy practices.
 
-We use the collected information to:
+## Public and community content
 
-- Provide and maintain the SkateQuest service
-- Find skateparks near your location
-- Analyze trick videos and provide feedback
-- Display your content to other users
-- Send notifications about challenges, followers, and activity
-- Improve app performance and fix bugs
-- Prevent fraud and abuse
+Content you intentionally post to public or community areas of SkateQuest may be visible to other users. Do not post sensitive personal information in public fields, comments, messages intended for broader groups, spot descriptions, or uploaded media.
 
-## Information Sharing
+## Data retention and deletion
 
-We do NOT sell your personal information. We share information only in these cases:
+Account-linked data is retained while needed to provide SkateQuest and for legitimate security, abuse-prevention, troubleshooting, or legal purposes. SkateQuest provides an in-app **Delete Account Permanently** control on the user's own Profile screen. Using that control requests permanent deletion of the account and associated account-linked data.
 
-### Third-Party Services
+Users who cannot access the app can use the instructions in [DELETE_ACCOUNT.md](./DELETE_ACCOUNT.md) to request deletion through the developer-contact channel listed on the SkateQuest Google Play listing.
 
-- **Supabase**: Database and file storage for your content
-- **Sentry**: Error tracking and crash reporting (no personal information)
-- **PostHog** (if enabled): Anonymous usage analytics
+Some information may be retained when reasonably necessary for security, fraud prevention, legal compliance, dispute resolution, or protection of other users. Where community records must be preserved for integrity, the deleted user's identifying association may be removed instead.
 
-### Legal Requirements
+## Permissions
 
-We may disclose information if required by law or to:
+SkateQuest requests device permissions only for features that need them, including location, camera, media/photos, microphone, and notifications. You can manage permissions through Android or iOS system settings. Some features may not work when a required permission is disabled.
 
-- Comply with legal processes
-- Enforce our Terms of Service
-- Protect our rights or safety
+## Children's and teen safety
 
-## Your Rights and Choices
+SkateQuest includes age- and safety-related account fields intended to support safer handling of younger users. Users should provide accurate age information. Parental or guardian consent may be required where applicable.
 
-### Access and Control
+## Security
 
-- **View Your Data**: Access all your data through your profile
-- **Edit**: Update your profile and content anytime
-- **Delete**: Request account deletion through Settings
+SkateQuest uses authenticated access, database row-level security, server-side privileged operations, and other technical controls intended to protect account data. No online service can guarantee absolute security.
 
-### Location Services
+## Changes to this policy
 
-- You can enable/disable location access in your device settings
-- Location is only used to find nearby skateparks and tag your content
+This policy may be updated as SkateQuest changes. Material updates should be reflected by changing the effective date and, when appropriate, providing notice in the app or store listing.
 
-### Marketing Communications
+## Contact
 
-- We don't send marketing emails
-- You can control push notifications in app settings
-
-## Data Security
-
-We implement security measures to protect your data:
-
-- Passwords are encrypted and never stored in plain text
-- Data transmitted using secure HTTPS connections
-- Files stored in secure cloud storage (Supabase)
-- Regular security audits and updates
-
-However, no method of transmission over the internet is 100% secure.
-
-## Data Retention
-
-- **Active Accounts**: Data retained while your account is active
-- **Deleted Accounts**: Data deleted within 30 days of account deletion request
-- **Legal Requirements**: Some data may be retained if required by law
-
-## Children's Privacy
-
-SkateQuest is not intended for children under 13. We do not knowingly collect information from children under 13. If you're a parent and believe your child has provided information, please contact us.
-
-## International Users
-
-SkateQuest is operated in the United States. If you're accessing from outside the US, your information may be transferred to and stored in the US.
-
-## Changes to This Policy
-
-We may update this Privacy Policy. We'll notify you of significant changes through the app or email. Continued use after changes means you accept the updated policy.
-
-## Contact Us
-
-Questions about this Privacy Policy? Contact us:
-
-- **Email**: privacy@skatequest.app
-- **GitHub**: https://github.com/treesus6/SkateQuest-App/issues
-
-## Your California Privacy Rights
-
-If you're a California resident, you have the right to:
-
-- Know what personal information we collect
-- Request deletion of your personal information
-- Opt-out of sale of personal information (we don't sell it)
-
-## GDPR Rights (European Users)
-
-If you're in the EU, you have rights under GDPR including:
-
-- Right to access your data
-- Right to rectification
-- Right to erasure ("right to be forgotten")
-- Right to data portability
-- Right to object to processing
-
-To exercise these rights, contact us at privacy@skatequest.app.
-
----
-
-**By using SkateQuest, you agree to this Privacy Policy.**
+For privacy, account-deletion, or data questions, use the developer contact information published on SkateQuest's Google Play listing.
