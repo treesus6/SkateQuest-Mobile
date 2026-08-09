@@ -60,13 +60,16 @@ export const achievementsService = {
     try {
       const { data, error } = await supabase
         .from('user_achievements')
-        .upsert([
-          {
-            user_id: userId,
-            achievement_id: achievementId,
-            unlocked_at: new Date().toISOString(),
-          },
-        ])
+        .upsert(
+          [
+            {
+              user_id: userId,
+              achievement_id: achievementId,
+              unlocked_at: new Date().toISOString(),
+            },
+          ],
+          { onConflict: 'user_id,achievement_id' }
+        )
         .select();
 
       if (error) throw error;
