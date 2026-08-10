@@ -5,27 +5,13 @@ import {
   StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { useAuthStore } from '../stores/useAuthStore';
-import { supabase } from '../lib/supabase';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const APP_SCHEME = 'com.treesus6.skatequest';
-
-const getOAuthParams = (url: string) => {
-  const query = url.includes('?') ? url.split('?')[1]?.split('#')[0] : '';
-  const hash = url.includes('#') ? url.split('#')[1] : '';
-  return new URLSearchParams(hash || query || '');
-};
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [oauthLoading, setOauthLoading] = useState('');
 
   const handleLogin = async () => {
     setError('');
@@ -36,63 +22,6 @@ export default function LoginScreen({ navigation }: any) {
     const { error: signInError } = await signIn(email.trim(), password);
     if (signInError) {
       setError(signInError.message || 'Invalid email or password');
-    }
-  };
-
-  const handleOAuth = async (provider: 'google' | 'facebook') => {
-    setError('');
-    setOauthLoading(provider);
-    try {
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: APP_SCHEME,
-        path: 'auth/callback',
-      });
-
-      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (oauthError) throw oauthError;
-      if (!data.url) throw new Error('No OAuth URL returned');
-
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-      if (result.type === 'success') {
-        const params = getOAuthParams(result.url);
-        const oauthErrorDescription =
-          params.get('error_description') || params.get('error');
-        if (oauthErrorDescription) throw new Error(oauthErrorDescription);
-
-        const code = params.get('code');
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-
-        if (code) {
-          const { error: exchangeError } =
-            await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) throw exchangeError;
-        } else if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (sessionError) throw sessionError;
-        } else {
-          throw new Error('Google sign-in returned without a session');
-        }
-      } else if (result.type === 'cancel' || result.type === 'dismiss') {
-        setError('Sign in was cancelled');
-      } else {
-        setError('Sign in did not complete. Please try again.');
-      }
-    } catch (err: any) {
-      setError(err.message || `${provider} sign in failed`);
-    } finally {
-      setOauthLoading('');
     }
   };
 
@@ -108,49 +37,13 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={s.tagline}>Find Your Spot</Text>
           </View>
 
+          <Text style={s.emailHint}>Sign in with your email and password</Text>
+
           {error ? (
             <View style={s.errorBox}>
               <Text style={s.errorText}>{error}</Text>
             </View>
           ) : null}
-
-          {/* OAuth Buttons */}
-          <TouchableOpacity
-            style={s.googleBtn}
-            onPress={() => handleOAuth('google')}
-            disabled={!!oauthLoading}
-          >
-            {oauthLoading === 'google' ? (
-              <ActivityIndicator color="#333" size="small" />
-            ) : (
-              <>
-                <Text style={s.googleIcon}>G</Text>
-                <Text style={s.googleTxt}>Continue with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={s.facebookBtn}
-            onPress={() => handleOAuth('facebook')}
-            disabled={!!oauthLoading}
-          >
-            {oauthLoading === 'facebook' ? (
-              <ActivityIndicator color="white" size="small" />
-            ) : (
-              <>
-                <Text style={s.facebookIcon}>f</Text>
-                <Text style={s.facebookTxt}>Continue with Facebook</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={s.divider}>
-            <View style={s.dividerLine} />
-            <Text style={s.dividerText}>or sign in with email</Text>
-            <View style={s.dividerLine} />
-          </View>
 
           {/* Email/Password */}
           <TextInput
@@ -217,29 +110,9 @@ const s = StyleSheet.create({
     padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)',
   },
   errorText: { color: '#FCA5A5', fontSize: 14, textAlign: 'center' },
-  googleBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'white', borderRadius: 12, padding: 14,
-    marginBottom: 10, gap: 10,
+  emailHint: {
+    color: '#9CA3AF', fontSize: 14, textAlign: 'center', marginBottom: 16,
   },
-  googleIcon: {
-    fontSize: 18, fontWeight: '900', color: '#4285F4',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-  },
-  googleTxt: { color: '#333', fontWeight: '700', fontSize: 15 },
-  facebookBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#1877F2', borderRadius: 12, padding: 14,
-    marginBottom: 10, gap: 10,
-  },
-  facebookIcon: { fontSize: 20, fontWeight: '900', color: 'white' },
-  facebookTxt: { color: 'white', fontWeight: '700', fontSize: 15 },
-  divider: {
-    flexDirection: 'row', alignItems: 'center',
-    marginVertical: 16, gap: 10,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#1F2937' },
-  dividerText: { color: '#6B7280', fontSize: 13 },
   input: {
     backgroundColor: '#111827', color: '#F3F4F6',
     borderRadius: 12, padding: 14, fontSize: 15,
