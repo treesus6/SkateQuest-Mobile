@@ -3,7 +3,7 @@ module.exports = {
     name: 'SkateQuest',
     slug: 'skatequest',
     owner: 'treesus',
-    scheme: 'skatequest',
+    scheme: 'com.treesus6.skatequest',
     version: '1.0.1',
     runtimeVersion: {
       policy: 'appVersion',
