@@ -21,13 +21,16 @@ describe('LoginScreen', () => {
   });
 
   it('renders login form', async () => {
-    const { getByPlaceholderText, getByText } = await render(
+    const { getByPlaceholderText, getByText, queryByText } = await render(
       <LoginScreen navigation={mockNavigation} />
     );
     expect(getByText('SKATEQUEST')).toBeTruthy();
+    expect(getByText('Sign in with your email and password')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
     expect(getByText('Sign In')).toBeTruthy();
+    expect(queryByText('Continue with Google')).toBeNull();
+    expect(queryByText('Continue with Facebook')).toBeNull();
   });
 
   it('shows validation error for empty fields', async () => {
