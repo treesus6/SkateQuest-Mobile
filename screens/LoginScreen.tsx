@@ -12,6 +12,8 @@ import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const APP_SCHEME = 'skatequest';
+
 export default function LoginScreen({ navigation }: any) {
   const { signIn, loading } = useAuthStore();
   const [email, setEmail] = useState('');
@@ -36,7 +38,7 @@ export default function LoginScreen({ navigation }: any) {
     setOauthLoading(provider);
     try {
       const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'com.treesus6.skatequest',
+        scheme: APP_SCHEME,
         path: 'auth/callback',
       });
 

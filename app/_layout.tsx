@@ -14,7 +14,6 @@ import { useNetworkStore } from '../stores/useNetworkStore';
 import { ChallengeProvider } from '../contexts/ChallengeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
-import PortalDimensionLogo from '../components/PortalDimensionLogo';
 import Toast from '../components/Toast';
 
 import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
@@ -159,7 +158,6 @@ function RootLayout() {
           <ChallengeProvider>
             <StatusBar style="light" />
             <OfflineIndicator />
-            <PortalDimensionLogo />
             <Toast />
             <AuthGuard />
           </ChallengeProvider>
