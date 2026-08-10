@@ -12,7 +12,13 @@ import { supabase } from '../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const APP_SCHEME = 'skatequest';
+const APP_SCHEME = 'com.treesus6.skatequest';
+
+const getOAuthParams = (url: string) => {
+  const query = url.includes('?') ? url.split('?')[1]?.split('#')[0] : '';
+  const hash = url.includes('#') ? url.split('#')[1] : '';
+  return new URLSearchParams(hash || query || '');
+};
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn, loading } = useAuthStore();
@@ -56,19 +62,32 @@ export default function LoginScreen({ navigation }: any) {
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
       if (result.type === 'success') {
-        const url = result.url;
-        const params = new URLSearchParams(url.split('#')[1] || url.split('?')[1] || '');
+        const params = getOAuthParams(result.url);
+        const oauthErrorDescription =
+          params.get('error_description') || params.get('error');
+        if (oauthErrorDescription) throw new Error(oauthErrorDescription);
+
+        const code = params.get('code');
         const accessToken = params.get('access_token');
         const refreshToken = params.get('refresh_token');
 
-        if (accessToken) {
-          await supabase.auth.setSession({
+        if (code) {
+          const { error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        } else if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
-            refresh_token: refreshToken || '',
+            refresh_token: refreshToken,
           });
+          if (sessionError) throw sessionError;
+        } else {
+          throw new Error('Google sign-in returned without a session');
         }
-      } else if (result.type === 'cancel') {
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
         setError('Sign in was cancelled');
+      } else {
+        setError('Sign in did not complete. Please try again.');
       }
     } catch (err: any) {
       setError(err.message || `${provider} sign in failed`);
