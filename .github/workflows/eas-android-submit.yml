@@ -1,0 +1,64 @@
+name: EAS Android Submit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .eas-trigger/android-submit.json
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit existing Android build to Google Play
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Read and validate submission request
+        id: request
+        run: |
+          node - <<'NODE'
+          const { appendFileSync, readFileSync } = require('node:fs');
+          const request = JSON.parse(readFileSync('.eas-trigger/android-submit.json', 'utf8'));
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(request.buildId || '')) {
+            throw new Error('android-submit.json must contain a valid EAS buildId');
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `build_id=${request.buildId}\n`);
+          NODE
+
+      - name: Write Google Service Account key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+          if (!key) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_KEY secret');
+          JSON.parse(key);
+          writeFileSync('google-service-account.json', key, { mode: 0o600 });
+          NODE
+
+      - name: Submit exact build to Play Store internal track
+        run: eas submit --platform android --profile production --id "${{ steps.request.outputs.build_id }}" --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Remove temporary service account key
+        if: always()
+        run: rm -f ./google-service-account.json
