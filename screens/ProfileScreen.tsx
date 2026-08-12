@@ -126,7 +126,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-terracotta p-8 items-center">
+      <View className="bg-[#D2673D] p-8 items-center">
         <Text className="text-3xl font-bold text-white mb-1">{profile?.username || 'Skater'}</Text>
         {isOwnProfile && <Text className="text-sm text-white/80">{user?.email}</Text>}
         {!isOwnProfile && (
@@ -148,8 +148,8 @@ export default function ProfileScreen() {
           { value: profile?.challenges_completed?.length || 0, label: 'Challenges' },
         ].map(stat => (
           <View key={stat.label} className="flex-1 items-center">
-            <Text className="text-2xl font-bold text-brand-terracotta">{stat.value}</Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</Text>
+            <Text className="text-2xl font-bold text-[#D2673D]">{stat.value}</Text>
+            <Text className="text-xs text-[#8E97A4] mt-1">{stat.label}</Text>
           </View>
         ))}
       </Card>
@@ -157,21 +157,21 @@ export default function ProfileScreen() {
       {levelProgress && (
         <Card className="mx-4">
           <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-base font-bold text-gray-800 dark:text-gray-100">
+            <Text className="text-base font-bold text-[#F7F4EF]">
               Level {levelProgress.current_level} → {levelProgress.current_level + 1}
             </Text>
-            <Text className="text-sm font-semibold text-brand-terracotta">
+            <Text className="text-sm font-semibold text-[#D2673D]">
               {levelProgress.xp_progress} /{' '}
               {levelProgress.xp_for_next_level - levelProgress.xp_for_current_level} XP
             </Text>
           </View>
-          <View className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
+          <View className="h-3 bg-[#252C36] rounded-full overflow-hidden mb-2">
             <View
-              className="h-full bg-brand-green rounded-full"
+              className="h-full bg-[#D2673D] rounded-full"
               style={{ width: `${Math.min(100, levelProgress.progress_percentage)}%` }}
             />
           </View>
-          <Text className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          <Text className="text-xs text-[#8E97A4] text-center">
             {levelProgress.xp_needed} XP needed for next level
           </Text>
         </Card>
@@ -184,7 +184,7 @@ export default function ProfileScreen() {
         </Card>
       ) : null}
 
-      <Card className="mx-4 p-0 overflow-hidden">
+      <Card className="mx-4 p-0 overflow-hidden bg-[#111721] border border-[#252C36]">
         {[
           { label: 'Achievements', icon: Trophy, screen: 'Achievements', color: '#fbbf24' },
           { label: 'Notifications', icon: Bell, screen: 'Notifications', color: '#3b82f6' },
@@ -198,11 +198,11 @@ export default function ProfileScreen() {
         ].map((item, i) => (
           <TouchableOpacity
             key={i}
-            className="flex-row items-center p-4 border-b border-gray-100 dark:border-gray-800"
+            className="flex-row items-center p-4 border-b border-[#252C36]"
             onPress={() => navigation.navigate(item.screen)}
           >
             <item.icon color={item.color} size={20} />
-            <Text className="flex-1 ml-3 text-base font-semibold text-gray-800 dark:text-gray-100">{item.label}</Text>
+            <Text className="flex-1 ml-3 text-base font-semibold text-[#F7F4EF]">{item.label}</Text>
             <Text className="text-gray-400">›</Text>
           </TouchableOpacity>
         ))}
@@ -210,12 +210,12 @@ export default function ProfileScreen() {
 
       {profile?.badges && Object.keys(profile.badges).length > 0 ? (
         <Card className="mx-4">
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Badges</Text>
+          <Text className="text-lg font-bold text-[#F7F4EF] mb-2">Badges</Text>
           {Object.entries(profile.badges).map(([badge, unlocked]) =>
             unlocked ? (
               <View key={badge} className="flex-row items-center gap-2 my-1">
                 <Award color="#d2673d" size={18} />
-                <Text className="text-base text-gray-600 dark:text-gray-300">{badge}</Text>
+                <Text className="text-base text-[#B7BEC8]">{badge}</Text>
               </View>
             ) : null
           )}
