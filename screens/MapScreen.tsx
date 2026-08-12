@@ -10,32 +10,7 @@ import { RootStackParamList, SkateSpot, Shop } from '../types';
 import {
   Crosshair,
   Navigation,
-  Plus,
-  Star,
-  Trophy,
-  QrCode,
-  Gamepad2,
-  Music,
-  ShoppingBag,
-  Users,
-  Calendar,
-  Zap,
-  BarChart3,
-  MapPin,
-  Tv,
   Grid3x3,
-  Flag,
-  Ticket,
-  Flame,
-  CloudSun,
-  Gem,
-  Sunrise,
-  Video,
-  BookOpen,
-  Heart,
-  Award,
-  Swords,
-  UserCheck,
   Bookmark,
   BookmarkCheck,
 } from 'lucide-react-native';
@@ -74,43 +49,6 @@ const CONDITION_LABELS: Record<string, string> = {
   clear: '✅ Clear',
   under_construction: '🚧 WIP',
 };
-
-const FEATURES = [
-  // Core
-  { key: 'Feed', icon: Star, color: '#d2673d', screen: 'Feed' },
-  { key: 'Challenges', icon: Trophy, color: '#4CAF50', screen: 'ChallengesTab' },
-  { key: 'Tricks', icon: Zap, color: '#FF6B35', screen: 'TrickTracker' },
-  { key: 'SKATE', icon: Gamepad2, color: '#6B4CE6', screen: 'SkateGame' },
-  { key: 'Leaderboard', icon: BarChart3, color: '#2196F3', screen: 'Leaderboard' },
-  { key: 'Playlists', icon: Music, color: '#E91E63', screen: 'Playlists' },
-  { key: 'Shops', icon: ShoppingBag, color: '#795548', screen: 'Shops' },
-  { key: 'Crews', icon: Users, color: '#009688', screen: 'Crews' },
-  { key: 'Events', icon: Calendar, color: '#FF9800', screen: 'Events' },
-  { key: 'Sessions', icon: Users, color: '#6B4CE6', screen: 'Sessions' },
-  { key: 'Scan QR', icon: QrCode, color: '#e8b44d', screen: 'QRScanner' },
-  // Community & Social
-  { key: 'Battles', icon: Swords, color: '#e74c3c', screen: 'CrewBattles' },
-  { key: 'Mentorship', icon: UserCheck, color: '#8e44ad', screen: 'Mentorship' },
-  // Gamification
-  { key: 'Bingo', icon: Grid3x3, color: '#27ae60', screen: 'TrickBingo' },
-  { key: 'Mission Route', icon: Navigation, color: '#f97316', screen: 'SpotMissionRoutes' },
-  { key: 'Crew Territory', icon: Flag, color: '#c0392b', screen: 'SpotConquer' },
-  { key: 'Skate Pass', icon: Ticket, color: '#2980b9', screen: 'SeasonalPass' },
-  { key: 'Streaks', icon: Flame, color: '#e67e22', screen: 'Streaks' },
-  // Discovery
-  { key: 'Weather', icon: CloudSun, color: '#3498db', screen: 'WeatherSpots' },
-  { key: 'Hidden Gems', icon: Gem, color: '#1abc9c', screen: 'HiddenGems' },
-  { key: 'Spot of Day', icon: Sunrise, color: '#f39c12', screen: 'SpotOfTheDay' },
-  // Content
-  { key: 'Clip of Week', icon: Video, color: '#9b59b6', screen: 'ClipOfWeek' },
-  { key: 'Tutorials', icon: BookOpen, color: '#16a085', screen: 'TrickTutorials' },
-  { key: 'Skate TV', icon: Tv, color: '#FF6B35', screen: 'SkateTV' },
-  // Charity
-  { key: 'Donate XP', icon: Heart, color: '#e74c3c', screen: 'DonateXP' },
-  { key: 'Sponsors', icon: Award, color: '#FFD700', screen: 'SponsorLeaderboard' },
-  // Add
-  { key: 'Add Spot', icon: Plus, color: '#fff', screen: 'AddSpot', highlight: true },
-];
 
 export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -311,7 +249,7 @@ export default function MapScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center">
+      <View className="flex-1 bg-[#07090D] justify-center items-center">
         <LoadingSkeleton height={200} className="mx-4 mb-4" />
         <Text className="text-base text-gray-500 mt-2.5">Loading map...</Text>
       </View>
@@ -321,7 +259,7 @@ export default function MapScreen() {
   const savedIdsArray = Array.from(savedSpotIds);
 
   return (
-    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
+    <View className="flex-1 bg-[#07090D]">
       <Mapbox.MapView
         ref={mapRef}
         style={{ flex: 1 }}
@@ -479,7 +417,7 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
-      <View className="absolute top-[50px] left-5 bg-brand-terracotta px-4 py-2 rounded-full shadow-lg">
+      <View className="absolute top-[50px] left-5 bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
         <Text className="text-white font-bold text-sm">{filteredSpots.length} spots{activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby</Text>
       </View>
 
@@ -542,7 +480,7 @@ export default function MapScreen() {
                       disabled={reportingCondition}
                       className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full border ${
                         isActive
-                          ? 'bg-brand-terracotta border-brand-terracotta'
+                          ? 'bg-[#D2673D] border-brand-terracotta'
                           : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                       }`}
                     >
@@ -560,7 +498,7 @@ export default function MapScreen() {
           {/* Action buttons */}
           <View className="flex-row gap-2.5">
             <TouchableOpacity
-              className="flex-1 bg-brand-terracotta p-3 rounded-lg items-center flex-row justify-center gap-1.5"
+              className="flex-1 bg-[#D2673D] p-3 rounded-lg items-center flex-row justify-center gap-1.5"
               onPress={() => setShowDirections(true)}
             >
               <Navigation color="#fff" size={14} />
@@ -597,7 +535,7 @@ export default function MapScreen() {
           </View>
           <View className="flex-row gap-2.5">
             <TouchableOpacity
-              className="flex-1 bg-brand-terracotta p-3 rounded-lg items-center flex-row justify-center gap-1.5"
+              className="flex-1 bg-[#D2673D] p-3 rounded-lg items-center flex-row justify-center gap-1.5"
               onPress={() => setShowDirections(true)}
             >
               <Navigation color="#fff" size={14} />
@@ -617,44 +555,14 @@ export default function MapScreen() {
         </View>
       )}
 
-      <View className="flex-row flex-wrap p-2.5 bg-brand-beige dark:bg-gray-900">
-        {FEATURES.map(feat => {
-          const Icon = feat.icon;
-          return (
-            <TouchableOpacity
-              key={feat.key}
-              className={`w-[30%] m-[1.5%] rounded-xl p-3.5 items-center shadow-sm ${feat.highlight ? 'bg-brand-terracotta' : 'bg-white dark:bg-gray-800'}`}
-              onPress={() =>
-                navigation.navigate(feat.screen as any, feat.screen === 'AddSpot' ? {} : undefined)
-              }
-            >
-              <Icon color={feat.highlight ? '#fff' : feat.color} size={28} />
-              <Text
-                className={`text-xs font-semibold mt-1 text-center ${feat.highlight ? 'text-white' : 'text-gray-700 dark:text-gray-300'}`}
-              >
-                {feat.key}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View className="flex-row bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-3 px-1.5">
-        <TouchableOpacity
-          className="flex-1 p-2.5 items-center"
-          onPress={() => navigation.navigate('Map')}
-        >
-          <MapPin color="#d2673d" size={20} />
-          <Text className="text-sm text-brand-terracotta font-semibold mt-0.5">Map</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 p-2.5 items-center"
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Users color="#d2673d" size={20} />
-          <Text className="text-sm text-brand-terracotta font-semibold mt-0.5">Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        className="absolute bottom-6 right-5 bg-[#D2673D] rounded-full w-14 h-14 justify-center items-center shadow-lg"
+        onPress={() => navigation.navigate('AddSpot', {})}
+        accessibilityRole="button"
+        accessibilityLabel="Add a skate spot"
+      >
+        <Text className="text-white text-3xl font-light">+</Text>
+      </TouchableOpacity>
     </View>
   );
 }

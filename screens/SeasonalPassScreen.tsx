@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Star, Gift, Zap, Lock, CheckCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { useNavigation } from '../lib/useNavigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,6 +103,7 @@ function PulsingCircle({ size = 40 }: { size?: number }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SeasonalPassScreen() {
+  const navigation = useNavigation<any>();
   const [pass, setPass] = useState<SeasonalPass | null>(null);
   const [progress, setProgress] = useState<PassProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -294,10 +296,16 @@ export default function SeasonalPassScreen() {
 
   if (!pass) {
     return (
-      <View className="flex-1 bg-[#0a0a0a] items-center justify-center px-8">
-        <Text className="text-white text-lg text-center">
-          No active season right now. Check back soon!
-        </Text>
+      <View className="flex-1 bg-[#07090D] px-5 pt-20">
+        <Text className="text-[#D2673D] text-xs font-black tracking-widest mb-3">SEASON BREAK</Text>
+        <Text className="text-[#F7F4EF] text-3xl font-black leading-9">The next season is being built.</Text>
+        <Text className="text-[#9DA5B2] text-base leading-6 mt-3">Daily quests, spot missions and crew battles are still live. Keep stacking XP while the next season gets ready.</Text>
+        <TouchableOpacity className="min-h-14 bg-[#D2673D] rounded-xl items-center justify-center mt-8" onPress={() => navigation.navigate('DailyQuests')}>
+          <Text className="text-white font-black text-base">Ride today's quests</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="min-h-14 bg-[#111721] border border-[#2A323E] rounded-xl items-center justify-center mt-3" onPress={() => navigation.navigate('Map')}>
+          <Text className="text-[#F7F4EF] font-bold text-base">Find a spot nearby</Text>
+        </TouchableOpacity>
       </View>
     );
   }

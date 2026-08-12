@@ -128,11 +128,11 @@ export default function HomeScreen() {
         <View style={s.header}>
           <View>
             <Text style={s.greeting}>What's good,</Text>
-            <Text style={s.username}>@{profile?.username || 'skater'} 🛹</Text>
+            <Text style={s.username}>@{profile?.username || 'skater'}</Text>
           </View>
           <TouchableOpacity style={s.notifBtn} onPress={() => navigation.navigate('Profile')}>
             <View style={s.avatarCircle}>
-              <Text style={s.avatarEmoji}>🛹</Text>
+              <Text style={s.avatarEmoji}>SQ</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -193,7 +193,7 @@ export default function HomeScreen() {
             </ScrollView>
           ) : (
             <TouchableOpacity style={s.emptyLive} onPress={() => navigation.navigate('LiveCheckIn')}>
-              <Text style={s.emptyLiveTxt}>Nobody checked in yet — be first 🛹</Text>
+              <Text style={s.emptyLiveTxt}>Nobody is checked in yet — start the first session</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -201,7 +201,7 @@ export default function HomeScreen() {
         {/* Daily Quests */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>⚡ Daily Quests</Text>
+            <Text style={s.sectionTitle}>Daily Quests</Text>
             <TouchableOpacity onPress={() => navigation.navigate('DailyQuests')}>
               <Text style={s.seeAll}>All quests →</Text>
             </TouchableOpacity>
@@ -224,7 +224,7 @@ export default function HomeScreen() {
         {/* SkateTV - Hot Clips */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>📺 Hot Clips</Text>
+            <Text style={s.sectionTitle}>Hot Clips</Text>
             <TouchableOpacity onPress={() => navigation.navigate('SkateTV')}>
               <Text style={s.seeAll}>SkateTV →</Text>
             </TouchableOpacity>
@@ -255,7 +255,7 @@ export default function HomeScreen() {
         {bounties.length > 0 && (
           <View style={s.section}>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>💰 Open Bounties</Text>
+              <Text style={s.sectionTitle}>Open Bounties</Text>
               <TouchableOpacity onPress={() => navigation.navigate('BountyBoard')}>
                 <Text style={s.seeAll}>All bounties →</Text>
               </TouchableOpacity>
@@ -277,7 +277,7 @@ export default function HomeScreen() {
 
         {/* Quick Nav */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>🛹 Explore</Text>
+          <Text style={s.sectionTitle}>Explore</Text>
           <View style={s.quickNav}>
             {[
               { icon: '🗺', label: 'Find Parks', screen: 'Map' },
@@ -309,7 +309,7 @@ export default function HomeScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#030508' },
+  container: { flex: 1, backgroundColor: '#07090D' },
 
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 12 },
@@ -336,7 +336,7 @@ const s = StyleSheet.create({
   // Sections
   section: { paddingHorizontal: 16, marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { color: '#F3F4F6', fontSize: 16, fontWeight: '900' },
+  sectionTitle: { color: '#F7F4EF', fontSize: 19, fontWeight: '900', letterSpacing: -0.3 },
   seeAll: { color: '#d2673d', fontSize: 13, fontWeight: '600' },
 
   // Live

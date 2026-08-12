@@ -51,11 +51,10 @@ export default function DailyQuestsScreen() {
 
   const loadData = async () => {
     if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
     const { data: q } = await supabase
       .from('daily_quests')
       .select('*')
-      .eq('date', today)
+      .eq('active', true)
       .order('xp_reward', { ascending: false });
     setQuests(q || []);
 
@@ -238,7 +237,8 @@ export default function DailyQuestsScreen() {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <Text style={s.title}>⚡ Daily Quests</Text>
+        <Text style={s.eyebrow}>TODAY'S MISSIONS</Text>
+        <Text style={s.title}>Daily Quests</Text>
         <Text style={s.sub}>Submit proof to claim your XP. Resets every day.</Text>
         <View style={s.progressRow}>
           <Text style={s.progressTxt}>
@@ -267,8 +267,9 @@ export default function DailyQuestsScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={s.empty}>
-              <Text style={s.emptyIcon}>⚡</Text>
-              <Text style={s.emptyTxt}>No quests today. Check back soon!</Text>
+              <Text style={s.emptyTitle}>Missions are being loaded</Text>
+              <Text style={s.emptyTxt}>Pull down to refresh. Active quests will appear here as soon as they are available.</Text>
+              <TouchableOpacity style={s.retryBtn} onPress={loadData}><Text style={s.retryTxt}>Refresh quests</Text></TouchableOpacity>
             </View>
           ) : (
             <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
@@ -382,7 +383,8 @@ export default function DailyQuestsScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#05070B' },
   header: { padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: '900', color: '#F3F4F6' },
+  eyebrow: { color: '#D2673D', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 6 },
+  title: { fontSize: 30, fontWeight: '900', color: '#F3F4F6' },
   sub: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 12 },
   progressRow: { gap: 6 },
   progressTxt: { color: '#d2673d', fontSize: 12, fontWeight: '700' },
@@ -441,9 +443,11 @@ const s = StyleSheet.create({
     borderColor: '#166834',
   },
   doneTxt: { color: '#4ade80', fontWeight: '700', fontSize: 13 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTxt: { color: '#4B5563', fontSize: 15 },
+  empty: { marginTop: 32, backgroundColor: '#10151D', borderRadius: 18, borderWidth: 1, borderColor: '#262D38', padding: 24, alignItems: 'flex-start' },
+  emptyTitle: { color: '#F7F4EF', fontSize: 20, fontWeight: '900', marginBottom: 8 },
+  emptyTxt: { color: '#9DA5B2', fontSize: 14, lineHeight: 21 },
+  retryBtn: { minHeight: 48, marginTop: 20, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 20, justifyContent: 'center' },
+  retryTxt: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
   modal: {
