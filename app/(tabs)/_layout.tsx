@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useChallenges } from '../../contexts/ChallengeContext';
 import LevelUpModal from '../../components/LevelUpModal';
+import { Home, Map as MapIcon, Zap, Users, UserRound, Video, MapPin, Bot, Footprints } from 'lucide-react-native';
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 // Rebuilt for Expo Router's tab bar props shape
@@ -40,19 +41,19 @@ function SkateQuestTabBar({ state, navigation }: any) {
   });
 
   const TAB_CONFIG = [
-    { icon: '🏠', label: 'Home', name: 'index' },
-    { icon: '🗺', label: 'Map', name: 'map' },
+    { icon: Home, label: 'Home', name: 'index' },
+    { icon: MapIcon, label: 'Map', name: 'map' },
     { icon: null, label: '', name: 'POST', isPost: true },
-    { icon: '⚡', label: 'Quests', name: 'quests' },
-    { icon: '👥', label: 'Crew', name: 'crew' },
-    { icon: '👤', label: 'Me', name: 'profile' },
+    { icon: Zap, label: 'Quests', name: 'quests' },
+    { icon: Users, label: 'Crew', name: 'crew' },
+    { icon: UserRound, label: 'Me', name: 'profile' },
   ];
 
   const POST_ACTIONS = [
-    { icon: '🎥', label: 'Post Clip', screen: '/(screens)/upload-media', color: '#d2673d' },
-    { icon: '📍', label: 'Check In', screen: '/(screens)/live-check-in', color: '#4ade80' },
-    { icon: '🛹', label: 'Log Trick', screen: '/(screens)/trick-tracker', color: '#a855f7' },
-    { icon: '🤖', label: 'AI Coach', screen: '/(screens)/ai-coach', color: '#3b82f6' },
+    { icon: Video, label: 'Post Clip', screen: '/(screens)/upload-media', color: '#d2673d' },
+    { icon: MapPin, label: 'Check In', screen: '/(screens)/live-check-in', color: '#4ade80' },
+    { icon: Footprints, label: 'Log Trick', screen: '/(screens)/trick-tracker', color: '#a855f7' },
+    { icon: Bot, label: 'AI Coach', screen: '/(screens)/ai-coach', color: '#3b82f6' },
   ];
 
   return (
@@ -92,7 +93,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
                   accessibilityRole="button"
                   accessibilityLabel={action.label}
                 >
-                  <Text style={s.postActionIcon}>{action.icon}</Text>
+                  <action.icon color={action.color} size={20} />
                   <Text style={[s.postActionLabel, { color: action.color }]}>{action.label}</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -154,7 +155,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
                   accessibilityState={{ selected: isFocused }}
                 >
                   <View style={[s.iconWrap, isFocused && s.iconWrapActive]}>
-                    <Text style={[s.tabIcon, isFocused && s.tabIconActive]}>{tab.icon}</Text>
+                    {tab.icon ? <tab.icon color={isFocused ? '#D2673D' : '#6B7280'} size={21} strokeWidth={isFocused ? 2.5 : 2} /> : null}
                   </View>
                   <Text style={[s.tabLabel, isFocused && s.tabLabelActive]}>{tab.label}</Text>
                 </TouchableOpacity>
@@ -231,8 +232,6 @@ const s = StyleSheet.create({
     borderRadius: 10,
   },
   iconWrapActive: { backgroundColor: 'rgba(210,103,61,0.15)' },
-  tabIcon: { fontSize: 20, opacity: 0.5 },
-  tabIconActive: { opacity: 1 },
   tabLabel: { fontSize: 10, color: '#4B5563', fontWeight: '600', letterSpacing: 0.3 },
   tabLabelActive: { color: '#d2673d' },
   postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -22 },
@@ -275,6 +274,5 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  postActionIcon: { fontSize: 20 },
   postActionLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
 });
