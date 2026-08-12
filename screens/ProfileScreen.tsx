@@ -125,7 +125,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
+    <ScrollView className="flex-1 bg-[#07090D]">
       <View className="bg-[#D2673D] p-8 items-center">
         <Text className="text-3xl font-bold text-white mb-1">{profile?.username || 'Skater'}</Text>
         {isOwnProfile && <Text className="text-sm text-white/80">{user?.email}</Text>}
