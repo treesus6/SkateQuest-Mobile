@@ -27,7 +27,7 @@ jobs:
   build:
     name: EAS Build (${{ github.event.inputs.platform || 'android' }} / ${{ github.event.inputs.profile || 'preview' }})
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
 
     steps:
       - name: Checkout
