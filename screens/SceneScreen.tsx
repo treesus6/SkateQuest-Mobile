@@ -95,7 +95,7 @@ export default function SceneScreen() {
           {item.logo_url ? (
             <Image
               source={{ uri: item.logo_url }}
-              className="w-14 h-14 rounded-xl"
+              style={{ width: 56, height: 56, borderRadius: 12 }}
               contentFit="contain"
             />
           ) : (

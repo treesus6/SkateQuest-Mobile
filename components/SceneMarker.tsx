@@ -59,7 +59,7 @@ export default function SceneMarker({ entry, onClose: _onClose }: Props) {
           {entry.logo_url ? (
             <Image
               source={{ uri: entry.logo_url }}
-              className="w-16 h-16 rounded-xl"
+              style={{ width: 64, height: 64, borderRadius: 12 }}
               contentFit="contain"
             />
           ) : (
