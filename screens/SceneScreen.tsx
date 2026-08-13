@@ -1,8 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
-  RefreshControl, Image, Linking, Alert, TextInput,
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  Linking,
+  Alert,
+  TextInput,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Globe, Instagram, Search, Star, Map } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { sceneService, MapSponsor, CATEGORY_LABELS, CATEGORY_EMOJI } from '../lib/sceneService';
@@ -32,21 +39,28 @@ export default function SceneScreen() {
     try {
       const data = await sceneService.getAll();
       setEntries(data);
-    } catch (e) { console.warn(e); }
-    finally { setLoading(false); setRefreshing(false); }
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useEffect(() => {
     let result = entries;
     if (activeCategory !== 'all') result = result.filter(s => s.category === activeCategory);
     if (query.trim()) {
       const q = query.toLowerCase();
-      result = result.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        s.city?.toLowerCase().includes(q) ||
-        s.state?.toLowerCase().includes(q)
+      result = result.filter(
+        s =>
+          s.name.toLowerCase().includes(q) ||
+          s.city?.toLowerCase().includes(q) ||
+          s.state?.toLowerCase().includes(q)
       );
     }
     setFiltered(result);
@@ -55,15 +69,21 @@ export default function SceneScreen() {
   const handleWebsite = async (entry: MapSponsor) => {
     if (!entry.website_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'website_tap');
-    try { await Linking.openURL(entry.website_url); }
-    catch { Alert.alert('Could not open link'); }
+    try {
+      await Linking.openURL(entry.website_url);
+    } catch {
+      Alert.alert('Could not open link');
+    }
   };
 
   const handleInstagram = async (entry: MapSponsor) => {
     if (!entry.instagram_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'instagram_tap');
-    try { await Linking.openURL(entry.instagram_url); }
-    catch { Alert.alert('Could not open link'); }
+    try {
+      await Linking.openURL(entry.instagram_url);
+    } catch {
+      Alert.alert('Could not open link');
+    }
   };
 
   const renderEntry = ({ item }: { item: MapSponsor }) => {
@@ -73,7 +93,11 @@ export default function SceneScreen() {
       <Card>
         <View className="flex-row items-start gap-3">
           {item.logo_url ? (
-            <Image source={{ uri: item.logo_url }} className="w-14 h-14 rounded-xl" resizeMode="contain" />
+            <Image
+              source={{ uri: item.logo_url }}
+              className="w-14 h-14 rounded-xl"
+              contentFit="contain"
+            />
           ) : (
             <View className="w-14 h-14 rounded-xl bg-brand-terracotta/15 items-center justify-center">
               <Text className="text-2xl">{emoji}</Text>
@@ -81,27 +105,37 @@ export default function SceneScreen() {
           )}
           <View className="flex-1">
             <View className="flex-row items-center gap-2 flex-wrap">
-              <Text className="text-base font-black text-gray-900 dark:text-gray-100">{item.name}</Text>
+              <Text className="text-base font-black text-gray-900 dark:text-gray-100">
+                {item.name}
+              </Text>
               {item.featured && <Star size={12} color="#FFD700" fill="#FFD700" />}
             </View>
-            <Text className="text-xs text-brand-terracotta font-semibold mt-0.5">{emoji} {label}</Text>
-            {item.tagline ? <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.tagline}</Text> : null}
-            {(item.city || item.state) ? (
+            <Text className="text-xs text-brand-terracotta font-semibold mt-0.5">
+              {emoji} {label}
+            </Text>
+            {item.tagline ? (
+              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.tagline}</Text>
+            ) : null}
+            {item.city || item.state ? (
               <Text className="text-xs text-gray-400 mt-1">
                 📍 {[item.city, item.state].filter(Boolean).join(', ')}
               </Text>
             ) : null}
             <View className="flex-row gap-2 mt-2">
               {item.website_url ? (
-                <TouchableOpacity onPress={() => handleWebsite(item)}
-                  className="flex-row items-center gap-1 bg-brand-terracotta rounded-lg px-3 py-1.5">
+                <TouchableOpacity
+                  onPress={() => handleWebsite(item)}
+                  className="flex-row items-center gap-1 bg-brand-terracotta rounded-lg px-3 py-1.5"
+                >
                   <Globe size={12} color="white" />
                   <Text className="text-white text-xs font-bold">Website</Text>
                 </TouchableOpacity>
               ) : null}
               {item.instagram_url ? (
-                <TouchableOpacity onPress={() => handleInstagram(item)}
-                  className="flex-row items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-1.5">
+                <TouchableOpacity
+                  onPress={() => handleInstagram(item)}
+                  className="flex-row items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-1.5"
+                >
                   <Instagram size={12} color="#E1306C" />
                   <Text className="text-gray-700 dark:text-gray-200 text-xs font-semibold">IG</Text>
                 </TouchableOpacity>
@@ -116,7 +150,9 @@ export default function SceneScreen() {
   if (loading) {
     return (
       <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
-        {[1,2,3].map(i => <LoadingSkeleton key={i} height={100} className="mb-3" />)}
+        {[1, 2, 3].map(i => (
+          <LoadingSkeleton key={i} height={100} className="mb-3" />
+        ))}
       </View>
     );
   }
@@ -145,8 +181,10 @@ export default function SceneScreen() {
 
       <View className="px-4 pt-3 pb-1">
         <FlatList
-          horizontal showsHorizontalScrollIndicator={false}
-          data={CATEGORIES} keyExtractor={c => c.key}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={CATEGORIES}
+          keyExtractor={c => c.key}
           renderItem={({ item: cat }) => (
             <TouchableOpacity
               onPress={() => setActiveCategory(cat.key)}
@@ -155,18 +193,32 @@ export default function SceneScreen() {
               }`}
             >
               <Text className="text-sm">{cat.emoji}</Text>
-              <Text className={`text-xs font-semibold ${
-                activeCategory === cat.key ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-              }`}>{cat.label}</Text>
+              <Text
+                className={`text-xs font-semibold ${
+                  activeCategory === cat.key ? 'text-white' : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                {cat.label}
+              </Text>
             </TouchableOpacity>
           )}
         />
       </View>
 
       <FlatList
-        data={filtered} keyExtractor={item => item.id} renderItem={renderEntry}
+        data={filtered}
+        keyExtractor={item => item.id}
+        renderItem={renderEntry}
         contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+          />
+        }
         ListEmptyComponent={
           <View className="items-center mt-20">
             <Text className="text-4xl mb-3">🛹</Text>
@@ -174,7 +226,9 @@ export default function SceneScreen() {
               {query ? 'No results' : 'Nothing here yet'}
             </Text>
             <Text className="text-sm text-gray-300 mt-1 text-center px-8">
-              {query ? 'Try a different search' : 'Know a local shop or brand that should be here? Let us know.'}
+              {query
+                ? 'Try a different search'
+                : 'Know a local shop or brand that should be here? Let us know.'}
             </Text>
           </View>
         }

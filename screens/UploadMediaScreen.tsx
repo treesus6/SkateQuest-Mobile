@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Image,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Video, ResizeMode } from '../components/VideoPlayer';
 import { Camera, Film, ImageIcon, Video as VideoIcon, Bot, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
