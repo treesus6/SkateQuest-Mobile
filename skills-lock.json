@@ -5,7 +5,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/eas-app-stores/SKILL.md",
-      "computedHash": "d5cf165eefc06860e93db3977dca5936175beff75b365caf3980d37f4fb175c5"
+      "computedHash": "4092e637ac0db1ac728accd9621f0e92d25934dabdc326ea119ec0c7437be519"
     },
     "eas-hosting": {
       "source": "expo/skills",
@@ -23,7 +23,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/eas-simulator/SKILL.md",
-      "computedHash": "12d06f342740b0349dff5d17212d9b45f8773f820af6a8e2da0d8a744716db53"
+      "computedHash": "2bf8574c9b88f9840b0d2b4f8f56dc5c768d549ce611ba95dacf8fa673d0c0c1"
     },
     "eas-update-insights": {
       "source": "expo/skills",
@@ -35,7 +35,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/eas-workflows/SKILL.md",
-      "computedHash": "70911a496013f83d32acf13fcd5bec1ec4963c79af991b8757c1b93a5608b3a3"
+      "computedHash": "dd0eaa3d2ce25e6f74fee771cfd611e821e85ca1aca4c735139c672ad1360600"
     },
     "expo-app-clip": {
       "source": "expo/skills",
@@ -54,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-data-fetching/SKILL.md",
       "computedHash": "422197195d96fd32036f92001cebd1590caf6445ba338aabc0c0b0cff5fa8977"
+    },
+    "expo-design-system": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-design-system/SKILL.md",
+      "computedHash": "926d79a5c2246a6dd57400089b4a72d2c67c1dd49c5a1cfe6cab807a49cd1aba"
     },
     "expo-dev-client": {
       "source": "expo/skills",
@@ -131,7 +137,7 @@
       "source": "expo/skills",
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-upgrade/SKILL.md",
-      "computedHash": "440ca7d3ea4a7ff6c4ee10b18288e1dd79062d002be68f7d209c33ef8fc47daf"
+      "computedHash": "77aea7026b8cfc732fd09587a9ee612d4abe5c7c82d00b0370f1079b9f3c59ce"
     },
     "expo-web-to-native": {
       "source": "expo/skills",
