@@ -1,12 +1,8 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
+import { Image } from 'expo-image';
 import { ExternalLink, Instagram, Globe } from 'lucide-react-native';
-import {
-  MapSponsor,
-  CATEGORY_LABELS,
-  CATEGORY_EMOJI,
-  sceneService,
-} from '../lib/sceneService';
+import { MapSponsor, CATEGORY_LABELS, CATEGORY_EMOJI, sceneService } from '../lib/sceneService';
 import { useAuthStore } from '../stores/useAuthStore';
 
 interface Props {
@@ -22,19 +18,28 @@ export default function SceneMarker({ entry, onClose: _onClose }: Props) {
   const handleWebsite = useCallback(async () => {
     if (!entry.website_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'website_tap');
-    try { await Linking.openURL(entry.website_url); }
-    catch { Alert.alert('Could not open link'); }
+    try {
+      await Linking.openURL(entry.website_url);
+    } catch {
+      Alert.alert('Could not open link');
+    }
   }, [entry, user]);
 
   const handleInstagram = useCallback(async () => {
     if (!entry.instagram_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'instagram_tap');
-    try { await Linking.openURL(entry.instagram_url); }
-    catch { Alert.alert('Could not open link'); }
+    try {
+      await Linking.openURL(entry.instagram_url);
+    } catch {
+      Alert.alert('Could not open link');
+    }
   }, [entry, user]);
 
   return (
-    <View className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl mx-4" style={{ maxWidth: 320 }}>
+    <View
+      className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl mx-4"
+      style={{ maxWidth: 320 }}
+    >
       {/* Header */}
       <View className="bg-brand-terracotta px-4 py-2 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
@@ -54,8 +59,8 @@ export default function SceneMarker({ entry, onClose: _onClose }: Props) {
           {entry.logo_url ? (
             <Image
               source={{ uri: entry.logo_url }}
-              className="w-16 h-16 rounded-xl"
-              resizeMode="contain"
+              style={{ width: 64, height: 64, borderRadius: 12 }}
+              contentFit="contain"
             />
           ) : (
             <View className="w-16 h-16 rounded-xl bg-brand-terracotta/20 items-center justify-center">
@@ -63,11 +68,15 @@ export default function SceneMarker({ entry, onClose: _onClose }: Props) {
             </View>
           )}
           <View className="flex-1">
-            <Text className="text-lg font-black text-gray-900 dark:text-gray-100">{entry.name}</Text>
+            <Text className="text-lg font-black text-gray-900 dark:text-gray-100">
+              {entry.name}
+            </Text>
             {entry.tagline ? (
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{entry.tagline}</Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {entry.tagline}
+              </Text>
             ) : null}
-            {(entry.city || entry.state) ? (
+            {entry.city || entry.state ? (
               <Text className="text-xs text-gray-400 mt-1">
                 📍 {[entry.city, entry.state].filter(Boolean).join(', ')}
               </Text>
@@ -101,7 +110,9 @@ export default function SceneMarker({ entry, onClose: _onClose }: Props) {
               activeOpacity={0.8}
             >
               <Instagram size={16} color="#E1306C" />
-              <Text className="text-gray-700 dark:text-gray-200 font-semibold text-sm">Instagram</Text>
+              <Text className="text-gray-700 dark:text-gray-200 font-semibold text-sm">
+                Instagram
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { Image } from 'expo-image';
 import { Video, ResizeMode } from '../components/VideoPlayer';
 import {
   MapPin,
@@ -158,7 +159,7 @@ export default function FeedScreen() {
                 <Image
                   source={{ uri: item.media.url }}
                   style={{ width: '100%', height: 250 }}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               ) : (
                 <Video

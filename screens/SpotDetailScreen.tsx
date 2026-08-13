@@ -7,13 +7,13 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
-  Image,
   Modal,
   Linking,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Mapbox from '@rnmapbox/maps';
 import {
   Camera,
@@ -352,7 +352,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
                   key={photo.id}
                   source={{ uri: photo.media?.url }}
                   style={{ width, height: 300 }}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               ))}
             </ScrollView>

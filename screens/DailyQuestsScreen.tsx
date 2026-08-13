@@ -10,9 +10,9 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Image,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -268,8 +268,12 @@ export default function DailyQuestsScreen() {
           !loading ? (
             <View style={s.empty}>
               <Text style={s.emptyTitle}>Missions are being loaded</Text>
-              <Text style={s.emptyTxt}>Pull down to refresh. Active quests will appear here as soon as they are available.</Text>
-              <TouchableOpacity style={s.retryBtn} onPress={loadData}><Text style={s.retryTxt}>Refresh quests</Text></TouchableOpacity>
+              <Text style={s.emptyTxt}>
+                Pull down to refresh. Active quests will appear here as soon as they are available.
+              </Text>
+              <TouchableOpacity style={s.retryBtn} onPress={loadData}>
+                <Text style={s.retryTxt}>Refresh quests</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
@@ -322,7 +326,7 @@ export default function DailyQuestsScreen() {
               {/* Image preview */}
               {proofImage && (
                 <View style={s.imagePreview}>
-                  <Image source={{ uri: proofImage }} style={s.previewImg} resizeMode="cover" />
+                  <Image source={{ uri: proofImage }} style={s.previewImg} contentFit="cover" />
                   <TouchableOpacity
                     style={s.removeImg}
                     onPress={() => {
@@ -443,10 +447,25 @@ const s = StyleSheet.create({
     borderColor: '#166834',
   },
   doneTxt: { color: '#4ade80', fontWeight: '700', fontSize: 13 },
-  empty: { marginTop: 32, backgroundColor: '#10151D', borderRadius: 18, borderWidth: 1, borderColor: '#262D38', padding: 24, alignItems: 'flex-start' },
+  empty: {
+    marginTop: 32,
+    backgroundColor: '#10151D',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#262D38',
+    padding: 24,
+    alignItems: 'flex-start',
+  },
   emptyTitle: { color: '#F7F4EF', fontSize: 20, fontWeight: '900', marginBottom: 8 },
   emptyTxt: { color: '#9DA5B2', fontSize: 14, lineHeight: 21 },
-  retryBtn: { minHeight: 48, marginTop: 20, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 20, justifyContent: 'center' },
+  retryBtn: {
+    minHeight: 48,
+    marginTop: 20,
+    backgroundColor: '#D2673D',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
   retryTxt: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },

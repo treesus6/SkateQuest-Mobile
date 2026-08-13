@@ -10,12 +10,12 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
   Modal,
   ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import {
   Wifi,
   WifiOff,
@@ -74,9 +74,12 @@ function ConnectionBanner({ status }: { status: GoProConnectionStatus | null }) 
     <View className="flex-row items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 mx-4 mb-3">
       <WifiOff size={16} color="#F59E0B" />
       <View className="flex-1">
-        <Text className="text-amber-700 dark:text-amber-400 font-bold text-sm">GoPro Not Connected</Text>
+        <Text className="text-amber-700 dark:text-amber-400 font-bold text-sm">
+          GoPro Not Connected
+        </Text>
         <Text className="text-amber-600/80 dark:text-amber-500 text-xs mt-0.5">
-          On your GoPro: Connections → Connect Device → GoPro App, then connect your phone to the GoPro WiFi network.
+          On your GoPro: Connections → Connect Device → GoPro App, then connect your phone to the
+          GoPro WiFi network.
         </Text>
       </View>
     </View>
@@ -152,7 +155,10 @@ export default function GoProImportScreen() {
                 ]
               );
             } else {
-              Alert.alert('Import Failed', 'Could not download the clip. Make sure you\'re still connected to the GoPro WiFi.');
+              Alert.alert(
+                'Import Failed',
+                "Could not download the clip. Make sure you're still connected to the GoPro WiFi."
+              );
             }
           },
         },
@@ -173,18 +179,18 @@ export default function GoProImportScreen() {
               <Image
                 source={{ uri: item.thumbnailUrl }}
                 style={{ width: 96, height: 80 }}
-                resizeMode="cover"
+                contentFit="cover"
               />
+            ) : item.type === 'video' ? (
+              <Video size={28} color="#9CA3AF" />
             ) : (
-              item.type === 'video' ? (
-                <Video size={28} color="#9CA3AF" />
-              ) : (
-                <Camera size={28} color="#9CA3AF" />
-              )
+              <Camera size={28} color="#9CA3AF" />
             )}
             {item.type === 'video' && item.duration && (
               <View className="absolute bottom-1 right-1 bg-black/60 rounded px-1">
-                <Text className="text-white text-[10px] font-bold">{formatDuration(item.duration)}</Text>
+                <Text className="text-white text-[10px] font-bold">
+                  {formatDuration(item.duration)}
+                </Text>
               </View>
             )}
           </View>
@@ -192,7 +198,10 @@ export default function GoProImportScreen() {
           {/* Info */}
           <View className="flex-1 p-3 justify-between">
             <View>
-              <Text className="text-sm font-bold text-gray-800 dark:text-gray-100" numberOfLines={1}>
+              <Text
+                className="text-sm font-bold text-gray-800 dark:text-gray-100"
+                numberOfLines={1}
+              >
                 {item.filename}
               </Text>
               <Text className="text-xs text-gray-400 mt-0.5">
@@ -231,7 +240,9 @@ export default function GoProImportScreen() {
       <View className="bg-brand-terracotta p-4 rounded-b-2xl flex-row justify-between items-center">
         <View>
           <Text className="text-2xl font-bold text-white">GoPro Import</Text>
-          <Text className="text-white/70 text-xs mt-0.5">Import clips directly from your camera</Text>
+          <Text className="text-white/70 text-xs mt-0.5">
+            Import clips directly from your camera
+          </Text>
         </View>
         <View className="flex-row gap-2">
           <TouchableOpacity
@@ -289,7 +300,12 @@ export default function GoProImportScreen() {
       />
 
       {/* Help Modal */}
-      <Modal visible={showHelpModal} transparent animationType="slide" onRequestClose={() => setShowHelpModal(false)}>
+      <Modal
+        visible={showHelpModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHelpModal(false)}
+      >
         <View className="flex-1 bg-black/60 justify-end">
           <View className="bg-white dark:bg-gray-800 rounded-t-3xl p-6">
             <Text className="text-xl font-black text-gray-800 dark:text-gray-100 mb-4">
@@ -300,19 +316,28 @@ export default function GoProImportScreen() {
                 { step: '1', text: 'On your GoPro, swipe down to access the Dashboard.' },
                 { step: '2', text: 'Tap "Connections" → "Connect Device" → "GoPro App".' },
                 { step: '3', text: 'Your GoPro will create a WiFi hotspot (e.g. "GP12345678").' },
-                { step: '4', text: 'On your phone, go to Settings → WiFi and connect to the GoPro network.' },
-                { step: '5', text: 'Come back to SkateQuest and tap the refresh button — your clips will appear!' },
+                {
+                  step: '4',
+                  text: 'On your phone, go to Settings → WiFi and connect to the GoPro network.',
+                },
+                {
+                  step: '5',
+                  text: 'Come back to SkateQuest and tap the refresh button — your clips will appear!',
+                },
               ].map(({ step, text }) => (
                 <View key={step} className="flex-row items-start gap-3 mb-4">
                   <View className="bg-brand-terracotta rounded-full w-7 h-7 items-center justify-center">
                     <Text className="text-white font-black text-sm">{step}</Text>
                   </View>
-                  <Text className="flex-1 text-gray-700 dark:text-gray-300 text-sm leading-5">{text}</Text>
+                  <Text className="flex-1 text-gray-700 dark:text-gray-300 text-sm leading-5">
+                    {text}
+                  </Text>
                 </View>
               ))}
               <View className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 mb-4">
                 <Text className="text-amber-700 dark:text-amber-400 text-xs">
-                  Note: While connected to GoPro WiFi, your phone won't have internet access. Disconnect from GoPro WiFi after importing to resume normal connectivity.
+                  Note: While connected to GoPro WiFi, your phone won't have internet access.
+                  Disconnect from GoPro WiFi after importing to resume normal connectivity.
                 </Text>
               </View>
             </ScrollView>

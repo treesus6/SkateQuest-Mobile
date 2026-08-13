@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, Modal, TextInput, Alert, ActivityIndicator,
-  ScrollView, Linking
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  Linking,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { uploadSkateTVClip } from '../lib/uploadMedia';
 import { useAuthStore } from '../stores/useAuthStore';
-
 
 interface Clip {
   id: string;
@@ -38,7 +46,9 @@ export default function SkateTVScreen() {
   const [uploadTrick, setUploadTrick] = useState('');
   const [uploadPark, setUploadPark] = useState('');
 
-  useEffect(() => { loadClips(); }, [activeTab]);
+  useEffect(() => {
+    loadClips();
+  }, [activeTab]);
 
   const loadClips = async () => {
     let query = supabase
@@ -54,13 +64,19 @@ export default function SkateTVScreen() {
   const likeClip = async (clipId: string, currentLikes: number) => {
     if (!user || likedClips.has(clipId)) return;
     setLikedClips(prev => new Set([...prev, clipId]));
-    setClips(prev => prev.map(c => c.id === clipId ? { ...c, likes: c.likes + 1 } : c));
+    setClips(prev => prev.map(c => (c.id === clipId ? { ...c, likes: c.likes + 1 } : c)));
     await supabase.from('skatetv_likes').insert({ user_id: user.id, clip_id: clipId });
-    await supabase.from('skatetv_clips').update({ likes: currentLikes + 1 }).eq('id', clipId);
+    await supabase
+      .from('skatetv_clips')
+      .update({ likes: currentLikes + 1 })
+      .eq('id', clipId);
   };
 
   const watchClip = async (clip: Clip) => {
-    await supabase.from('skatetv_clips').update({ views: clip.views + 1 }).eq('id', clip.id);
+    await supabase
+      .from('skatetv_clips')
+      .update({ views: clip.views + 1 })
+      .eq('id', clip.id);
     if (clip.video_url.includes('youtube')) {
       Linking.openURL(clip.video_url);
     } else {
@@ -110,7 +126,17 @@ export default function SkateTVScreen() {
       });
 
       Alert.alert('🛹 Clip uploaded!', 'Your clip is live on SkateTV.', [
-        { text: 'Sick!', onPress: () => { setUploadModal(false); setUploadVideo(null); setUploadTitle(''); setUploadTrick(''); setUploadPark(''); loadClips(); } }
+        {
+          text: 'Sick!',
+          onPress: () => {
+            setUploadModal(false);
+            setUploadVideo(null);
+            setUploadTitle('');
+            setUploadTrick('');
+            setUploadPark('');
+            loadClips();
+          },
+        },
       ]);
     } catch (err: any) {
       Alert.alert('Upload failed', err.message || 'Try again');
@@ -165,14 +191,20 @@ export default function SkateTVScreen() {
                 </View>
               )}
               {item.featured && (
-                <View style={s.featBadge}><Text style={s.featTxt}>🔥 FEATURED</Text></View>
+                <View style={s.featBadge}>
+                  <Text style={s.featTxt}>🔥 FEATURED</Text>
+                </View>
               )}
-              <View style={s.playBtn}><Text style={s.playIcon}>▶</Text></View>
+              <View style={s.playBtn}>
+                <Text style={s.playIcon}>▶</Text>
+              </View>
             </TouchableOpacity>
 
             <View style={s.info}>
               <View style={s.infoTop}>
-                <View style={s.avatar}><Text style={s.avatarTxt}>🛹</Text></View>
+                <View style={s.avatar}>
+                  <Text style={s.avatarTxt}>🛹</Text>
+                </View>
                 <View style={s.infoText}>
                   <Text style={s.clipTitle}>{item.title || 'Skate clip'}</Text>
                   {item.trick_name ? <Text style={s.trickName}>{item.trick_name}</Text> : null}
@@ -217,7 +249,10 @@ export default function SkateTVScreen() {
             </View>
             <ScrollView style={s.modalBody}>
               {/* Video picker */}
-              <TouchableOpacity style={[s.videoPicker, uploadVideo && s.videoPickerDone]} onPress={pickVideo}>
+              <TouchableOpacity
+                style={[s.videoPicker, uploadVideo && s.videoPickerDone]}
+                onPress={pickVideo}
+              >
                 {uploadVideo ? (
                   <Text style={s.videoPickerDoneTxt}>✓ Video selected — tap to change</Text>
                 ) : (
@@ -230,16 +265,36 @@ export default function SkateTVScreen() {
               </TouchableOpacity>
 
               <Text style={s.lbl}>Title *</Text>
-              <TextInput style={s.input} placeholder="What's this clip?" placeholderTextColor="#4B5563" value={uploadTitle} onChangeText={setUploadTitle} />
+              <TextInput
+                style={s.input}
+                placeholder="What's this clip?"
+                placeholderTextColor="#4B5563"
+                value={uploadTitle}
+                onChangeText={setUploadTitle}
+              />
 
               <Text style={s.lbl}>Trick</Text>
-              <TextInput style={s.input} placeholder="Kickflip, Boardslide, etc." placeholderTextColor="#4B5563" value={uploadTrick} onChangeText={setUploadTrick} />
+              <TextInput
+                style={s.input}
+                placeholder="Kickflip, Boardslide, etc."
+                placeholderTextColor="#4B5563"
+                value={uploadTrick}
+                onChangeText={setUploadTrick}
+              />
 
               <Text style={s.lbl}>Spot</Text>
-              <TextInput style={s.input} placeholder="Where was this?" placeholderTextColor="#4B5563" value={uploadPark} onChangeText={setUploadPark} />
+              <TextInput
+                style={s.input}
+                placeholder="Where was this?"
+                placeholderTextColor="#4B5563"
+                value={uploadPark}
+                onChangeText={setUploadPark}
+              />
 
               <View style={s.proofNote}>
-                <Text style={s.proofNoteTxt}>📸 Clips posted here also count as proof for daily quests</Text>
+                <Text style={s.proofNoteTxt}>
+                  📸 Clips posted here also count as proof for daily quests
+                </Text>
               </View>
 
               <TouchableOpacity
@@ -270,25 +325,65 @@ const s = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '900', color: '#F3F4F6' },
   sub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  uploadBtn: { backgroundColor: '#d2673d', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  uploadBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   uploadTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
   tabs: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 4 },
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#111827' },
   tabOn: { backgroundColor: '#d2673d' },
   tabTxt: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
   tabTxtOn: { color: 'white' },
-  card: { backgroundColor: '#111827', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#1a2030' },
-  thumb: { height: 200, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  card: {
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1a2030',
+  },
+  thumb: {
+    height: 200,
+    backgroundColor: '#0a0e1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
   thumbImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   thumbPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   thumbIcon: { fontSize: 48 },
-  featBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: '#d2673d', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  featBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: '#d2673d',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   featTxt: { color: 'white', fontSize: 10, fontWeight: '900' },
-  playBtn: { position: 'absolute', width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(210,103,61,0.9)', justifyContent: 'center', alignItems: 'center' },
+  playBtn: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(210,103,61,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   playIcon: { color: 'white', fontSize: 20, marginLeft: 4 },
   info: { padding: 12 },
   infoTop: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(210,103,61,0.2)', justifyContent: 'center', alignItems: 'center' },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(210,103,61,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   avatarTxt: { fontSize: 16 },
   infoText: { flex: 1 },
   clipTitle: { color: '#F3F4F6', fontWeight: '700', fontSize: 15, marginBottom: 2 },
@@ -299,29 +394,87 @@ const s = StyleSheet.create({
   action: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionIcon: { fontSize: 18 },
   actionCount: { color: '#9CA3AF', fontSize: 13 },
-  watchBtn: { marginLeft: 'auto' as any, backgroundColor: 'rgba(210,103,61,0.15)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(210,103,61,0.4)' },
+  watchBtn: {
+    marginLeft: 'auto' as any,
+    backgroundColor: 'rgba(210,103,61,0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.4)',
+  },
   watchTxt: { color: '#d2673d', fontWeight: '700', fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { color: '#4B5563', fontSize: 15, textAlign: 'center' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: '#111827', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderColor: '#1a2030' },
+  modal: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderColor: '#1a2030',
+  },
   modalTitle: { color: '#F3F4F6', fontSize: 18, fontWeight: '900' },
   closeBtn: { color: '#6B7280', fontSize: 18, fontWeight: '700' },
   modalBody: { padding: 20 },
-  videoPicker: { backgroundColor: '#0a0e1a', borderRadius: 12, borderWidth: 2, borderColor: '#1a2030', borderStyle: 'dashed', padding: 30, alignItems: 'center', marginBottom: 16 },
+  videoPicker: {
+    backgroundColor: '#0a0e1a',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#1a2030',
+    borderStyle: 'dashed',
+    padding: 30,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   videoPickerDone: { borderColor: '#d2673d', borderStyle: 'solid' },
   videoPickerIcon: { fontSize: 36, marginBottom: 8 },
   videoPickerTxt: { color: '#9CA3AF', fontWeight: '600', fontSize: 15, marginBottom: 4 },
   videoPickerSub: { color: '#4B5563', fontSize: 12 },
   videoPickerDoneTxt: { color: '#d2673d', fontWeight: '700', fontSize: 14 },
-  lbl: { color: '#9CA3AF', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
-  input: { backgroundColor: '#0a0e1a', color: '#F3F4F6', borderRadius: 10, padding: 12, fontSize: 14, borderWidth: 1, borderColor: '#1a2030', marginBottom: 14 },
-  proofNote: { backgroundColor: 'rgba(210,103,61,0.08)', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(210,103,61,0.2)' },
+  lbl: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: '#0a0e1a',
+    color: '#F3F4F6',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#1a2030',
+    marginBottom: 14,
+  },
+  proofNote: {
+    backgroundColor: 'rgba(210,103,61,0.08)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(210,103,61,0.2)',
+  },
   proofNoteTxt: { color: '#d2673d', fontSize: 13, textAlign: 'center' },
-  postBtn: { backgroundColor: '#d2673d', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 20 },
+  postBtn: {
+    backgroundColor: '#d2673d',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   postBtnDis: { opacity: 0.5 },
   postBtnTxt: { color: 'white', fontWeight: '700', fontSize: 16 },
 });
