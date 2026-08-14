@@ -88,15 +88,34 @@ export const spotsService = {
 
   async reportCondition(spotId: string, userId: string, condition: string, notes?: string) {
     try {
-      return await supabase.from('spot_conditions').insert([
-        {
-          spot_id: spotId,
-          reported_by: userId,
-          condition,
-          notes,
-          expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-        },
-      ]);
+      const { data, error } = await supabase
+        .from('spot_conditions')
+        .insert([
+          {
+            spot_id: spotId,
+            reported_by: userId,
+            condition,
+            notes,
+            expires_at: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+          },
+        ])
+        .select('id, spot_id, reported_by, condition, notes, expires_at, created_at')
+        .single();
+
+      if (error) {
+        throw new ServiceError(
+          'Failed to report condition',
+          'SPOTS_REPORT_CONDITION_FAILED',
+          error
+        );
+      }
+      if (!data || data.condition !== condition) {
+        throw new ServiceError(
+          'Condition report was not persisted',
+          'SPOTS_REPORT_CONDITION_NOT_PERSISTED'
+        );
+      }
+      return data;
     } catch (error) {
       Logger.error('spotsService.reportCondition failed', error);
       throw new ServiceError('Failed to report condition', 'SPOTS_REPORT_CONDITION_FAILED', error);

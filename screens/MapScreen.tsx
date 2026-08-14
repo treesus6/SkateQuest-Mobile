@@ -241,10 +241,17 @@ export default function MapScreen() {
     if (!user || !selectedSpot || reportingCondition) return;
     setReportingCondition(true);
     try {
-      await spotsService.reportCondition(selectedSpot.id, user.id, condition);
-      setSpotCondition(condition);
-    } catch {
-      // condition reporting is best-effort; silently swallow
+      const savedCondition = await spotsService.reportCondition(
+        selectedSpot.id,
+        user.id,
+        condition
+      );
+      setSpotCondition(savedCondition.condition);
+    } catch (error) {
+      Alert.alert(
+        'Condition not reported',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
     } finally {
       setReportingCondition(false);
     }
