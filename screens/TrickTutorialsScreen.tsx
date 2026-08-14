@@ -67,11 +67,9 @@ function DifficultyBadge({ difficulty }: { difficulty: Difficulty }) {
 function TutorialCard({
   item,
   onBookmark,
-  bookmarkLoading,
 }: {
   item: Tutorial;
   onBookmark: (id: string, isBookmarked: boolean) => void;
-  bookmarkLoading: string | null;
 }) {
   const handleOpen = () => {
     Linking.openURL(item.youtube_url).catch((err) =>
@@ -96,18 +94,13 @@ function TutorialCard({
 
         <TouchableOpacity
           onPress={() => onBookmark(item.id, item.is_bookmarked)}
-          disabled={bookmarkLoading === item.id}
           className="p-1"
         >
-          {bookmarkLoading === item.id ? (
-            <ActivityIndicator size="small" color="#FF6B35" />
-          ) : (
-            <Bookmark
-              size={20}
-              color={item.is_bookmarked ? '#FF6B35' : '#666'}
-              fill={item.is_bookmarked ? '#FF6B35' : 'transparent'}
-            />
-          )}
+          <Bookmark
+            size={20}
+            color={item.is_bookmarked ? '#FF6B35' : '#666'}
+            fill={item.is_bookmarked ? '#FF6B35' : 'transparent'}
+          />
         </TouchableOpacity>
       </View>
 
@@ -248,7 +241,6 @@ export default function TrickTutorialsScreen() {
   const [activeFilter, setActiveFilter] = useState<'All' | Difficulty>('All');
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -263,8 +255,8 @@ export default function TrickTutorialsScreen() {
 
     const { data: tuts, error } = await supabase
       .from('trick_tutorials')
-      .select('id, trick_name, youtube_url, difficulty, submitted_by, votes')
-      .order('votes', { ascending: false });
+      .select('id, trick_name, youtube_url, difficulty, suggested_by')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Tutorials fetch error:', error.message);
@@ -272,21 +264,14 @@ export default function TrickTutorialsScreen() {
       return;
     }
 
-    const { data: bookmarks } = await supabase
-      .from('tutorial_bookmarks')
-      .select('tutorial_id')
-      .eq('user_id', currentUserId);
-
-    const bookmarkedIds = new Set((bookmarks ?? []).map((b: any) => b.tutorial_id));
-
     const mapped: Tutorial[] = (tuts ?? []).map((t: any) => ({
       id: t.id,
       trick_name: t.trick_name,
       youtube_url: t.youtube_url,
       difficulty: t.difficulty as Difficulty,
-      submitted_by: t.submitted_by ?? 'community',
-      votes: t.votes ?? 0,
-      is_bookmarked: bookmarkedIds.has(t.id),
+      submitted_by: t.suggested_by ?? 'community',
+      votes: 0,
+      is_bookmarked: false,
     }));
 
     setTutorials(mapped);
@@ -298,38 +283,15 @@ export default function TrickTutorialsScreen() {
   }, [currentUserId, fetchTutorials]);
 
   const handleBookmark = useCallback(
-    async (tutorialId: string, isBookmarked: boolean) => {
-      if (!currentUserId || bookmarkLoading) return;
-      setBookmarkLoading(tutorialId);
-
-      try {
-        if (isBookmarked) {
-          await supabase
-            .from('tutorial_bookmarks')
-            .delete()
-            .eq('user_id', currentUserId)
-            .eq('tutorial_id', tutorialId);
-        } else {
-          await supabase
-            .from('tutorial_bookmarks')
-            .upsert(
-              { user_id: currentUserId, tutorial_id: tutorialId },
-              { onConflict: 'user_id,tutorial_id' }
-            );
-        }
-
-        setTutorials((prev) =>
-          prev.map((t) =>
-            t.id === tutorialId ? { ...t, is_bookmarked: !isBookmarked } : t
-          )
-        );
-      } catch (err) {
-        console.error('Bookmark error:', err);
-      } finally {
-        setBookmarkLoading(null);
-      }
+    (_tutorialId: string, _isBookmarked: boolean) => {
+      // Bookmark persistence is not yet backed by a live table — optimistic UI only
+      setTutorials((prev) =>
+        prev.map((t) =>
+          t.id === _tutorialId ? { ...t, is_bookmarked: !_isBookmarked } : t
+        )
+      );
     },
-    [currentUserId, bookmarkLoading]
+    []
   );
 
   const handleSuggest = useCallback(
@@ -444,7 +406,6 @@ export default function TrickTutorialsScreen() {
             <TutorialCard
               item={item}
               onBookmark={handleBookmark}
-              bookmarkLoading={bookmarkLoading}
             />
           )}
           contentContainerClassName="px-4 pt-4 pb-28"

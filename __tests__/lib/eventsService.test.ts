@@ -4,6 +4,7 @@ import { eventsService } from '../../lib/eventsService';
 import { supabase } from '../../lib/supabase';
 
 const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
+const mockRpc = supabase.rpc as unknown as jest.Mock;
 
 describe('eventsService', () => {
   beforeEach(() => {
@@ -20,7 +21,7 @@ describe('eventsService', () => {
           spot_id: 'spot-1',
           scheduled_time: '2026-09-01T21:00:00.000Z',
           creator_id: 'user-1',
-          session_attendees: [{ user_id: 'user-3' }, { user_id: 'user-4' }],
+          participants: ['user-3', 'user-4'],
         },
         {
           id: 'evt-2',
@@ -29,7 +30,7 @@ describe('eventsService', () => {
           spot_id: null,
           scheduled_time: '2026-09-02T17:00:00.000Z',
           creator_id: 'user-2',
-          session_attendees: [],
+          participants: [],
         },
       ];
 
@@ -42,7 +43,7 @@ describe('eventsService', () => {
 
       expect(mockFrom).toHaveBeenCalledWith('skate_sessions');
       expect(mockSelect).toHaveBeenCalledWith(
-        'id, title, description, spot_id, scheduled_time, creator_id, session_attendees(user_id)'
+        'id, title, description, spot_id, scheduled_time, creator_id, participants'
       );
       expect(mockGte).toHaveBeenCalledWith('scheduled_time', expect.any(String));
       expect(mockOrder).toHaveBeenCalledWith('scheduled_time', { ascending: true });
@@ -95,50 +96,39 @@ describe('eventsService', () => {
   });
 
   describe('rsvp', () => {
-    it('should insert a session_attendees record with correct session_id and user_id', async () => {
+    it('should call toggle_session_rsvp RPC with correct session_id and user_id', async () => {
       const eventId = 'evt-100';
       const userId = 'user-200';
 
-      const mockInsert = jest.fn().mockResolvedValue({
-        data: { session_id: eventId, user_id: userId },
+      mockRpc.mockResolvedValue({
+        data: { is_attending: true, attendee_count: 1 },
         error: null,
       });
-      mockFrom.mockReturnValue({ insert: mockInsert });
 
       const result = await eventsService.rsvp(eventId, userId);
 
-      expect(mockFrom).toHaveBeenCalledWith('session_attendees');
-      expect(mockInsert).toHaveBeenCalledWith([
-        {
-          session_id: eventId,
-          user_id: userId,
-        },
-      ]);
+      expect(mockRpc).toHaveBeenCalledWith('toggle_session_rsvp', {
+        p_session_id: eventId,
+        p_user_id: userId,
+      });
       expect(result.error).toBeNull();
     });
 
-    it('should return an error when a user RSVPs to the same event twice', async () => {
-      const mockError = {
-        message: 'duplicate key value violates unique constraint',
-        code: '23505',
-      };
-      const mockInsert = jest.fn().mockResolvedValue({ data: null, error: mockError });
-      mockFrom.mockReturnValue({ insert: mockInsert });
+    it('should return an error when the RPC fails', async () => {
+      const mockError = { message: 'unauthorized', code: '42501' };
+      mockRpc.mockResolvedValue({ data: null, error: mockError });
 
       const result = await eventsService.rsvp('evt-100', 'user-200');
 
       expect(result.error).toEqual(mockError);
-      expect(result.data).toBeNull();
     });
 
-    it('should return an error when the event does not exist', async () => {
-      const mockError = { message: 'violates foreign key constraint', code: '23503' };
-      const mockInsert = jest.fn().mockResolvedValue({ data: null, error: mockError });
-      mockFrom.mockReturnValue({ insert: mockInsert });
+    it('should return session-full error from RPC', async () => {
+      mockRpc.mockResolvedValue({ data: { error: 'full' }, error: null });
 
-      const result = await eventsService.rsvp('non-existent-event', 'user-200');
+      const result = await eventsService.rsvp('evt-100', 'user-200');
 
-      expect(result.error).toEqual(mockError);
+      expect((result.data as any)?.error).toBe('full');
     });
   });
 });

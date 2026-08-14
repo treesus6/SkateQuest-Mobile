@@ -14,6 +14,7 @@ import { useNetworkStore } from '../stores/useNetworkStore';
 import { ChallengeProvider } from '../contexts/ChallengeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
+import PortalDimensionLogo from '../components/PortalDimensionLogo';
 import Toast from '../components/Toast';
 
 import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
@@ -22,8 +23,8 @@ import { Logger } from '../lib/logger';
 import { analytics } from '../lib/analytics';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
-import { supabase } from '../lib/supabase';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
+import { supabase } from '../lib/supabase';
 
 import '../global.css';
 
@@ -106,20 +107,15 @@ function RootLayout() {
         await SystemUI.setBackgroundColorAsync('#d2673d');
         await useMutationQueueStore.getState().rehydrate();
         const mutationExecutor = async (mutation: OfflineMutation) => {
-          if (mutation.table === 'session_attendees') {
-            if (mutation.type === 'create') {
-              const { error } = await supabase.from('session_attendees').insert(mutation.payload);
-              if (error) throw error;
-            } else if (mutation.type === 'delete') {
-              const { session_id, user_id } = mutation.payload;
-              const { error } = await supabase
-                .from('session_attendees')
-                .delete()
-                .eq('session_id', session_id)
-                .eq('user_id', user_id);
-              if (error) throw error;
-            }
-          }
+          if (mutation.table !== 'session_attendees') return;
+          const { session_id } = mutation.payload;
+          const { data, error } = await supabase.rpc('set_session_rsvp', {
+            p_session_id: session_id,
+            p_attending: mutation.type === 'create',
+          });
+          if (error) throw error;
+          const result = data as { error?: string } | null;
+          if (result?.error) throw new Error(result.error);
         };
         startBackgroundSync([], mutationExecutor);
         checkForOTAUpdate({ silent: true });
@@ -158,6 +154,7 @@ function RootLayout() {
           <ChallengeProvider>
             <StatusBar style="light" />
             <OfflineIndicator />
+            <PortalDimensionLogo />
             <Toast />
             <AuthGuard />
           </ChallengeProvider>

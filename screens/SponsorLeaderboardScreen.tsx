@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,51 +35,35 @@ const rankBadgeColor = (rank: number) => {
 
 export default function SponsorLeaderboardScreen() {
   const navigation = useNavigation();
-  const [tab, setTab] = useState<'monthly' | 'alltime'>('monthly');
   const [donors, setDonors] = useState<Donor[]>([]);
   const [totals, setTotals] = useState<Totals>({ total_boards: 0, total_xp: 0, total_usd: 0 });
   const [loading, setLoading] = useState(true);
-  const realtimeSub = useRef<any>(null);
-
   useEffect(() => {
     fetchData();
-    // Realtime subscription on xp_donations
-    realtimeSub.current = supabase
-      .channel('sponsor_lb')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'xp_donations' }, () => fetchData())
-      .subscribe();
-    return () => { realtimeSub.current?.unsubscribe(); };
-  }, [tab]);
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const query = supabase
-        .from('xp_donations')
-        .select('user_id, xp_amount, usd_value, profiles:user_id(username)');
-
-      const { data } = tab === 'monthly'
-        ? await query.gte('created_at', monthStart)
-        : await query;
+      // xp_donations table does not exist — use profiles.charity_points for leaderboard
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, charity_points')
+        .gt('charity_points', 0)
+        .order('charity_points', { ascending: false })
+        .limit(50);
 
       if (data) {
-        // Aggregate by user
-        const map: Record<string, Donor> = {};
-        for (const row of data as any[]) {
-          const uid = row.user_id;
-          if (!map[uid]) {
-            map[uid] = { user_id: uid, username: row.profiles?.username || 'Skater', total_xp: 0, boards_funded: 0 };
-          }
-          map[uid].total_xp += row.xp_amount;
-          map[uid].boards_funded += Math.floor(row.usd_value ?? 0);
-        }
-        const sorted = Object.values(map).sort((a, b) => b.total_xp - a.total_xp);
-        setDonors(sorted);
+        const mapped: Donor[] = (data as any[]).map(row => ({
+          user_id: row.id,
+          username: row.username ?? 'Skater',
+          total_xp: row.charity_points ?? 0,
+          boards_funded: Math.floor((row.charity_points ?? 0) / 1000),
+        }));
+        setDonors(mapped);
 
-        const totalBoards = sorted.reduce((s, d) => s + d.boards_funded, 0);
-        const totalXp = sorted.reduce((s, d) => s + d.total_xp, 0);
+        const totalBoards = mapped.reduce((s, d) => s + d.boards_funded, 0);
+        const totalXp = mapped.reduce((s, d) => s + d.total_xp, 0);
         setTotals({ total_boards: totalBoards, total_xp: totalXp, total_usd: Math.floor(totalXp / 1000) });
       }
     } catch (_) {}
@@ -132,24 +116,9 @@ export default function SponsorLeaderboardScreen() {
           </Text>
         </View>
 
-        {/* Tabs */}
-        <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: '#1a1a1a', borderRadius: 10, padding: 4 }}>
-          {(['monthly', 'alltime'] as const).map(t => (
-            <TouchableOpacity
-              key={t}
-              onPress={() => setTab(t)}
-              style={{ flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: tab === t ? '#FF6B35' : 'transparent', alignItems: 'center' }}
-            >
-              <Text style={{ color: tab === t ? '#fff' : '#666', fontWeight: '700', fontSize: 13 }}>
-                {t === 'monthly' ? 'This Month' : 'All Time'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         {/* Leaderboard */}
-        <View style={{ paddingHorizontal: 16 }}>
-          <Text style={{ color: '#444', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 12 }}>TOP DONORS</Text>
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+          <Text style={{ color: '#444', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 12 }}>ALL-TIME TOP DONORS</Text>
           {loading ? (
             <ActivityIndicator color="#FF6B35" style={{ marginTop: 20 }} />
           ) : donors.length === 0 ? (
