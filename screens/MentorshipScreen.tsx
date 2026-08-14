@@ -11,17 +11,8 @@ import {
 import { useNavigation } from '../lib/useNavigation';
 import { ChevronLeft, Star, UserCheck, Users, Zap, Award, MessageSquare } from 'lucide-react-native';
 import { Alert } from 'react-native';
-import { mentorshipService } from '../lib/mentorshipService';
+import { mentorshipService, MentorProfile } from '../lib/mentorshipService';
 import { useAuthStore } from '../stores/useAuthStore';
-
-interface MentorProfile {
-  id: string;
-  user_id: string;
-  specialty: string;
-  tricks_mastered: number;
-  level: number;
-  username?: string;
-}
 
 export default function MentorshipScreen() {
   const navigation = useNavigation();
@@ -32,6 +23,7 @@ export default function MentorshipScreen() {
   const [_stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
+  const [savingMentorStatus, setSavingMentorStatus] = useState(false);
 
   useEffect(() => { fetchData(); }, [user]);
 
@@ -39,26 +31,26 @@ export default function MentorshipScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      // mentor_profiles table no longer exists — show empty find-a-mentor list gracefully
-      setMentors([]);
+      const [availableMentors, mentees, mentorsList, mentorshipStats, myMentorProfile] =
+        await Promise.all([
+          mentorshipService.getAvailableMentors(user.id),
+          mentorshipService.getUserMentees(user.id),
+          mentorshipService.getUserMentors(user.id),
+          mentorshipService.getMentorshipStats(user.id),
+          mentorshipService.getMentorProfile(user.id),
+        ]);
 
-      // Use mentorshipService for active relationships and stats
-      const [mentees, mentors_list, mentorshipStats] = await Promise.all([
-        mentorshipService.getUserMentees(user.id),
-        mentorshipService.getUserMentors(user.id),
-        mentorshipService.getMentorshipStats(user.id)
-      ]);
-
-      setActiveRelationships([...mentees, ...mentors_list]);
+      setMentors(availableMentors);
+      setActiveRelationships([...mentees, ...mentorsList]);
       setStats(mentorshipStats);
-
-      // Derive mentor status from existing relationships (no mentor_profiles table)
-      setIsMentor(mentees.length > 0);
+      setIsMentor(myMentorProfile?.available ?? false);
 
     } catch (error) {
       console.error('Error fetching mentorship data:', error);
+      Alert.alert('Mentorship unavailable', 'Could not load mentorship data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const requestMentor = async (mentorUserId: string) => {
@@ -72,9 +64,24 @@ export default function MentorshipScreen() {
     }
   };
 
-  const toggleMentorStatus = (val: boolean) => {
-    // mentor_profiles table no longer exists — toggle is local UI only
-    setIsMentor(val);
+  const toggleMentorStatus = async (val: boolean) => {
+    if (!user || savingMentorStatus) return;
+
+    const previousValue = isMentor;
+    setSavingMentorStatus(true);
+    try {
+      const savedProfile = await mentorshipService.setMentorAvailability(user.id, val);
+      setIsMentor(savedProfile.available);
+      await fetchData();
+    } catch (error) {
+      setIsMentor(previousValue);
+      Alert.alert(
+        'Availability not saved',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+    } finally {
+      setSavingMentorStatus(false);
+    }
   };
 
   const specialtyColor = (s: string) => {
@@ -190,7 +197,12 @@ export default function MentorshipScreen() {
                 <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Available as Mentor</Text>
                 <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>Show up in the mentor list</Text>
               </View>
-              <Switch value={isMentor} onValueChange={toggleMentorStatus} trackColor={{ false: '#333', true: '#FF6B35' }} />
+              <Switch
+                value={isMentor}
+                onValueChange={toggleMentorStatus}
+                disabled={savingMentorStatus}
+                trackColor={{ false: '#333', true: '#FF6B35' }}
+              />
             </View>
           </View>
           <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>

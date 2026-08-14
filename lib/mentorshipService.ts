@@ -16,6 +16,15 @@ interface MentorRelationship {
   updated_at: string;
 }
 
+export interface MentorProfile {
+  user_id: string;
+  available: boolean;
+  specialty: string;
+  tricks_mastered: number;
+  level: number;
+  username?: string;
+}
+
 interface MentorshipStats {
   mentees_count: number;
   mentors_count: number;
@@ -23,6 +32,73 @@ interface MentorshipStats {
 }
 
 export const mentorshipService = {
+  // =========================================================================
+  // MENTOR DIRECTORY
+  // =========================================================================
+
+  async getAvailableMentors(excludeUserId: string): Promise<MentorProfile[]> {
+    try {
+      const { data, error } = await supabase
+        .from('mentor_profiles')
+        .select('user_id, available, specialty, tricks_mastered, level, profiles!mentor_profiles_user_id_fkey(username)')
+        .eq('available', true)
+        .neq('user_id', excludeUserId)
+        .order('level', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return (data ?? []).map((row: any) => ({
+        user_id: row.user_id,
+        available: row.available,
+        specialty: row.specialty,
+        tricks_mastered: row.tricks_mastered,
+        level: row.level,
+        username: row.profiles?.username ?? 'Skater',
+      }));
+    } catch (error) {
+      Logger.error('mentorshipService.getAvailableMentors failed', error);
+      throw new ServiceError('Failed to load available mentors', 'GET_MENTORS_DIRECTORY_FAILED', error);
+    }
+  },
+
+  async getMentorProfile(userId: string): Promise<MentorProfile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('mentor_profiles')
+        .select('user_id, available, specialty, tricks_mastered, level')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      Logger.error('mentorshipService.getMentorProfile failed', error);
+      throw new ServiceError('Failed to load mentor profile', 'GET_MENTOR_PROFILE_FAILED', error);
+    }
+  },
+
+  async setMentorAvailability(userId: string, available: boolean): Promise<MentorProfile> {
+    try {
+      const { data, error } = await supabase
+        .from('mentor_profiles')
+        .upsert(
+          { user_id: userId, available, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        )
+        .select('user_id, available, specialty, tricks_mastered, level')
+        .single();
+
+      if (error) throw error;
+      if (!data || data.available !== available) {
+        throw new Error('Mentor availability was not persisted');
+      }
+      return data;
+    } catch (error) {
+      Logger.error('mentorshipService.setMentorAvailability failed', error);
+      throw new ServiceError('Failed to save mentor availability', 'SET_MENTOR_AVAILABILITY_FAILED', error);
+    }
+  },
+
   // =========================================================================
   // RELATIONSHIPS
   // =========================================================================
@@ -157,10 +233,10 @@ export const mentorshipService = {
       });
 
       if (error) throw error;
-      if (!data || data.length === 0) {
+      if (!data) {
         return { mentees_count: 0, mentors_count: 0, active_relationships: 0 };
       }
-      return data[0];
+      return data as MentorshipStats;
     } catch (error) {
       Logger.error('mentorshipService.getMentorshipStats failed', error);
       throw new ServiceError('Failed to get mentorship stats', 'STATS_FAILED', error);
