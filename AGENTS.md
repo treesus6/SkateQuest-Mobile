@@ -6,6 +6,17 @@
 
 SkateQuest is a real mobile product. Passing TypeScript, lint, or CI is not sufficient if the user-facing action does not persist and work end-to-end.
 
+### No-shortcuts completion gate
+
+**NO SHORTCUTS. NO SUBSTITUTE FEATURES. NO “GOOD ENOUGH.” NO MOVING ON WHILE A REQUESTED REQUIREMENT IS BROKEN OR UNVERIFIED.**
+
+- A failed or missing requirement remains an explicit blocker until it is fixed correctly and verified end-to-end.
+- Do not change the requested behavior, reduce scope, choose an easier implementation, or work around the problem without the product owner's explicit approval.
+- Do not classify a product failure as minor merely because builds, types, lint, or unrelated screens pass.
+- Do not mark a task, milestone, PR, or release complete while any accepted requirement is silently deferred.
+- If truly blocked by credentials, platform access, or a required product decision, stop and report the exact blocker, evidence, and required next action. Never conceal it with alternate UI or fake data.
+- Temporary implementations require explicit product-owner approval, a visible tracking issue, and a removal condition. They are never the default response to failure.
+
 ### Required behavior
 
 - If a screen needs a missing Supabase table, column, policy, storage bucket, trigger, or RPC, implement the correct backend contract and migration.
