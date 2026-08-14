@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
-import { Map, MapPin, Target, Users, Zap } from 'lucide-react-native';
+import { Map as MapIcon, MapPin, Target, Users, Zap } from 'lucide-react-native';
 
 interface Quest {
   id: string;
@@ -212,7 +212,7 @@ export default function DailyQuestsScreen() {
       tricks: Zap,
       challenge: Target,
       social: Users,
-      exploration: Map,
+      exploration: MapIcon,
       general: Zap,
     };
     return icons[type] || Zap;
