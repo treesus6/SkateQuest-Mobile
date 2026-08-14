@@ -7,13 +7,13 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Image,
   Modal,
   Linking,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Image } from 'expo-image';
 import Mapbox from '@rnmapbox/maps';
 import {
   Camera,
@@ -25,8 +25,6 @@ import {
   Users,
 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
-import { useNetworkStore } from '../stores/useNetworkStore';
-import { useMutationQueueStore } from '../stores/useMutationQueueStore';
 import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
 import { challengesService } from '../lib/challengesService';
@@ -133,7 +131,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     try {
       const { data: rawSessions } = await supabase
         .from('skate_sessions')
-        .select('id, title, spot_id, scheduled_time, creator_id, max_participants')
+        .select('id, title, spot_id, scheduled_time, creator_id, max_participants, participants')
         .eq('spot_id', spotId)
         .gte('scheduled_time', new Date().toISOString())
         .order('scheduled_time', { ascending: true })
@@ -144,40 +142,27 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         return;
       }
 
-      const sessionIds = rawSessions.map((s: any) => s.id);
       const creatorIds = [...new Set(rawSessions.map((s: any) => s.creator_id).filter(Boolean))];
-      const [attendeesRes, myRsvpsRes, profilesRes] = await Promise.all([
-        supabase.from('session_attendees').select('session_id').in('session_id', sessionIds),
-        supabase
-          .from('session_attendees')
-          .select('session_id')
-          .eq('user_id', user.id)
-          .in('session_id', sessionIds),
-        creatorIds.length
-          ? supabase.from('profiles').select('id, username').in('id', creatorIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
+      const profilesRes = creatorIds.length
+        ? await supabase.from('profiles').select('id, username').in('id', creatorIds)
+        : { data: [], error: null };
 
-      const attendeeMap: Record<string, number> = {};
-      (attendeesRes.data ?? []).forEach(({ session_id }: { session_id: string }) => {
-        attendeeMap[session_id] = (attendeeMap[session_id] ?? 0) + 1;
-      });
-      const mySessionIds = new Set(
-        (myRsvpsRes.data ?? []).map((r: { session_id: string }) => r.session_id)
-      );
       const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p.username]));
 
       setSessions(
-        rawSessions.map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          scheduled_time: s.scheduled_time,
-          creator_username: profileMap.get(s.creator_id) ?? null,
-          attendee_count: attendeeMap[s.id] ?? 0,
-          max_attendees: s.max_participants,
-          status: getSessionStatus(s.scheduled_time),
-          is_attending: mySessionIds.has(s.id),
-        }))
+        rawSessions.map((s: any) => {
+          const participants: string[] = s.participants ?? [];
+          return {
+            id: s.id,
+            title: s.title,
+            scheduled_time: s.scheduled_time,
+            creator_username: profileMap.get(s.creator_id) ?? null,
+            attendee_count: participants.length,
+            max_attendees: s.max_participants,
+            status: getSessionStatus(s.scheduled_time),
+            is_attending: participants.includes(user.id),
+          };
+        })
       );
     } catch {
       // sessions are supplemental — don't surface load errors
@@ -204,28 +189,35 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     );
 
     try {
-      const { isConnected } = useNetworkStore.getState();
-      const { enqueue } = useMutationQueueStore.getState();
-
-      if (isConnected) {
-        if (session.is_attending) {
-          const { error } = await supabase
-            .from('session_attendees')
-            .delete()
-            .eq('session_id', session.id)
-            .eq('user_id', user.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('session_attendees')
-            .insert({ session_id: session.id, user_id: user.id });
-          if (error) throw error;
-        }
-      } else {
-        await enqueue(session.is_attending ? 'delete' : 'create', 'session_attendees', {
-          session_id: session.id,
-          user_id: user.id,
-        });
+      const { data, error } = await supabase.rpc('toggle_session_rsvp', {
+        p_session_id: session.id,
+        p_user_id: user.id,
+      });
+      if (error) throw error;
+      const result = data as { error?: string; is_attending?: boolean; attendee_count?: number } | null;
+      if (result?.error === 'full') {
+        Alert.alert('Session Full', 'This session has reached its maximum participants.');
+        setSessions(prev =>
+          prev.map(s =>
+            s.id === session.id
+              ? { ...s, is_attending: session.is_attending, attendee_count: session.attendee_count }
+              : s
+          )
+        );
+        return;
+      }
+      if (result?.attendee_count !== undefined) {
+        setSessions(prev =>
+          prev.map(s =>
+            s.id === session.id
+              ? {
+                  ...s,
+                  is_attending: result.is_attending ?? !session.is_attending,
+                  attendee_count: result.attendee_count!,
+                }
+              : s
+          )
+        );
       }
     } catch {
       // Revert optimistic update on failure
@@ -352,7 +344,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
                   key={photo.id}
                   source={{ uri: photo.media?.url }}
                   style={{ width, height: 300 }}
-                  contentFit="cover"
+                  resizeMode="cover"
                 />
               ))}
             </ScrollView>

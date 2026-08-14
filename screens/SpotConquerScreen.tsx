@@ -20,7 +20,7 @@ interface ConquestSpot {
   conquerer_id: string;
   conquerer_username: string;
   trick_name: string;
-  conquered_at: string;
+  claimed_at: string;
 }
 
 interface LeaderboardEntry {
@@ -68,19 +68,19 @@ export default function SpotConquerScreen() {
     setLoading(true);
     try {
       const { data } = await supabase
-        .from('spot_conquests')
+        .from('spot_claims')
         .select(
           `
           id,
           spot_id,
           user_id,
           trick_name,
-          conquered_at,
+          claimed_at,
           skate_spots ( name ),
           profiles ( username )
         `
         )
-        .order('conquered_at', { ascending: false })
+        .order('claimed_at', { ascending: false })
         .limit(30);
 
       if (data) {
@@ -91,7 +91,7 @@ export default function SpotConquerScreen() {
           conquerer_id: row.user_id,
           conquerer_username: row.profiles?.username ?? 'Unknown Skater',
           trick_name: row.trick_name,
-          conquered_at: row.conquered_at,
+          claimed_at: row.claimed_at,
         }));
         setSpots(mapped);
       }
@@ -103,7 +103,7 @@ export default function SpotConquerScreen() {
   // ── Fetch leaderboard ─────────────────────────────────────────────────────
   const fetchLeaderboard = useCallback(async () => {
     const { data } = await supabase
-      .from('spot_conquests')
+      .from('spot_claims')
       .select('user_id, profiles ( username )')
       .limit(200);
 
@@ -141,12 +141,13 @@ export default function SpotConquerScreen() {
     setClaimError(null);
     try {
       // Upsert: one conquest per spot (first to land keeps it until reclaimed)
-      const { error } = await supabase.from('spot_conquests').upsert(
+      const { error } = await supabase.from('spot_claims').upsert(
         {
           spot_id: claimTarget.spot_id,
           user_id: userId,
           trick_name: trickInput.trim(),
-          conquered_at: new Date().toISOString(),
+          video_url: '',
+          claimed_at: new Date().toISOString(),
         },
         { onConflict: 'spot_id' }
       );
@@ -196,7 +197,7 @@ export default function SpotConquerScreen() {
             <Text className="text-white font-semibold text-sm">{item.conquerer_username}</Text>
             <Text className="text-[#666] text-xs">
               Landed <Text className="text-[#FF6B35]">{item.trick_name}</Text> ·{' '}
-              {timeAgo(item.conquered_at)}
+              {timeAgo(item.claimed_at)}
             </Text>
           </View>
         </View>

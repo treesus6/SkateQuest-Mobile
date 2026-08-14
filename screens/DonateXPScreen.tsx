@@ -32,7 +32,7 @@ interface UserProfile {
   id: string;
   xp: number;
   username: string;
-  total_xp_donated: number;
+  charity_points: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -212,50 +212,49 @@ export default function DonateXPScreen() {
     const userId = authData.user?.id;
     if (!userId) return;
 
-    const [{ data: prof }, { data: donations }, { data: totals }] =
-      await Promise.all([
-        supabase
-          .from('profiles')
-          .select('id, xp, username, total_xp_donated')
-          .eq('id', userId)
-          .single(),
-        supabase
-          .from('xp_donations')
-          .select('id, user_id, xp_amount, usd_value, created_at, profile:user_id(username)')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabase
-          .from('xp_donations')
-          .select('xp_amount')
-          .limit(10000),
-      ]);
+    const [{ data: prof }, { data: communityRows }, { data: donations }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, xp, username, charity_points')
+        .eq('id', userId)
+        .single(),
+      supabase
+        .from('profiles')
+        .select('charity_points')
+        .gt('charity_points', 0),
+      supabase
+        .from('xp_donations')
+        .select('id, user_id, xp_amount, usd_value, created_at, profile:user_id(username)')
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ]);
 
     if (prof) {
+      const p = prof as { id: string; xp: number; username: string; charity_points: number };
       setProfile({
-        id: prof.id,
-        xp: prof.xp ?? 0,
-        username: prof.username ?? 'You',
-        total_xp_donated: prof.total_xp_donated ?? 0,
+        id: p.id,
+        xp: p.xp ?? 0,
+        username: p.username ?? 'You',
+        charity_points: p.charity_points ?? 0,
       });
     }
 
-    if (donations) {
-      setRecentDonations(
-        (donations as any[]).map((d) => ({
-          id: d.id,
-          user_id: d.user_id,
-          xp_amount: d.xp_amount,
-          usd_value: d.usd_value ?? xpToUsd(d.xp_amount),
-          created_at: d.created_at,
-          username: d.profile?.username ?? 'Anonymous',
-        }))
-      );
+    if (communityRows) {
+      const communityTotal = (communityRows as { charity_points: number }[])
+        .reduce((sum, r) => sum + (r.charity_points ?? 0), 0);
+      setTotalDonated(communityTotal);
     }
 
-    if (totals) {
-      const total = (totals as any[]).reduce((sum, d) => sum + (d.xp_amount ?? 0), 0);
-      setTotalDonated(total);
-    }
+    setRecentDonations(
+      (donations ?? []).map((row: any) => ({
+        id: row.id,
+        user_id: row.user_id,
+        xp_amount: row.xp_amount,
+        usd_value: row.usd_value ?? xpToUsd(row.xp_amount),
+        created_at: row.created_at,
+        username: row.profile?.username ?? 'Skater',
+      }))
+    );
   }, []);
 
   useEffect(() => {
@@ -275,34 +274,16 @@ export default function DonateXPScreen() {
     setDonating(true);
 
     try {
-      const usdValue = xpToUsd(selectedXp);
-
-      const { error: donationError } = await supabase.from('xp_donations').insert({
-        user_id: profile.id,
-        xp_amount: selectedXp,
-        usd_value: usdValue,
+      const { data, error } = await supabase.rpc('donate_xp', {
+        p_xp_amount: selectedXp,
       });
+      if (error) throw error;
 
-      if (donationError) throw donationError;
+      const result = data as { xp: number; charity_points: number } | null;
+      if (!result) throw new Error('Donation did not return an updated balance.');
 
-      const { error: xpError } = await supabase
-        .from('profiles')
-        .update({
-          xp: profile.xp - selectedXp,
-          total_xp_donated: (profile.total_xp_donated ?? 0) + selectedXp,
-        })
-        .eq('id', profile.id);
-
-      if (xpError) throw xpError;
-
-      setProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              xp: prev.xp - selectedXp,
-              total_xp_donated: prev.total_xp_donated + selectedXp,
-            }
-          : prev
+      setProfile(prev =>
+        prev ? { ...prev, xp: result.xp, charity_points: result.charity_points } : prev
       );
 
       setTotalDonated((prev) => prev + selectedXp);
@@ -312,15 +293,15 @@ export default function DonateXPScreen() {
       );
       setTimeout(() => setSuccessMsg(''), 4000);
       fetchData();
-    } catch (err: any) {
-      console.error('Donation error:', err?.message ?? err);
+    } catch (err: unknown) {
+      console.error('Donation error:', err instanceof Error ? err.message : err);
     } finally {
       setDonating(false);
     }
   }, [profile, donating, selectedXp, fetchData]);
 
   const totalBoardsFunded = Math.floor(xpToBoards(totalDonated));
-  const myBoardsFunded = profile ? xpToBoards(profile.total_xp_donated) : 0;
+  const myBoardsFunded = profile ? xpToBoards(profile.charity_points) : 0;
   const canDonate = profile && profile.xp >= selectedXp;
 
   if (loading) {

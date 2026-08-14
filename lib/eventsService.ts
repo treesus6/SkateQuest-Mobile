@@ -18,9 +18,7 @@ export const eventsService = {
     try {
       const result = await supabase
         .from('skate_sessions')
-        .select(
-          'id, title, description, spot_id, scheduled_time, creator_id, session_attendees(user_id)'
-        )
+        .select('id, title, description, spot_id, scheduled_time, creator_id, participants')
         .gte('scheduled_time', new Date().toISOString())
         .order('scheduled_time', { ascending: true });
 
@@ -38,7 +36,7 @@ export const eventsService = {
             date: scheduled.toISOString().split('T')[0],
             time: scheduled.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
             created_by: row.creator_id,
-            attendee_count: row.session_attendees?.length ?? 0,
+            attendee_count: (row.participants as string[] | null)?.length ?? 0,
           } satisfies Event;
         }),
       };
@@ -54,12 +52,10 @@ export const eventsService = {
 
   async rsvp(eventId: string, userId: string) {
     try {
-      return await supabase.from('session_attendees').insert([
-        {
-          session_id: eventId,
-          user_id: userId,
-        },
-      ]);
+      return await supabase.rpc('toggle_session_rsvp', {
+        p_session_id: eventId,
+        p_user_id: userId,
+      });
     } catch (error) {
       Logger.error('eventsService.rsvp failed', error);
       throw new ServiceError('Failed to RSVP to event', 'EVENTS_RSVP_FAILED', error);

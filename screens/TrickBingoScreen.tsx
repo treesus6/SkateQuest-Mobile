@@ -19,11 +19,21 @@ interface BingoCard {
 }
 
 interface BingoProgress {
-  id?: string;
+  id: string; // always the bingo_cards row id
   user_id: string;
   bingo_card_id: string;
   landed_cells: number[];
 }
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const DEFAULT_TRICKS = [
+  'Kickflip', 'Heelflip', 'Ollie', 'Pop Shove-it', '360 Flip',
+  'Backside 180', 'Frontside 180', 'Varial Flip', 'Hardflip', 'Inward Heel',
+  'Noseslide', 'Tailslide', 'Boardslide', 'Bluntslide', 'Nosegrind',
+  '5-0 Grind', '50-50 Grind', 'Smith Grind', 'Feeble Grind', 'Crooked Grind',
+  'Manual', 'Nose Manual', 'Casper', 'Hospital Flip', 'FREE',
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,33 +105,31 @@ export default function TrickBingoScreen() {
 
   // ── Fetch card + progress ─────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     try {
-      const { data: cardData } = await supabase
+      const { data: existing } = await supabase
         .from('bingo_cards')
         .select('*')
-        .order('created_at', { ascending: false }) // Use created_at if week_number sorting is ambiguous
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (!cardData) return;
-      setCard(cardData as BingoCard);
-
-      if (userId) {
-        const { data: prog } = await supabase
-          .from('bingo_progress')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('bingo_card_id', cardData.id)
-          .maybeSingle();
-
-        setProgress(
-          prog ?? {
-            user_id: userId,
-            bingo_card_id: cardData.id,
-            landed_cells: [],
-          }
-        );
+      if (existing) {
+        const cd = (existing.card_data ?? {}) as { tricks?: string[]; week_number?: number };
+        setCard({ id: existing.id, week_number: cd.week_number ?? 1, tricks: cd.tricks ?? DEFAULT_TRICKS });
+        setProgress({ id: existing.id, user_id: userId, bingo_card_id: existing.id, landed_cells: (existing.completed_cells as number[]) ?? [] });
+      } else {
+        const { data: newRow } = await supabase
+          .from('bingo_cards')
+          .insert({ user_id: userId, card_data: { tricks: DEFAULT_TRICKS, week_number: 1 }, completed_cells: [] })
+          .select()
+          .single();
+        if (newRow) {
+          setCard({ id: newRow.id, week_number: 1, tricks: DEFAULT_TRICKS });
+          setProgress({ id: newRow.id, user_id: userId, bingo_card_id: newRow.id, landed_cells: [] });
+        }
       }
     } finally {
       setLoading(false);
@@ -154,20 +162,11 @@ export default function TrickBingoScreen() {
     const updatedProgress: BingoProgress = { ...progress, landed_cells: newLanded };
     setProgress(updatedProgress);
 
-    // Persist
-    if (progress.id) {
-      await supabase
-        .from('bingo_progress')
-        .update({ landed_cells: newLanded })
-        .eq('id', progress.id);
-    } else {
-      const { data } = await supabase
-        .from('bingo_progress')
-        .insert({ user_id: userId, bingo_card_id: card.id, landed_cells: newLanded })
-        .select()
-        .single();
-      if (data) setProgress({ ...updatedProgress, id: data.id });
-    }
+    // Persist via bingo_cards completed_cells
+    await supabase
+      .from('bingo_cards')
+      .update({ completed_cells: newLanded, completed: isFullCard(newLanded) })
+      .eq('id', progress.id);
 
     // Feedback
     if (isFullCard(newLanded)) {

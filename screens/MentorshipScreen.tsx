@@ -11,7 +11,6 @@ import {
 import { useNavigation } from '../lib/useNavigation';
 import { ChevronLeft, Star, UserCheck, Users, Zap, Award, MessageSquare } from 'lucide-react-native';
 import { Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { mentorshipService } from '../lib/mentorshipService';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -40,20 +39,10 @@ export default function MentorshipScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      // Still use mentor_profiles for the "Find" list
-      const { data: mentorData } = await supabase
-        .from('mentor_profiles')
-        .select('*, profiles:user_id(username)')
-        .eq('available', true)
-        .neq('user_id', user.id)
-        .order('level', { ascending: false })
-        .limit(20);
+      // mentor_profiles table no longer exists — show empty find-a-mentor list gracefully
+      setMentors([]);
 
-      if (mentorData) {
-        setMentors(mentorData.map((m: any) => ({ ...m, username: m.profiles?.username })));
-      }
-
-      // Use the newer mentorshipService for active relationships
+      // Use mentorshipService for active relationships and stats
       const [mentees, mentors_list, mentorshipStats] = await Promise.all([
         mentorshipService.getUserMentees(user.id),
         mentorshipService.getUserMentors(user.id),
@@ -63,14 +52,8 @@ export default function MentorshipScreen() {
       setActiveRelationships([...mentees, ...mentors_list]);
       setStats(mentorshipStats);
 
-      // Check if current user is a mentor
-      const { data: myProfile } = await supabase
-        .from('mentor_profiles')
-        .select('available')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (myProfile) setIsMentor(myProfile.available);
+      // Derive mentor status from existing relationships (no mentor_profiles table)
+      setIsMentor(mentees.length > 0);
 
     } catch (error) {
       console.error('Error fetching mentorship data:', error);
@@ -89,22 +72,9 @@ export default function MentorshipScreen() {
     }
   };
 
-  const toggleMentorStatus = async (val: boolean) => {
-    if (!user) return;
+  const toggleMentorStatus = (val: boolean) => {
+    // mentor_profiles table no longer exists — toggle is local UI only
     setIsMentor(val);
-    try {
-      await supabase
-        .from('mentor_profiles')
-        .upsert({ 
-          user_id: user.id, 
-          available: val,
-          specialty: 'street', // default
-          tricks_mastered: 0,
-          level: 1
-        });
-    } catch (error) {
-      console.error('Error toggling mentor status:', error);
-    }
   };
 
   const specialtyColor = (s: string) => {

@@ -40,9 +40,9 @@ interface SpotOfDay {
 
 interface Comment {
   id: string;
-  spot_day_id: string;
+  spot_id: string;
   user_id: string;
-  comment_text: string;
+  content: string;
   created_at: string;
   username?: string;
 }
@@ -96,7 +96,7 @@ function CommentBubble({ comment }: { comment: Comment }) {
           </Text>
         </View>
         <View className="rounded-2xl rounded-tl-sm px-3 py-2" style={{ backgroundColor: '#1a1a1a' }}>
-          <Text className="text-white text-sm leading-5">{comment.comment_text}</Text>
+          <Text className="text-white text-sm leading-5">{comment.content}</Text>
         </View>
       </View>
     </View>
@@ -163,11 +163,11 @@ export default function SpotOfTheDayScreen() {
       const spotRaw = Array.isArray(sodData.spot) ? sodData.spot[0] : sodData.spot;
       setSpotOfDay({ ...sodData, spot: spotRaw } as SpotOfDay);
 
-      // 2. Comments
+      // 2. Comments (spot_comments keyed on spot_id, not event id)
       const { data: commentData, error: commentErr } = await supabase
-        .from('spot_day_comments')
-        .select('id, spot_day_id, user_id, comment_text, created_at')
-        .eq('spot_day_id', sodData.id)
+        .from('spot_comments')
+        .select('id, spot_id, user_id, content, created_at')
+        .eq('spot_id', sodData.spot_id)
         .order('created_at', { ascending: true });
 
       if (commentErr) throw commentErr;
@@ -187,18 +187,18 @@ export default function SpotOfTheDayScreen() {
 
       // 3. RSVP count
       const { count: rsvpTotal } = await supabase
-        .from('spot_day_rsvps')
+        .from('event_rsvps')
         .select('*', { count: 'exact', head: true })
-        .eq('spot_day_id', sodData.id);
+        .eq('event_id', sodData.id);
 
       setRsvpCount(rsvpTotal ?? 0);
 
       // 4. User's RSVP status
       if (userId) {
         const { data: userRsvp } = await supabase
-          .from('spot_day_rsvps')
+          .from('event_rsvps')
           .select('user_id')
-          .eq('spot_day_id', sodData.id)
+          .eq('event_id', sodData.id)
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -229,9 +229,9 @@ export default function SpotOfTheDayScreen() {
     if (hasRsvp) {
       // Remove RSVP
       const { error: delErr } = await supabase
-        .from('spot_day_rsvps')
+        .from('event_rsvps')
         .delete()
-        .eq('spot_day_id', spotOfDay.id)
+        .eq('event_id', spotOfDay.id)
         .eq('user_id', userId);
 
       if (!delErr) {
@@ -241,8 +241,8 @@ export default function SpotOfTheDayScreen() {
     } else {
       // Add RSVP
       const { error: insertErr } = await supabase
-        .from('spot_day_rsvps')
-        .upsert({ spot_day_id: spotOfDay.id, user_id: userId }, { onConflict: 'spot_day_id,user_id' });
+        .from('event_rsvps')
+        .upsert({ event_id: spotOfDay.id, user_id: userId }, { onConflict: 'event_id,user_id' });
 
       if (!insertErr) {
         setHasRsvp(true);
@@ -274,13 +274,13 @@ export default function SpotOfTheDayScreen() {
 
     setSubmitting(true);
     const { data: inserted, error: insertErr } = await supabase
-      .from('spot_day_comments')
+      .from('spot_comments')
       .insert({
-        spot_day_id: spotOfDay.id,
+        spot_id: spotOfDay.spot_id,
         user_id: userId,
-        comment_text: trimmed,
+        content: trimmed,
       })
-      .select('id, spot_day_id, user_id, comment_text, created_at')
+      .select('id, spot_id, user_id, content, created_at')
       .single();
 
     setSubmitting(false);

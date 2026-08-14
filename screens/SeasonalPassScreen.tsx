@@ -7,10 +7,10 @@ import {
   ActivityIndicator,
   FlatList,
   Animated,
+  Alert,
 } from 'react-native';
 import { Star, Gift, Zap, Lock, CheckCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { useNavigation } from '../lib/useNavigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,7 +103,6 @@ function PulsingCircle({ size = 40 }: { size?: number }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SeasonalPassScreen() {
-  const navigation = useNavigation<any>();
   const [pass, setPass] = useState<SeasonalPass | null>(null);
   const [progress, setProgress] = useState<PassProgress | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,7 +124,7 @@ export default function SeasonalPassScreen() {
     setLoading(true);
     try {
       const { data: passData } = await supabase
-        .from('seasonal_passes')
+        .from('seasonal_events')
         .select('*')
         .lte('start_date', new Date().toISOString())
         .gte('end_date', new Date().toISOString())
@@ -135,29 +134,24 @@ export default function SeasonalPassScreen() {
       if (!passData) return;
       setPass(passData as SeasonalPass);
 
+      // pass_progress table does not exist — derive progress from elapsed days
       if (userId) {
-        const { data: prog } = await supabase
-          .from('pass_progress')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('pass_id', passData.id)
-          .maybeSingle();
-
         const elapsed = daysElapsed(passData.start_date);
-        const initialProgress: PassProgress = {
+        const { data: claims, error: claimsError } = await supabase
+          .from('seasonal_reward_claims')
+          .select('claim_date, day_number')
+          .eq('user_id', userId)
+          .eq('event_id', passData.id);
+        if (claimsError) throw claimsError;
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        setProgress({
           user_id: userId,
           pass_id: passData.id,
           current_day: Math.min(elapsed + 1, 30),
-          completed_milestones: [],
-        };
-        setProgress(prog ?? initialProgress);
-
-        // Check if reward was already claimed today
-        if (prog) {
-          const today = new Date().toISOString().split('T')[0];
-          const lastClaimed = prog.last_claimed_date ?? null;
-          setClaimedToday(lastClaimed === today);
-        }
+          completed_milestones: (claims ?? []).map(claim => claim.day_number),
+        });
+        setClaimedToday((claims ?? []).some(claim => claim.claim_date === todayStr));
       }
     } finally {
       setLoading(false);
@@ -185,41 +179,23 @@ export default function SeasonalPassScreen() {
 
     const currentDay = progress.current_day;
     const newCompleted = [...new Set([...progress.completed_milestones, currentDay])];
-    const updatedProgress: PassProgress = {
-      ...progress,
-      completed_milestones: newCompleted,
-    };
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      if (progress.id) {
-        await supabase
-          .from('pass_progress')
-          .update({ completed_milestones: newCompleted, last_claimed_date: today })
-          .eq('id', progress.id);
-      } else {
-        const { data } = await supabase
-          .from('pass_progress')
-          .insert({ ...updatedProgress, last_claimed_date: today })
-          .select()
-          .single();
-        if (data) updatedProgress.id = data.id;
-      }
+      const { data, error } = await supabase.rpc('claim_seasonal_reward', {
+        p_event_id: pass.id,
+      });
+      if (error) throw error;
 
-      // Actually grant the milestone's XP reward — previously the pass
-      // progress was updated and the button flipped to "Claimed Today"
-      // without ever crediting the XP shown on the milestone.
-      const milestone = pass.milestones.find(m => m.day === currentDay);
-      if (milestone?.xp) {
-        const { error: xpError } = await supabase.rpc('increment_xp', {
-          user_id: userId,
-          amount: milestone.xp,
-        });
-        if (xpError) throw xpError;
-      }
+      const result = data as { claimed?: boolean; day_number?: number; error?: string } | null;
+      if (result?.error) throw new Error(result.error);
 
-      setProgress(updatedProgress);
+      setProgress({
+        ...progress,
+        completed_milestones: result?.claimed ? newCompleted : progress.completed_milestones,
+      });
       setClaimedToday(true);
+    } catch (error) {
+      Alert.alert('Reward not claimed', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setClaiming(false);
     }
@@ -296,16 +272,10 @@ export default function SeasonalPassScreen() {
 
   if (!pass) {
     return (
-      <View className="flex-1 bg-[#07090D] px-5 pt-20">
-        <Text className="text-[#D2673D] text-xs font-black tracking-widest mb-3">SEASON BREAK</Text>
-        <Text className="text-[#F7F4EF] text-3xl font-black leading-9">The next season is being built.</Text>
-        <Text className="text-[#9DA5B2] text-base leading-6 mt-3">Daily quests, spot missions and crew battles are still live. Keep stacking XP while the next season gets ready.</Text>
-        <TouchableOpacity className="min-h-14 bg-[#D2673D] rounded-xl items-center justify-center mt-8" onPress={() => navigation.navigate('DailyQuests')}>
-          <Text className="text-white font-black text-base">Ride today's quests</Text>
-        </TouchableOpacity>
-        <TouchableOpacity className="min-h-14 bg-[#111721] border border-[#2A323E] rounded-xl items-center justify-center mt-3" onPress={() => navigation.navigate('Map')}>
-          <Text className="text-[#F7F4EF] font-bold text-base">Find a spot nearby</Text>
-        </TouchableOpacity>
+      <View className="flex-1 bg-[#0a0a0a] items-center justify-center px-8">
+        <Text className="text-white text-lg text-center">
+          No active season right now. Check back soon!
+        </Text>
       </View>
     );
   }
