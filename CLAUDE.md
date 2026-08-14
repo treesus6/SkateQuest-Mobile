@@ -10,6 +10,26 @@ React Native / Expo app mapping 27,000+ skateparks globally, built by a skater f
 
 ---
 
+## Product Integrity — Non-negotiable
+
+Read and follow [AGENTS.md](./AGENTS.md) before changing any code.
+
+**DO NOT “FIX” MISSING SCHEMA OR TYPE ERRORS BY REMOVING FEATURES, USING LOCAL-ONLY STATE, ADDING NO-OPS, RETURNING FAKE SUCCESS, EMPTYING REAL FEEDS, OR MAKING BUTTONS APPEAR TO WORK WITHOUT REAL PERSISTENCE.**
+
+When the app and Supabase schema disagree:
+
+1. Inspect the live schema and existing migrations.
+2. Define the intended real product behavior.
+3. Add or correct the migration, RPC, RLS policy, or storage contract.
+4. Wire the React Native screen to the real backend.
+5. Verify the write with a read-back query.
+6. Test failure behavior and Android behavior.
+7. Report blockers honestly instead of hiding them.
+
+The product owner explicitly prohibits fake mockups, fabricated content, dead buttons, and pretend-working features.
+
+---
+
 ## Commands
 ```bash
 npm run type-check        # tsc --noEmit — run before declaring anything done
