@@ -10,14 +10,15 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
   ScrollView,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+import { Map, MapPin, Target, Users, Zap } from 'lucide-react-native';
 
 interface Quest {
   id: string;
@@ -39,6 +40,7 @@ export default function DailyQuestsScreen() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [submissions, setSubmissions] = useState<Map<string, Submission>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [proofModal, setProofModal] = useState<Quest | null>(null);
   const [proofType, setProofType] = useState<'photo' | 'video' | 'location' | null>(null);
   const [proofImage, setProofImage] = useState<string | null>(null);
@@ -50,24 +52,39 @@ export default function DailyQuestsScreen() {
   }, []);
 
   const loadData = async () => {
-    if (!user) return;
-    const { data: q } = await supabase
-      .from('daily_quests')
-      .select('*')
-      .eq('active', true)
-      .order('xp_reward', { ascending: false });
-    setQuests(q || []);
+    if (!user) {
+      setLoading(false);
+      setLoadError('Sign in to load your daily missions.');
+      return;
+    }
 
-    const { data: s } = await supabase
-      .from('daily_quest_completions')
-      .select('quest_id')
-      .eq('user_id', user.id);
-    const map = new Map<string, Submission>();
-    s?.forEach(sub =>
-      map.set(sub.quest_id, { quest_id: sub.quest_id, status: 'approved', xp_awarded: true })
-    );
-    setSubmissions(map);
-    setLoading(false);
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data: q, error: questError } = await supabase
+        .from('daily_quests')
+        .select('*')
+        .eq('active', true)
+        .order('xp_reward', { ascending: false });
+      if (questError) throw questError;
+      setQuests(q || []);
+
+      const { data: s, error: completionError } = await supabase
+        .from('daily_quest_completions')
+        .select('quest_id')
+        .eq('user_id', user.id);
+      if (completionError) throw completionError;
+
+      const map = new Map<string, Submission>();
+      s?.forEach(sub =>
+        map.set(sub.quest_id, { quest_id: sub.quest_id, status: 'approved', xp_awarded: true })
+      );
+      setSubmissions(map);
+    } catch (error: any) {
+      setLoadError(error?.message || 'Could not load today\'s missions.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pickImage = async () => {
@@ -190,25 +207,26 @@ export default function DailyQuestsScreen() {
   };
 
   const questTypeIcon = (type: string) => {
-    const icons: Record<string, string> = {
-      location: '📍',
-      tricks: '🛹',
-      challenge: '🎯',
-      social: '👥',
-      exploration: '🗺',
-      general: '⚡',
+    const icons: Record<string, typeof Zap> = {
+      location: MapPin,
+      tricks: Zap,
+      challenge: Target,
+      social: Users,
+      exploration: Map,
+      general: Zap,
     };
-    return icons[type] || '⚡';
+    return icons[type] || Zap;
   };
 
   const renderQuest = ({ item }: { item: Quest }) => {
     const sub = submissions.get(item.id);
     const done = sub?.status === 'approved';
+    const QuestIcon = questTypeIcon(item.quest_type);
 
     return (
       <View style={[s.card, done && s.cardDone]}>
         <View style={s.cardTop}>
-          <Text style={s.questIcon}>{questTypeIcon(item.quest_type)}</Text>
+          <View style={s.questIcon}><QuestIcon color={done ? "#4ADE80" : "#D2673D"} size={22} strokeWidth={2.3} /></View>
           <View style={s.questInfo}>
             <Text style={[s.questTitle, done && s.questTitleDone]}>{item.title}</Text>
             <Text style={s.questDesc}>{item.description}</Text>
@@ -264,19 +282,33 @@ export default function DailyQuestsScreen() {
         keyExtractor={i => i.id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
         renderItem={renderQuest}
+        refreshing={loading && quests.length > 0}
+        onRefresh={loadData}
         ListEmptyComponent={
-          !loading ? (
-            <View style={s.empty}>
-              <Text style={s.emptyTitle}>Missions are being loaded</Text>
-              <Text style={s.emptyTxt}>
-                Pull down to refresh. Active quests will appear here as soon as they are available.
-              </Text>
-              <TouchableOpacity style={s.retryBtn} onPress={loadData}>
-                <Text style={s.retryTxt}>Refresh quests</Text>
-              </TouchableOpacity>
+          loading ? (
+            <View style={s.skeletonList}>
+              {[0, 1, 2].map(item => (
+                <View key={item} style={s.skeletonCard}>
+                  <View style={s.skeletonIcon} />
+                  <View style={s.skeletonCopy}>
+                    <View style={s.skeletonTitle} />
+                    <View style={s.skeletonLine} />
+                    <View style={[s.skeletonLine, { width: '68%' }]} />
+                  </View>
+                </View>
+              ))}
             </View>
           ) : (
-            <ActivityIndicator color="#d2673d" style={{ marginTop: 40 }} />
+            <View style={s.empty}>
+              <View style={s.emptyIcon}><Target color="#D2673D" size={28} /></View>
+              <Text style={s.emptyTitle}>{loadError ? 'Missions could not load' : 'No missions live right now'}</Text>
+              <Text style={s.emptyTxt}>
+                {loadError || 'Check back soon or pull down to see whether new challenges have dropped.'}
+              </Text>
+              <TouchableOpacity style={s.retryBtn} onPress={loadData} accessibilityRole="button">
+                <Text style={s.retryTxt}>Try again</Text>
+              </TouchableOpacity>
+            </View>
           )
         }
       />
@@ -326,7 +358,7 @@ export default function DailyQuestsScreen() {
               {/* Image preview */}
               {proofImage && (
                 <View style={s.imagePreview}>
-                  <Image source={{ uri: proofImage }} style={s.previewImg} contentFit="cover" />
+                  <Image source={{ uri: proofImage }} style={s.previewImg} resizeMode="cover" />
                   <TouchableOpacity
                     style={s.removeImg}
                     onPress={() => {
@@ -403,7 +435,7 @@ const s = StyleSheet.create({
   },
   cardDone: { borderColor: '#166534', backgroundColor: 'rgba(22,101,52,0.1)' },
   cardTop: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 12 },
-  questIcon: { fontSize: 28, marginTop: 2 },
+  questIcon: { width: 42, height: 42, borderRadius: 12, marginTop: 2, backgroundColor: 'rgba(210,103,61,0.12)', alignItems: 'center', justifyContent: 'center' },
   questInfo: { flex: 1 },
   questTitle: { color: '#F3F4F6', fontSize: 15, fontWeight: '700', marginBottom: 3 },
   questTitleDone: { color: '#4ade80' },
@@ -447,25 +479,17 @@ const s = StyleSheet.create({
     borderColor: '#166834',
   },
   doneTxt: { color: '#4ade80', fontWeight: '700', fontSize: 13 },
-  empty: {
-    marginTop: 32,
-    backgroundColor: '#10151D',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#262D38',
-    padding: 24,
-    alignItems: 'flex-start',
-  },
+  skeletonList: { gap: 12 },
+  skeletonCard: { minHeight: 116, padding: 16, borderRadius: 16, backgroundColor: '#10151D', borderWidth: 1, borderColor: '#202733', flexDirection: 'row', gap: 12 },
+  skeletonIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#202733' },
+  skeletonCopy: { flex: 1, gap: 10, paddingTop: 4 },
+  skeletonTitle: { height: 16, width: '58%', borderRadius: 8, backgroundColor: '#262E3A' },
+  skeletonLine: { height: 11, width: '92%', borderRadius: 6, backgroundColor: '#1C2430' },
+  emptyIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(210,103,61,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  empty: { marginTop: 18, backgroundColor: '#10151D', borderRadius: 18, borderWidth: 1, borderColor: '#262D38', padding: 24, alignItems: 'flex-start' },
   emptyTitle: { color: '#F7F4EF', fontSize: 20, fontWeight: '900', marginBottom: 8 },
   emptyTxt: { color: '#9DA5B2', fontSize: 14, lineHeight: 21 },
-  retryBtn: {
-    minHeight: 48,
-    marginTop: 20,
-    backgroundColor: '#D2673D',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
+  retryBtn: { minHeight: 48, marginTop: 20, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 20, justifyContent: 'center' },
   retryTxt: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
