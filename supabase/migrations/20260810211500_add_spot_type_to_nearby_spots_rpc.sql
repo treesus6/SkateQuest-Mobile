@@ -1,32 +1,38 @@
--- Expose spot_type from get_nearby_spots() so the map can actually filter markers by
--- type (Park/Street/DIY/Quest/Shop). The RPC has never returned spot_type, so
--- MapScreen's client-side filter (added to fix #124) silently treats every spot as
--- unclassified and always falls back to the "park" bucket — Street/DIY/Quest/Shop
--- toggles have no effect because no spot ever reaches the client with those types.
-CREATE OR REPLACE FUNCTION get_nearby_spots(
-  lat DOUBLE PRECISION,
-  lng DOUBLE PRECISION,
-  radius_meters INTEGER DEFAULT 50000
+-- Expose spot_type from get_nearby_spots() so map type filters receive
+-- the real database category. The prior RPC also declared UUID columns as TEXT,
+-- which caused a runtime return-type mismatch on the live schema.
+DROP FUNCTION IF EXISTS public.get_nearby_spots(
+  double precision,
+  double precision,
+  integer
+);
+
+CREATE FUNCTION public.get_nearby_spots(
+  lat double precision,
+  lng double precision,
+  radius_meters integer DEFAULT 50000
 )
 RETURNS TABLE (
-  id TEXT,
-  name TEXT,
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  difficulty TEXT,
-  tricks TEXT[],
-  rating DOUBLE PRECISION,
-  image_url TEXT,
-  added_by TEXT,
-  created_at TIMESTAMP WITH TIME ZONE,
-  sponsor_name TEXT,
-  sponsor_url TEXT,
-  sponsor_logo_url TEXT,
-  spot_type TEXT,
-  distance_meters DOUBLE PRECISION
-) AS $$
-BEGIN
-  RETURN QUERY
+  id uuid,
+  name text,
+  latitude double precision,
+  longitude double precision,
+  difficulty text,
+  tricks text[],
+  rating double precision,
+  image_url text,
+  added_by uuid,
+  created_at timestamp with time zone,
+  sponsor_name text,
+  sponsor_url text,
+  sponsor_logo_url text,
+  spot_type text,
+  distance_meters double precision
+)
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $function$
   SELECT
     s.id,
     s.name,
@@ -45,8 +51,8 @@ BEGIN
     ST_Distance(
       ST_MakePoint(lng, lat)::geography,
       ST_MakePoint(s.longitude, s.latitude)::geography
-    ) as distance_meters
-  FROM skate_spots s
+    ) AS distance_meters
+  FROM public.skate_spots s
   WHERE ST_DWithin(
     ST_MakePoint(lng, lat)::geography,
     ST_MakePoint(s.longitude, s.latitude)::geography,
@@ -54,9 +60,16 @@ BEGIN
   )
   ORDER BY distance_meters ASC
   LIMIT 500;
-END;
-$$ LANGUAGE plpgsql STABLE
-SET search_path TO 'public', 'pg_temp';
+$function$;
 
-GRANT EXECUTE ON FUNCTION get_nearby_spots(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_nearby_spots(DOUBLE PRECISION, DOUBLE PRECISION, INTEGER) TO anon;
+REVOKE ALL ON FUNCTION public.get_nearby_spots(
+  double precision,
+  double precision,
+  integer
+) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_nearby_spots(
+  double precision,
+  double precision,
+  integer
+) TO anon, authenticated;
