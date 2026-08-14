@@ -7,13 +7,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList, SkateSpot, Shop } from '../types';
-import {
-  Crosshair,
-  Navigation,
-  Grid3x3,
-  Bookmark,
-  BookmarkCheck,
-} from 'lucide-react-native';
+import { Crosshair, Navigation, Grid3x3, Bookmark, BookmarkCheck } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
 import { shopsService } from '../lib/shopsService';
 import { PersistentCache } from '../lib/persistentCache';
@@ -68,7 +62,13 @@ export default function MapScreen() {
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({ park: true, street: true, diy: true, quest: true, shop: true });
+  const [activeFilters, setActiveFilters] = useState({
+    park: true,
+    street: true,
+    diy: true,
+    quest: true,
+    shop: true,
+  });
 
   // Offline save
   const [savedSpotIds, setSavedSpotIds] = useState<Set<string>>(new Set());
@@ -83,8 +83,8 @@ export default function MapScreen() {
     // can terminate low-memory Android devices. Keep native initialization here.
     Mapbox.setAccessToken(
       (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
-      process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
-      ''
+        process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+        ''
     );
 
     // PostHog: track map screen opened
@@ -92,7 +92,9 @@ export default function MapScreen() {
     requestLocationPermission();
     AsyncStorage.getItem(SAVED_SPOTS_KEY).then((raw: string | null) => {
       if (raw) {
-        try { setSavedSpotIds(new Set(JSON.parse(raw))); } catch {}
+        try {
+          setSavedSpotIds(new Set(JSON.parse(raw)));
+        } catch {}
       }
     });
   }, []);
@@ -104,18 +106,23 @@ export default function MapScreen() {
       return;
     }
     let cancelled = false;
-    spotsService.getById(selectedSpot.id).then(({ data }) => {
-      if (cancelled) return;
-      const conditions = (data as any)?.spot_conditions;
-      if (conditions?.length > 0) {
-        const cond = conditions[0];
-        const notExpired = !cond.expires_at || new Date(cond.expires_at) > new Date();
-        setSpotCondition(notExpired ? cond.condition : null);
-      } else {
-        setSpotCondition(null);
-      }
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    spotsService
+      .getById(selectedSpot.id)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const conditions = (data as any)?.spot_conditions;
+        if (conditions?.length > 0) {
+          const cond = conditions[0];
+          const notExpired = !cond.expires_at || new Date(cond.expires_at) > new Date();
+          setSpotCondition(notExpired ? cond.condition : null);
+        } else {
+          setSpotCondition(null);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [selectedSpot?.id]);
 
   const requestLocationPermission = async () => {
@@ -237,10 +244,16 @@ export default function MapScreen() {
     }
   };
 
-  const filteredSpots = useMemo(() => spots.filter(spot => {
-    const type = spot.spot_type ?? 'park';
-    return activeFilters[type] ?? false;
-  }), [spots, activeFilters]);
+  const filteredSpots = useMemo(
+    () =>
+      spots.filter(spot => {
+        // DB values are free text (existing rows are seeded as e.g. "PARK"), so
+        // normalize case before matching against the lowercase filter keys.
+        const type = (spot.spot_type?.toLowerCase() ?? 'park') as keyof typeof activeFilters;
+        return activeFilters[type] ?? false;
+      }),
+    [spots, activeFilters]
+  );
 
   const filteredShops = useMemo(
     () => (activeFilters.shop ? shops : []),
@@ -336,7 +349,11 @@ export default function MapScreen() {
           {/* Saved spots — gold ring rendered on top */}
           <Mapbox.CircleLayer
             id="saved-points"
-            filter={['in', ['get', 'spotId'], ['literal', savedIdsArray.length > 0 ? savedIdsArray : ['']] as any]}
+            filter={[
+              'in',
+              ['get', 'spotId'],
+              ['literal', savedIdsArray.length > 0 ? savedIdsArray : ['']] as any,
+            ]}
             style={{
               circleColor: '#FFD700',
               circleRadius: 11,
@@ -380,9 +397,11 @@ export default function MapScreen() {
         {showDirections && userLocation && (selectedSpot || selectedShop) && (
           <MapDirections
             from={[userLocation.coords.longitude, userLocation.coords.latitude]}
-            to={selectedSpot
-              ? [selectedSpot.longitude, selectedSpot.latitude]
-              : [selectedShop!.longitude, selectedShop!.latitude]}
+            to={
+              selectedSpot
+                ? [selectedSpot.longitude, selectedSpot.latitude]
+                : [selectedShop!.longitude, selectedShop!.latitude]
+            }
             onClose={() => {
               setShowDirections(false);
               setSelectedSpot(null);
@@ -418,7 +437,10 @@ export default function MapScreen() {
       )}
 
       <View className="absolute top-[50px] left-5 bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
-        <Text className="text-white font-bold text-sm">{filteredSpots.length} spots{activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby</Text>
+        <Text className="text-white font-bold text-sm">
+          {filteredSpots.length} spots{activeFilters.shop ? ` · ${filteredShops.length} shops` : ''}{' '}
+          nearby
+        </Text>
       </View>
 
       {savedSpotIds.size > 0 && (
@@ -455,10 +477,11 @@ export default function MapScreen() {
                 accessibilityLabel={savedSpotIds.has(selectedSpot.id) ? 'Unsave spot' : 'Save spot'}
                 accessibilityRole="button"
               >
-                {savedSpotIds.has(selectedSpot.id)
-                  ? <BookmarkCheck color="#d2673d" size={22} />
-                  : <Bookmark color="#9CA3AF" size={22} />
-                }
+                {savedSpotIds.has(selectedSpot.id) ? (
+                  <BookmarkCheck color="#d2673d" size={22} />
+                ) : (
+                  <Bookmark color="#9CA3AF" size={22} />
+                )}
               </TouchableOpacity>
               <TouchableOpacity className="p-1" onPress={() => setSelectedSpot(null)}>
                 <Text className="text-xl text-gray-500">✕</Text>
@@ -485,7 +508,9 @@ export default function MapScreen() {
                       }`}
                     >
                       <Text className="text-sm">{opt.emoji}</Text>
-                      <Text className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
+                      <Text
+                        className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                      >
                         {opt.label}
                       </Text>
                     </TouchableOpacity>
@@ -523,10 +548,16 @@ export default function MapScreen() {
         <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg z-10">
           <View className="flex-row justify-between items-start mb-3">
             <View className="flex-1 mr-2">
-              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{selectedShop.name}</Text>
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedShop.address}</Text>
+              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+                {selectedShop.name}
+              </Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {selectedShop.address}
+              </Text>
               {selectedShop.verified && (
-                <Text className="text-xs text-green-600 dark:text-green-400 mt-1 font-semibold">Verified skate shop</Text>
+                <Text className="text-xs text-green-600 dark:text-green-400 mt-1 font-semibold">
+                  Verified skate shop
+                </Text>
               )}
             </View>
             <TouchableOpacity onPress={() => setSelectedShop(null)}>
