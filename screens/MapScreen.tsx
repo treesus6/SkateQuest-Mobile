@@ -29,7 +29,7 @@ import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const INITIAL_COORDINATES = [-122.4324, 37.78825];
+const DEFAULT_MAP_CENTER: [number, number] = [-98.5795, 39.8283];
 const SEARCH_RADIUS_KM = 50;
 const SAVED_SPOTS_KEY = 'saved_spot_ids';
 
@@ -65,7 +65,7 @@ export default function MapScreen() {
   const [mapInstance, setMapInstance] = useState(0);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(
-    INITIAL_COORDINATES as [number, number]
+    DEFAULT_MAP_CENTER
   );
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
   const mapboxAccessToken =
@@ -131,7 +131,7 @@ export default function MapScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Location Permission', 'Please enable location to find nearby skate spots', [
-          { text: 'OK', onPress: () => loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]) },
+          { text: 'OK', onPress: () => loadSpots(DEFAULT_MAP_CENTER[1], DEFAULT_MAP_CENTER[0]) },
         ]);
         setLoading(false);
         return;
@@ -142,7 +142,7 @@ export default function MapScreen() {
       loadSpots(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.error('Error getting location:', error);
-      loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]);
+      loadSpots(DEFAULT_MAP_CENTER[1], DEFAULT_MAP_CENTER[0]);
       setLoading(false);
     }
   };
@@ -282,7 +282,7 @@ export default function MapScreen() {
       >
         <Mapbox.Camera
           ref={cameraRef}
-          zoomLevel={12}
+          zoomLevel={userLocation ? 12 : 3}
           centerCoordinate={centerCoordinates}
           animationMode="flyTo"
           animationDuration={1000}
