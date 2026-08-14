@@ -28,6 +28,10 @@ When the app and Supabase schema disagree:
 
 The product owner explicitly prohibits fake mockups, fabricated content, dead buttons, and pretend-working features.
 
+### Instruction priority and stale guidance
+
+**THE PRODUCT OWNER'S CURRENT REQUEST OVERRIDES STALE NOTES IN THIS FILE.** If this file conflicts with the current request, existing product behavior, the live schema, or repository evidence, stop and surface the conflict; do not silently follow the stale instruction. No screen, partnership placement, asset, or implementation detail is permanently protected from an explicit product-owner change. Update this file when a product decision changes so the conflict cannot recur.
+
 ---
 
 ## Commands
@@ -42,7 +46,7 @@ npm test -- -t "test name"           # single test by name
 npm run test:watch
 npm run test:coverage
 npx expo-doctor             # run before any build
-git commit --no-verify -m "message"  # Termux workflow — always bypass husky
+git commit -m "message"              # Let repository hooks run; use --no-verify only when explicitly justified and report it
 ```
 
 EAS builds (see `eas.json` for `development` / `preview` / `production` profiles):
@@ -53,7 +57,7 @@ npm run build:production    # eas build --platform all --profile production
 npm run update:production   # eas update --branch production (OTA, JS-only changes)
 ```
 
-Husky (`pre-commit`, `pre-push`, `post-checkout`, `post-commit`, `post-merge`) + `lint-staged` run eslint/prettier on staged files. On Termux, bypass with `--no-verify` as shown above.
+Husky (`pre-commit`, `pre-push`, `post-checkout`, `post-commit`, `post-merge`) + `lint-staged` run eslint/prettier on staged files. Do not routinely bypass verification. If a hook is broken in Termux, run the equivalent checks manually, document the failure, and use `--no-verify` only for that specific justified commit.
 
 ---
 
@@ -247,16 +251,15 @@ Jest + `jest-expo` preset + React Native Testing Library. Tests live in `__tests
 
 ---
 
-## Files Never to Touch
-- `lib/supabase.ts` auth config (AsyncStorage, `detectSessionInUrl: false`, `processLock`)
-- `lib/envValidation.ts` — must never throw
-- `components/PortalDimensionLogo.tsx` — permanent community partnership
-- `assets/supporters/portal-dimension.png` — never delete
+## High-risk files and behavior — inspect before changing
+- `lib/supabase.ts` auth config: preserve session behavior unless the requested change requires a verified auth migration.
+- `lib/envValidation.ts`: startup validation must show actionable diagnostics without causing a pre-render white screen.
+- Partnership UI and assets are product content, not permanently protected code. Follow the product owner's current placement/removal decision and remove stale references consistently.
 
 ---
 
-## Portal Dimension
-Kevin's shop (Newport, OR) — map marker at 44.6368/-124.0537. iOS AltStore distribution partner. Community, not a sponsor. Do NOT remove.
+## Portal Dimension context
+Kevin's shop (Newport, OR) has historically been a community/AltStore distribution partner and a map listing, not a sponsor. This context does not override a current product-owner request about branding, login placement, map data, or removal.
 
 ---
 
