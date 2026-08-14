@@ -7,7 +7,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList, SkateSpot, Shop } from '../types';
-import { Crosshair, Navigation, Grid3x3, Bookmark, BookmarkCheck } from 'lucide-react-native';
+import { Crosshair, Navigation, Grid3x3, Bookmark, BookmarkCheck, RotateCcw, TriangleAlert } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
 import { shopsService } from '../lib/shopsService';
 import { PersistentCache } from '../lib/persistentCache';
@@ -53,11 +53,17 @@ export default function MapScreen() {
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapInstance, setMapInstance] = useState(0);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(
     INITIAL_COORDINATES as [number, number]
   );
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
+  const mapboxAccessToken =
+    (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
+    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+    '';
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -81,11 +87,11 @@ export default function MapScreen() {
     // Expo Router discovers route modules during startup. Calling into Mapbox at
     // module scope initializes the native SDK before this screen is opened and
     // can terminate low-memory Android devices. Keep native initialization here.
-    Mapbox.setAccessToken(
-      (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
-        process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
-        ''
-    );
+    if (mapboxAccessToken) {
+      Mapbox.setAccessToken(mapboxAccessToken);
+    } else {
+      setMapError('The Mapbox access token is missing from this Android build.');
+    }
 
     // PostHog: track map screen opened
     SkateEvents.mapOpened();
@@ -274,10 +280,16 @@ export default function MapScreen() {
   return (
     <View className="flex-1 bg-[#07090D]">
       <Mapbox.MapView
+        key={mapInstance}
         ref={mapRef}
         style={{ flex: 1 }}
         styleURL={mapStyle}
         onRegionDidChange={onRegionDidChange}
+        onDidFinishLoadingMap={() => setMapError(null)}
+        onDidFailLoadingMap={(event: any) => {
+          const reason = event?.nativeEvent?.error || event?.error;
+          setMapError(reason || 'Map tiles could not be loaded.');
+        }}
       >
         <Mapbox.Camera
           ref={cameraRef}
@@ -302,6 +314,7 @@ export default function MapScreen() {
                 name: spot.name,
                 difficulty: spot.difficulty || 'Unknown',
                 spotId: spot.id,
+                spotType: spot.spot_type?.toLowerCase() ?? 'park',
               },
             })),
           }}
@@ -340,7 +353,14 @@ export default function MapScreen() {
             id="unclustered-point"
             filter={['!', ['has', 'point_count']]}
             style={{
-              circleColor: '#d2673d',
+              circleColor: [
+                'match',
+                ['get', 'spotType'],
+                'street', '#F59E0B',
+                'diy', '#A855F7',
+                'quest', '#22C55E',
+                '#D2673D',
+              ],
               circleRadius: 8,
               circleStrokeWidth: 2,
               circleStrokeColor: '#ffffff',
@@ -413,6 +433,31 @@ export default function MapScreen() {
 
       <MapStyleSelector currentStyle={mapStyle} onStyleChange={setMapStyle} />
 
+      {mapError && (
+        <View className="absolute bottom-[104px] left-5 right-5 rounded-2xl border border-[#6B3325] bg-[#15100F] p-4 z-20">
+          <View className="flex-row items-start gap-3">
+            <TriangleAlert color="#D2673D" size={22} />
+            <View className="flex-1">
+              <Text className="text-base font-black text-white">Map could not load</Text>
+              <Text className="mt-1 text-sm text-gray-400">{mapError}</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            className="mt-4 min-h-[46px] flex-row items-center justify-center gap-2 rounded-xl bg-[#D2673D]"
+            onPress={() => {
+              setMapError(null);
+              setMapStyle(Mapbox.StyleURL.Street);
+              setMapInstance(value => value + 1);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading the map"
+          >
+            <RotateCcw color="#FFFFFF" size={18} />
+            <Text className="font-black text-white">Retry map</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity
         className="absolute top-[110px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg"
         onPress={() => setShowFilters(true)}
@@ -446,6 +491,35 @@ export default function MapScreen() {
       {savedSpotIds.size > 0 && (
         <View className="absolute top-[90px] left-5 bg-yellow-500 px-3 py-1.5 rounded-full shadow">
           <Text className="text-white font-bold text-xs">⭐ {savedSpotIds.size} saved</Text>
+        </View>
+      )}
+
+      {!selectedSpot && !selectedShop && !showDirections && !mapError && filteredSpots.length > 0 && (
+        <View className="absolute bottom-[92px] left-0 right-0">
+          <Text className="px-5 mb-2 text-xs font-black tracking-widest text-white">NEARBY SPOTS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
+            {filteredSpots.slice(0, 12).map(spot => (
+              <TouchableOpacity
+                key={spot.id}
+                className="w-[210px] rounded-2xl border border-[#2A303A] bg-[#10151D] p-4"
+                onPress={() => {
+                  setSelectedSpot(spot);
+                  cameraRef.current?.setCamera({
+                    centerCoordinate: [spot.longitude, spot.latitude],
+                    zoomLevel: 15,
+                    animationDuration: 700,
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${spot.name}`}
+              >
+                <Text className="text-base font-black text-white" numberOfLines={1}>{spot.name}</Text>
+                <Text className="mt-1 text-xs font-bold uppercase text-[#D2673D]">
+                  {(spot.spot_type ?? 'Park').toLowerCase()} · {spot.difficulty || 'Unrated'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
 
