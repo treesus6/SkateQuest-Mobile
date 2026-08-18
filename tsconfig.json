@@ -8,7 +8,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "jsx": "react-native",
-    "lib": ["ES2015", "ES2020"],
+    "lib": ["DOM", "ES2015", "ES2020"],
     "skipLibCheck": true,
     "types": ["jest", "node"]
   },

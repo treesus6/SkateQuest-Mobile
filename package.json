@@ -17,7 +17,9 @@
     "analyze:bundle": "npx expo-bundle-visualizer",
     "prepare": "husky install || true",
     "build:production": "eas build --platform all --profile production",
-    "update:production": "eas update --branch production --message 'prod: release'"
+    "update:production": "eas update --branch production --message 'prod: release'",
+    "export:web": "expo export --platform web --output-dir dist",
+    "deploy:web": "eas deploy --environment production --prod"
   },
   "trustedDependencies": [
     "@sentry/cli"

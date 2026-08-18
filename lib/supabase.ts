@@ -1,8 +1,8 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
 import Constants from 'expo-constants';
+import { authStorage, detectSessionInUrl } from './authStorage';
 
 // Runtime config comes from Constants.expoConfig.extra (set in app.config.js) —
 // process.env.EXPO_PUBLIC_* is undefined at runtime in EAS production builds.
@@ -28,10 +28,10 @@ const clientAnonKey = supabaseAnonKey || 'configuration-missing';
 
 export const supabase = createClient(clientUrl, clientAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl,
     lock: processLock,
   },
   global: {

@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from './supabase';
 import { decode } from 'base64-arraybuffer';
+import { Platform } from 'react-native';
 
 export interface UploadProgress {
   loaded: number;
@@ -97,18 +98,20 @@ export async function uploadToStorage(
   _onProgress?: (progress: UploadProgress) => void
 ): Promise<string> {
   try {
-    // Read file as base64
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: 'base64',
-    });
-
-    // Get file extension
-    const ext = uri.split('.').pop() || 'jpg';
+    const response = Platform.OS === 'web' ? await fetch(uri) : null;
+    if (response && !response.ok) throw new Error('The selected media could not be read.');
+    const webBlob = response ? await response.blob() : null;
+    const base64 = webBlob ? null : await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+    const contentType = webBlob?.type || '';
+    const extFromType = contentType.split('/')[1]?.replace('quicktime', 'mov');
+    const ext =
+      extFromType || uri.split(/[?#]/)[0].split('.').pop() || (bucket === 'videos' ? 'mp4' : 'jpg');
     const filePath = `${folder}/${Date.now()}_${fileName}.${ext}`;
 
     // Upload to Supabase Storage
-    const { error } = await supabase.storage.from(bucket).upload(filePath, decode(base64), {
-      contentType: `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
+    const body = webBlob ?? decode(base64!);
+    const { error } = await supabase.storage.from(bucket).upload(filePath, body, {
+      contentType: contentType || `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
       upsert: false,
     });
 
@@ -138,13 +141,16 @@ export async function uploadImage(
 ): Promise<MediaUploadResult> {
   const url = await uploadToStorage(uri, 'photos', folder, fileName);
 
-  const fileInfo = await FileSystem.getInfoAsync(uri);
-  const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size || 0 : 0;
+  const fileSize = Platform.OS === 'web' ? (await fetch(uri)).headers.get('content-length') : null;
+  const fileInfo = Platform.OS === 'web' ? null : await FileSystem.getInfoAsync(uri);
 
   return {
     url,
     type: 'photo',
-    fileSize,
+    fileSize:
+      fileInfo && fileInfo.exists && 'size' in fileInfo
+        ? fileInfo.size || 0
+        : Number(fileSize ?? 0),
   };
 }
 
@@ -159,13 +165,16 @@ export async function uploadVideo(
 ): Promise<MediaUploadResult> {
   const url = await uploadToStorage(uri, 'videos', folder, fileName);
 
-  const fileInfo = await FileSystem.getInfoAsync(uri);
-  const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size || 0 : 0;
+  const webResponse = Platform.OS === 'web' ? await fetch(uri) : null;
+  const fileInfo = Platform.OS === 'web' ? null : await FileSystem.getInfoAsync(uri);
 
   return {
     url,
     type: 'video',
-    fileSize,
+    fileSize:
+      fileInfo && fileInfo.exists && 'size' in fileInfo
+        ? fileInfo.size || 0
+        : Number(webResponse?.headers.get('content-length') ?? 0),
     duration,
   };
 }

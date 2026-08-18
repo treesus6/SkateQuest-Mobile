@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">SkateQuest</title>
+  <desc id="description">SkateQuest SQ monogram above a skateboard</desc>
+  <rect width="512" height="512" rx="112" fill="#05070b"/>
+  <path d="M91 0h330a91 91 0 0 1 91 91v56L147 512H91a91 91 0 0 1-91-91V91A91 91 0 0 1 91 0Z" fill="#d2673d"/>
+  <circle cx="125" cy="117" r="59" fill="#05070b" opacity=".18"/>
+  <path d="M165 179c-11-21-32-32-61-32-35 0-59 16-59 43 0 67 117 27 117 80 0 29-27 48-64 48-32 0-59-13-72-37l32-19c8 16 24 24 43 24 19 0 29-5 29-16 0-24-117-8-117-77 0-48 40-77 93-77 43 0 75 16 91 48l-32 15Zm144 139-21-24a120 120 0 0 1-32 5c-67 0-112-37-112-93 0-53 45-90 112-90s112 37 112 90c0 29-13 53-37 72l24 24-46 16Zm-53-168c-43 0-69 21-69 56s26 59 69 59h5l-24-27 43-16 21 24c16-11 24-24 24-40 0-35-26-56-69-56Z" fill="#fff"/>
+  <path d="M104 371c51 32 216 35 296-5-5 35-37 53-75 56l-157-5c-32-3-56-19-64-46Z" fill="#05070b"/>
+  <circle cx="173" cy="440" r="21" fill="#fff"/>
+  <circle cx="336" cy="440" r="21" fill="#fff"/>
+</svg>

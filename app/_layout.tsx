@@ -16,6 +16,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
 import PortalDimensionLogo from '../components/PortalDimensionLogo';
 import Toast from '../components/Toast';
+import PwaInstallGuide from '../components/PwaInstallGuide';
 
 import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
 import { validateEnvironment } from '../lib/envValidation';
@@ -156,6 +157,7 @@ function RootLayout() {
             <OfflineIndicator />
             <PortalDimensionLogo />
             <Toast />
+            <PwaInstallGuide />
             <AuthGuard />
           </ChallengeProvider>
         </ErrorBoundary>

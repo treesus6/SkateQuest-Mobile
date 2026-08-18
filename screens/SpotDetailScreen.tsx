@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import Mapbox from '@rnmapbox/maps';
 import {
   Camera,
   MapPin,
@@ -37,6 +36,7 @@ import GhostClipViewer from '../components/GhostClipViewer';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import SpotMiniMap from '../components/SpotMiniMap';
 
 const { width } = Dimensions.get('window');
 
@@ -194,7 +194,11 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         p_user_id: user.id,
       });
       if (error) throw error;
-      const result = data as { error?: string; is_attending?: boolean; attendee_count?: number } | null;
+      const result = data as {
+        error?: string;
+        is_attending?: boolean;
+        attendee_count?: number;
+      } | null;
       if (result?.error === 'full') {
         Alert.alert('Session Full', 'This session has reached its maximum participants.');
         setSessions(prev =>
@@ -262,8 +266,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const reportCondition = async (condition: string) => {
     if (!user) return;
     try {
-      const { error } = await spotsService.reportCondition(spotId, user.id, condition);
-      if (error) throw error;
+      await spotsService.reportCondition(spotId, user.id, condition);
       Alert.alert('Success', 'Condition reported!');
       setShowConditionsModal(false);
       loadSpotData();
@@ -441,21 +444,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           style={{ height: 200, borderRadius: 10, overflow: 'hidden' }}
           onPress={() => navigation.navigate('Map')}
         >
-          <Mapbox.MapView
-            style={{ flex: 1 }}
-            styleURL={Mapbox.StyleURL.Street}
-            scrollEnabled={false}
-            pitchEnabled={false}
-            rotateEnabled={false}
-            zoomEnabled={false}
-          >
-            <Mapbox.Camera zoomLevel={14} centerCoordinate={[spot.longitude, spot.latitude]} />
-            <Mapbox.PointAnnotation id="spot-location" coordinate={[spot.longitude, spot.latitude]}>
-              <View className="items-center justify-center">
-                <MapPin color="#d2673d" size={32} />
-              </View>
-            </Mapbox.PointAnnotation>
-          </Mapbox.MapView>
+          <SpotMiniMap latitude={spot.latitude} longitude={spot.longitude} />
           <View className="absolute bottom-0 left-0 right-0 bg-black/60 p-2.5 items-center">
             <Text className="text-white text-sm font-semibold">Tap to view on map</Text>
           </View>
