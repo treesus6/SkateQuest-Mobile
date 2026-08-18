@@ -19,6 +19,7 @@
     "build:production": "eas build --platform all --profile production",
     "update:production": "eas update --branch production --message 'prod: release'",
     "export:web": "expo export --platform web --output-dir dist",
+    "export:web:github-pages": "EXPO_PUBLIC_BASE_URL=/SkateQuest-Mobile expo export --platform web --output-dir dist",
     "deploy:web": "eas deploy --environment production --prod"
   },
   "trustedDependencies": [

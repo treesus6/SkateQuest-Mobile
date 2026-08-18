@@ -13,7 +13,37 @@ Set these in the EAS `production` environment before exporting or deploying:
 
 `MAPBOX_DOWNLOADS_TOKEN` is native-build-only and must remain secret. It must not use the `EXPO_PUBLIC_` prefix.
 
-## Export and deploy
+## Free GitHub Pages deploy
+
+PR #175 includes `.github/workflows/deploy-web-pages.yml`, which builds the Expo
+web/PWA output and deploys it to GitHub Pages for free when changes land on
+`main` or when the workflow is run manually.
+
+The GitHub Pages URL for this repository is:
+
+- `https://treesus6.github.io/SkateQuest-Mobile/`
+
+The workflow sets `EXPO_PUBLIC_BASE_URL=/SkateQuest-Mobile` so generated assets,
+the service worker, and PWA install metadata resolve correctly from the GitHub
+Pages subpath.
+
+Before running it, set the repository's Pages source to GitHub Actions in GitHub:
+
+1. Open `Settings` → `Pages`.
+2. Under `Build and deployment`, set `Source` to `GitHub Actions`.
+3. Save.
+
+Then run the `Deploy Web PWA to GitHub Pages` workflow or merge the PR so the
+workflow runs from `main`.
+
+Because GitHub Pages uses a subpath, add these URLs to the existing Supabase
+Auth redirect allowlist:
+
+- `https://treesus6.github.io/SkateQuest-Mobile/`
+- `https://treesus6.github.io/SkateQuest-Mobile/(auth)/callback`
+- `https://treesus6.github.io/SkateQuest-Mobile/callback`
+
+## EAS Hosting alternative
 
 ```sh
 npm ci

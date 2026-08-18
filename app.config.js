@@ -119,6 +119,10 @@ module.exports = {
       backgroundColor: '#05070B',
     },
 
+    experiments: {
+      baseUrl: process.env.EXPO_PUBLIC_BASE_URL || undefined,
+    },
+
     extra: {
       posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',

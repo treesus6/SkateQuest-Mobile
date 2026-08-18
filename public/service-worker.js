@@ -1,5 +1,12 @@
-const CACHE = 'skatequest-shell-v2';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.svg', '/icon-512.svg'];
+const CACHE = 'skatequest-shell-v3';
+const SCOPE_PATH = new URL(self.registration.scope).pathname;
+const scopedPath = path => `${SCOPE_PATH.replace(/\/$/, '')}${path}`;
+const SHELL = [
+  scopedPath('/'),
+  scopedPath('/manifest.webmanifest'),
+  scopedPath('/icon-192.svg'),
+  scopedPath('/icon-512.svg'),
+];
 self.addEventListener('install', event => {
   event.waitUntil(
     caches
@@ -20,7 +27,7 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/')));
+    event.respondWith(fetch(request).catch(() => caches.match(scopedPath('/'))));
     return;
   }
   if (['script', 'style', 'font', 'image'].includes(request.destination)) {

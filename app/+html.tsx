@@ -1,6 +1,9 @@
 import React from 'react';
 import { ScrollViewStyleReset } from 'expo-router/html';
 
+const webBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
+const withWebBase = (path: string) => `${webBaseUrl}${path}`;
+
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -16,8 +19,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SkateQuest" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="manifest" href={withWebBase('/manifest.webmanifest')} />
+        <link rel="apple-touch-icon" href={withWebBase('/icon-192.svg')} />
         <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" />
         <script defer src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js" />
         <ScrollViewStyleReset />

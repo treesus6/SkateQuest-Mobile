@@ -2,13 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 const DISMISSED_KEY = 'skatequest:pwa-install-dismissed';
+const webBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
+const serviceWorkerPath = `${webBaseUrl}/service-worker.js`;
+const serviceWorkerScope = `${webBaseUrl || ''}/`;
 
 export default function PwaInstallGuide() {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if ('serviceWorker' in navigator && window.isSecureContext) {
       navigator.serviceWorker
-        .register('/service-worker.js')
+        .register(serviceWorkerPath, { scope: serviceWorkerScope })
         .catch(error => console.error('Service worker registration failed', error));
     }
     const standalone =
