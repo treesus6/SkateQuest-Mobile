@@ -1,11 +1,50 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Check, ChevronLeft, MapPin } from 'lucide-react-native';
 import { useNavigation } from '../lib/useNavigation';
 import { getCurrentLocation } from '../lib/currentLocation';
 import { supabase } from '../lib/supabase';
 import { SkateEvents } from '../lib/analytics';
+
+function SkateboardQRCode({ value }: { value: string }) {
+  return (
+    <View style={{ width: 280, height: 390, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+      <Svg width={280} height={390} viewBox="0 0 280 390" style={{ position: 'absolute' }}>
+        <Path
+          d="M140 8 C194 8 222 36 224 76 L238 304 C240 342 208 376 164 380 L116 380 C72 376 40 342 42 304 L56 76 C58 36 86 8 140 8 Z"
+          fill="#D2673D"
+          stroke="#0B0F16"
+          strokeWidth="8"
+        />
+        <Path d="M73 83 H207" stroke="#0B0F16" strokeWidth="8" strokeLinecap="round" />
+        <Path d="M73 307 H207" stroke="#0B0F16" strokeWidth="8" strokeLinecap="round" />
+        <Circle cx="91" cy="61" r="5" fill="#F9FAFB" />
+        <Circle cx="111" cy="61" r="5" fill="#F9FAFB" />
+        <Circle cx="169" cy="61" r="5" fill="#F9FAFB" />
+        <Circle cx="189" cy="61" r="5" fill="#F9FAFB" />
+        <Circle cx="91" cy="329" r="5" fill="#F9FAFB" />
+        <Circle cx="111" cy="329" r="5" fill="#F9FAFB" />
+        <Circle cx="169" cy="329" r="5" fill="#F9FAFB" />
+        <Circle cx="189" cy="329" r="5" fill="#F9FAFB" />
+        <Circle cx="38" cy="92" r="14" fill="#111827" stroke="#F9FAFB" strokeWidth="4" />
+        <Circle cx="242" cy="92" r="14" fill="#111827" stroke="#F9FAFB" strokeWidth="4" />
+        <Circle cx="38" cy="298" r="14" fill="#111827" stroke="#F9FAFB" strokeWidth="4" />
+        <Circle cx="242" cy="298" r="14" fill="#111827" stroke="#F9FAFB" strokeWidth="4" />
+      </Svg>
+
+      <View style={{ backgroundColor: 'white', padding: 14, borderRadius: 14 }}>
+        <QRCode value={value} size={196} quietZone={8} backgroundColor="#FFFFFF" color="#05070B" />
+      </View>
+
+      <View style={{ position: 'absolute', bottom: 24, alignItems: 'center' }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '900', letterSpacing: 1.8 }}>SKATEQUEST</Text>
+        <Text style={{ color: '#111827', fontSize: 10, fontWeight: '900', marginTop: 2 }}>SCAN • FIND • SKATE</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function HideQRCodeScreenVerified() {
   const navigation = useNavigation<any>();
@@ -62,15 +101,15 @@ export default function HideQRCodeScreenVerified() {
 
   if (createdCode) {
     return (
-      <View className="flex-1 bg-[#05070B] px-6 pt-16 items-center">
+      <ScrollView className="flex-1 bg-[#05070B]" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40, alignItems: 'center' }}>
         <View className="w-16 h-16 rounded-full bg-green-500/20 items-center justify-center mb-4"><Check size={32} color="#22C55E" /></View>
-        <Text className="text-2xl font-black text-gray-100 text-center">QR Hunt code ready</Text>
-        <Text className="text-sm text-gray-400 mt-2 mb-6 text-center">Print or save this QR and physically place it at the GPS location where you generated it. A finder must be near that exact hide point.</Text>
-        <View className="bg-white rounded-2xl p-5 mb-5"><QRCode value={createdCode} size={220} /></View>
+        <Text className="text-2xl font-black text-gray-100 text-center">QR Hunt board ready</Text>
+        <Text className="text-sm text-gray-400 mt-2 mb-5 text-center">Save or print the whole skateboard-shaped card and physically place it at the GPS location where you generated it. The square QR stays untouched so it remains easy to scan.</Text>
+        <SkateboardQRCode value={createdCode} />
         <Text selectable className="text-gray-300 font-mono text-base mb-2">{createdCode}</Text>
         <Text className="text-gray-500 text-xs text-center mb-8">Verified find reward: 50 XP. You cannot claim your own code.</Text>
         <TouchableOpacity className="bg-[#FF5A3C] py-4 px-8 rounded-xl items-center w-full" onPress={() => navigation.goBack()}><Text className="text-white font-black">Done</Text></TouchableOpacity>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -90,7 +129,7 @@ export default function HideQRCodeScreenVerified() {
 
         <View className="bg-emerald-500/10 border border-emerald-700 rounded-xl p-4 mb-6"><Text className="text-emerald-300 font-black">50 XP · server verified</Text><Text className="text-gray-400 text-xs mt-1">The reward is fixed so users cannot create unlimited custom XP payouts.</Text></View>
 
-        <TouchableOpacity className={`bg-[#FF5A3C] py-4 rounded-xl items-center ${saving || locating || !coords ? 'opacity-50' : ''}`} onPress={createCode} disabled={saving || locating || !coords}><Text className="text-white font-black">{saving ? 'Generating…' : 'Generate QR at This Location'}</Text></TouchableOpacity>
+        <TouchableOpacity className={`bg-[#FF5A3C] py-4 rounded-xl items-center ${saving || locating || !coords ? 'opacity-50' : ''}`} onPress={createCode} disabled={saving || locating || !coords}><Text className="text-white font-black">{saving ? 'Generating…' : 'Generate Skateboard QR'}</Text></TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
