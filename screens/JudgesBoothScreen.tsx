@@ -9,7 +9,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
-type SubmissionSource = 'challenge' | 'bounty' | 'spot_claim';
+type SubmissionSource = 'challenge' | 'bounty' | 'spot_claim' | 'bingo';
 
 interface Submission {
   id: string;
@@ -35,6 +35,7 @@ interface JudgeResult {
 function sourceLabel(source: SubmissionSource) {
   if (source === 'bounty') return 'BOUNTY PROOF';
   if (source === 'spot_claim') return 'KING OF THE HILL';
+  if (source === 'bingo') return 'TRICK BINGO';
   return 'CHALLENGE PROOF';
 }
 
@@ -59,7 +60,7 @@ export default function JudgesBoothScreen() {
 
     setLoading(true);
     try {
-      const [challengeResponse, bountyResponse, spotClaimResponse] = await Promise.all([
+      const [challengeResponse, bountyResponse, spotClaimResponse, bingoResponse] = await Promise.all([
         supabase
           .from('challenge_submissions')
           .select(
@@ -87,20 +88,32 @@ export default function JudgesBoothScreen() {
           .neq('user_id', user.id)
           .order('submitted_at', { ascending: true })
           .limit(50),
+        supabase
+          .from('bingo_cell_submissions')
+          .select(
+            `id,user_id,video_url,trick_name,cell_index,submitted_at,stomped_votes,bail_votes,profiles!bingo_cell_submissions_user_id_fkey(username)`
+          )
+          .eq('status', 'PENDING')
+          .neq('user_id', user.id)
+          .order('submitted_at', { ascending: true })
+          .limit(50),
       ]);
 
       if (challengeResponse.error) throw challengeResponse.error;
       if (bountyResponse.error) throw bountyResponse.error;
       if (spotClaimResponse.error) throw spotClaimResponse.error;
+      if (bingoResponse.error) throw bingoResponse.error;
 
       const challengeRows = challengeResponse.data ?? [];
       const bountyRows = bountyResponse.data ?? [];
       const spotClaimRows = spotClaimResponse.data ?? [];
+      const bingoRows = bingoResponse.data ?? [];
       const challengeIds = challengeRows.map((row: any) => row.id);
       const bountyIds = bountyRows.map((row: any) => row.id);
       const spotClaimIds = spotClaimRows.map((row: any) => row.id);
+      const bingoIds = bingoRows.map((row: any) => row.id);
 
-      const [challengeVotesResponse, bountyVotesResponse, spotClaimVotesResponse] = await Promise.all([
+      const [challengeVotesResponse, bountyVotesResponse, spotClaimVotesResponse, bingoVotesResponse] = await Promise.all([
         challengeIds.length
           ? supabase
               .from('submission_votes')
@@ -122,21 +135,24 @@ export default function JudgesBoothScreen() {
               .eq('user_id', user.id)
               .in('submission_id', spotClaimIds)
           : Promise.resolve({ data: [], error: null }),
+        bingoIds.length
+          ? supabase
+              .from('bingo_cell_submission_votes')
+              .select('submission_id')
+              .eq('user_id', user.id)
+              .in('submission_id', bingoIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (challengeVotesResponse.error) throw challengeVotesResponse.error;
       if (bountyVotesResponse.error) throw bountyVotesResponse.error;
       if (spotClaimVotesResponse.error) throw spotClaimVotesResponse.error;
+      if (bingoVotesResponse.error) throw bingoVotesResponse.error;
 
-      const judgedChallenges = new Set(
-        (challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
-      );
-      const judgedBounties = new Set(
-        (bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
-      );
-      const judgedSpotClaims = new Set(
-        (spotClaimVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
-      );
+      const judgedChallenges = new Set((challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
+      const judgedBounties = new Set((bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
+      const judgedSpotClaims = new Set((spotClaimVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
+      const judgedBingo = new Set((bingoVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
 
       const challengeQueue: Submission[] = challengeRows
         .filter((row: any) => !judgedChallenges.has(row.id))
@@ -183,11 +199,24 @@ export default function JudgesBoothScreen() {
           bail_votes: row.bail_votes ?? 0,
         }));
 
+      const bingoQueue: Submission[] = bingoRows
+        .filter((row: any) => !judgedBingo.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          source: 'bingo',
+          user_id: row.user_id,
+          video_url: row.video_url,
+          username: row.profiles?.username || 'Unknown',
+          title: row.trick_name,
+          subtitle: `Trick Bingo square ${Number(row.cell_index) + 1}`,
+          submitted_at: row.submitted_at,
+          stomped_votes: row.stomped_votes ?? 0,
+          bail_votes: row.bail_votes ?? 0,
+        }));
+
       setSubmissions(
-        [...challengeQueue, ...bountyQueue, ...spotClaimQueue]
-          .sort(
-            (a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime()
-          )
+        [...challengeQueue, ...bountyQueue, ...spotClaimQueue, ...bingoQueue]
+          .sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())
           .slice(0, 20)
       );
     } catch (error) {
@@ -219,7 +248,12 @@ export default function JudgesBoothScreen() {
                 p_submission_id: submission.id,
                 p_vote: vote,
               })
-            : await challengesService.vote(submission.id, user.id, vote);
+            : submission.source === 'bingo'
+              ? await supabase.rpc('judge_bingo_cell_submission', {
+                  p_submission_id: submission.id,
+                  p_vote: vote,
+                })
+              : await challengesService.vote(submission.id, user.id, vote);
 
       if (response.error) throw response.error;
 
@@ -275,7 +309,7 @@ export default function JudgesBoothScreen() {
       <View className="flex-1 bg-gray-900 justify-center items-center px-6">
         <Text className="text-lg font-bold text-white mb-2">No clips to judge!</Text>
         <Text className="text-sm text-gray-500 text-center">
-          You're caught up. New challenge, bounty, and King of the Hill proof clips will show here when skaters submit them.
+          You're caught up. New challenge, bounty, King of the Hill, and Trick Bingo proof clips will show here when skaters submit them.
         </Text>
       </View>
     );
@@ -337,15 +371,11 @@ export default function JudgesBoothScreen() {
           <View className="flex-row gap-5">
             <View className="flex-row items-center gap-1">
               <ThumbsUp color="#4ade80" size={16} />
-              <Text className="text-sm text-white font-semibold">
-                {currentSubmission.stomped_votes}
-              </Text>
+              <Text className="text-sm text-white font-semibold">{currentSubmission.stomped_votes}</Text>
             </View>
             <View className="flex-row items-center gap-1">
               <ThumbsDown color="#ef4444" size={16} />
-              <Text className="text-sm text-white font-semibold">
-                {currentSubmission.bail_votes}
-              </Text>
+              <Text className="text-sm text-white font-semibold">{currentSubmission.bail_votes}</Text>
             </View>
           </View>
         </View>
