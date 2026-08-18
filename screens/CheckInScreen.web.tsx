@@ -27,7 +27,8 @@ type RouteParams = {
 
 type CheckInRecord = {
   id: string;
-  spot_id: string;
+  park_id: string;
+  park_name?: string | null;
   user_id: string;
   latitude: number;
   longitude: number;
@@ -83,9 +84,9 @@ export default function CheckInScreen() {
     try {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
-        .from('check_ins')
-        .select('*, profiles(username)')
-        .eq('spot_id', spotId)
+        .from('live_checkins')
+        .select('id, park_id, park_name, user_id, latitude, longitude, created_at, profiles(username)')
+        .eq('park_id', spotId)
         .gte('created_at', since)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -145,8 +146,9 @@ export default function CheckInScreen() {
       }
 
       const nowIso = new Date().toISOString();
-      const { error: checkInError } = await supabase.from('check_ins').insert({
-        spot_id: spotId,
+      const { error: checkInError } = await supabase.from('live_checkins').insert({
+        park_id: spotId,
+        park_name: spotName,
         user_id: user.id,
         latitude: current.latitude,
         longitude: current.longitude,
