@@ -31,11 +31,13 @@ export default function UploadMediaScreen() {
   const route = useRoute<any>();
   const { user } = useAuthStore();
   const initialTrickName = route.params?.initialTrickName || '';
+  const challengeId = route.params?.challengeId || null;
   const totwId = route.params?.totwId || null;
   const bountyId = route.params?.bountyId || null;
   const clipWeek = Number(route.params?.clipWeek || 0);
   const clipYear = Number(route.params?.clipYear || 0);
   const isClipOfWeek = clipWeek > 0 && clipYear > 0;
+  const requiresProofVideo = Boolean(challengeId || totwId || bountyId || isClipOfWeek);
 
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
@@ -93,8 +95,8 @@ export default function UploadMediaScreen() {
     if (!mediaUri || !user || !mediaType) return;
     setUploading(true);
     try {
-      if ((totwId || bountyId || isClipOfWeek) && mediaType !== 'video') {
-        throw new Error('This contest requires a video clip. Choose or record a video.');
+      if (requiresProofVideo && mediaType !== 'video') {
+        throw new Error('This submission requires a video clip. Choose or record a video.');
       }
 
       const mediaResult =
@@ -109,6 +111,14 @@ export default function UploadMediaScreen() {
 
       if (analysis && trickName.trim()) {
         await saveAnalysisResult(user.id, trickName.trim(), analysis, media.url);
+      }
+
+      if (challengeId) {
+        const { error: challengeError } = await supabase.rpc('submit_challenge_proof', {
+          p_challenge_id: challengeId,
+          p_media_id: media.id,
+        });
+        if (challengeError) throw challengeError;
       }
 
       if (totwId) {
@@ -145,15 +155,17 @@ export default function UploadMediaScreen() {
         if (bountyError) throw bountyError;
       }
 
-      const feedTitle = bountyId
-        ? `Submitted bounty clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
-        : totwId
-          ? `Submitted Trick of the Week clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
-          : isClipOfWeek
-            ? `Submitted Clip of the Week${trickName.trim() ? `: ${trickName.trim()}` : ''}`
-            : trickName.trim()
-              ? `Posted a ${trickName.trim()} clip`
-              : `Posted a new ${mediaType}`;
+      const feedTitle = challengeId
+        ? `Submitted challenge proof${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+        : bountyId
+          ? `Submitted bounty clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+          : totwId
+            ? `Submitted Trick of the Week clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+            : isClipOfWeek
+              ? `Submitted Clip of the Week${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+              : trickName.trim()
+                ? `Posted a ${trickName.trim()} clip`
+                : `Posted a new ${mediaType}`;
 
       const { error: feedError } = await feedService.create({
         user_id: user.id,
@@ -167,13 +179,15 @@ export default function UploadMediaScreen() {
         console.warn('Media uploaded but feed activity could not be created:', feedError.message);
       }
 
-      const successMessage = bountyId
-        ? 'Bounty clip uploaded and submitted to the Judge’s Booth. XP is awarded only after the community approves the proof.'
-        : totwId
-          ? 'Media uploaded and Trick of the Week entry submitted!'
-          : isClipOfWeek
-            ? 'Media uploaded and Clip of the Week entry submitted!'
-            : 'Media uploaded!';
+      const successMessage = challengeId
+        ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.'
+        : bountyId
+          ? 'Bounty clip uploaded and submitted to the Judge’s Booth. XP is awarded only after the community approves the proof.'
+          : totwId
+            ? 'Media uploaded and Trick of the Week entry submitted!'
+            : isClipOfWeek
+              ? 'Media uploaded and Clip of the Week entry submitted!'
+              : 'Media uploaded!';
 
       Alert.alert('Success', successMessage, [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -185,6 +199,14 @@ export default function UploadMediaScreen() {
       setUploading(false);
     }
   };
+
+  const submitButtonTitle = uploading
+    ? 'Uploading...'
+    : challengeId
+      ? 'Submit Challenge Proof'
+      : bountyId
+        ? 'Submit Bounty Proof'
+        : 'Upload';
 
   return (
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
@@ -202,25 +224,33 @@ export default function UploadMediaScreen() {
             Choose Media Type
           </Text>
 
-          <TouchableOpacity
-            className="flex-row items-center bg-white dark:bg-gray-800 p-[18px] rounded-xl mb-3 shadow-sm"
-            onPress={() => handlePickImage(false)}
-          >
-            <ImageIcon color="#d2673d" size={28} />
-            <Text className="text-base font-semibold text-gray-800 dark:text-gray-100 ml-4">
-              Photo from Gallery
-            </Text>
-          </TouchableOpacity>
+          {!requiresProofVideo ? (
+            <>
+              <TouchableOpacity
+                className="flex-row items-center bg-white dark:bg-gray-800 p-[18px] rounded-xl mb-3 shadow-sm"
+                onPress={() => handlePickImage(false)}
+              >
+                <ImageIcon color="#d2673d" size={28} />
+                <Text className="text-base font-semibold text-gray-800 dark:text-gray-100 ml-4">
+                  Photo from Gallery
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            className="flex-row items-center bg-white dark:bg-gray-800 p-[18px] rounded-xl mb-3 shadow-sm"
-            onPress={() => handlePickImage(true)}
-          >
-            <Camera color="#d2673d" size={28} />
-            <Text className="text-base font-semibold text-gray-800 dark:text-gray-100 ml-4">
-              Take Photo
+              <TouchableOpacity
+                className="flex-row items-center bg-white dark:bg-gray-800 p-[18px] rounded-xl mb-3 shadow-sm"
+                onPress={() => handlePickImage(true)}
+              >
+                <Camera color="#d2673d" size={28} />
+                <Text className="text-base font-semibold text-gray-800 dark:text-gray-100 ml-4">
+                  Take Photo
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              This is proof for judging, so a real video clip is required.
             </Text>
-          </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             className="flex-row items-center bg-white dark:bg-gray-800 p-[18px] rounded-xl mb-3 shadow-sm"
@@ -280,7 +310,7 @@ export default function UploadMediaScreen() {
 
           <View className="mb-5">
             <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
-              Trick Name {bountyId ? '(bounty trick)' : '(optional)'}
+              Trick Name {bountyId || challengeId ? '(proof target)' : '(optional)'}
             </Text>
             <TextInput
               className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
@@ -336,7 +366,7 @@ export default function UploadMediaScreen() {
                 </View>
               )}
               <Text className="text-xs text-gray-500 mt-2">
-                Coaching is based on the trick name you entered. Bounty proof is verified by community judges, not by this coaching tool.
+                Coaching is based on the trick name you entered. Proof is verified by community judges, not by this coaching tool.
               </Text>
             </Card>
           )}
@@ -358,7 +388,7 @@ export default function UploadMediaScreen() {
           </View>
 
           <Button
-            title={uploading ? 'Uploading...' : bountyId ? 'Submit Bounty Proof' : 'Upload'}
+            title={submitButtonTitle}
             onPress={handleUpload}
             variant="primary"
             size="lg"
