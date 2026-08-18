@@ -47,12 +47,11 @@ export const challengesService = {
     }
   },
 
-  async vote(submissionId: string, voterId: string, voteType: string) {
+  async vote(submissionId: string, _voterId: string, voteType: string) {
     try {
-      return await supabase.from('submission_votes').insert({
-        submission_id: submissionId,
-        voter_id: voterId,
-        vote_type: voteType,
+      return await supabase.rpc('judge_challenge_submission', {
+        p_submission_id: submissionId,
+        p_vote: voteType,
       });
     } catch (error) {
       Logger.error('challengesService.vote failed', error);
