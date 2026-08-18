@@ -33,6 +33,9 @@ export default function UploadMediaScreen() {
   const initialTrickName = route.params?.initialTrickName || '';
   const totwId = route.params?.totwId || null;
   const bountyId = route.params?.bountyId || null;
+  const clipWeek = Number(route.params?.clipWeek || 0);
+  const clipYear = Number(route.params?.clipYear || 0);
+  const isClipOfWeek = clipWeek > 0 && clipYear > 0;
 
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
@@ -88,8 +91,8 @@ export default function UploadMediaScreen() {
     if (!mediaUri || !user || !mediaType) return;
     setUploading(true);
     try {
-      if ((totwId || bountyId) && mediaType !== 'video') {
-        throw new Error('This challenge requires video proof. Choose or record a video clip.');
+      if ((totwId || bountyId || isClipOfWeek) && mediaType !== 'video') {
+        throw new Error('This contest requires a video clip. Choose or record a video.');
       }
 
       const mediaResult =
@@ -126,6 +129,17 @@ export default function UploadMediaScreen() {
         if (totwError) throw totwError;
       }
 
+      if (isClipOfWeek) {
+        const { error: clipWeekError } = await supabase.from('clip_of_week_submissions').insert({
+          user_id: user.id,
+          media_id: media.id,
+          week_number: clipWeek,
+          year: clipYear,
+          trick_name: trickName || analysis?.trickName || null,
+        });
+        if (clipWeekError) throw clipWeekError;
+      }
+
       let bountyReward = 0;
       if (bountyId) {
         const { data: bountyResult, error: bountyError } = await supabase.rpc('claim_bounty', {
@@ -136,8 +150,6 @@ export default function UploadMediaScreen() {
         bountyReward = Number((bountyResult as { xp_reward?: number } | null)?.xp_reward ?? 0);
       }
 
-      // Feed creation is separate from the durable media row. The live activity_feed table
-      // now exists; a bounty claim also creates its own bounty_claimed activity in the RPC.
       const { error: feedError } = await feedService.create({
         user_id: user.id,
         activity_type: 'media_uploaded',
@@ -157,7 +169,9 @@ export default function UploadMediaScreen() {
         ? `Media uploaded and bounty claimed${bountyReward ? ` for +${bountyReward} XP` : ''}!`
         : totwId
           ? 'Media uploaded and Trick of the Week entry submitted!'
-          : 'Media uploaded!';
+          : isClipOfWeek
+            ? 'Media uploaded and Clip of the Week entry submitted!'
+            : 'Media uploaded!';
 
       Alert.alert('Success', successMessage, [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -288,9 +302,7 @@ export default function UploadMediaScreen() {
             <Card className="border-l-4 border-l-purple-600 mb-5">
               <View className="flex-row items-center gap-2 mb-2">
                 <Bot color="#9C27B0" size={18} />
-                <Text className="text-base font-bold text-gray-800 dark:text-gray-100">
-                  AI Analysis
-                </Text>
+                <Text className="text-base font-bold text-gray-800 dark:text-gray-100">AI Analysis</Text>
               </View>
               <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                 Detected:{' '}
