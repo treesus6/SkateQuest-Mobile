@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Video, ResizeMode } from '../components/VideoPlayer';
-import { Camera, Film, ImageIcon, Video as VideoIcon, Bot, Check } from 'lucide-react-native';
+import { Camera, Film, ImageIcon, Video as VideoIcon, Bot } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { feedService } from '../lib/feedService';
@@ -70,18 +70,20 @@ export default function UploadMediaScreen() {
   };
 
   const handleAnalyzeTrick = async () => {
-    if (!mediaUri || mediaType !== 'video') return;
+    if (mediaType !== 'video') return;
+    const namedTrick = trickName.trim();
+    if (!namedTrick) {
+      Alert.alert('Add the trick name first', 'Enter the trick you are working on, then get coaching tips.');
+      return;
+    }
+
     setAnalyzing(true);
     try {
-      const result = await analyzeTrickVideo('Unknown Trick', undefined, mediaUri);
+      const result = await analyzeTrickVideo(namedTrick, caption || undefined);
       setAnalysis(result);
-      setTrickName(result.trickName);
-      Alert.alert(
-        'Analysis Complete!',
-        `Detected: ${result.trickName}\nScore: ${result.score}/100\n\n${result.feedback}`
-      );
+      Alert.alert('Coaching Ready', result.style_notes || `Coaching tips ready for ${namedTrick}.`);
     } catch {
-      Alert.alert('Error', 'Failed to analyze trick');
+      Alert.alert('Error', 'Could not get coaching tips right now. Your clip can still be uploaded.');
     } finally {
       setAnalyzing(false);
     }
@@ -102,16 +104,11 @@ export default function UploadMediaScreen() {
 
       const media = await saveMediaToDatabase(user.id, mediaResult, {
         caption: caption || undefined,
-        trickName: trickName || analysis?.trickName || undefined,
+        trickName: trickName.trim() || undefined,
       });
 
-      if (analysis) {
-        await saveAnalysisResult(
-          user.id,
-          analysis.trickName ?? 'Unknown Trick',
-          analysis,
-          mediaUri
-        );
+      if (analysis && trickName.trim()) {
+        await saveAnalysisResult(user.id, trickName.trim(), analysis, media.url);
       }
 
       if (totwId) {
@@ -135,29 +132,34 @@ export default function UploadMediaScreen() {
           media_id: media.id,
           week_number: clipWeek,
           year: clipYear,
-          trick_name: trickName || analysis?.trickName || null,
+          trick_name: trickName.trim() || null,
         });
         if (clipWeekError) throw clipWeekError;
       }
 
-      let bountyReward = 0;
       if (bountyId) {
-        const { data: bountyResult, error: bountyError } = await supabase.rpc('claim_bounty', {
+        const { error: bountyError } = await supabase.rpc('submit_bounty_claim', {
           p_bounty_id: bountyId,
           p_media_id: media.id,
         });
         if (bountyError) throw bountyError;
-        bountyReward = Number((bountyResult as { xp_reward?: number } | null)?.xp_reward ?? 0);
       }
+
+      const feedTitle = bountyId
+        ? `Submitted bounty clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+        : totwId
+          ? `Submitted Trick of the Week clip${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+          : isClipOfWeek
+            ? `Submitted Clip of the Week${trickName.trim() ? `: ${trickName.trim()}` : ''}`
+            : trickName.trim()
+              ? `Posted a ${trickName.trim()} clip`
+              : `Posted a new ${mediaType}`;
 
       const { error: feedError } = await feedService.create({
         user_id: user.id,
         activity_type: 'media_uploaded',
-        title:
-          trickName || analysis?.trickName
-            ? `Landed a ${trickName || analysis?.trickName}!`
-            : `Posted a new ${mediaType}`,
-        description: caption || analysis?.feedback || undefined,
+        title: feedTitle,
+        description: caption || analysis?.style_notes || undefined,
         xp_earned: 10,
         media_id: media.id,
       });
@@ -166,7 +168,7 @@ export default function UploadMediaScreen() {
       }
 
       const successMessage = bountyId
-        ? `Media uploaded and bounty claimed${bountyReward ? ` for +${bountyReward} XP` : ''}!`
+        ? 'Bounty clip uploaded and submitted to the Judge’s Booth. XP is awarded only after the community approves the proof.'
         : totwId
           ? 'Media uploaded and Trick of the Week entry submitted!'
           : isClipOfWeek
@@ -276,6 +278,19 @@ export default function UploadMediaScreen() {
             className="mb-5"
           />
 
+          <View className="mb-5">
+            <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              Trick Name {bountyId ? '(bounty trick)' : '(optional)'}
+            </Text>
+            <TextInput
+              className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
+              placeholder="e.g., Kickflip, Heelflip"
+              placeholderTextColor="#999"
+              value={trickName}
+              onChangeText={setTrickName}
+            />
+          </View>
+
           {mediaType === 'video' && !analysis && (
             <TouchableOpacity
               className={`flex-row bg-purple-600 p-3.5 rounded-lg items-center justify-center mb-4 ${analyzing ? 'opacity-60' : ''}`}
@@ -285,13 +300,13 @@ export default function UploadMediaScreen() {
               {analyzing ? (
                 <>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text className="text-white text-[15px] font-bold ml-2">Analyzing...</Text>
+                  <Text className="text-white text-[15px] font-bold ml-2">Getting coaching...</Text>
                 </>
               ) : (
                 <>
                   <Bot color="#fff" size={20} />
                   <Text className="text-white text-[15px] font-bold ml-2">
-                    Analyze Trick with AI
+                    Get AI Coaching Tips
                   </Text>
                 </>
               )}
@@ -302,44 +317,29 @@ export default function UploadMediaScreen() {
             <Card className="border-l-4 border-l-purple-600 mb-5">
               <View className="flex-row items-center gap-2 mb-2">
                 <Bot color="#9C27B0" size={18} />
-                <Text className="text-base font-bold text-gray-800 dark:text-gray-100">AI Analysis</Text>
+                <Text className="text-base font-bold text-gray-800 dark:text-gray-100">AI Coaching</Text>
               </View>
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Detected:{' '}
-                <Text className="font-bold text-purple-600 text-base">{analysis.trickName}</Text>
-              </Text>
               <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Score: {analysis.score}/100
+                Coaching for <Text className="font-bold text-purple-600">{trickName.trim()}</Text> · {analysis.difficulty}
               </Text>
               <Text className="text-sm text-gray-800 dark:text-gray-200 italic mb-2.5">
-                {analysis.feedback}
+                {analysis.style_notes}
               </Text>
-              {(analysis.detectedElements?.length ?? 0) > 0 && (
-                <View className="mt-2">
-                  <Text className="text-xs font-bold text-gray-500 mb-1">Detected:</Text>
-                  {(analysis.detectedElements ?? []).map((element: string, index: number) => (
-                    <View key={index} className="flex-row items-center gap-1 ml-1 mb-0.5">
-                      <Check color="#4CAF50" size={12} />
-                      <Text className="text-xs text-gray-600 dark:text-gray-300">{element}</Text>
-                    </View>
+              {(analysis.tips?.length ?? 0) > 0 && (
+                <View className="mt-1">
+                  <Text className="text-xs font-bold text-gray-500 mb-1">Tips</Text>
+                  {analysis.tips.slice(0, 3).map((tip: string, index: number) => (
+                    <Text key={index} className="text-xs text-gray-600 dark:text-gray-300 mb-1">
+                      • {tip}
+                    </Text>
                   ))}
                 </View>
               )}
+              <Text className="text-xs text-gray-500 mt-2">
+                Coaching is based on the trick name you entered. Bounty proof is verified by community judges, not by this coaching tool.
+              </Text>
             </Card>
           )}
-
-          <View className="mb-5">
-            <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
-              Trick Name {analysis ? '(AI detected)' : '(optional)'}
-            </Text>
-            <TextInput
-              className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
-              placeholder="e.g., Kickflip, Heelflip"
-              placeholderTextColor="#999"
-              value={trickName}
-              onChangeText={setTrickName}
-            />
-          </View>
 
           <View className="mb-5">
             <Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">
@@ -358,7 +358,7 @@ export default function UploadMediaScreen() {
           </View>
 
           <Button
-            title={uploading ? 'Uploading...' : 'Upload'}
+            title={uploading ? 'Uploading...' : bountyId ? 'Submit Bounty Proof' : 'Upload'}
             onPress={handleUpload}
             variant="primary"
             size="lg"
