@@ -1,1 +1,1 @@
-export { default } from '../../screens/QRCodeScannerScreen';
+export { default } from '../../screens/QRCodeScannerScreenVerified';
