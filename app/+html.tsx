@@ -1,8 +1,23 @@
 import React from 'react';
 import { ScrollViewStyleReset } from 'expo-router/html';
 
-const webBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-const withWebBase = (path: string) => `${webBaseUrl}${path}`;
+const configuredWebBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
+const withConfiguredBase = (path: string) => `${configuredWebBaseUrl}${path}`;
+
+const runtimePwaPathFix = `
+(function () {
+  var configured = ${JSON.stringify(configuredWebBaseUrl)};
+  var base = configured;
+  if (!base && location.hostname.endsWith('github.io')) {
+    var first = location.pathname.split('/').filter(Boolean)[0];
+    base = first ? '/' + first : '';
+  }
+  var manifest = document.getElementById('skatequest-manifest');
+  var appleIcon = document.getElementById('skatequest-apple-icon');
+  if (manifest) manifest.setAttribute('href', base + '/manifest.webmanifest');
+  if (appleIcon) appleIcon.setAttribute('href', base + '/icon-192.svg');
+})();
+`;
 
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
@@ -19,8 +34,17 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="SkateQuest" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="manifest" href={withWebBase('/manifest.webmanifest')} />
-        <link rel="apple-touch-icon" href={withWebBase('/icon-192.svg')} />
+        <link
+          id="skatequest-manifest"
+          rel="manifest"
+          href={withConfiguredBase('/manifest.webmanifest')}
+        />
+        <link
+          id="skatequest-apple-icon"
+          rel="apple-touch-icon"
+          href={withConfiguredBase('/icon-192.svg')}
+        />
+        <script dangerouslySetInnerHTML={{ __html: runtimePwaPathFix }} />
         <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" />
         <script defer src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js" />
         <ScrollViewStyleReset />
