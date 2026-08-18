@@ -97,23 +97,30 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (purchase) {
+        const refundedCents = Math.min(Number(charge.amount_refunded || 0), Number(purchase.amount_cents));
+        const fullyRefunded = refundedCents >= Number(purchase.amount_cents);
+
         await admin.from("qr_support_purchases").update({
-          status: "refunded",
-          refunded_at: new Date().toISOString(),
+          status: fullyRefunded ? "refunded" : "paid",
+          refunded_at: refundedCents > 0 ? new Date().toISOString() : null,
         }).eq("id", purchase.id);
 
         const { data: existingRefund } = await admin
           .from("support_fund_ledger")
-          .select("id")
+          .select("id,amount_cents")
           .eq("purchase_id", purchase.id)
           .eq("entry_type", "refund")
           .maybeSingle();
 
-        if (!existingRefund) {
+        if (existingRefund) {
+          if (refundedCents > Number(existingRefund.amount_cents || 0)) {
+            await admin.from("support_fund_ledger").update({ amount_cents: refundedCents }).eq("id", existingRefund.id);
+          }
+        } else if (refundedCents > 0) {
           const { error: refundError } = await admin.from("support_fund_ledger").insert({
             purchase_id: purchase.id,
             user_id: purchase.user_id,
-            amount_cents: Math.min(Number(charge.amount_refunded || purchase.amount_cents), Number(purchase.amount_cents)),
+            amount_cents: refundedCents,
             currency: String(purchase.currency || "usd").toLowerCase(),
             entry_type: "refund",
             purpose: "skateboard_support_fund",
