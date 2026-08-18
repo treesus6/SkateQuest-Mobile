@@ -16,6 +16,15 @@ interface AuthState {
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
+function passwordRecoveryRedirect(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+
+  const projectBase = window.location.pathname.startsWith('/SkateQuest-Mobile')
+    ? '/SkateQuest-Mobile'
+    : '';
+  return `${window.location.origin}${projectBase}/reset-password`;
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   session: null,
@@ -115,7 +124,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   resetPassword: async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const redirectTo = passwordRecoveryRedirect();
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo ? { redirectTo } : undefined
+    );
     return { error };
   },
 }));
