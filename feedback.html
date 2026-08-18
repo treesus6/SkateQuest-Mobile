@@ -32,6 +32,7 @@ input[type="hidden"] { display:none; }
 .success-icon { font-size:64px; margin-bottom:16px; }
 .success h2 { font-size:1.5rem; font-weight:900; color:#4ade80; margin-bottom:8px; }
 .success p { color:#6B7280; }
+.error { display:none; margin-top:14px; color:#f87171; font-size:.9rem; text-align:center; }
 .back-link { display:inline-block; color:#d2673d; text-decoration:none; font-size:0.9rem; margin-bottom:24px; }
 .back-link:hover { text-decoration:underline; }
 .chips { display:flex; flex-wrap:wrap; gap:8px; }
@@ -44,7 +45,7 @@ input[type="hidden"] { display:none; }
   <span class="brand">🛹 SKATEQUEST</span>
   <a href="/" class="back-link">← Back to home</a>
   <h1>Beta Feedback</h1>
-  <p class="sub">Help us build the best skateboarding app ever. Tell us what you love, what's broken, and what we should add next.</p>
+  <p class="sub">Tell us what worked, what broke, and what SkateQuest needs next.</p>
 
   <div class="form-card">
     <form name="beta-feedback" netlify netlify-honeypot="bot-field" id="feedbackForm">
@@ -59,58 +60,21 @@ input[type="hidden"] { display:none; }
 
       <label>Overall rating</label>
       <div class="stars" id="overallStars">
-        <span class="star" data-val="1">⭐</span>
-        <span class="star" data-val="2">⭐</span>
-        <span class="star" data-val="3">⭐</span>
-        <span class="star" data-val="4">⭐</span>
-        <span class="star" data-val="5">⭐</span>
+        <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
       </div>
       <input type="hidden" name="overall_rating" id="overallRating" value="" />
 
       <label>Rate specific features</label>
       <div class="rating-row">
-        <div class="rating-group">
-          <div class="rating-label">🗺 Skatepark Map</div>
-          <div class="stars" id="mapStars" data-target="map_rating">
-            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
-          </div>
-          <input type="hidden" name="map_rating" id="map_rating" />
-        </div>
-        <div class="rating-group">
-          <div class="rating-label">⚡ XP & Challenges</div>
-          <div class="stars" id="xpStars" data-target="xp_rating">
-            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
-          </div>
-          <input type="hidden" name="xp_rating" id="xp_rating" />
-        </div>
-        <div class="rating-group">
-          <div class="rating-label">👥 Crews</div>
-          <div class="stars" id="crewStars" data-target="crew_rating">
-            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
-          </div>
-          <input type="hidden" name="crew_rating" id="crew_rating" />
-        </div>
-        <div class="rating-group">
-          <div class="rating-label">🤖 Trick Coach</div>
-          <div class="stars" id="coachStars" data-target="coach_rating">
-            <span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span>
-          </div>
-          <input type="hidden" name="coach_rating" id="coach_rating" />
-        </div>
+        <div class="rating-group"><div class="rating-label">🗺 Skatepark Map</div><div class="stars" id="mapStars" data-target="map_rating"><span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span></div><input type="hidden" name="map_rating" id="map_rating" /></div>
+        <div class="rating-group"><div class="rating-label">⚡ XP & Challenges</div><div class="stars" id="xpStars" data-target="xp_rating"><span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span></div><input type="hidden" name="xp_rating" id="xp_rating" /></div>
+        <div class="rating-group"><div class="rating-label">👥 Crews</div><div class="stars" id="crewStars" data-target="crew_rating"><span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span></div><input type="hidden" name="crew_rating" id="crew_rating" /></div>
+        <div class="rating-group"><div class="rating-label">🤖 Trick Coach</div><div class="stars" id="coachStars" data-target="coach_rating"><span class="star" data-val="1">⭐</span><span class="star" data-val="2">⭐</span><span class="star" data-val="3">⭐</span><span class="star" data-val="4">⭐</span><span class="star" data-val="5">⭐</span></div><input type="hidden" name="coach_rating" id="coach_rating" /></div>
       </div>
 
       <label>What features did you actually use?</label>
       <div class="chips" id="featureChips">
-        <span class="chip" data-val="map">🗺 Map</span>
-        <span class="chip" data-val="xp">⚡ XP System</span>
-        <span class="chip" data-val="challenges">🎯 Challenges</span>
-        <span class="chip" data-val="crews">👥 Crews</span>
-        <span class="chip" data-val="bounties">💰 Bounties</span>
-        <span class="chip" data-val="skatetv">📺 SkateTV</span>
-        <span class="chip" data-val="coach">🤖 Trick Coach</span>
-        <span class="chip" data-val="forecast">⛅ Forecast</span>
-        <span class="chip" data-val="shops">🏪 Skate Shops</span>
-        <span class="chip" data-val="passport">🛹 Passport</span>
+        <span class="chip" data-val="map">🗺 Map</span><span class="chip" data-val="xp">⚡ XP System</span><span class="chip" data-val="challenges">🎯 Challenges</span><span class="chip" data-val="crews">👥 Crews</span><span class="chip" data-val="bounties">💰 Bounties</span><span class="chip" data-val="skatetv">📺 SkateTV</span><span class="chip" data-val="coach">🤖 Trick Coach</span><span class="chip" data-val="forecast">⛅ Forecast</span><span class="chip" data-val="shops">🏪 Skate Shops</span><span class="chip" data-val="passport">🛹 Passport</span>
       </div>
       <input type="hidden" name="features_used" id="featuresUsed" />
 
@@ -121,24 +85,19 @@ input[type="hidden"] { display:none; }
       <textarea name="suggestions" placeholder="What features are missing? What would make you use this every day?" required></textarea>
 
       <label>Would you recommend SkateQuest to other skaters?</label>
-      <select name="recommend">
-        <option value="">Select...</option>
-        <option value="definitely">Yes definitely</option>
-        <option value="probably">Probably</option>
-        <option value="maybe">Maybe</option>
-        <option value="no">No</option>
-      </select>
+      <select name="recommend"><option value="">Select...</option><option value="definitely">Yes definitely</option><option value="probably">Probably</option><option value="maybe">Maybe</option><option value="no">No</option></select>
 
       <label>Anything else?</label>
-      <textarea name="other" placeholder="Any other thoughts, ideas, or just want to say what's up..."></textarea>
+      <textarea name="other" placeholder="Any other thoughts or ideas..."></textarea>
 
       <button type="submit" class="submit-btn" id="submitBtn">SEND FEEDBACK 🛹</button>
+      <p class="error" id="errorMsg"></p>
     </form>
 
     <div class="success" id="successMsg">
       <div class="success-icon">🤙</div>
-      <h2>Thanks for the feedback!</h2>
-      <p>This helps more than you know. We'll use this to make SkateQuest better for everyone.</p>
+      <h2>Feedback received</h2>
+      <p>The server accepted your feedback. Thanks for helping improve SkateQuest.</p>
       <br/>
       <p style="color:#d2673d;font-weight:700;">Born to Lurk. Forced to Work.</p>
     </div>
@@ -146,7 +105,6 @@ input[type="hidden"] { display:none; }
 </div>
 
 <script>
-// Star ratings
 function setupStars(containerId, hiddenId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -158,11 +116,11 @@ function setupStars(containerId, hiddenId) {
       if (hidden) hidden.value = val;
       stars.forEach((s, j) => s.classList.toggle('on', j <= i));
     });
-    star.addEventListener('mouseover', (_, j) => {
+    star.addEventListener('mouseover', () => {
       stars.forEach((s, j) => s.style.opacity = j <= i ? '1' : '0.3');
     });
     star.addEventListener('mouseout', () => {
-      const cur = hidden ? parseInt(hidden.value) : 0;
+      const cur = hidden ? parseInt(hidden.value || '0', 10) : 0;
       stars.forEach((s, j) => s.style.opacity = j < cur ? '1' : '0.3');
     });
   });
@@ -174,7 +132,6 @@ setupStars('overallStars', 'overallRating');
   if (el) setupStars(el.id, `${f}_rating`);
 });
 
-// Feature chips
 const selected = new Set();
 document.querySelectorAll('#featureChips .chip').forEach(chip => {
   chip.addEventListener('click', () => {
@@ -185,21 +142,31 @@ document.querySelectorAll('#featureChips .chip').forEach(chip => {
   });
 });
 
-// Form submit
 document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
+  const errorMsg = document.getElementById('errorMsg');
   btn.disabled = true;
   btn.textContent = 'Sending...';
+  errorMsg.style.display = 'none';
+  errorMsg.textContent = '';
+
   const data = new FormData(e.target);
   try {
-    await fetch('/', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams(data).toString() });
+    const response = await fetch('/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams(data).toString()
+    });
+    if (!response.ok) throw new Error(`Feedback endpoint returned ${response.status}`);
+
     document.getElementById('feedbackForm').style.display = 'none';
     document.getElementById('successMsg').style.display = 'block';
   } catch(err) {
     btn.disabled = false;
     btn.textContent = 'SEND FEEDBACK 🛹';
-    alert('Something went wrong. Try again.');
+    errorMsg.textContent = 'Your feedback was not submitted. Please try again.';
+    errorMsg.style.display = 'block';
   }
 });
 </script>
