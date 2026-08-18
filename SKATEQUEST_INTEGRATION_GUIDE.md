@@ -15,7 +15,7 @@ When a screen depends on missing schema or an RPC, fix the real Supabase migrati
 - Database history and backend contracts: `supabase/migrations/`
 - Expo Router routes: `app/`
 
-Do not follow historical instructions that reference `003_skatequest_full_features.sql`; that migration does not exist in this repository.
+`supabase/migrations/20260531070051_003_skatequest_full_features.sql` is a real historical migration in this repository, but it is not the authoritative description of current behavior. Later migrations intentionally repair, secure, replace, or revoke older paths. Always follow the newest applicable migration and the current screen/service code rather than assuming the historical migration is still the active contract.
 
 ## Verified proof workflows
 
@@ -44,6 +44,10 @@ Only show quests whose completion can be verified against real server-side progr
 ### Call Outs and QR flows
 
 Call Out proof and QR actions must use their verified backend flows. Do not restore local-only completion paths or client-side reward awards.
+
+### King of the Hill
+
+A King of the Hill takeover requires real video proof and Judge's Booth approval. Location can be used to prove the skater is actually at the spot, but location-only button presses must not directly mint throne XP or replace a verified holder.
 
 ## Empty states
 
