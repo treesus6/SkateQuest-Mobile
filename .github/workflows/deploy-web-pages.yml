@@ -74,6 +74,13 @@ jobs:
       - name: Build static web app
         run: npx expo export --platform web --output-dir dist
 
+      - name: Verify core PWA export
+        run: |
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -f dist/service-worker.js
+          grep -q '"name": "SkateQuest"' dist/manifest.webmanifest
+
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
