@@ -19,7 +19,9 @@ h1 { font-size:2.5rem; font-weight:900; color:#F3F4F6; margin-bottom:8px; }
 input { width:100%; background:#0a0e1a; border:1px solid #1F2937; color:#F3F4F6; padding:14px; border-radius:10px; font-size:1rem; margin-bottom:12px; outline:none; }
 input:focus { border-color:#d2673d; }
 button { width:100%; background:#d2673d; color:white; border:none; padding:16px; border-radius:10px; font-size:1rem; font-weight:700; cursor:pointer; letter-spacing:1px; }
+button:disabled { opacity:.6; cursor:not-allowed; }
 .note { color:#4B5563; font-size:0.8rem; margin-top:12px; }
+.error { display:none; color:#f87171; font-size:.9rem; margin-top:12px; }
 .success { display:none; text-align:center; padding:20px; }
 .success-icon { font-size:48px; margin-bottom:12px; }
 .success h3 { color:#4ade80; font-size:1.2rem; margin-bottom:8px; }
@@ -30,48 +32,73 @@ button { width:100%; background:#d2673d; color:white; border:none; padding:16px;
 <div class="hero">
   <div class="logo">🛹</div>
   <h1>Join the Beta</h1>
-  <p class="tagline">Be the first skaters to test SkateQuest</p>
+  <p class="tagline">Help test the real SkateQuest build</p>
   <div class="features">
-    <div class="feat">🗺 27,000+ Parks</div>
-    <div class="feat">⚡ XP System</div>
-    <div class="feat">👥 Crew Battles</div>
+    <div class="feat">🗺 Skate Spots & Parks</div>
+    <div class="feat">⚡ Verified XP</div>
+    <div class="feat">👥 Crews</div>
     <div class="feat">💰 Bounty Board</div>
-    <div class="feat">🤖 Trick Coach</div>
-    <div class="feat">⛅ Skate Forecast</div>
+    <div class="feat">🎥 Video Proof</div>
+    <div class="feat">🏆 Judge's Booth</div>
   </div>
   <div class="form-card">
     <div id="form-section">
       <h2>Sign Up for Beta Access</h2>
-      <p>Android only right now. We'll send your invite link directly to your Gmail.</p>
-      <input type="text" id="name" placeholder="Your name" />
-      <input type="email" id="email" placeholder="Gmail address (required for Android)" />
-      <button onclick="submit()">GET BETA ACCESS 🛹</button>
-      <p class="note">We only use your email to send the Play Store invite. No spam ever.</p>
+      <p>Leave your email and we'll send real access instructions when a supported test build or web release is available.</p>
+      <input type="text" id="name" placeholder="Your name" autocomplete="name" />
+      <input type="email" id="email" placeholder="Email address" autocomplete="email" />
+      <button id="submit-button" onclick="submitSignup()">JOIN BETA 🛹</button>
+      <p class="note">We use this email only for SkateQuest beta access and testing updates.</p>
+      <p class="error" id="error-message"></p>
     </div>
     <div class="success" id="success">
       <div class="success-icon">🤙</div>
-      <h3>You're on the list!</h3>
-      <p>We'll send your beta invite to your Gmail soon. Keep skating.</p>
+      <h3>Signup received</h3>
+      <p>Your beta signup was submitted successfully.</p>
     </div>
   </div>
 </div>
 <script>
-function submit() {
+async function submitSignup() {
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
+  const button = document.getElementById('submit-button');
+  const errorMessage = document.getElementById('error-message');
+
+  errorMessage.style.display = 'none';
+  errorMessage.textContent = '';
+
   if (!email || !email.includes('@')) {
-    alert('Please enter a valid Gmail address.');
+    errorMessage.textContent = 'Please enter a valid email address.';
+    errorMessage.style.display = 'block';
     return;
   }
-  // Store signup (replace with real backend later)
-  document.getElementById('form-section').style.display = 'none';
-  document.getElementById('success').style.display = 'block';
-  // Send to formspree or similar
-  fetch('https://formspree.io/f/xzbwkgpb', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, source: 'beta page' })
-  }).catch(() => {});
+
+  button.disabled = true;
+  button.textContent = 'SUBMITTING…';
+
+  try {
+    const response = await fetch('https://formspree.io/f/xzbwkgpb', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ name, email, source: 'beta page' })
+    });
+
+    if (!response.ok) {
+      throw new Error('Signup service returned an error.');
+    }
+
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+  } catch (error) {
+    errorMessage.textContent = 'Your signup was not submitted. Please try again.';
+    errorMessage.style.display = 'block';
+    button.disabled = false;
+    button.textContent = 'JOIN BETA 🛹';
+  }
 }
 </script>
 </body>
