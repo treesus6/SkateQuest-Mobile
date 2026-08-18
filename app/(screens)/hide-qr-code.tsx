@@ -1,1 +1,1 @@
-export { default } from '../../screens/HideQRCodeScreen';
+export { default } from '../../screens/HideQRCodeScreenVerified';
