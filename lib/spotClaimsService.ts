@@ -33,20 +33,17 @@ interface LeaderboardEntry {
 }
 
 export const spotClaimsService = {
-  // =========================================================================
-  // CLAIMING
-  // =========================================================================
-
   async claimSpot(
     spotId: string,
-    userId: string
-  ): Promise<{ success: boolean; action: string; xp_reward: number; previous_holder?: string }> {
+    latitude: number,
+    longitude: number
+  ): Promise<{ success: boolean; action: string; xp_reward: number; previous_holder?: string; distance_meters?: number }> {
     try {
-      const { data, error } = await supabase.rpc('claim_spot', {
+      const { data, error } = await supabase.rpc('claim_spot_verified', {
         p_spot_id: spotId,
-        p_user_id: userId,
+        p_latitude: latitude,
+        p_longitude: longitude,
       });
-
       if (error) throw error;
       if (!data) throw new Error('Failed to claim spot');
       return data;
@@ -58,10 +55,7 @@ export const spotClaimsService = {
 
   async getSpotClaim(spotId: string): Promise<SpotClaimInfo | null> {
     try {
-      const { data, error } = await supabase.rpc('get_spot_claim_info', {
-        p_spot_id: spotId,
-      });
-
+      const { data, error } = await supabase.rpc('get_spot_claim_info', { p_spot_id: spotId });
       if (error) throw error;
       return data?.[0] || null;
     } catch (error) {
@@ -70,16 +64,9 @@ export const spotClaimsService = {
     }
   },
 
-  // =========================================================================
-  // USER CLAIMS
-  // =========================================================================
-
   async getUserClaimedSpots(userId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabase.rpc('get_user_claimed_spots', {
-        p_user_id: userId,
-      });
-
+      const { data, error } = await supabase.rpc('get_user_claimed_spots', { p_user_id: userId });
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -89,50 +76,24 @@ export const spotClaimsService = {
   },
 
   async getUserClaimCount(userId: string): Promise<number> {
-    try {
-      const spots = await this.getUserClaimedSpots(userId);
-      return spots.length;
-    } catch (error) {
-      Logger.error('spotClaimsService.getUserClaimCount failed', error);
-      throw new ServiceError('Failed to get claim count', 'CLAIM_COUNT_FAILED', error);
-    }
+    const spots = await this.getUserClaimedSpots(userId);
+    return spots.length;
   },
 
-  // =========================================================================
-  // LEADERBOARD
-  // =========================================================================
-
-  async getClaimsLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
+  async getClaimsLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
     try {
-      const { data, error } = await supabase.rpc('get_spot_claims_leaderboard', {
-        p_limit: limit,
-      });
-
+      const { data, error } = await supabase.rpc('get_spot_claims_leaderboard', { p_limit: limit });
       if (error) throw error;
       return data || [];
     } catch (error) {
       Logger.error('spotClaimsService.getClaimsLeaderboard failed', error);
-      throw new ServiceError(
-        'Failed to get claims leaderboard',
-        'CLAIMS_LEADERBOARD_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to get claims leaderboard', 'CLAIMS_LEADERBOARD_FAILED', error);
     }
   },
 
-  // =========================================================================
-  // HISTORY
-  // =========================================================================
-
-  async getSpotClaimHistory(spotId: string, limit: number = 20): Promise<ClaimHistoryEntry[]> {
+  async getSpotClaimHistory(spotId: string, limit = 20): Promise<ClaimHistoryEntry[]> {
     try {
-      const { data, error } = await supabase
-        .from('spot_claim_history')
-        .select('*')
-        .eq('spot_id', spotId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
+      const { data, error } = await supabase.from('spot_claim_history').select('*').eq('spot_id', spotId).order('created_at', { ascending: false }).limit(limit);
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -141,103 +102,29 @@ export const spotClaimsService = {
     }
   },
 
-  async getUserClaimHistory(userId: string, limit: number = 20): Promise<ClaimHistoryEntry[]> {
+  async getUserClaimHistory(userId: string, limit = 20): Promise<ClaimHistoryEntry[]> {
     try {
-      const { data, error } = await supabase
-        .from('spot_claim_history')
-        .select('*')
-        .eq('new_holder_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
+      const { data, error } = await supabase.from('spot_claim_history').select('*').eq('new_holder_id', userId).order('created_at', { ascending: false }).limit(limit);
       if (error) throw error;
       return data || [];
     } catch (error) {
       Logger.error('spotClaimsService.getUserClaimHistory failed', error);
-      throw new ServiceError(
-        'Failed to get user claim history',
-        'USER_CLAIM_HISTORY_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to get user claim history', 'USER_CLAIM_HISTORY_FAILED', error);
     }
   },
 
-  // =========================================================================
-  // REAL-TIME SUBSCRIPTIONS
-  // =========================================================================
-
-  subscribeToSpotClaim(
-    spotId: string,
-    onUpdate: (payload: any) => void
-  ): { unsubscribe: () => void } {
-    const subscription = supabase
-      .channel(`spot_claim:${spotId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'spot_claims',
-          filter: `spot_id=eq.${spotId}`,
-        },
-        onUpdate
-      )
-      .subscribe();
-
-    return {
-      unsubscribe: () => {
-        subscription.unsubscribe();
-      },
-    };
+  subscribeToSpotClaim(spotId: string, onUpdate: (payload: any) => void) {
+    const subscription = supabase.channel(`spot_claim:${spotId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'spot_claims', filter: `spot_id=eq.${spotId}` }, onUpdate).subscribe();
+    return { unsubscribe: () => subscription.unsubscribe() };
   },
 
-  subscribeToUserClaims(
-    userId: string,
-    onUpdate: (payload: any) => void
-  ): { unsubscribe: () => void } {
-    const subscription = supabase
-      .channel(`user_claims:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'spot_claims',
-          filter: `user_id=eq.${userId}`,
-        },
-        onUpdate
-      )
-      .subscribe();
-
-    return {
-      unsubscribe: () => {
-        subscription.unsubscribe();
-      },
-    };
+  subscribeToUserClaims(userId: string, onUpdate: (payload: any) => void) {
+    const subscription = supabase.channel(`user_claims:${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'spot_claims', filter: `user_id=eq.${userId}` }, onUpdate).subscribe();
+    return { unsubscribe: () => subscription.unsubscribe() };
   },
 
-  subscribeToClaimHistory(
-    spotId: string,
-    onUpdate: (payload: any) => void
-  ): { unsubscribe: () => void } {
-    const subscription = supabase
-      .channel(`claim_history:${spotId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'spot_claim_history',
-          filter: `spot_id=eq.${spotId}`,
-        },
-        onUpdate
-      )
-      .subscribe();
-
-    return {
-      unsubscribe: () => {
-        subscription.unsubscribe();
-      },
-    };
+  subscribeToClaimHistory(spotId: string, onUpdate: (payload: any) => void) {
+    const subscription = supabase.channel(`claim_history:${spotId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spot_claim_history', filter: `spot_id=eq.${spotId}` }, onUpdate).subscribe();
+    return { unsubscribe: () => subscription.unsubscribe() };
   },
 };
