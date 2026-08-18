@@ -1,444 +1,106 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView,
-  Alert,
-} from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
-import { NativeStackNavigationProp } from '../lib/useNavigation';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import * as Location from 'expo-location';
+import { ChevronLeft, Clock, MapPin, Users, Zap, CalendarDays } from 'lucide-react-native';
+import { useNavigation, useRoute } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
-import { ChevronLeft, MapPin, Zap, Clock, Users, CalendarDays } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { streaksService } from '../lib/streaksService';
-import { RootStackParamList } from '../types';
 
-type CheckInRouteParams = {
-  CheckIn: {
-    spotId: string;
-    spotName: string;
-    latitude: number;
-    longitude: number;
-  };
-};
+type RouteParams = { spotId: string; spotName: string; latitude: number; longitude: number };
+type CheckInRecord = { id: string; park_id: string; park_name?: string | null; user_id: string; latitude: number; longitude: number; created_at: string; profiles?: { username?: string } | null };
 
-interface CheckInProfile {
-  username: string;
+function timeAgo(iso: string) {
+  const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
-
-interface CheckInRecord {
-  id: string;
-  spot_id: string;
-  user_id: string;
-  latitude: number;
-  longitude: number;
-  created_at: string;
-  profiles: CheckInProfile;
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-const XP_PER_CHECKIN = 25;
 
 export default function CheckInScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<CheckInRouteParams, 'CheckIn'>>();
-  const { spotId, spotName, latitude, longitude } = route.params;
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const params = route.params as RouteParams;
   const { user } = useAuthStore();
+  const spotId = String(params?.spotId ?? '');
+  const spotName = String(params?.spotName ?? 'Skate spot');
 
-  const [allCheckIns, setAllCheckIns] = useState<CheckInRecord[]>([]);
+  const [records, setRecords] = useState<CheckInRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
-  const [justEarnedXP, setJustEarnedXP] = useState(false);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
   const [showSessionPrompt, setShowSessionPrompt] = useState(false);
 
   const fetchCheckIns = useCallback(async () => {
+    if (!spotId) { setLoading(false); return; }
     try {
-      setLoading(true);
-      setError(null);
-
-      const uid = user?.id ?? null;
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-      const { data, error: fetchError } = await supabase
-        .from('check_ins')
-        .select('*, profiles(username)')
-        .eq('spot_id', spotId)
-        .gte('created_at', sevenDaysAgo)
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('live_checkins')
+        .select('id,park_id,park_name,user_id,latitude,longitude,created_at,profiles(username)')
+        .eq('park_id', spotId)
+        .gte('created_at', since)
         .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-      const records = (data as CheckInRecord[]) ?? [];
-      setAllCheckIns(records);
-
-      if (uid) {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const checkedToday = records.some(
-          (c: CheckInRecord) => c.user_id === uid && new Date(c.created_at) >= todayStart
-        );
-        setAlreadyCheckedIn(checkedToday);
+      if (error) throw error;
+      const next = (data ?? []) as CheckInRecord[];
+      setRecords(next);
+      if (user?.id) {
+        const start = new Date(); start.setHours(0, 0, 0, 0);
+        setAlreadyCheckedIn(next.some(row => row.user_id === user.id && new Date(row.created_at) >= start));
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load check-ins');
+    } catch (error) {
+      console.error('Check-ins failed to load', error);
     } finally {
       setLoading(false);
     }
-  }, [spotId]);
+  }, [spotId, user?.id]);
 
-  useEffect(() => {
-    fetchCheckIns();
-  }, [fetchCheckIns]);
+  useEffect(() => { void fetchCheckIns(); }, [fetchCheckIns]);
+
+  const hereNow = useMemo(() => {
+    const cutoff = Date.now() - 3 * 60 * 60 * 1000;
+    return records.filter(row => new Date(row.created_at).getTime() >= cutoff);
+  }, [records]);
 
   const handleCheckIn = async () => {
-    if (!user) {
-      Alert.alert('Login required', 'Please log in to check in.');
-      navigation.replace('Login');
-      return;
-    }
+    if (!user) { navigation.replace('Login'); return; }
+    setCheckingIn(true);
+    setLocationMessage('Checking your location…');
     try {
-      setCheckingIn(true);
-
-      const nowIso = new Date().toISOString();
-
-      const { error: insertError } = await supabase.from('check_ins').insert({
-        spot_id: spotId,
-        user_id: user.id,
-        latitude,
-        longitude,
-        created_at: nowIso,
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== 'granted') throw new Error('Location permission is required to check in.');
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { data, error } = await supabase.rpc('verified_web_check_in', {
+        p_spot_id: spotId,
+        p_latitude: current.coords.latitude,
+        p_longitude: current.coords.longitude,
       });
-      if (insertError) throw insertError;
-
-      try {
-        await supabase.from('park_visits').insert({
-          user_id: user.id,
-          park_id: spotId,
-          session_start: nowIso,
-        });
-      } catch (visitErr) {
-        console.warn('park_visits insert failed (non-fatal)', visitErr);
-      }
-
-      const { error: xpError } = await supabase.rpc('increment_xp', {
-        user_id: user.id,
-        amount: XP_PER_CHECKIN,
-      });
-      if (xpError) {
-        console.warn(
-          `XP increment failed (non-fatal): ${xpError.code ?? 'unknown'} ${xpError.message}`
-        );
-      }
-
+      if (error) throw error;
+      const result = (data ?? {}) as { distance_meters?: number; xp_awarded?: number };
       setAlreadyCheckedIn(true);
-      setJustEarnedXP(!xpError);
       setShowSessionPrompt(true);
-      fetchCheckIns();
-      streaksService.updateOnActivity(user.id).catch(() => {});
-
-      setTimeout(() => setJustEarnedXP(false), 4000);
-    } catch (err: unknown) {
-      Alert.alert('Check-in failed', err instanceof Error ? err.message : 'Please try again.');
+      setLocationMessage(`Checked in${result.xp_awarded ? ` — +${result.xp_awarded} XP` : ''} · ${Math.round(result.distance_meters ?? 0)}m away`);
+      await fetchCheckIns();
+      streaksService.updateOnActivity(user.id).catch(() => undefined);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not verify your location.';
+      setLocationMessage(message);
+      Alert.alert('Check-in failed', message);
     } finally {
       setCheckingIn(false);
     }
   };
 
-  const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-  const hereNow = allCheckIns.filter((c: CheckInRecord) => c.created_at >= threeHoursAgo);
-  const recentHistory = allCheckIns.filter((c: CheckInRecord) => c.created_at < threeHoursAgo);
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: '#1a1a1a',
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
-          <ChevronLeft size={24} color="#FF6B35" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Check In</Text>
-          <Text style={{ color: '#666', fontSize: 13 }} numberOfLines={1}>
-            {spotName}
-          </Text>
-        </View>
-      </View>
-
-      {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6B35" />
-        </View>
-      ) : error ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#FF6B35', fontSize: 15, textAlign: 'center' }}>{error}</Text>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
-          {justEarnedXP && (
-            <View
-              style={{
-                backgroundColor: '#4CAF50',
-                borderRadius: 14,
-                paddingVertical: 14,
-                paddingHorizontal: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                marginBottom: 16,
-              }}
-            >
-              <Zap size={22} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>
-                +{XP_PER_CHECKIN} XP Earned!
-              </Text>
-            </View>
-          )}
-
-          {showSessionPrompt && (
-            <View
-              style={{
-                backgroundColor: '#6B4CE615',
-                borderRadius: 14,
-                padding: 16,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: '#6B4CE640',
-              }}
-            >
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}
-              >
-                <CalendarDays size={18} color="#6B4CE6" />
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
-                  Anyone else skating here?
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#6B4CE6',
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    alignItems: 'center',
-                  }}
-                  onPress={() => navigation.navigate('Sessions', { spotName, autoCreate: true })}
-                >
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>
-                    Start a Session
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    borderWidth: 1,
-                    borderColor: '#6B4CE6',
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    alignItems: 'center',
-                  }}
-                  onPress={() => navigation.navigate('Sessions', { spotName })}
-                >
-                  <Text style={{ color: '#6B4CE6', fontWeight: '700', fontSize: 13 }}>
-                    See Sessions
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  onPress={() => setShowSessionPrompt(false)}
-                >
-                  <Text style={{ color: '#666', fontSize: 13 }}>Skip</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          <View style={{ alignItems: 'center', marginBottom: 32, marginTop: 12 }}>
-            <TouchableOpacity
-              onPress={handleCheckIn}
-              disabled={alreadyCheckedIn || checkingIn}
-              style={{
-                width: 180,
-                height: 180,
-                borderRadius: 90,
-                backgroundColor: alreadyCheckedIn ? '#1a1a1a' : '#FF6B35',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: alreadyCheckedIn ? 2 : 0,
-                borderColor: '#333',
-                elevation: alreadyCheckedIn ? 0 : 8,
-              }}
-            >
-              {checkingIn ? (
-                <ActivityIndicator size="large" color="#fff" />
-              ) : (
-                <>
-                  <MapPin
-                    size={56}
-                    color={alreadyCheckedIn ? '#333' : '#fff'}
-                    fill={alreadyCheckedIn ? 'transparent' : '#fff'}
-                  />
-                  <Text
-                    style={{
-                      color: alreadyCheckedIn ? '#444' : '#fff',
-                      fontSize: 16,
-                      fontWeight: '800',
-                      marginTop: 10,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {alreadyCheckedIn ? 'Checked In\nToday' : 'Check In'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {!alreadyCheckedIn && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}>
-                <Zap size={16} color="#FF6B35" />
-                <Text style={{ color: '#FF6B35', fontSize: 14, fontWeight: '700' }}>
-                  +{XP_PER_CHECKIN} XP
-                </Text>
-              </View>
-            )}
-
-            {alreadyCheckedIn && (
-              <Text style={{ color: '#666', fontSize: 13, marginTop: 10 }}>
-                Come back tomorrow for more XP
-              </Text>
-            )}
-          </View>
-
-          <View
-            style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16, marginBottom: 16 }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <Users size={18} color="#FF6B35" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Who's Here Now</Text>
-              <View
-                style={{
-                  backgroundColor: '#FF6B35',
-                  borderRadius: 10,
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>
-                  {hereNow.length}
-                </Text>
-              </View>
-            </View>
-
-            {hereNow.length === 0 ? (
-              <Text
-                style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}
-              >
-                Nobody checked in recently — be the first!
-              </Text>
-            ) : (
-              hereNow.map((c: CheckInRecord) => (
-                <View
-                  key={c.id}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#222',
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View
-                      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50' }}
-                    />
-                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                      {c.profiles?.username ?? 'Skater'}
-                    </Text>
-                  </View>
-                  <Text style={{ color: '#666', fontSize: 12 }}>{timeAgo(c.created_at)}</Text>
-                </View>
-              ))
-            )}
-          </View>
-
-          <View style={{ backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <Clock size={18} color="#666" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-                Recent Check-ins
-              </Text>
-              <Text style={{ color: '#666', fontSize: 12 }}>— last 7 days</Text>
-            </View>
-
-            {recentHistory.length === 0 ? (
-              <Text
-                style={{ color: '#666', fontSize: 14, textAlign: 'center', paddingVertical: 8 }}
-              >
-                No recent check-ins at this spot.
-              </Text>
-            ) : (
-              recentHistory.slice(0, 20).map((c: CheckInRecord) => (
-                <View
-                  key={c.id}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#222',
-                  }}
-                >
-                  <Text style={{ color: '#ccc', fontSize: 14 }}>
-                    {c.profiles?.username ?? 'Skater'}
-                  </Text>
-                  <Text style={{ color: '#666', fontSize: 12 }}>
-                    {formatDateTime(c.created_at)}
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
-        </ScrollView>
-      )}
-    </SafeAreaView>
-  );
+  return <SafeAreaView style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#222' }}><Pressable onPress={() => navigation.goBack()} style={{ padding: 6, marginRight: 8 }}><ChevronLeft color="#FF6B35" size={24}/></Pressable><View style={{ flex: 1 }}><Text style={{ color: 'white', fontSize: 20, fontWeight: '900' }}>Check In</Text><Text style={{ color: '#888', marginTop: 2 }}>{spotName}</Text></View></View>
+    {loading ? <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color="#FF6B35"/></View> : <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
+      <View style={{ alignItems: 'center', marginVertical: 18 }}><Pressable disabled={checkingIn || alreadyCheckedIn} onPress={() => void handleCheckIn()} style={{ width: 180, height: 180, borderRadius: 90, alignItems: 'center', justifyContent: 'center', backgroundColor: alreadyCheckedIn ? '#202020' : '#FF6B35', opacity: checkingIn ? 0.65 : 1 }}>{checkingIn ? <ActivityIndicator size="large" color="white"/> : <><MapPin color="white" size={52}/><Text style={{ color: 'white', fontWeight: '900', fontSize: 17, marginTop: 10 }}>{alreadyCheckedIn ? 'Checked In Today' : 'Check In'}</Text></>}</Pressable>{!alreadyCheckedIn ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}><Zap color="#FF6B35" size={16}/><Text style={{ color: '#FF6B35', fontWeight: '800' }}>+25 XP</Text></View> : null}<Text style={{ color: '#AAB1BC', marginTop: 12, textAlign: 'center' }}>{locationMessage ?? 'You must be within 150m of the spot.'}</Text></View>
+      {showSessionPrompt ? <View style={{ backgroundColor: '#181818', borderRadius: 16, padding: 16, marginBottom: 14 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}><CalendarDays size={18} color="#6B4CE6"/><Text style={{ color: 'white', fontWeight: '800' }}>Anyone else skating here?</Text></View><View style={{ flexDirection: 'row', gap: 10 }}><Pressable onPress={() => navigation.navigate('Sessions', { spotId, spotName, autoCreate: true })} style={{ flex: 1, backgroundColor: '#6B4CE6', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}><Text style={{ color: 'white', fontWeight: '700' }}>Start a Session</Text></Pressable><Pressable onPress={() => navigation.navigate('Sessions', { spotId, spotName })} style={{ flex: 1, borderWidth: 1, borderColor: '#6B4CE6', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }}><Text style={{ color: '#6B4CE6', fontWeight: '700' }}>See Sessions</Text></Pressable></View></View> : null}
+      <View style={{ backgroundColor: '#181818', borderRadius: 16, padding: 16, marginBottom: 14 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}><Users color="#FF6B35" size={18}/><Text style={{ color: 'white', fontWeight: '800' }}>Who's Here Now ({hereNow.length})</Text></View>{hereNow.length === 0 ? <Text style={{ color: '#777' }}>Nobody checked in recently.</Text> : hereNow.slice(0,20).map(row => <View key={row.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}><Text style={{ color: '#EEE' }}>{row.profiles?.username ?? 'Skater'}</Text><Text style={{ color: '#777' }}>{timeAgo(row.created_at)}</Text></View>)}</View>
+      <View style={{ backgroundColor: '#181818', borderRadius: 16, padding: 16 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}><Clock color="#888" size={18}/><Text style={{ color: 'white', fontWeight: '800' }}>Recent Check-ins</Text></View>{records.slice(0,20).map(row => <View key={row.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}><Text style={{ color: '#EEE' }}>{row.profiles?.username ?? 'Skater'}</Text><Text style={{ color: '#777' }}>{timeAgo(row.created_at)}</Text></View>)}</View>
+    </ScrollView>}
+  </SafeAreaView>;
 }
