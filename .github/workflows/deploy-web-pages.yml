@@ -36,7 +36,9 @@ jobs:
     timeout-minutes: 30
 
     env:
-      EXPO_PUBLIC_BASE_URL: /SkateQuest-Mobile
+      # SkateQuest.me is an apex custom domain, so the site is served from /
+      # instead of the old /SkateQuest-Mobile GitHub Pages subpath.
+      EXPO_PUBLIC_BASE_URL: ''
       EXPO_PUBLIC_ENV: production
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
