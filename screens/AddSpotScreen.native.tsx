@@ -16,7 +16,6 @@ import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { RootStackParamList } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
-import { profilesService } from '../lib/profilesService';
 import Button from '../components/ui/Button';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddSpot'>;
@@ -121,16 +120,11 @@ export default function AddSpotScreen() {
       });
       if (error) throw error;
 
-      const { data: userData } = await profilesService.getById(user.id);
-      if (userData) {
-        await profilesService.update(user.id, {
-          spots_added: (userData.spots_added || 0) + 1,
-          xp: (userData.xp || 0) + 100,
-        });
-      }
-      Alert.alert('Success', 'Spot added! You earned 100 XP!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Alert.alert(
+        'Spot added',
+        'The spot is now on SkateQuest. Spot submissions do not self-award XP; progression rewards come from verified game activity.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
@@ -327,9 +321,12 @@ export default function AddSpotScreen() {
           editable={!submitting}
         />
 
-        <View className="mt-8">
+        <Text className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+          Spot submissions are community contributions. XP is reserved for verified game activity.
+        </Text>
+        <View className="mt-4">
           <Button
-            title={submitting ? 'Adding Spot...' : 'Add Spot (+100 XP)'}
+            title={submitting ? 'Adding Spot...' : 'Add Spot'}
             onPress={handleSubmit}
             variant="primary"
             size="lg"
