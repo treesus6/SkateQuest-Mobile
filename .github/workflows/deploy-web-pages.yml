@@ -3,25 +3,6 @@ name: Deploy Web PWA to GitHub Pages
 on:
   push:
     branches: [main]
-    paths:
-      - app/**
-      - assets/**
-      - components/**
-      - contexts/**
-      - hooks/**
-      - lib/**
-      - public/**
-      - screens/**
-      - stores/**
-      - types/**
-      - app.config.js
-      - babel.config.js
-      - global.css
-      - index.js
-      - package.json
-      - package-lock.json
-      - tsconfig.json
-      - .github/workflows/deploy-web-pages.yml
   workflow_dispatch:
 
 permissions:
