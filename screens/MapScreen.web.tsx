@@ -53,8 +53,8 @@ export default function MapScreen() {
       const location = await getBrowserLocation();
       const next: [number, number] = [location.longitude, location.latitude];
       setCenter(next);
-      mapRef.current?.flyTo({ center: next, zoom: 14 });
       await loadSpots(next);
+      return true;
     } catch (locationError) {
       const message =
         locationError instanceof Error
@@ -62,19 +62,35 @@ export default function MapScreen() {
           : 'Could not determine your location.';
       setError(message);
       Logger.warn('Browser location failed', { message });
+      return false;
     } finally {
       setLocationLoading(false);
     }
   }, [loadSpots]);
 
   useEffect(() => {
-    loadSpots(FALLBACK)
-      .catch(queryError => {
-        Logger.error('Web map spots query failed', queryError);
-        setError('Skate spots could not be loaded. Check your connection and try again.');
-      })
-      .finally(() => setLoading(false));
-    void locateUser();
+    let active = true;
+
+    const bootMapData = async () => {
+      const located = await locateUser();
+      if (!active) return;
+
+      if (!located) {
+        try {
+          await loadSpots(FALLBACK);
+        } catch (queryError) {
+          Logger.error('Web map spots query failed', queryError);
+          setError('Skate spots could not be loaded. Check your connection and try again.');
+        }
+      }
+
+      if (active) setLoading(false);
+    };
+
+    void bootMapData();
+    return () => {
+      active = false;
+    };
   }, [loadSpots, locateUser]);
 
   useEffect(() => {
@@ -102,6 +118,13 @@ export default function MapScreen() {
       mapRef.current = null;
     };
   }, [token]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const isFallback = center[0] === FALLBACK[0] && center[1] === FALLBACK[1];
+    map.flyTo({ center, zoom: isFallback ? 12 : 14 });
+  }, [center]);
 
   useEffect(() => {
     const mapbox = window.mapboxgl;
@@ -211,7 +234,9 @@ export default function MapScreen() {
       <View style={{ position: 'absolute', right: 16, bottom: 118, gap: 10 }}>
         <MapButton
           label="Use my location"
-          onPress={locateUser}
+          onPress={() => {
+            void locateUser();
+          }}
           icon={
             locationLoading ? <ActivityIndicator color="#D2673D" /> : <Crosshair color="#D2673D" />
           }
