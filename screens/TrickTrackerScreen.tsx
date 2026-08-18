@@ -45,7 +45,6 @@ const STATUS_CONFIG: Record<string, { icon: typeof Zap; color: string; label: st
   consistent: { icon: Star, color: '#4CAF50', label: 'CONSISTENT' },
 };
 
-// Deterministic daily trick: seeded by calendar date so all users see the same trick each day
 function getDailyTrick(): string {
   const d = new Date();
   const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -115,13 +114,13 @@ export default function TrickTrackerScreen() {
 
         const { error: xpError } = await profilesService.incrementXp(user.id, 25);
         if (xpError) {
-          const { data: userData } = await profilesService.getById(user.id);
-          if (userData) {
-            await profilesService.update(user.id, { xp: (userData.xp || 0) + 25 });
-          }
+          Alert.alert(
+            'Landed!',
+            `You landed a ${trick.trick_name}. The trick was saved, but the +25 XP reward could not be verified.`
+          );
+        } else {
+          Alert.alert('Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
         }
-
-        Alert.alert('Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
       }
 
       refetch();
@@ -215,7 +214,6 @@ export default function TrickTrackerScreen() {
     );
   };
 
-  // Trick of the Day banner — shown at the top of the list
   const trickOfTheDayHeader = (
     <View className="bg-purple-50 dark:bg-purple-950/40 rounded-2xl p-4 mb-4 border border-purple-200 dark:border-purple-800">
       <View className="flex-row items-center gap-1.5 mb-1">
