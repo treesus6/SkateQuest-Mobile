@@ -42,7 +42,6 @@ function pickBrowserFile(
     input.style.left = '-9999px';
     input.style.opacity = '0';
 
-    // Mobile Safari/Chrome can hand this directly to the rear camera.
     if (useCamera) input.setAttribute('capture', 'environment');
 
     const cleanup = () => {
@@ -133,7 +132,6 @@ export async function uploadImage(
 ): Promise<MediaUploadResult> {
   const blob = await readBlob(uri);
   const url = await uploadToStorage(uri, 'photos', folder, fileName);
-  URL.revokeObjectURL(uri);
   return {
     url,
     type: 'photo',
@@ -149,7 +147,6 @@ export async function uploadVideo(
 ): Promise<MediaUploadResult> {
   const blob = await readBlob(uri);
   const url = await uploadToStorage(uri, 'videos', folder, fileName);
-  URL.revokeObjectURL(uri);
   return {
     url,
     type: 'video',
