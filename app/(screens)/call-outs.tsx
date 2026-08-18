@@ -1,1 +1,1 @@
-export { default } from '../../screens/CallOutsScreen';
+export { default } from '../../screens/CallOutsScreenVerified';
