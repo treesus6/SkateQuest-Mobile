@@ -8,25 +8,49 @@ export default function SignupScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submittedEmail, setSubmittedEmail] = useState('');
 
   const handleSignup = async () => {
     setError('');
-    if (!email.trim() || !password) {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !password) {
       setError('Please enter both email and password');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
-    const { error: signUpError } = await signUp(email.trim(), password);
+    const { error: signUpError } = await signUp(normalizedEmail, password);
     if (signUpError) {
       setError(signUpError.message || 'Failed to create account');
     } else {
-      // PostHog: track new user signup
       SkateEvents.signedUp();
+      setSubmittedEmail(normalizedEmail);
+      setPassword('');
     }
   };
+
+  if (submittedEmail) {
+    return (
+      <View className="flex-1 p-5 bg-[#05070B] justify-center">
+        <Text className="text-3xl font-black text-gray-100 mb-3 text-center">Check Your Email</Text>
+        <Text className="text-base text-gray-400 text-center mb-2">
+          We sent a SkateQuest confirmation link to:
+        </Text>
+        <Text className="text-base font-bold text-[#FF5A3C] text-center mb-6">{submittedEmail}</Text>
+        <Text className="text-sm text-gray-500 text-center mb-6">
+          Open the newest confirmation email on this device. The link will bring you back into SkateQuest.
+        </Text>
+        <TouchableOpacity
+          className="bg-[#FF5A3C] py-3.5 rounded-lg items-center"
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text className="text-gray-100 font-bold text-base">Go to Sign In</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 p-5 bg-[#05070B]">
@@ -51,7 +75,7 @@ export default function SignupScreen({ navigation }: any) {
 
       <TextInput
         className="bg-[#121826] text-gray-100 p-3 rounded-lg mb-3"
-        placeholder="Password (min 6 characters)"
+        placeholder="Password (min 8 characters)"
         placeholderTextColor="#6B7280"
         value={password}
         onChangeText={setPassword}
