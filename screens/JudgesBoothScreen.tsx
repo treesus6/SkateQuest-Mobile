@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } fr
 import { Video, ResizeMode } from '../components/VideoPlayer';
 import { ThumbsUp, ThumbsDown } from 'lucide-react-native';
 import { challengesService } from '../lib/challengesService';
-import { profilesService } from '../lib/profilesService';
 import { useAuthStore } from '../stores/useAuthStore';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { supabase } from '../lib/supabase';
@@ -12,14 +11,23 @@ const { width, height } = Dimensions.get('window');
 
 interface Submission {
   id: string;
-  challenge_id: string;
+  challenge_id: string | null;
   user_id: string;
   video_url: string;
-  description: string;
   username?: string;
   challenge_description?: string;
   stomped_votes: number;
   bail_votes: number;
+}
+
+interface JudgeResult {
+  success?: boolean;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  stomped_votes?: number;
+  bail_votes?: number;
+  xp_earned?: number;
+  bonus_xp?: number;
+  judge_vote_count?: number;
 }
 
 export default function JudgesBoothScreen() {
@@ -30,33 +38,65 @@ export default function JudgesBoothScreen() {
   const [voting, setVoting] = useState(false);
   const [votesThisSession, setVotesThisSession] = useState(0);
   const [xpEarned, setXpEarned] = useState(0);
+
   useEffect(() => {
-    fetchPendingSubmissions();
-  }, []);
+    void fetchPendingSubmissions();
+  }, [user?.id]);
 
   const fetchPendingSubmissions = async () => {
+    if (!user?.id) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('challenge_submissions')
         .select(
           `*, profiles!challenge_submissions_user_id_fkey(username), challenges!challenge_submissions_challenge_id_fkey(description)`
         )
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true })
-        .limit(20);
+        .eq('status', 'PENDING')
+        .neq('user_id', user.id)
+        .order('submitted_at', { ascending: true })
+        .limit(50);
 
       if (error) throw error;
 
-      const formatted =
-        data?.map((item: any) => ({
-          ...item,
-          username: item.profiles?.username || 'Unknown',
-          challenge_description: item.challenges?.description,
-        })) || [];
+      const pending = data ?? [];
+      const ids = pending.map((item: any) => item.id);
+      let votedIds = new Set<string>();
 
+      if (ids.length) {
+        const { data: votes, error: votesError } = await supabase
+          .from('submission_votes')
+          .select('submission_id')
+          .eq('user_id', user.id)
+          .in('submission_id', ids);
+        if (votesError) throw votesError;
+        votedIds = new Set((votes ?? []).map((vote: any) => vote.submission_id));
+      }
+
+      const formatted: Submission[] = pending
+        .filter((item: any) => !votedIds.has(item.id))
+        .slice(0, 20)
+        .map((item: any) => ({
+          id: item.id,
+          challenge_id: item.challenge_id,
+          user_id: item.user_id,
+          video_url: item.video_url,
+          username: item.profiles?.username || 'Unknown',
+          challenge_description: item.challenges?.description || 'Skate challenge submission',
+          stomped_votes: item.stomped_votes ?? 0,
+          bail_votes: item.bail_votes ?? 0,
+        }));
+
+      setCurrentIndex(0);
       setSubmissions(formatted);
     } catch (error) {
       console.error('Error fetching submissions:', error);
+      Alert.alert('Could not load judging queue', 'Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -66,62 +106,50 @@ export default function JudgesBoothScreen() {
     if (voting || !user?.id || submissions.length === 0) return;
 
     const submission = submissions[currentIndex];
-    if (submission.user_id === user.id) {
-      Alert.alert('Cannot Vote', "You can't vote on your own submission!");
-      return;
-    }
-
     setVoting(true);
     try {
-      const { error: voteError } = await challengesService.vote(submission.id, user.id, vote);
+      const { data, error: voteError } = await challengesService.vote(submission.id, user.id, vote);
       if (voteError) throw voteError;
 
-      const newStomped =
-        vote === 'stomped' ? submission.stomped_votes + 1 : submission.stomped_votes;
-      const newBail = vote === 'bail' ? submission.bail_votes + 1 : submission.bail_votes;
-
-      let newStatus = 'pending';
-      if (newStomped >= 10) newStatus = 'approved';
-      if (newBail >= 3) newStatus = 'rejected';
-
-      await challengesService.updateSubmission(submission.id, {
-        stomped_votes: newStomped,
-        bail_votes: newBail,
-        status: newStatus,
-      });
+      const result = (data ?? {}) as JudgeResult;
+      const earned = result.xp_earned ?? 10;
+      const bonus = result.bonus_xp ?? 0;
 
       const newVoteCount = votesThisSession + 1;
-      const bonusXP = newVoteCount % 5 === 0 ? 50 : 0;
-      const totalXP = 10 + bonusXP;
+      const newXpEarned = xpEarned + earned;
+      setVotesThisSession(newVoteCount);
+      setXpEarned(newXpEarned);
 
-      // Use RPC for atomic XP increment to prevent race conditions
-      const { error: xpError } = await profilesService.incrementXp(user.id, totalXP);
-      if (xpError) {
-        // Fallback if RPC not available
-        const { data: profile } = await profilesService.getById(user.id);
-        if (profile) {
-          await profilesService.update(user.id, { xp: (profile.xp || 0) + totalXP });
-        }
+      if (bonus > 0) {
+        Alert.alert('Bonus!', `+${bonus} XP bonus for your 5th judging vote!`);
       }
 
-      setVotesThisSession(newVoteCount);
-      setXpEarned(xpEarned + totalXP);
+      setSubmissions(current => current.filter(item => item.id !== submission.id));
+      setCurrentIndex(0);
 
-      if (bonusXP > 0) Alert.alert('Bonus!', `+${bonusXP} XP bonus for 5 votes!`);
-
-      if (currentIndex < submissions.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
+      if (submissions.length === 1) {
         Alert.alert(
           'All Done!',
-          `You've reviewed all submissions!\n\nTotal XP earned: ${xpEarned + totalXP}`,
-          [{ text: 'Awesome!', onPress: () => fetchPendingSubmissions() }]
+          `You've reviewed everything currently available.\n\nXP earned this session: ${newXpEarned}`,
+          [{ text: 'Awesome!', onPress: () => void fetchPendingSubmissions() }]
         );
       }
     } catch (error: any) {
-      if (error.code === '23505')
-        Alert.alert('Already Voted', "You've already voted on this submission!");
-      else Alert.alert('Error', 'Failed to submit vote. Please try again.');
+      const message = String(error?.message ?? error ?? '');
+      if (message.toLowerCase().includes('already voted')) {
+        Alert.alert('Already Voted', "You've already judged this submission.");
+        setSubmissions(current => current.filter(item => item.id !== submission.id));
+        setCurrentIndex(0);
+      } else if (message.toLowerCase().includes('own submission')) {
+        Alert.alert('Cannot Vote', "You can't vote on your own submission.");
+        setSubmissions(current => current.filter(item => item.id !== submission.id));
+        setCurrentIndex(0);
+      } else if (message.toLowerCase().includes('no longer pending')) {
+        setSubmissions(current => current.filter(item => item.id !== submission.id));
+        setCurrentIndex(0);
+      } else {
+        Alert.alert('Error', 'Failed to submit vote. Please try again.');
+      }
     } finally {
       setVoting(false);
     }
@@ -137,14 +165,16 @@ export default function JudgesBoothScreen() {
 
   if (submissions.length === 0) {
     return (
-      <View className="flex-1 bg-gray-900 justify-center items-center">
+      <View className="flex-1 bg-gray-900 justify-center items-center px-6">
         <Text className="text-lg font-bold text-white mb-2">No submissions to review!</Text>
-        <Text className="text-sm text-gray-500">Check back later</Text>
+        <Text className="text-sm text-gray-500 text-center">
+          You're caught up. New real clip submissions will appear here when they're ready for judging.
+        </Text>
       </View>
     );
   }
 
-  const currentSubmission = submissions[currentIndex];
+  const currentSubmission = submissions[Math.min(currentIndex, submissions.length - 1)];
 
   return (
     <View className="flex-1 bg-black">
@@ -181,14 +211,7 @@ export default function JudgesBoothScreen() {
           >
             Judge's Booth
           </Text>
-          <Text
-            className="text-base text-white font-semibold"
-            style={{
-              textShadowColor: 'rgba(0,0,0,0.75)',
-              textShadowOffset: { width: -1, height: 1 },
-              textShadowRadius: 10,
-            }}
-          >
+          <Text className="text-base text-white font-semibold">
             {currentIndex + 1} / {submissions.length}
           </Text>
         </View>
@@ -197,12 +220,9 @@ export default function JudgesBoothScreen() {
           <Text className="text-lg font-bold text-brand-terracotta mb-2">
             @{currentSubmission.username}
           </Text>
-          <Text className="text-base text-white font-semibold mb-1">
+          <Text className="text-base text-white font-semibold mb-3">
             {currentSubmission.challenge_description}
           </Text>
-          {currentSubmission.description && (
-            <Text className="text-sm text-gray-300 mb-3">{currentSubmission.description}</Text>
-          )}
           <View className="flex-row gap-5">
             <View className="flex-row items-center gap-1">
               <ThumbsUp color="#4ade80" size={16} />
