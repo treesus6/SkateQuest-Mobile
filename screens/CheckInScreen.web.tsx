@@ -36,6 +36,13 @@ type CheckInRecord = {
   profiles?: { username?: string } | null;
 };
 
+type VerifiedCheckInResult = {
+  checkin_id?: string;
+  distance_meters?: number;
+  xp_awarded?: number;
+  spot_name?: string;
+};
+
 function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
   const radius = 6371e3;
   const p1 = (lat1 * Math.PI) / 180;
@@ -129,15 +136,15 @@ export default function CheckInScreen() {
     setLocationMessage('Checking your location…');
     try {
       const current = await getBrowserLocation();
-      const distance = distanceMeters(
+      const estimatedDistance = distanceMeters(
         current.latitude,
         current.longitude,
         latitude,
         longitude
       );
 
-      if (distance > MAX_CHECKIN_DISTANCE_METERS) {
-        setLocationMessage(`You are about ${Math.round(distance)}m from this spot.`);
+      if (estimatedDistance > MAX_CHECKIN_DISTANCE_METERS) {
+        setLocationMessage(`You are about ${Math.round(estimatedDistance)}m from this spot.`);
         Alert.alert(
           'Too far from the spot',
           `Move within ${MAX_CHECKIN_DISTANCE_METERS}m of ${spotName} to check in.`
@@ -145,31 +152,22 @@ export default function CheckInScreen() {
         return;
       }
 
-      const nowIso = new Date().toISOString();
-      const { error: checkInError } = await supabase.from('live_checkins').insert({
-        park_id: spotId,
-        park_name: spotName,
-        user_id: user.id,
-        latitude: current.latitude,
-        longitude: current.longitude,
-        created_at: nowIso,
+      const { data, error } = await supabase.rpc('verified_web_check_in', {
+        p_spot_id: spotId,
+        p_latitude: current.latitude,
+        p_longitude: current.longitude,
       });
-      if (checkInError) throw checkInError;
+      if (error) throw error;
 
-      await supabase
-        .from('park_visits')
-        .insert({ user_id: user.id, park_id: spotId, session_start: nowIso })
-        .then(() => undefined)
-        .catch(() => undefined);
-
-      const { error: xpError } = await supabase.rpc('increment_xp', {
-        p_user_id: user.id,
-        p_xp_amount: XP_PER_CHECKIN,
-      });
+      const result = (data ?? {}) as VerifiedCheckInResult;
+      const xpAwarded = Number(result.xp_awarded ?? 0);
+      const verifiedDistance = Number(result.distance_meters ?? estimatedDistance);
 
       setAlreadyCheckedIn(true);
       setLocationMessage(
-        xpError ? 'Checked in. XP could not be updated.' : `Checked in — +${XP_PER_CHECKIN} XP`
+        xpAwarded > 0
+          ? `Checked in — +${xpAwarded} XP · verified ${Math.round(verifiedDistance)}m from the spot`
+          : `Checked in · verified ${Math.round(verifiedDistance)}m from the spot`
       );
       void fetchCheckIns();
       streaksService.updateOnActivity(user.id).catch(() => undefined);
