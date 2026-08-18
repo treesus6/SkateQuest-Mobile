@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import * as Location from 'expo-location';
 import { Image } from 'expo-image';
 import { Video, ResizeMode } from '../components/VideoPlayer';
 import { Camera, Film, ImageIcon, Video as VideoIcon, Bot } from 'lucide-react-native';
@@ -77,6 +78,19 @@ export default function UploadMediaScreen() {
         throw new Error('Add the trick you landed before submitting King of the Hill proof.');
       }
 
+      let spotClaimCoords: { latitude: number; longitude: number } | null = null;
+      if (isSpotClaim) {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          throw new Error('Location permission is required for King of the Hill. SkateQuest verifies you are physically at the spot.');
+        }
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        spotClaimCoords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+      }
+
       const mediaResult = mediaType === 'photo'
         ? await uploadImage(mediaUri, 'user_photos', user.id)
         : await uploadVideo(mediaUri, 'user_videos', user.id);
@@ -101,11 +115,13 @@ export default function UploadMediaScreen() {
         const { error } = await supabase.rpc('submit_callout_proof', { p_callout_id: calloutId, p_media_id: media.id });
         if (error) throw error;
       }
-      if (isSpotClaim) {
+      if (isSpotClaim && spotClaimCoords) {
         const { error } = await supabase.rpc('submit_spot_claim_proof', {
           p_spot_id: spotId,
           p_media_id: media.id,
           p_trick_description: trickName.trim(),
+          p_latitude: spotClaimCoords.latitude,
+          p_longitude: spotClaimCoords.longitude,
         });
         if (error) throw error;
       }
@@ -153,7 +169,7 @@ export default function UploadMediaScreen() {
       const successMessage = calloutId
         ? 'Call Out proof uploaded. The challenger must review the real video before XP is awarded.'
         : isSpotClaim
-          ? 'King of the Hill proof uploaded and sent to the Judge’s Booth. The spot changes hands only after community approval.'
+          ? 'Location verified. King of the Hill proof was sent to the Judge’s Booth. The spot changes hands only after community approval.'
           : challengeId
             ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.'
             : bountyId
@@ -177,7 +193,7 @@ export default function UploadMediaScreen() {
     : calloutId
       ? 'Submit Call Out Proof'
       : isSpotClaim
-        ? 'Submit King of the Hill Proof'
+        ? 'Verify Location + Submit Proof'
         : challengeId
           ? 'Submit Challenge Proof'
           : bountyId
