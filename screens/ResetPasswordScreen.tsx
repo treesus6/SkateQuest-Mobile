@@ -47,10 +47,10 @@ export default function ResetPasswordScreen() {
 
         {done ? (
           <Pressable
-            onPress={() => navigation.replace('Login')}
+            onPress={() => navigation.replace('Home')}
             style={{ minHeight: 52, borderRadius: 14, backgroundColor: '#D2673D', alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>Back to Sign In</Text>
+            <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>Continue to SkateQuest</Text>
           </Pressable>
         ) : (
           <>
