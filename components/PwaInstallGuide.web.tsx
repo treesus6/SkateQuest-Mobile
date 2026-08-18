@@ -2,14 +2,30 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 const DISMISSED_KEY = 'skatequest:pwa-install-dismissed';
-const webBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
-const serviceWorkerPath = `${webBaseUrl}/service-worker.js`;
-const serviceWorkerScope = `${webBaseUrl || ''}/`;
+const configuredBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
+
+function getRuntimeBaseUrl(): string {
+  if (configuredBaseUrl) return configuredBaseUrl;
+  if (typeof window === 'undefined') return '';
+
+  // GitHub project Pages serves SkateQuest below /SkateQuest-Mobile.
+  // The custom SkateQuest.me domain serves from /. Support both automatically.
+  if (window.location.hostname.endsWith('github.io')) {
+    const firstSegment = window.location.pathname.split('/').filter(Boolean)[0];
+    return firstSegment ? `/${firstSegment}` : '';
+  }
+
+  return '';
+}
 
 export default function PwaInstallGuide() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const runtimeBaseUrl = getRuntimeBaseUrl();
+    const serviceWorkerPath = `${runtimeBaseUrl}/service-worker.js`;
+    const serviceWorkerScope = `${runtimeBaseUrl || ''}/`;
+
     if ('serviceWorker' in navigator && window.isSecureContext) {
       navigator.serviceWorker
         .register(serviceWorkerPath, { scope: serviceWorkerScope, updateViaCache: 'none' })
