@@ -21,10 +21,13 @@ export default function UploadMediaScreen() {
   const bountyId = route.params?.bountyId || null;
   const calloutId = route.params?.calloutId || null;
   const totwId = route.params?.totwId || null;
+  const spotId = route.params?.spotId || null;
+  const challengeType = route.params?.challengeType || null;
+  const isSpotClaim = Boolean(spotId && challengeType === 'king_of_hill');
   const clipWeek = Number(route.params?.clipWeek || 0);
   const clipYear = Number(route.params?.clipYear || 0);
   const isClipOfWeek = clipWeek > 0 && clipYear > 0;
-  const requiresProofVideo = Boolean(challengeId || bountyId || calloutId || totwId || isClipOfWeek);
+  const requiresProofVideo = Boolean(challengeId || bountyId || calloutId || totwId || isClipOfWeek || isSpotClaim);
 
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'photo' | 'video' | null>(null);
@@ -70,6 +73,9 @@ export default function UploadMediaScreen() {
       if (requiresProofVideo && mediaType !== 'video') {
         throw new Error('This submission requires a video clip. Choose or record a video.');
       }
+      if (isSpotClaim && !trickName.trim()) {
+        throw new Error('Add the trick you landed before submitting King of the Hill proof.');
+      }
 
       const mediaResult = mediaType === 'photo'
         ? await uploadImage(mediaUri, 'user_photos', user.id)
@@ -95,6 +101,14 @@ export default function UploadMediaScreen() {
         const { error } = await supabase.rpc('submit_callout_proof', { p_callout_id: calloutId, p_media_id: media.id });
         if (error) throw error;
       }
+      if (isSpotClaim) {
+        const { error } = await supabase.rpc('submit_spot_claim_proof', {
+          p_spot_id: spotId,
+          p_media_id: media.id,
+          p_trick_description: trickName.trim(),
+        });
+        if (error) throw error;
+      }
       if (totwId) {
         const { error } = await supabase.from('trick_of_week_submissions').upsert({
           user_id: user.id,
@@ -115,7 +129,7 @@ export default function UploadMediaScreen() {
         if (error) throw error;
       }
 
-      if (!bountyId && !calloutId) {
+      if (!bountyId && !calloutId && !isSpotClaim) {
         const feedTitle = challengeId
           ? `Submitted challenge proof${trickName.trim() ? `: ${trickName.trim()}` : ''}`
           : totwId
@@ -138,15 +152,17 @@ export default function UploadMediaScreen() {
 
       const successMessage = calloutId
         ? 'Call Out proof uploaded. The challenger must review the real video before XP is awarded.'
-        : challengeId
-          ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.'
-          : bountyId
-            ? 'Bounty proof uploaded and sent to the Judge’s Booth. Bounty XP is awarded only after community approval.'
-            : totwId
-              ? 'Media uploaded and Trick of the Week entry submitted!'
-              : isClipOfWeek
-                ? 'Media uploaded and Clip of the Week entry submitted!'
-                : 'Media uploaded!';
+        : isSpotClaim
+          ? 'King of the Hill proof uploaded and sent to the Judge’s Booth. The spot changes hands only after community approval.'
+          : challengeId
+            ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.'
+            : bountyId
+              ? 'Bounty proof uploaded and sent to the Judge’s Booth. Bounty XP is awarded only after community approval.'
+              : totwId
+                ? 'Media uploaded and Trick of the Week entry submitted!'
+                : isClipOfWeek
+                  ? 'Media uploaded and Clip of the Week entry submitted!'
+                  : 'Media uploaded!';
       Alert.alert('Success', successMessage, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -160,11 +176,13 @@ export default function UploadMediaScreen() {
     ? 'Uploading...'
     : calloutId
       ? 'Submit Call Out Proof'
-      : challengeId
-        ? 'Submit Challenge Proof'
-        : bountyId
-          ? 'Submit Bounty Proof'
-          : 'Upload';
+      : isSpotClaim
+        ? 'Submit King of the Hill Proof'
+        : challengeId
+          ? 'Submit Challenge Proof'
+          : bountyId
+            ? 'Submit Bounty Proof'
+            : 'Upload';
 
   return (
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
@@ -187,7 +205,7 @@ export default function UploadMediaScreen() {
           <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Preview</Text>
           {mediaType === 'photo' ? <Image source={{uri:mediaUri}} style={{width:'100%',height:300,borderRadius:12,backgroundColor:'#000',marginBottom:16}}/> : <Video source={{uri:mediaUri}} style={{width:'100%',height:300,borderRadius:12,marginBottom:16}} useNativeControls resizeMode={ResizeMode.CONTAIN}/>} 
           <Button title="Change Media" onPress={() => {setMediaUri(null);setMediaType(null);setAnalysis(null);}} variant="secondary" size="md" className="mb-5"/>
-          <View className="mb-5"><Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Trick Name {bountyId || challengeId || calloutId ? '(proof target)' : '(optional)'}</Text><TextInput className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100" placeholder="e.g., Kickflip, Heelflip" placeholderTextColor="#999" value={trickName} onChangeText={setTrickName}/></View>
+          <View className="mb-5"><Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Trick Name {bountyId || challengeId || calloutId || isSpotClaim ? '(proof target)' : '(optional)'}</Text><TextInput className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100" placeholder="e.g., Kickflip, Heelflip" placeholderTextColor="#999" value={trickName} onChangeText={setTrickName}/></View>
           {mediaType === 'video' && !analysis && <TouchableOpacity className={`flex-row bg-purple-600 p-3.5 rounded-lg items-center justify-center mb-4 ${analyzing?'opacity-60':''}`} onPress={handleAnalyzeTrick} disabled={analyzing}>{analyzing ? <><ActivityIndicator color="#fff" size="small"/><Text className="text-white text-[15px] font-bold ml-2">Getting coaching...</Text></> : <><Bot color="#fff" size={20}/><Text className="text-white text-[15px] font-bold ml-2">Get AI Coaching Tips</Text></>}</TouchableOpacity>}
           {analysis && <Card className="border-l-4 border-l-purple-600 mb-5"><View className="flex-row items-center gap-2 mb-2"><Bot color="#9C27B0" size={18}/><Text className="text-base font-bold text-gray-800 dark:text-gray-100">AI Coaching</Text></View><Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">Coaching for <Text className="font-bold text-purple-600">{trickName.trim()}</Text> · {analysis.difficulty}</Text><Text className="text-sm text-gray-800 dark:text-gray-200 italic mb-2.5">{analysis.style_notes}</Text>{(analysis.tips?.length??0)>0 && <View className="mt-1"><Text className="text-xs font-bold text-gray-500 mb-1">Tips</Text>{analysis.tips.slice(0,3).map((tip:string,index:number)=><Text key={index} className="text-xs text-gray-600 dark:text-gray-300 mb-1">• {tip}</Text>)}</View>}<Text className="text-xs text-gray-500 mt-2">Coaching is based on the trick name you entered. It does not verify proof.</Text></Card>}
           <View className="mb-5"><Text className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Caption (optional)</Text><TextInput className="bg-white dark:bg-gray-800 rounded-lg p-3 text-base border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100" placeholder="Say something about this..." placeholderTextColor="#999" value={caption} onChangeText={setCaption} multiline numberOfLines={3} style={{height:80,textAlignVertical:'top'}}/></View>
