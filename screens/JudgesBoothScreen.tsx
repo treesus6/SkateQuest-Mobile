@@ -9,7 +9,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
-type SubmissionSource = 'challenge' | 'bounty';
+type SubmissionSource = 'challenge' | 'bounty' | 'spot_claim';
 
 interface Submission {
   id: string;
@@ -30,6 +30,12 @@ interface JudgeResult {
   xp_earned?: number;
   judge_xp?: number;
   bonus_xp?: number;
+}
+
+function sourceLabel(source: SubmissionSource) {
+  if (source === 'bounty') return 'BOUNTY PROOF';
+  if (source === 'spot_claim') return 'KING OF THE HILL';
+  return 'CHALLENGE PROOF';
 }
 
 export default function JudgesBoothScreen() {
@@ -53,7 +59,7 @@ export default function JudgesBoothScreen() {
 
     setLoading(true);
     try {
-      const [challengeResponse, bountyResponse] = await Promise.all([
+      const [challengeResponse, bountyResponse, spotClaimResponse] = await Promise.all([
         supabase
           .from('challenge_submissions')
           .select(
@@ -72,17 +78,29 @@ export default function JudgesBoothScreen() {
           .neq('user_id', user.id)
           .order('submitted_at', { ascending: true })
           .limit(50),
+        supabase
+          .from('spot_claim_submissions')
+          .select(
+            `id,user_id,video_url,trick_description,submitted_at,stomped_votes,bail_votes,profiles!spot_claim_submissions_user_id_fkey(username),skate_spots!spot_claim_submissions_spot_id_fkey(name)`
+          )
+          .eq('status', 'PENDING')
+          .neq('user_id', user.id)
+          .order('submitted_at', { ascending: true })
+          .limit(50),
       ]);
 
       if (challengeResponse.error) throw challengeResponse.error;
       if (bountyResponse.error) throw bountyResponse.error;
+      if (spotClaimResponse.error) throw spotClaimResponse.error;
 
       const challengeRows = challengeResponse.data ?? [];
       const bountyRows = bountyResponse.data ?? [];
+      const spotClaimRows = spotClaimResponse.data ?? [];
       const challengeIds = challengeRows.map((row: any) => row.id);
       const bountyIds = bountyRows.map((row: any) => row.id);
+      const spotClaimIds = spotClaimRows.map((row: any) => row.id);
 
-      const [challengeVotesResponse, bountyVotesResponse] = await Promise.all([
+      const [challengeVotesResponse, bountyVotesResponse, spotClaimVotesResponse] = await Promise.all([
         challengeIds.length
           ? supabase
               .from('submission_votes')
@@ -97,16 +115,27 @@ export default function JudgesBoothScreen() {
               .eq('user_id', user.id)
               .in('submission_id', bountyIds)
           : Promise.resolve({ data: [], error: null }),
+        spotClaimIds.length
+          ? supabase
+              .from('spot_claim_submission_votes')
+              .select('submission_id')
+              .eq('user_id', user.id)
+              .in('submission_id', spotClaimIds)
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (challengeVotesResponse.error) throw challengeVotesResponse.error;
       if (bountyVotesResponse.error) throw bountyVotesResponse.error;
+      if (spotClaimVotesResponse.error) throw spotClaimVotesResponse.error;
 
       const judgedChallenges = new Set(
         (challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
       );
       const judgedBounties = new Set(
         (bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+      const judgedSpotClaims = new Set(
+        (spotClaimVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
       );
 
       const challengeQueue: Submission[] = challengeRows
@@ -139,8 +168,23 @@ export default function JudgesBoothScreen() {
           bail_votes: row.bail_votes ?? 0,
         }));
 
+      const spotClaimQueue: Submission[] = spotClaimRows
+        .filter((row: any) => !judgedSpotClaims.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          source: 'spot_claim',
+          user_id: row.user_id,
+          video_url: row.video_url,
+          username: row.profiles?.username || 'Unknown',
+          title: row.trick_description,
+          subtitle: `King of the Hill${row.skate_spots?.name ? ` · ${row.skate_spots.name}` : ''}`,
+          submitted_at: row.submitted_at,
+          stomped_votes: row.stomped_votes ?? 0,
+          bail_votes: row.bail_votes ?? 0,
+        }));
+
       setSubmissions(
-        [...challengeQueue, ...bountyQueue]
+        [...challengeQueue, ...bountyQueue, ...spotClaimQueue]
           .sort(
             (a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime()
           )
@@ -170,7 +214,12 @@ export default function JudgesBoothScreen() {
               p_submission_id: submission.id,
               p_vote: vote,
             })
-          : await challengesService.vote(submission.id, user.id, vote);
+          : submission.source === 'spot_claim'
+            ? await supabase.rpc('judge_spot_claim_submission', {
+                p_submission_id: submission.id,
+                p_vote: vote,
+              })
+            : await challengesService.vote(submission.id, user.id, vote);
 
       if (response.error) throw response.error;
 
@@ -178,7 +227,7 @@ export default function JudgesBoothScreen() {
       const earned = Number(result.judge_xp ?? result.xp_earned ?? 10);
       const bonus = Number(result.bonus_xp ?? 0);
       const nextVotes = votesThisSession + 1;
-      const nextXp = xpEarned + earned;
+      const nextXp = xpEarned + earned + bonus;
 
       setVotesThisSession(nextVotes);
       setXpEarned(nextXp);
@@ -226,7 +275,7 @@ export default function JudgesBoothScreen() {
       <View className="flex-1 bg-gray-900 justify-center items-center px-6">
         <Text className="text-lg font-bold text-white mb-2">No clips to judge!</Text>
         <Text className="text-sm text-gray-500 text-center">
-          You're caught up. New challenge and bounty proof clips will show here when skaters submit them.
+          You're caught up. New challenge, bounty, and King of the Hill proof clips will show here when skaters submit them.
         </Text>
       </View>
     );
@@ -271,7 +320,7 @@ export default function JudgesBoothScreen() {
               Judge's Booth
             </Text>
             <Text className="text-xs font-bold text-brand-terracotta mt-1">
-              {currentSubmission.source === 'bounty' ? 'BOUNTY PROOF' : 'CHALLENGE PROOF'}
+              {sourceLabel(currentSubmission.source)}
             </Text>
           </View>
           <Text className="text-base text-white font-semibold">{submissions.length} left</Text>
