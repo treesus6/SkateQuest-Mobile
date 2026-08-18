@@ -91,7 +91,10 @@ async function readBlob(uri: string): Promise<Blob> {
 }
 
 function extensionFor(blob: Blob, uri: string, fallback: string): string {
-  const mimeExtension = blob.type.split('/')[1]?.replace('quicktime', 'mov').replace('jpeg', 'jpg');
+  const mimeExtension = blob.type
+    .split('/')[1]
+    ?.replace('quicktime', 'mov')
+    .replace('jpeg', 'jpg');
   if (mimeExtension) return mimeExtension;
   const uriExtension = uri.split(/[?#]/)[0].split('.').pop();
   return uriExtension && uriExtension.length <= 5 ? uriExtension : fallback;
@@ -105,13 +108,17 @@ export async function uploadToStorage(
   onProgress?: (progress: UploadProgress) => void
 ): Promise<string> {
   const blob = await readBlob(uri);
-  const ext = extensionFor(blob, uri, bucket === 'videos' ? 'mp4' : 'jpg');
-  const filePath = `${folder}/${Date.now()}_${fileName}.${ext}`;
+  const isVideo = blob.type.startsWith('video/');
+  const ext = extensionFor(blob, uri, isVideo ? 'mp4' : 'jpg');
+
+  // Storage RLS for SkateQuest media checks the second folder segment against auth.uid().
+  // Callers pass the signed-in user id as fileName, so keep the path as folder/userId/file.
+  const filePath = `${folder}/${fileName}/${Date.now()}.${ext}`;
 
   onProgress?.({ loaded: 0, total: blob.size, percentage: 0 });
 
   const { error } = await supabase.storage.from(bucket).upload(filePath, blob, {
-    contentType: blob.type || `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
+    contentType: blob.type || `${isVideo ? 'video' : 'image'}/${ext === 'jpg' ? 'jpeg' : ext}`,
     upsert: false,
   });
   if (error) throw error;
@@ -131,7 +138,8 @@ export async function uploadImage(
   fileName = 'photo'
 ): Promise<MediaUploadResult> {
   const blob = await readBlob(uri);
-  const url = await uploadToStorage(uri, 'photos', folder, fileName);
+  const bucket = folder === 'spot_photos' ? 'spot-photos' : 'skatetv-clips';
+  const url = await uploadToStorage(uri, bucket, folder, fileName);
   return {
     url,
     type: 'photo',
@@ -146,7 +154,7 @@ export async function uploadVideo(
   duration?: number
 ): Promise<MediaUploadResult> {
   const blob = await readBlob(uri);
-  const url = await uploadToStorage(uri, 'videos', folder, fileName);
+  const url = await uploadToStorage(uri, 'skatetv-clips', folder, fileName);
   return {
     url,
     type: 'video',
