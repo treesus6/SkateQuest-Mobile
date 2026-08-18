@@ -19,6 +19,8 @@ export default function MapScreen() {
   const containerRef = useRef<any>(null);
   const mapRef = useRef<MapboxGLMap | null>(null);
   const markersRef = useRef<MapboxGLMarker[]>([]);
+  const spotsRequestRef = useRef(0);
+  const moveReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [center, setCenter] = useState<[number, number]>(FALLBACK);
@@ -37,12 +39,14 @@ export default function MapScreen() {
   );
 
   const loadSpots = useCallback(async (coordinates: [number, number]) => {
+    const requestId = ++spotsRequestRef.current;
     const { data, error: queryError } = await spotsService.getNearby(
       coordinates[1],
       coordinates[0],
       50000
     );
     if (queryError) throw queryError;
+    if (requestId !== spotsRequestRef.current) return;
     setSpots((data ?? []) as SkateSpot[]);
   }, []);
 
@@ -111,13 +115,24 @@ export default function MapScreen() {
     map.on('error', () =>
       setError('Map tiles could not be loaded. Check the Mapbox token and network.')
     );
+    map.on('moveend', () => {
+      if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
+      moveReloadTimerRef.current = setTimeout(() => {
+        const movedCenter = map.getCenter();
+        void loadSpots([movedCenter.lng, movedCenter.lat]).catch(queryError => {
+          Logger.error('Web map moved-area spots query failed', queryError);
+          setError('Skate spots could not be loaded for this area. Check your connection and try again.');
+        });
+      }, 250);
+    });
     mapRef.current = map;
     return () => {
+      if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
       markersRef.current.forEach(marker => marker.remove());
       map.remove();
       mapRef.current = null;
     };
-  }, [token]);
+  }, [token, loadSpots]);
 
   useEffect(() => {
     const map = mapRef.current;
