@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { getCurrentLocation, CurrentLocation } from '../lib/currentLocation';
+import { getCurrentLocation, type CurrentLocation } from '../lib/currentLocation';
 import { supabase } from '../lib/supabase';
 import Button from './ui/Button';
 
