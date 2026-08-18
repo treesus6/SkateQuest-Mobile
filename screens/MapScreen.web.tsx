@@ -29,6 +29,13 @@ export default function MapScreen() {
     (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
     process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
+  const openSpot = useCallback(
+    (spot: SkateSpot) => {
+      router.push({ pathname: '/(screens)/spot-detail', params: { spotId: spot.id } });
+    },
+    [router]
+  );
+
   const loadSpots = useCallback(async (coordinates: [number, number]) => {
     const { data, error: queryError } = await spotsService.getNearby(
       coordinates[1],
@@ -103,14 +110,28 @@ export default function MapScreen() {
 
     markersRef.current.forEach(marker => marker.remove());
 
-    const spotMarkers = spots.map(spot =>
-      new mapbox.Marker({ color: '#d2673d' })
+    const spotMarkers = spots.map(spot => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.title = spot.name;
+      el.setAttribute('aria-label', `Open ${spot.name}`);
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.borderRadius = '999px';
+      el.style.border = '3px solid white';
+      el.style.background = '#D2673D';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,.45)';
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', event => {
+        event.stopPropagation();
+        openSpot(spot);
+      });
+      return new mapbox.Marker({ element: el })
         .setLngLat([spot.longitude, spot.latitude])
-        .setPopup(new mapbox.Popup({ offset: 18 }).setText(spot.name))
-        .addTo(map)
-    );
+        .setPopup(new mapbox.Popup({ offset: 18 }).setText(`${spot.name} — tap marker to open`))
+        .addTo(map);
+    });
 
-    // Portal Dimension belongs on the map at Newport Skatepark — nowhere else.
     const sponsorElement = document.createElement('button');
     sponsorElement.type = 'button';
     sponsorElement.title = 'Portal Dimension — Newport Skatepark';
@@ -132,7 +153,8 @@ export default function MapScreen() {
     sponsorImage.style.objectFit = 'contain';
     sponsorImage.style.display = 'block';
     sponsorElement.appendChild(sponsorImage);
-    sponsorElement.addEventListener('click', () => {
+    sponsorElement.addEventListener('click', event => {
+      event.stopPropagation();
       window.open(PORTAL_DIMENSION_URL, '_blank', 'noopener,noreferrer');
     });
 
@@ -146,7 +168,7 @@ export default function MapScreen() {
       .addTo(map);
 
     markersRef.current = [...spotMarkers, sponsorMarker];
-  }, [spots]);
+  }, [spots, openSpot]);
 
   if (!token) {
     return <MapError message="Mapbox is not configured. Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN." />;
@@ -155,6 +177,7 @@ export default function MapScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#07090D' }}>
       <View ref={containerRef} nativeID="skatequest-web-map" style={{ flex: 1, minHeight: 420 }} />
+
       <View style={{ position: 'absolute', top: 16, left: 16, right: 16, gap: 10 }}>
         <View
           style={{
@@ -165,9 +188,7 @@ export default function MapScreen() {
             paddingVertical: 9,
           }}
         >
-          <Text style={{ color: 'white', fontWeight: '800' }}>
-            {spots.length} real spots nearby
-          </Text>
+          <Text style={{ color: 'white', fontWeight: '800' }}>{spots.length} real spots nearby</Text>
         </View>
         {error ? (
           <View
@@ -182,13 +203,12 @@ export default function MapScreen() {
             }}
           >
             <TriangleAlert color="#D2673D" size={20} />
-            <Text selectable style={{ color: '#F3F4F6', flex: 1 }}>
-              {error}
-            </Text>
+            <Text selectable style={{ color: '#F3F4F6', flex: 1 }}>{error}</Text>
           </View>
         ) : null}
       </View>
-      <View style={{ position: 'absolute', right: 16, bottom: 104, gap: 10 }}>
+
+      <View style={{ position: 'absolute', right: 16, bottom: 118, gap: 10 }}>
         <MapButton
           label="Use my location"
           onPress={locateUser}
@@ -202,6 +222,7 @@ export default function MapScreen() {
           icon={<Plus color="#D2673D" />}
         />
       </View>
+
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -209,6 +230,7 @@ export default function MapScreen() {
           style={{ position: 'absolute', top: '45%', alignSelf: 'center' }}
         />
       ) : null}
+
       <ScrollView
         horizontal
         style={{ position: 'absolute', left: 0, right: 0, bottom: 14 }}
@@ -216,41 +238,48 @@ export default function MapScreen() {
         showsHorizontalScrollIndicator={false}
       >
         {spots.slice(0, 15).map(spot => (
-          <Pressable
+          <View
             key={spot.id}
-            onPress={() => {
-              setSelectedSpot(spot);
-              mapRef.current?.flyTo({ center: [spot.longitude, spot.latitude], zoom: 15 });
-            }}
             style={{
-              width: 190,
+              width: 205,
               padding: 14,
               borderRadius: 16,
               backgroundColor: selectedSpot?.id === spot.id ? '#2A1812' : '#10151D',
               borderWidth: 1,
               borderColor: '#343A45',
+              gap: 9,
             }}
           >
-            <Text numberOfLines={1} style={{ color: 'white', fontWeight: '800' }}>
-              {spot.name}
-            </Text>
-            <Text style={{ color: '#AAB1BC', marginTop: 4 }}>{spot.spot_type ?? 'Skate spot'}</Text>
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                setSelectedSpot(spot);
+                mapRef.current?.flyTo({ center: [spot.longitude, spot.latitude], zoom: 15 });
+              }}
+            >
+              <Text numberOfLines={1} style={{ color: 'white', fontWeight: '800' }}>{spot.name}</Text>
+              <Text style={{ color: '#AAB1BC', marginTop: 4 }}>{spot.spot_type ?? 'Skate spot'}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => openSpot(spot)}
+              style={{
+                backgroundColor: '#D2673D',
+                borderRadius: 10,
+                minHeight: 38,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '900' }}>Open spot</Text>
+            </Pressable>
+          </View>
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function MapButton({
-  label,
-  onPress,
-  icon,
-}: {
-  label: string;
-  onPress: () => void;
-  icon: React.ReactNode;
-}) {
+function MapButton({ label, onPress, icon }: { label: string; onPress: () => void; icon: React.ReactNode }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -283,9 +312,7 @@ function MapError({ message }: { message: string }) {
       }}
     >
       <MapPin color="#D2673D" size={36} />
-      <Text selectable style={{ color: 'white', textAlign: 'center', fontSize: 16 }}>
-        {message}
-      </Text>
+      <Text selectable style={{ color: 'white', textAlign: 'center', fontSize: 16 }}>{message}</Text>
       <RotateCcw color="#9CA3AF" />
     </View>
   );
