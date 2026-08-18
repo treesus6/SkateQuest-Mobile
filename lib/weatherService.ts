@@ -2,197 +2,227 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
-// OpenWeather API free tier endpoint (no key needed for basic queries in demo)
-const OPENWEATHER_API_BASE = 'https://api.openweathermap.org/data/2.5/weather';
+const OPEN_METEO_FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+const REQUEST_TIMEOUT_MS = 8000;
+
+export interface SpotWeather {
+  spot_id: string;
+  temperature: number;
+  feels_like: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+  weather_code: number;
+  weather_main: string;
+  weather_description: string;
+  cloud_cover: number | null;
+  precipitation: number;
+  precipitation_probability: number | null;
+  fetched_at: string;
+}
+
+interface OpenMeteoResponse {
+  current?: {
+    time?: string;
+    temperature_2m?: number;
+    apparent_temperature?: number;
+    relative_humidity_2m?: number;
+    precipitation?: number;
+    weather_code?: number;
+    cloud_cover?: number;
+    wind_speed_10m?: number;
+  };
+  hourly?: {
+    time?: string[];
+    precipitation_probability?: Array<number | null>;
+  };
+}
+
+function weatherCodeLabel(code: number): { main: string; description: string; emoji: string } {
+  if (code === 0) return { main: 'Clear', description: 'Clear sky', emoji: '☀️' };
+  if (code === 1) return { main: 'Mostly clear', description: 'Mostly clear', emoji: '🌤️' };
+  if (code === 2) return { main: 'Partly cloudy', description: 'Partly cloudy', emoji: '⛅' };
+  if (code === 3) return { main: 'Cloudy', description: 'Overcast', emoji: '☁️' };
+  if (code === 45 || code === 48) return { main: 'Fog', description: 'Foggy', emoji: '🌫️' };
+  if ([51, 53, 55, 56, 57].includes(code)) return { main: 'Drizzle', description: 'Drizzle', emoji: '🌦️' };
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { main: 'Rain', description: 'Rain', emoji: '🌧️' };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { main: 'Snow', description: 'Snow', emoji: '❄️' };
+  if ([95, 96, 99].includes(code)) return { main: 'Thunderstorm', description: 'Thunderstorm', emoji: '⛈️' };
+  return { main: 'Unknown', description: `Weather code ${code}`, emoji: '❔' };
+}
+
+function nearestHourlyRainProbability(data: OpenMeteoResponse): number | null {
+  const times = data.hourly?.time;
+  const probabilities = data.hourly?.precipitation_probability;
+  const currentTime = data.current?.time;
+  if (!times?.length || !probabilities?.length || !currentTime) return null;
+
+  const exactIndex = times.indexOf(currentTime);
+  if (exactIndex >= 0) {
+    const value = probabilities[exactIndex];
+    return typeof value === 'number' ? value : null;
+  }
+
+  const currentMs = new Date(currentTime).getTime();
+  if (!Number.isFinite(currentMs)) return null;
+
+  let closestIndex = -1;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  times.forEach((time, index) => {
+    const distance = Math.abs(new Date(time).getTime() - currentMs);
+    if (Number.isFinite(distance) && distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  const value = closestIndex >= 0 ? probabilities[closestIndex] : null;
+  return typeof value === 'number' ? value : null;
+}
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 export const weatherService = {
-  async getWeatherForSpot(spotId: string, latitude: number, longitude: number) {
+  async getWeatherForSpot(spotId: string, latitude: number, longitude: number): Promise<SpotWeather> {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      throw new ServiceError('Spot is missing valid coordinates', 'WEATHER_INVALID_COORDINATES');
+    }
+
     try {
-      // Check cache first (valid for 1 hour)
-      const { data: cached } = await supabase
-        .from('spot_weather')
-        .select('*')
-        .eq('spot_id', spotId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      const params = new URLSearchParams({
+        latitude: String(latitude),
+        longitude: String(longitude),
+        current: [
+          'temperature_2m',
+          'apparent_temperature',
+          'relative_humidity_2m',
+          'precipitation',
+          'weather_code',
+          'cloud_cover',
+          'wind_speed_10m',
+        ].join(','),
+        hourly: 'precipitation_probability',
+        forecast_days: '1',
+        timezone: 'auto',
+        temperature_unit: 'fahrenheit',
+        wind_speed_unit: 'mph',
+        precipitation_unit: 'inch',
+      });
 
-      if (cached) {
-        Logger.info('Weather cache hit', { spotId });
-        return cached;
+      const response = await fetchWithTimeout(`${OPEN_METEO_FORECAST_URL}?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Weather service returned HTTP ${response.status}`);
       }
 
-      // Fetch fresh weather from OpenWeather API
-      // Note: In production, you'd need an API key from openweathermap.org
-      // For now, we'll gracefully handle unavailable data
-      try {
-        const response = await fetch(
-          `${OPENWEATHER_API_BASE}?lat=${latitude}&lon=${longitude}&units=metric`
-        );
-
-        if (!response.ok) {
-          throw new Error(`OpenWeather API error: ${response.statusText}`);
-        }
-
-        const weatherData = await response.json();
-
-        // Transform and store in Supabase
-        const spotWeather = {
-          spot_id: spotId,
-          temperature: weatherData.main?.temp ?? null,
-          feels_like: weatherData.main?.feels_like ?? null,
-          humidity: weatherData.main?.humidity ?? null,
-          wind_speed: weatherData.wind?.speed ?? null,
-          weather_main: weatherData.weather?.[0]?.main ?? null,
-          weather_description: weatherData.weather?.[0]?.description ?? null,
-          weather_icon: weatherData.weather?.[0]?.icon ?? null,
-          cloud_cover: weatherData.clouds?.all ?? null,
-          precipitation: weatherData.rain?.['1h'] ?? 0,
-          visibility: weatherData.visibility ?? null,
-          uvi: null,  // Not in free tier
-          expires_at: new Date(Date.now() + 3600000).toISOString(),  // 1 hour cache
-        };
-
-        // Upsert into database
-        const { data, error } = await supabase
-          .from('spot_weather')
-          .upsert([spotWeather])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        Logger.info('Weather fetched from API', { spotId, temp: data?.temperature });
-        return data;
-      } catch (apiError) {
-        // If API fails, return cached data (even if expired) or null
-        Logger.warn('OpenWeather API unavailable', { spotId, error: apiError });
-
-        const { data: anyCache } = await supabase
-          .from('spot_weather')
-          .select('*')
-          .eq('spot_id', spotId)
-          .order('last_updated', { ascending: false })
-          .limit(1)
-          .single();
-
-        return anyCache ?? null;
+      const data = (await response.json()) as OpenMeteoResponse;
+      const temperature = data.current?.temperature_2m;
+      const code = data.current?.weather_code;
+      if (typeof temperature !== 'number' || typeof code !== 'number') {
+        throw new Error('Weather service returned incomplete current conditions');
       }
+
+      const label = weatherCodeLabel(code);
+      const weather: SpotWeather = {
+        spot_id: spotId,
+        temperature,
+        feels_like:
+          typeof data.current?.apparent_temperature === 'number'
+            ? data.current.apparent_temperature
+            : null,
+        humidity:
+          typeof data.current?.relative_humidity_2m === 'number'
+            ? data.current.relative_humidity_2m
+            : null,
+        wind_speed:
+          typeof data.current?.wind_speed_10m === 'number'
+            ? data.current.wind_speed_10m
+            : null,
+        weather_code: code,
+        weather_main: label.main,
+        weather_description: label.description,
+        cloud_cover:
+          typeof data.current?.cloud_cover === 'number' ? data.current.cloud_cover : null,
+        precipitation:
+          typeof data.current?.precipitation === 'number' ? data.current.precipitation : 0,
+        precipitation_probability: nearestHourlyRainProbability(data),
+        fetched_at: new Date().toISOString(),
+      };
+
+      Logger.info('Live weather loaded', { spotId, temperature: weather.temperature });
+      return weather;
     } catch (error) {
       Logger.error('weatherService.getWeatherForSpot failed', error);
-      throw new ServiceError('Failed to fetch weather', 'WEATHER_GET_FAILED', error);
+      throw new ServiceError('Live weather is unavailable for this spot', 'WEATHER_GET_FAILED', error);
     }
   },
 
-  async getWeatherForNearbySpots(latitude: number, longitude: number, radiusKm: number = 5) {
+  async getWeatherForNearbySpots(latitude: number, longitude: number, radiusKm = 5) {
     try {
-      // Get nearby spots first
       const { data: spots, error: spotsError } = await supabase.rpc('get_nearby_spots', {
         lat: latitude,
         lng: longitude,
         radius_meters: radiusKm * 1000,
       });
-
       if (spotsError) throw spotsError;
 
-      // Get weather for up to 10 nearest spots
-      const weatherPromises = spots.slice(0, 10).map((spot: any) =>
-        this.getWeatherForSpot(spot.id, spot.latitude, spot.longitude).catch(() => null)
+      const weatherData = await Promise.all(
+        (spots ?? []).slice(0, 10).map((spot: any) =>
+          this.getWeatherForSpot(spot.id, spot.latitude, spot.longitude).catch(() => null)
+        )
       );
-
-      const weatherData = await Promise.all(weatherPromises);
-      return weatherData.filter((w): w is Record<string, any> => w !== null);
+      return weatherData.filter((item): item is SpotWeather => item !== null);
     } catch (error) {
       Logger.error('weatherService.getWeatherForNearbySpots failed', error);
       throw new ServiceError('Failed to fetch nearby weather', 'WEATHER_NEARBY_FAILED', error);
     }
   },
 
-  async subscribeToSpotWeather(spotId: string, callback: (data: any) => void) {
-    try {
-      const subscription = supabase
-        .channel(`spot_weather:${spotId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'spot_weather',
-            filter: `spot_id=eq.${spotId}`,
-          },
-          (payload) => {
-            Logger.info('Weather updated', { spotId });
-            callback(payload.new);
-          }
-        )
-        .subscribe();
-
-      return subscription;
-    } catch (error) {
-      Logger.error('weatherService.subscribeToSpotWeather failed', error);
-      throw new ServiceError('Failed to subscribe to weather', 'WEATHER_SUBSCRIBE_FAILED', error);
-    }
-  },
-
-  // Helper: Get weather condition emoji
   getWeatherEmoji(weatherMain?: string): string {
-    switch (weatherMain?.toLowerCase()) {
-      case 'clear':
-        return '☀️';
-      case 'clouds':
-        return '☁️';
-      case 'rain':
-      case 'drizzle':
-        return '🌧️';
-      case 'thunderstorm':
-        return '⛈️';
-      case 'snow':
-        return '❄️';
-      case 'mist':
-      case 'smoke':
-      case 'haze':
-      case 'dust':
-      case 'fog':
-      case 'sand':
-      case 'ash':
-      case 'squall':
-      case 'tornado':
-        return '🌫️';
-      default:
-        return '🌤️';
-    }
+    const value = weatherMain?.toLowerCase();
+    if (!value) return '❔';
+    if (value.includes('clear')) return '☀️';
+    if (value.includes('partly')) return '⛅';
+    if (value.includes('cloud')) return '☁️';
+    if (value.includes('rain') || value.includes('drizzle')) return '🌧️';
+    if (value.includes('thunder')) return '⛈️';
+    if (value.includes('snow')) return '❄️';
+    if (value.includes('fog')) return '🌫️';
+    return '❔';
   },
 
-  // Helper: Get skateability score (0-100)
-  getSkateabilityScore(weather: any): number {
-    let score = 75;  // Base score
+  getSkateabilityScore(weather: SpotWeather | null | undefined): number | null {
+    if (!weather || typeof weather.temperature !== 'number') return null;
 
-    // Temperature (best 15-25°C)
-    if (weather.temperature) {
-      const temp = weather.temperature;
-      if (temp < 0 || temp > 35) score -= 20;
-      else if (temp < 5 || temp > 30) score -= 10;
+    let score = 100;
+    const temp = weather.temperature;
+    if (temp < 32 || temp > 100) score -= 35;
+    else if (temp < 41 || temp > 90) score -= 20;
+    else if (temp < 50 || temp > 85) score -= 8;
+
+    const rainProbability = weather.precipitation_probability;
+    if (typeof rainProbability === 'number') {
+      if (rainProbability >= 70) score -= 45;
+      else if (rainProbability >= 40) score -= 25;
+      else if (rainProbability >= 20) score -= 10;
     }
 
-    // Precipitation reduces score
-    if ((weather.precipitation ?? 0) > 0) {
-      score -= 30;
+    if (weather.precipitation > 0) score -= 35;
+    if (weather.weather_main === 'Rain' || weather.weather_main === 'Drizzle') score -= 30;
+    if (weather.weather_main === 'Snow' || weather.weather_main === 'Thunderstorm') score -= 55;
+    if (weather.weather_main === 'Fog') score -= 10;
+
+    if (typeof weather.wind_speed === 'number') {
+      if (weather.wind_speed >= 30) score -= 25;
+      else if (weather.wind_speed >= 20) score -= 12;
     }
 
-    // Rain in weather main
-    if (weather.weather_main?.toLowerCase().includes('rain')) {
-      score -= 25;
-    }
-
-    // Wind (over 20 m/s is not great for skating)
-    if (weather.wind_speed && weather.wind_speed > 20) {
-      score -= 15;
-    }
-
-    // Visibility issues
-    if (weather.visibility && weather.visibility < 1000) {
-      score -= 20;
-    }
-
-    return Math.max(0, Math.min(100, score));  // Clamp 0-100
+    return Math.max(0, Math.min(100, Math.round(score)));
   },
 };
