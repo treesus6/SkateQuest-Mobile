@@ -9,7 +9,15 @@ import {
   Switch,
 } from 'react-native';
 import { useNavigation } from '../lib/useNavigation';
-import { ChevronLeft, Star, UserCheck, Users, Zap, Award, MessageSquare } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Star,
+  UserCheck,
+  Users,
+  Zap,
+  Award,
+  MessageSquare,
+} from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { mentorshipService, MentorProfile } from '../lib/mentorshipService';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -25,7 +33,9 @@ export default function MentorshipScreen() {
   const [isMentor, setIsMentor] = useState(false);
   const [savingMentorStatus, setSavingMentorStatus] = useState(false);
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => {
+    fetchData();
+  }, [user]);
 
   const fetchData = async () => {
     if (!user) return;
@@ -44,7 +54,6 @@ export default function MentorshipScreen() {
       setActiveRelationships([...mentees, ...mentorsList]);
       setStats(mentorshipStats);
       setIsMentor(myMentorProfile?.available ?? false);
-
     } catch (error) {
       console.error('Error fetching mentorship data:', error);
       Alert.alert('Mentorship unavailable', 'Could not load mentorship data. Please try again.');
@@ -56,7 +65,11 @@ export default function MentorshipScreen() {
   const requestMentor = async (mentorUserId: string) => {
     if (!user) return;
     try {
-      await mentorshipService.requestMentorship(mentorUserId, user.id, 'I want to learn more street tricks!');
+      await mentorshipService.requestMentorship(
+        mentorUserId,
+        user.id,
+        'I want to learn more street tricks!'
+      );
       Alert.alert('Success', 'Mentorship request sent!');
       fetchData();
     } catch (error: any) {
@@ -92,7 +105,16 @@ export default function MentorshipScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: '#1a1a1a',
+        }}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
           <ChevronLeft color="#666" size={24} />
         </TouchableOpacity>
@@ -101,17 +123,49 @@ export default function MentorshipScreen() {
       </View>
 
       {activeRelationships.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 120, marginBottom: 10 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ maxHeight: 120, marginBottom: 10 }}
+        >
           {activeRelationships.map((rel: any) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={rel.id}
-              onPress={() => (navigation as any).navigate('Messages', { recipientId: rel.mentor_user_id === user?.id ? rel.mentee_user_id : rel.mentor_user_id })}
-              style={{ width: 280, marginHorizontal: 16, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: rel.status === 'active' ? '#4CAF50' : '#FF6B35' }}
+              onPress={() =>
+                (navigation as any).navigate('Messages', {
+                  recipientId:
+                    rel.mentor_user_id === user?.id ? rel.mentee_user_id : rel.mentor_user_id,
+                })
+              }
+              style={{
+                width: 280,
+                marginHorizontal: 16,
+                backgroundColor: '#1a1a1a',
+                borderRadius: 12,
+                padding: 14,
+                borderLeftWidth: 3,
+                borderLeftColor: rel.status === 'active' ? '#4CAF50' : '#FF6B35',
+              }}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <View>
-                  <Text style={{ color: rel.status === 'active' ? '#4CAF50' : '#FF6B35', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 4 }}>
-                    {rel.status.toUpperCase()} {rel.mentor_user_id === user?.id ? 'APPRENTICE' : 'MENTOR'}
+                  <Text
+                    style={{
+                      color: rel.status === 'active' ? '#4CAF50' : '#FF6B35',
+                      fontSize: 10,
+                      fontWeight: '800',
+                      letterSpacing: 1,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {rel.status.toUpperCase()}{' '}
+                    {rel.mentor_user_id === user?.id ? 'APPRENTICE' : 'MENTOR'}
                   </Text>
                   <Text style={{ color: '#fff', fontWeight: '700' }}>
                     {rel.mentor_user_id === user?.id ? 'Teaching Skater' : 'Learning from Mentor'}
@@ -127,12 +181,27 @@ export default function MentorshipScreen() {
         </ScrollView>
       )}
 
-      <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, backgroundColor: '#1a1a1a', borderRadius: 10, padding: 4 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          marginHorizontal: 16,
+          marginBottom: 16,
+          backgroundColor: '#1a1a1a',
+          borderRadius: 10,
+          padding: 4,
+        }}
+      >
         {(['find', 'mentor'] as const).map(t => (
           <TouchableOpacity
             key={t}
             onPress={() => setTab(t)}
-            style={{ flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: tab === t ? '#FF6B35' : 'transparent', alignItems: 'center' }}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor: tab === t ? '#FF6B35' : 'transparent',
+              alignItems: 'center',
+            }}
           >
             <Text style={{ color: tab === t ? '#fff' : '#666', fontWeight: '700', fontSize: 13 }}>
               {t === 'find' ? 'Find a Mentor' : 'Be a Mentor'}
@@ -155,13 +224,47 @@ export default function MentorshipScreen() {
             </View>
           ) : (
             mentors.map(mentor => (
-              <View key={mentor.id} style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#2a2a2a' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <View
+                key={mentor.user_id}
+                style={{
+                  backgroundColor: '#1a1a1a',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: '#2a2a2a',
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}
+                >
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{mentor.username || 'Skater'}</Text>
-                      <View style={{ backgroundColor: specialtyColor(mentor.specialty), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{mentor.specialty?.toUpperCase()}</Text>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                        {mentor.username || 'Skater'}
+                      </Text>
+                      <View
+                        style={{
+                          backgroundColor: specialtyColor(mentor.specialty),
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+                          {mentor.specialty?.toUpperCase()}
+                        </Text>
                       </View>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
@@ -171,13 +274,20 @@ export default function MentorshipScreen() {
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <Zap color="#FF6B35" size={14} />
-                        <Text style={{ color: '#666', fontSize: 12 }}>{mentor.tricks_mastered} tricks mastered</Text>
+                        <Text style={{ color: '#666', fontSize: 12 }}>
+                          {mentor.tricks_mastered} tricks mastered
+                        </Text>
                       </View>
                     </View>
                   </View>
                   <TouchableOpacity
                     onPress={() => requestMentor(mentor.user_id)}
-                    style={{ backgroundColor: '#FF6B35', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+                    style={{
+                      backgroundColor: '#FF6B35',
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                    }}
                   >
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Request</Text>
                   </TouchableOpacity>
@@ -191,11 +301,30 @@ export default function MentorshipScreen() {
           <Text style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>
             Share your skills. Earn bonus XP every time your apprentice lands a trick.
           </Text>
-          <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View
+            style={{
+              backgroundColor: '#1a1a1a',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: '#2a2a2a',
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <View>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Available as Mentor</Text>
-                <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>Show up in the mentor list</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+                  Available as Mentor
+                </Text>
+                <Text style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
+                  Show up in the mentor list
+                </Text>
               </View>
               <Switch
                 value={isMentor}
@@ -205,7 +334,15 @@ export default function MentorshipScreen() {
               />
             </View>
           </View>
-          <View style={{ backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#2a2a2a' }}>
+          <View
+            style={{
+              backgroundColor: '#1a1a1a',
+              borderRadius: 12,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: '#2a2a2a',
+            }}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <UserCheck color="#FF6B35" size={20} />
               <Text style={{ color: '#fff', fontWeight: '700' }}>Mentor Perks</Text>

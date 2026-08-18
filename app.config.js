@@ -19,7 +19,7 @@ module.exports = {
       backgroundColor: '#d2673d',
     },
     assetBundlePatterns: ['**/*'],
-    platforms: ['ios', 'android'],
+    platforms: ['ios', 'android', 'web'],
     jsEngine: 'hermes',
     updates: {
       enabled: true,
@@ -112,6 +112,15 @@ module.exports = {
       bundler: 'metro',
       output: 'static',
       favicon: './assets/icon.png',
+      name: 'SkateQuest',
+      shortName: 'SkateQuest',
+      lang: 'en',
+      themeColor: '#D2673D',
+      backgroundColor: '#05070B',
+    },
+
+    experiments: {
+      baseUrl: process.env.EXPO_PUBLIC_BASE_URL || undefined,
     },
 
     extra: {

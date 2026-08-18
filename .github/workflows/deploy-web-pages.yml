@@ -1,0 +1,113 @@
+name: Deploy Web PWA to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/**
+      - components/**
+      - lib/**
+      - public/**
+      - screens/**
+      - types/**
+      - app.config.js
+      - babel.config.js
+      - global.css
+      - index.js
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - .github/workflows/deploy-web-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Expo web PWA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      EXPO_PUBLIC_BASE_URL: /SkateQuest-Mobile
+      EXPO_PUBLIC_ENV: production
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      EXPO_NO_TELEMETRY: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          # GitHub Pages only needs the web bundle. Avoid installing the native
+          # Mapbox package that is used by Android/iOS builds and requires a
+          # private Mapbox downloads token.
+          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.dependencies['@rnmapbox/maps'];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
+
+          npm ci
+
+          git checkout -- package.json
+
+          mkdir -p node_modules/@rnmapbox/maps
+          echo '{"name":"@rnmapbox/maps","version":"10.3.2","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
+          echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
+          printf 'declare namespace MapboxGL {\n  type Camera = any;\n  type MapView = any;\n  const StyleURL: { [key: string]: string };\n  const MapView: any;\n  const Camera: any;\n  const UserLocation: any;\n  const ShapeSource: any;\n  const CircleLayer: any;\n  const SymbolLayer: any;\n  const LineLayer: any;\n  const PointAnnotation: any;\n  const Images: any;\n  const MarkerView: any;\n  const Callout: any;\n  function setAccessToken(token: string | undefined): void;\n}\nexport = MapboxGL;\n' > node_modules/@rnmapbox/maps/index.d.ts
+
+      - name: Verify required public runtime variables
+        run: |
+          node - <<'NODE'
+          const required = [
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
+          ];
+          const missing = required.filter((name) => !process.env[name]);
+          if (missing.length) {
+            throw new Error(`Missing GitHub Pages secrets: ${missing.join(', ')}`);
+          }
+          NODE
+
+      - name: Build static web app
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
