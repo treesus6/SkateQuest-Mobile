@@ -20,6 +20,7 @@ import { qrCodeService } from '../lib/qrCodeService';
 import { useAuthStore } from '../stores/useAuthStore';
 import { profilesService } from '../lib/profilesService';
 import { SkateEvents } from '../lib/analytics';
+import { getBrowserLocation } from '../lib/browserLocation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -46,16 +47,23 @@ export default function HideQRCodeScreen() {
   useEffect(() => {
     (async () => {
       try {
+        if (Platform.OS === 'web') {
+          const position = await getBrowserLocation(30000);
+          setCoords({ lat: position.latitude, lng: position.longitude });
+          return;
+        }
+
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setLocationError('Location permission is needed to hide a code here.');
-          setLocating(false);
           return;
         }
         const pos = await Location.getCurrentPositionAsync({});
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      } catch {
-        setLocationError('Could not get your location. Try again.');
+      } catch (error) {
+        setLocationError(
+          error instanceof Error ? error.message : 'Could not get your location. Try again.'
+        );
       } finally {
         setLocating(false);
       }
@@ -100,7 +108,6 @@ export default function HideQRCodeScreen() {
     }
   };
 
-  // ── Success state: show the generated QR code to print/screenshot ──────────
   if (createdCode) {
     return (
       <View className="flex-1 bg-[#05070B] px-6 pt-16 items-center">
@@ -131,7 +138,6 @@ export default function HideQRCodeScreen() {
     );
   }
 
-  // ── Form state ───────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-[#05070B]"
