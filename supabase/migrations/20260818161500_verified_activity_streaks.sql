@@ -23,14 +23,14 @@ with activity_dates as (
   where user_id = auth.uid()
 
   union
-  select distinct reviewed_at::date
+  select distinct approved_at::date
   from public.challenge_submissions
-  where user_id = auth.uid() and status = 'APPROVED' and reviewed_at is not null
+  where user_id = auth.uid() and status = 'APPROVED' and approved_at is not null
 
   union
-  select distinct reviewed_at::date
+  select distinct approved_at::date
   from public.bounty_submissions
-  where user_id = auth.uid() and status = 'APPROVED' and reviewed_at is not null
+  where user_id = auth.uid() and status = 'APPROVED' and approved_at is not null
 
   union
   select distinct reviewed_at::date
