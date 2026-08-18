@@ -8,7 +8,7 @@ import { spotsService } from '../lib/spotsService';
 import { Logger } from '../lib/logger';
 import { SkateSpot } from '../types';
 
-const FALLBACK: [number, number] = [-122.4324, 37.78825];
+const NEUTRAL_CENTER: [number, number] = [0, 20];
 // Portal Dimension sits beside the actual Newport, Oregon skatepark record.
 const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
 const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
@@ -24,7 +24,8 @@ export default function MapScreen() {
   const moveReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
-  const [center, setCenter] = useState<[number, number]>(FALLBACK);
+  const [center, setCenter] = useState<[number, number]>(NEUTRAL_CENTER);
+  const [hasRealCenter, setHasRealCenter] = useState(false);
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function MapScreen() {
     try {
       const location = await getBrowserLocation();
       const next: [number, number] = [location.longitude, location.latitude];
+      setHasRealCenter(true);
       setCenter(next);
       await loadSpots(next);
       return true;
@@ -65,6 +67,8 @@ export default function MapScreen() {
         locationError instanceof Error
           ? locationError.message
           : 'Could not determine your location.';
+      setHasRealCenter(false);
+      setSpots([]);
       setError(message);
       Logger.warn('Browser location failed', { message });
       return false;
@@ -77,18 +81,7 @@ export default function MapScreen() {
     let active = true;
 
     const bootMapData = async () => {
-      const located = await locateUser();
-      if (!active) return;
-
-      if (!located) {
-        try {
-          await loadSpots(FALLBACK);
-        } catch (queryError) {
-          Logger.error('Web map spots query failed', queryError);
-          setError('Skate spots could not be loaded. Check your connection and try again.');
-        }
-      }
-
+      await locateUser();
       if (active) setLoading(false);
     };
 
@@ -96,7 +89,7 @@ export default function MapScreen() {
     return () => {
       active = false;
     };
-  }, [loadSpots, locateUser]);
+  }, [locateUser]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current || !token) return;
@@ -109,7 +102,7 @@ export default function MapScreen() {
       container: containerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center,
-      zoom: 12,
+      zoom: hasRealCenter ? 12 : 2,
       attributionControl: true,
     });
     map.on('load', () => setError(current => (current?.includes('map library') ? null : current)));
@@ -120,7 +113,10 @@ export default function MapScreen() {
       if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
       moveReloadTimerRef.current = setTimeout(() => {
         const movedCenter = map.getCenter();
-        void loadSpots([movedCenter.lng, movedCenter.lat]).catch(queryError => {
+        const next: [number, number] = [movedCenter.lng, movedCenter.lat];
+        setHasRealCenter(true);
+        setCenter(next);
+        void loadSpots(next).catch(queryError => {
           Logger.error('Web map moved-area spots query failed', queryError);
           setError('Skate spots could not be loaded for this area. Check your connection and try again.');
         });
@@ -138,9 +134,8 @@ export default function MapScreen() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const isFallback = center[0] === FALLBACK[0] && center[1] === FALLBACK[1];
-    map.flyTo({ center, zoom: isFallback ? 12 : 14 });
-  }, [center]);
+    map.flyTo({ center, zoom: hasRealCenter ? 14 : 2 });
+  }, [center, hasRealCenter]);
 
   useEffect(() => {
     const mapbox = window.mapboxgl;
@@ -227,7 +222,9 @@ export default function MapScreen() {
             paddingVertical: 9,
           }}
         >
-          <Text style={{ color: 'white', fontWeight: '800' }}>{spots.length} real spots nearby</Text>
+          <Text style={{ color: 'white', fontWeight: '800' }}>
+            {hasRealCenter ? `${spots.length} real spots nearby` : 'Move the map or enable location'}
+          </Text>
         </View>
         {error ? (
           <View
