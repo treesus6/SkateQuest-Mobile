@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -104,7 +104,14 @@ function RootLayout() {
     const initializeApp = async () => {
       try {
         validateEnvironment();
-        await SystemUI.setBackgroundColorAsync('#d2673d');
+
+        // expo-system-ui and expo-updates are native app services. The PWA has
+        // its own HTML theme/service-worker update path and should not let a
+        // native-only API abort the rest of web initialization.
+        if (Platform.OS !== 'web') {
+          await SystemUI.setBackgroundColorAsync('#d2673d');
+        }
+
         await useMutationQueueStore.getState().rehydrate();
         const mutationExecutor = async (mutation: OfflineMutation) => {
           if (mutation.table !== 'session_attendees') return;
@@ -118,7 +125,11 @@ function RootLayout() {
           if (result?.error) throw new Error(result.error);
         };
         startBackgroundSync([], mutationExecutor);
-        checkForOTAUpdate({ silent: true });
+
+        if (Platform.OS !== 'web') {
+          checkForOTAUpdate({ silent: true });
+        }
+
         Logger.info('SkateQuest initialized');
         Sentry.addBreadcrumb({
           category: 'app',
