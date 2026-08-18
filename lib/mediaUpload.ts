@@ -24,7 +24,6 @@ export interface MediaUploadResult {
 export async function pickImage(
   useCamera: boolean = false
 ): Promise<ImagePicker.ImagePickerAsset | null> {
-  // Request permissions
   const { status } = useCamera
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,7 +69,7 @@ export async function pickVideo(
     ? await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        videoMaxDuration: 60, // 60 seconds max
+        videoMaxDuration: 60,
         videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
       })
     : await ImagePicker.launchImageLibraryAsync({
@@ -88,7 +87,10 @@ export async function pickVideo(
 }
 
 /**
- * Upload file to Supabase Storage
+ * Upload file to Supabase Storage.
+ *
+ * SkateQuest storage policies require the second path segment to be the signed-in
+ * user id. Callers pass that id as fileName, so paths are folder/userId/file.
  */
 export async function uploadToStorage(
   uri: string,
@@ -101,17 +103,22 @@ export async function uploadToStorage(
     const response = Platform.OS === 'web' ? await fetch(uri) : null;
     if (response && !response.ok) throw new Error('The selected media could not be read.');
     const webBlob = response ? await response.blob() : null;
-    const base64 = webBlob ? null : await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+    const base64 = webBlob
+      ? null
+      : await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     const contentType = webBlob?.type || '';
-    const extFromType = contentType.split('/')[1]?.replace('quicktime', 'mov');
+    const extFromType = contentType.split('/')[1]?.replace('quicktime', 'mov').replace('jpeg', 'jpg');
     const ext =
-      extFromType || uri.split(/[?#]/)[0].split('.').pop() || (bucket === 'videos' ? 'mp4' : 'jpg');
-    const filePath = `${folder}/${Date.now()}_${fileName}.${ext}`;
+      extFromType || uri.split(/[?#]/)[0].split('.').pop() || 'jpg';
+    const normalizedExt = ext.toLowerCase();
+    const isVideo = ['mp4', 'mov', 'm4v', 'webm'].includes(normalizedExt);
+    const filePath = `${folder}/${fileName}/${Date.now()}.${normalizedExt}`;
 
-    // Upload to Supabase Storage
     const body = webBlob ?? decode(base64!);
     const { error } = await supabase.storage.from(bucket).upload(filePath, body, {
-      contentType: contentType || `${bucket === 'videos' ? 'video' : 'image'}/${ext}`,
+      contentType:
+        contentType ||
+        `${isVideo ? 'video' : 'image'}/${normalizedExt === 'jpg' ? 'jpeg' : normalizedExt}`,
       upsert: false,
     });
 
@@ -119,7 +126,6 @@ export async function uploadToStorage(
       throw error;
     }
 
-    // Get public URL
     const {
       data: { publicUrl },
     } = supabase.storage.from(bucket).getPublicUrl(filePath);
@@ -132,16 +138,18 @@ export async function uploadToStorage(
 }
 
 /**
- * Upload image and create thumbnail
+ * Upload image. Spot photos use their dedicated bucket; general user/feed photos
+ * share the SkateTV media bucket, which accepts image posts as well as clips.
  */
 export async function uploadImage(
   uri: string,
   folder: string = 'photos',
   fileName: string = 'photo'
 ): Promise<MediaUploadResult> {
-  const url = await uploadToStorage(uri, 'photos', folder, fileName);
+  const bucket = folder === 'spot_photos' ? 'spot-photos' : 'skatetv-clips';
+  const url = await uploadToStorage(uri, bucket, folder, fileName);
 
-  const fileSize = Platform.OS === 'web' ? (await fetch(uri)).headers.get('content-length') : null;
+  const fileSize = Platform.OS === 'web' ? (await (await fetch(uri)).blob()).size : null;
   const fileInfo = Platform.OS === 'web' ? null : await FileSystem.getInfoAsync(uri);
 
   return {
@@ -155,7 +163,7 @@ export async function uploadImage(
 }
 
 /**
- * Upload video
+ * Upload video to the live SkateTV/user-media bucket.
  */
 export async function uploadVideo(
   uri: string,
@@ -163,9 +171,9 @@ export async function uploadVideo(
   fileName: string = 'video',
   duration?: number
 ): Promise<MediaUploadResult> {
-  const url = await uploadToStorage(uri, 'videos', folder, fileName);
+  const url = await uploadToStorage(uri, 'skatetv-clips', folder, fileName);
 
-  const webResponse = Platform.OS === 'web' ? await fetch(uri) : null;
+  const webBlob = Platform.OS === 'web' ? await (await fetch(uri)).blob() : null;
   const fileInfo = Platform.OS === 'web' ? null : await FileSystem.getInfoAsync(uri);
 
   return {
@@ -174,7 +182,7 @@ export async function uploadVideo(
     fileSize:
       fileInfo && fileInfo.exists && 'size' in fileInfo
         ? fileInfo.size || 0
-        : Number(webResponse?.headers.get('content-length') ?? 0),
+        : Number(webBlob?.size ?? 0),
     duration,
   };
 }
@@ -184,7 +192,6 @@ export async function uploadVideo(
  */
 export async function deleteFromStorage(url: string, bucket: string): Promise<void> {
   try {
-    // Extract file path from URL
     const urlParts = url.split('/');
     const bucketIndex = urlParts.findIndex(part => part === bucket);
     const filePath = urlParts.slice(bucketIndex + 1).join('/');
