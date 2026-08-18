@@ -1,1 +1,1 @@
-export { default } from '../../screens/TrickTrackerScreen';
+export { default } from '../../screens/TrickTrackerScreenVerified';
