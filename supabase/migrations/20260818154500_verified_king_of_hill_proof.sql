@@ -2,148 +2,128 @@
 -- A user uploads an owned video, community judges review it, and only an
 -- approved submission can create or replace the active spot claim.
 
-ALTER TABLE public.spot_claims
-  ADD COLUMN IF NOT EXISTS video_url text,
-  ADD COLUMN IF NOT EXISTS trick_description text,
-  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+alter table public.spot_claims
+  add column if not exists trick_description text,
+  add column if not exists status text not null default 'active';
 
-UPDATE public.spot_claims
-SET status = 'active'
-WHERE status IS NULL;
+update public.spot_claims
+set status = 'active'
+where status is null;
 
-CREATE TABLE IF NOT EXISTS public.spot_claim_submissions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  spot_id uuid NOT NULL REFERENCES public.skate_spots(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  media_id uuid NOT NULL REFERENCES public.media(id) ON DELETE CASCADE,
-  video_url text NOT NULL,
-  trick_description text NOT NULL,
-  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
-  stomped_votes integer NOT NULL DEFAULT 0,
-  bail_votes integer NOT NULL DEFAULT 0,
-  submitted_at timestamptz NOT NULL DEFAULT now(),
+create table if not exists public.spot_claim_submissions (
+  id uuid primary key default gen_random_uuid(),
+  spot_id uuid not null references public.skate_spots(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  media_id uuid not null references public.media(id) on delete cascade,
+  video_url text not null,
+  trick_description text not null,
+  status text not null default 'PENDING' check (status in ('PENDING','APPROVED','REJECTED')),
+  stomped_votes integer not null default 0,
+  bail_votes integer not null default 0,
+  submitted_at timestamptz not null default now(),
   reviewed_at timestamptz,
-  UNIQUE (user_id, spot_id)
+  unique (user_id, spot_id)
 );
 
-CREATE TABLE IF NOT EXISTS public.spot_claim_submission_votes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  submission_id uuid NOT NULL REFERENCES public.spot_claim_submissions(id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  vote text NOT NULL CHECK (vote IN ('stomped','bail')),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (submission_id, user_id)
+create table if not exists public.spot_claim_submission_votes (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references public.spot_claim_submissions(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  vote text not null check (vote in ('stomped','bail')),
+  created_at timestamptz not null default now(),
+  unique (submission_id, user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_spot_claim_submissions_pending
-  ON public.spot_claim_submissions(status, submitted_at);
-CREATE INDEX IF NOT EXISTS idx_spot_claim_submission_votes_user
-  ON public.spot_claim_submission_votes(user_id, submission_id);
+create index if not exists idx_spot_claim_submissions_pending
+  on public.spot_claim_submissions(status, submitted_at);
+create index if not exists idx_spot_claim_submission_votes_user
+  on public.spot_claim_submission_votes(user_id, submission_id);
 
-ALTER TABLE public.spot_claim_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.spot_claim_submission_votes ENABLE ROW LEVEL SECURITY;
+alter table public.spot_claim_submissions enable row level security;
+alter table public.spot_claim_submission_votes enable row level security;
 
-DROP POLICY IF EXISTS "spot_claim_submissions_read" ON public.spot_claim_submissions;
-CREATE POLICY "spot_claim_submissions_read"
-ON public.spot_claim_submissions FOR SELECT TO authenticated USING (true);
+drop policy if exists "spot_claim_submissions_read" on public.spot_claim_submissions;
+create policy "spot_claim_submissions_read"
+on public.spot_claim_submissions for select to authenticated using (true);
 
-DROP POLICY IF EXISTS "spot_claim_submission_votes_read_own" ON public.spot_claim_submission_votes;
-CREATE POLICY "spot_claim_submission_votes_read_own"
-ON public.spot_claim_submission_votes FOR SELECT TO authenticated USING (user_id = auth.uid());
+drop policy if exists "spot_claim_submission_votes_read_own" on public.spot_claim_submission_votes;
+create policy "spot_claim_submission_votes_read_own"
+on public.spot_claim_submission_votes for select to authenticated using (user_id = auth.uid());
 
-CREATE OR REPLACE FUNCTION public.submit_spot_claim_proof(
+create or replace function public.submit_spot_claim_proof(
   p_spot_id uuid,
   p_media_id uuid,
   p_trick_description text
 )
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
   v_user_id uuid := auth.uid();
   v_video_url text;
   v_media_type text;
   v_submission_id uuid;
   v_existing_status text;
   v_description text := btrim(coalesce(p_trick_description, ''));
-BEGIN
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'not authorized';
-  END IF;
-  IF v_description = '' THEN
-    RAISE EXCEPTION 'add the trick you landed';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.skate_spots WHERE id = p_spot_id) THEN
-    RAISE EXCEPTION 'spot not found';
-  END IF;
+begin
+  if v_user_id is null then raise exception 'not authorized'; end if;
+  if v_description = '' then raise exception 'add the trick you landed'; end if;
+  if not exists (select 1 from public.skate_spots where id = p_spot_id) then
+    raise exception 'spot not found';
+  end if;
 
-  SELECT m.url, m.type
-  INTO v_video_url, v_media_type
-  FROM public.media m
-  WHERE m.id = p_media_id
-    AND m.user_id = v_user_id;
+  select m.url, m.type
+  into v_video_url, v_media_type
+  from public.media m
+  where m.id = p_media_id and m.user_id = v_user_id;
 
-  IF NOT FOUND OR v_video_url IS NULL THEN
-    RAISE EXCEPTION 'owned media proof not found';
-  END IF;
-  IF v_media_type IS DISTINCT FROM 'video' THEN
-    RAISE EXCEPTION 'spot claim proof must be a video';
-  END IF;
+  if not found or v_video_url is null then raise exception 'owned media proof not found'; end if;
+  if v_media_type is distinct from 'video' then raise exception 'spot claim proof must be a video'; end if;
 
-  SELECT id, status
-  INTO v_submission_id, v_existing_status
-  FROM public.spot_claim_submissions
-  WHERE user_id = v_user_id AND spot_id = p_spot_id
-  FOR UPDATE;
+  select id, status
+  into v_submission_id, v_existing_status
+  from public.spot_claim_submissions
+  where user_id = v_user_id and spot_id = p_spot_id
+  for update;
 
-  IF FOUND THEN
-    IF v_existing_status = 'PENDING' THEN
-      RAISE EXCEPTION 'spot claim proof is already pending';
-    END IF;
+  if found then
+    if v_existing_status = 'PENDING' then raise exception 'spot claim proof is already pending'; end if;
 
-    DELETE FROM public.spot_claim_submission_votes
-    WHERE submission_id = v_submission_id;
-
-    UPDATE public.spot_claim_submissions
-    SET media_id = p_media_id,
+    delete from public.spot_claim_submission_votes where submission_id = v_submission_id;
+    update public.spot_claim_submissions
+    set media_id = p_media_id,
         video_url = v_video_url,
         trick_description = v_description,
         status = 'PENDING',
         stomped_votes = 0,
         bail_votes = 0,
         submitted_at = now(),
-        reviewed_at = NULL
-    WHERE id = v_submission_id;
-  ELSE
-    INSERT INTO public.spot_claim_submissions (
+        reviewed_at = null
+    where id = v_submission_id;
+  else
+    insert into public.spot_claim_submissions (
       spot_id, user_id, media_id, video_url, trick_description
-    )
-    VALUES (
+    ) values (
       p_spot_id, v_user_id, p_media_id, v_video_url, v_description
-    )
-    RETURNING id INTO v_submission_id;
-  END IF;
+    ) returning id into v_submission_id;
+  end if;
 
-  RETURN jsonb_build_object(
-    'success', true,
-    'submission_id', v_submission_id,
-    'status', 'PENDING'
-  );
-END;
+  return jsonb_build_object('success', true, 'submission_id', v_submission_id, 'status', 'PENDING');
+end;
 $$;
 
-CREATE OR REPLACE FUNCTION public.judge_spot_claim_submission(
+create or replace function public.judge_spot_claim_submission(
   p_submission_id uuid,
   p_vote text
 )
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $$
-DECLARE
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
   v_judge_id uuid := auth.uid();
   v_submitter_id uuid;
   v_spot_id uuid;
@@ -159,174 +139,161 @@ DECLARE
   v_result_status text := 'PENDING';
   v_total_judge_votes integer := 0;
   v_bonus integer := 0;
-BEGIN
-  IF v_judge_id IS NULL THEN
-    RAISE EXCEPTION 'not authorized';
-  END IF;
+begin
+  if v_judge_id is null then raise exception 'not authorized'; end if;
 
   p_vote := lower(p_vote);
-  IF p_vote NOT IN ('stomped','bail') THEN
-    RAISE EXCEPTION 'invalid vote';
-  END IF;
+  if p_vote not in ('stomped','bail') then raise exception 'invalid vote'; end if;
 
-  SELECT user_id, spot_id, media_id, video_url, trick_description, status
-  INTO v_submitter_id, v_spot_id, v_media_id, v_video_url, v_trick_description, v_status
-  FROM public.spot_claim_submissions
-  WHERE id = p_submission_id
-  FOR UPDATE;
+  select user_id, spot_id, media_id, video_url, trick_description, status
+  into v_submitter_id, v_spot_id, v_media_id, v_video_url, v_trick_description, v_status
+  from public.spot_claim_submissions
+  where id = p_submission_id
+  for update;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'submission not found';
-  END IF;
-  IF v_submitter_id = v_judge_id THEN
-    RAISE EXCEPTION 'cannot judge own submission';
-  END IF;
-  IF v_status <> 'PENDING' THEN
-    RAISE EXCEPTION 'submission is no longer pending';
-  END IF;
+  if not found then raise exception 'submission not found'; end if;
+  if v_submitter_id = v_judge_id then raise exception 'cannot judge own submission'; end if;
+  if v_status <> 'PENDING' then raise exception 'submission is no longer pending'; end if;
 
-  BEGIN
-    INSERT INTO public.spot_claim_submission_votes (submission_id, user_id, vote)
-    VALUES (p_submission_id, v_judge_id, p_vote);
-  EXCEPTION WHEN unique_violation THEN
-    RAISE EXCEPTION 'already voted';
-  END;
+  begin
+    insert into public.spot_claim_submission_votes (submission_id, user_id, vote)
+    values (p_submission_id, v_judge_id, p_vote);
+  exception when unique_violation then
+    raise exception 'already voted';
+  end;
 
-  SELECT
-    count(*) FILTER (WHERE vote = 'stomped')::integer,
-    count(*) FILTER (WHERE vote = 'bail')::integer
-  INTO v_stomped, v_bail
-  FROM public.spot_claim_submission_votes
-  WHERE submission_id = p_submission_id;
+  select
+    count(*) filter (where vote = 'stomped')::integer,
+    count(*) filter (where vote = 'bail')::integer
+  into v_stomped, v_bail
+  from public.spot_claim_submission_votes
+  where submission_id = p_submission_id;
 
-  UPDATE public.spot_claim_submissions
-  SET stomped_votes = v_stomped,
-      bail_votes = v_bail
-  WHERE id = p_submission_id;
+  update public.spot_claim_submissions
+  set stomped_votes = v_stomped, bail_votes = v_bail
+  where id = p_submission_id;
 
-  PERFORM public.increment_user_xp(v_judge_id, 10);
+  perform public.increment_user_xp(v_judge_id, 10);
 
-  SELECT
-    coalesce((SELECT count(*) FROM public.submission_votes WHERE user_id = v_judge_id), 0) +
-    coalesce((SELECT count(*) FROM public.bounty_submission_votes WHERE user_id = v_judge_id), 0) +
-    coalesce((SELECT count(*) FROM public.spot_claim_submission_votes WHERE user_id = v_judge_id), 0)
-  INTO v_total_judge_votes;
+  select
+    coalesce((select count(*) from public.submission_votes where user_id = v_judge_id), 0) +
+    coalesce((select count(*) from public.bounty_submission_votes where user_id = v_judge_id), 0) +
+    coalesce((select count(*) from public.spot_claim_submission_votes where user_id = v_judge_id), 0)
+  into v_total_judge_votes;
 
-  IF v_total_judge_votes > 0 AND v_total_judge_votes % 5 = 0 THEN
+  if v_total_judge_votes > 0 and v_total_judge_votes % 5 = 0 then
     v_bonus := 50;
-    PERFORM public.increment_user_xp(v_judge_id, v_bonus);
-  END IF;
+    perform public.increment_user_xp(v_judge_id, v_bonus);
+  end if;
 
-  IF v_bail >= 3 THEN
+  if v_bail >= 3 then
     v_result_status := 'REJECTED';
-    UPDATE public.spot_claim_submissions
-    SET status = 'REJECTED', reviewed_at = now()
-    WHERE id = p_submission_id;
-  ELSIF v_stomped >= 10 THEN
-    SELECT user_id, coalesce(claim_strength, 0)
-    INTO v_previous_holder, v_previous_strength
-    FROM public.spot_claims
-    WHERE spot_id = v_spot_id
-      AND status = 'active'
-      AND (expires_at IS NULL OR expires_at > now())
-    ORDER BY claimed_at DESC
-    LIMIT 1
-    FOR UPDATE;
+    update public.spot_claim_submissions
+    set status = 'REJECTED', reviewed_at = now()
+    where id = p_submission_id;
+  elsif v_stomped >= 10 then
+    select user_id, coalesce(claim_strength, 0)
+    into v_previous_holder, v_previous_strength
+    from public.spot_claims
+    where spot_id = v_spot_id
+      and status = 'active'
+      and (expires_at is null or expires_at > now())
+    order by claimed_at desc
+    limit 1
+    for update;
 
-    IF v_previous_holder IS NOT NULL AND v_previous_holder <> v_submitter_id THEN
+    if v_previous_holder is not null and v_previous_holder <> v_submitter_id then
       v_reward := 100;
-    ELSE
+    else
       v_reward := 50;
-    END IF;
+    end if;
 
-    DELETE FROM public.spot_claims
-    WHERE spot_id = v_spot_id;
+    delete from public.spot_claims where spot_id = v_spot_id;
 
-    INSERT INTO public.spot_claims (
+    insert into public.spot_claims (
       spot_id,
       user_id,
+      trick_name,
+      video_url,
+      verified,
       claimed_at,
       expires_at,
       claim_strength,
       updated_at,
-      video_url,
       trick_description,
       status
-    )
-    VALUES (
+    ) values (
       v_spot_id,
       v_submitter_id,
+      v_trick_description,
+      v_video_url,
+      true,
       now(),
       now() + interval '30 days',
       greatest(v_previous_strength + 1, 1),
       now(),
-      v_video_url,
       v_trick_description,
       'active'
     );
 
-    INSERT INTO public.spot_claim_history (
+    insert into public.spot_claim_history (
       spot_id,
       previous_holder_id,
       new_holder_id,
       action,
       challenge_xp_reward,
       created_at
-    )
-    VALUES (
+    ) values (
       v_spot_id,
       v_previous_holder,
       v_submitter_id,
-      CASE WHEN v_previous_holder IS NULL THEN 'claimed' ELSE 'challenged' END,
+      case when v_previous_holder is null then 'claimed' else 'challenged' end,
       v_reward,
       now()
     );
 
-    UPDATE public.spot_claim_submissions
-    SET status = 'APPROVED', reviewed_at = now()
-    WHERE id = p_submission_id;
+    update public.spot_claim_submissions
+    set status = 'APPROVED', reviewed_at = now()
+    where id = p_submission_id;
 
-    UPDATE public.spot_claim_submissions
-    SET status = 'REJECTED', reviewed_at = now()
-    WHERE spot_id = v_spot_id
-      AND id <> p_submission_id
-      AND status = 'PENDING';
+    update public.spot_claim_submissions
+    set status = 'REJECTED', reviewed_at = now()
+    where spot_id = v_spot_id and id <> p_submission_id and status = 'PENDING';
 
-    PERFORM public.increment_user_xp(v_submitter_id, v_reward);
+    perform public.increment_user_xp(v_submitter_id, v_reward);
 
-    INSERT INTO public.activity_feed (
+    insert into public.activity_feed (
       user_id, activity_type, title, description, xp_earned, media_id
-    )
-    VALUES (
+    ) values (
       v_submitter_id,
       'spot_claimed',
-      CASE WHEN v_previous_holder IS NULL THEN 'Claimed King of the Hill' ELSE 'Took over King of the Hill' END,
+      case when v_previous_holder is null then 'Claimed King of the Hill' else 'Took over King of the Hill' end,
       v_trick_description,
       v_reward,
       v_media_id
     );
 
     v_result_status := 'APPROVED';
-  END IF;
+  end if;
 
-  RETURN jsonb_build_object(
+  return jsonb_build_object(
     'success', true,
     'status', v_result_status,
     'judge_xp', 10,
     'bonus_xp', v_bonus,
     'stomped_votes', v_stomped,
     'bail_votes', v_bail,
-    'claim_xp', CASE WHEN v_result_status = 'APPROVED' THEN v_reward ELSE 0 END
+    'claim_xp', case when v_result_status = 'APPROVED' then v_reward else 0 end
   );
-END;
+end;
 $$;
 
 -- Disable the old proofless claim path. A spot claim must now come from a judged video.
-REVOKE ALL ON FUNCTION public.claim_spot(uuid, uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.claim_spot(uuid, uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.claim_spot(uuid, uuid) FROM authenticated;
+revoke all on function public.claim_spot(uuid, uuid) from public;
+revoke all on function public.claim_spot(uuid, uuid) from anon;
+revoke all on function public.claim_spot(uuid, uuid) from authenticated;
 
-REVOKE ALL ON FUNCTION public.submit_spot_claim_proof(uuid, uuid, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.judge_spot_claim_submission(uuid, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.submit_spot_claim_proof(uuid, uuid, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.judge_spot_claim_submission(uuid, text) TO authenticated;
+revoke all on function public.submit_spot_claim_proof(uuid, uuid, text) from public;
+revoke all on function public.judge_spot_claim_submission(uuid, text) from public;
+grant execute on function public.submit_spot_claim_proof(uuid, uuid, text) to authenticated;
+grant execute on function public.judge_spot_claim_submission(uuid, text) to authenticated;
