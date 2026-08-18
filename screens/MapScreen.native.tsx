@@ -25,13 +25,13 @@ import { SkateEvents } from '../lib/analytics';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const INITIAL_COORDINATES = [-122.4324, 37.78825];
+const INITIAL_COORDINATES: [number, number] = [0, 20];
 const SEARCH_RADIUS_KM = 50;
 const SAVED_SPOTS_KEY = 'saved_spot_ids';
+const LOCATION_TIMEOUT_MS = 6000;
 
 const CONDITION_OPTIONS: Array<{ key: string; emoji: string; label: string }> = [
   { key: 'dry', emoji: '🌞', label: 'Dry' },
@@ -64,9 +64,7 @@ export default function MapScreen() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState(0);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(
-    INITIAL_COORDINATES as [number, number]
-  );
+  const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(INITIAL_COORDINATES);
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
   const mapboxAccessToken =
     (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
@@ -83,27 +81,19 @@ export default function MapScreen() {
     quest: true,
     shop: true,
   });
-
-  // Offline save
   const [savedSpotIds, setSavedSpotIds] = useState<Set<string>>(new Set());
-
-  // Spot conditions
   const [spotCondition, setSpotCondition] = useState<string | null>(null);
   const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
-    // Expo Router discovers route modules during startup. Calling into Mapbox at
-    // module scope initializes the native SDK before this screen is opened and
-    // can terminate low-memory Android devices. Keep native initialization here.
     if (mapboxAccessToken) {
       Mapbox.setAccessToken(mapboxAccessToken);
     } else {
       setMapError('The Mapbox access token is missing from this Android build.');
     }
 
-    // PostHog: track map screen opened
     SkateEvents.mapOpened();
-    requestLocationPermission();
+    void requestLocationPermission();
     AsyncStorage.getItem(SAVED_SPOTS_KEY).then((raw: string | null) => {
       if (raw) {
         try {
@@ -113,7 +103,6 @@ export default function MapScreen() {
     });
   }, []);
 
-  // Fetch the latest condition report whenever a spot is selected
   useEffect(() => {
     if (!selectedSpot) {
       setSpotCondition(null);
@@ -139,24 +128,46 @@ export default function MapScreen() {
     };
   }, [selectedSpot?.id]);
 
+  const useLocation = (location: Location.LocationObject) => {
+    setUserLocation(location);
+    setCenterCoordinates([location.coords.longitude, location.coords.latitude]);
+    cameraRef.current?.setCamera({
+      centerCoordinate: [location.coords.longitude, location.coords.latitude],
+      zoomLevel: 12,
+      animationDuration: 700,
+    });
+  };
+
   const requestLocationPermission = async () => {
+    let usedLastKnown = false;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Location Permission', 'Please enable location to find nearby skate spots', [
-          { text: 'OK', onPress: () => loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]) },
-        ]);
         setLoading(false);
         return;
       }
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location);
-      setCenterCoordinates([location.coords.longitude, location.coords.latitude]);
-      loadSpots(location.coords.latitude, location.coords.longitude);
+
+      const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (lastKnown) {
+        usedLastKnown = true;
+        useLocation(lastKnown);
+        void loadSpots(lastKnown.coords.latitude, lastKnown.coords.longitude);
+      }
+
+      const currentPromise = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Location request timed out')), LOCATION_TIMEOUT_MS);
+      });
+      const location = await Promise.race([currentPromise, timeoutPromise]);
+      useLocation(location);
+      await loadSpots(location.coords.latitude, location.coords.longitude);
     } catch (error) {
-      console.error('Error getting location:', error);
-      loadSpots(INITIAL_COORDINATES[1], INITIAL_COORDINATES[0]);
-      setLoading(false);
+      console.warn('Location unavailable; keeping the map usable:', error);
+      if (!usedLastKnown) {
+        setLoading(false);
+      }
     }
   };
 
@@ -165,7 +176,6 @@ export default function MapScreen() {
     const shopCacheKey = `shops_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
     const CACHE_TTL = 60 * 60 * 1000;
     const STALE_WINDOW = 23 * 60 * 60 * 1000;
-
     const { isConnected } = useNetworkStore.getState();
 
     try {
@@ -185,9 +195,7 @@ export default function MapScreen() {
       ]);
       if (error) {
         const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
-        if (cached) {
-          setSpots(cached.data);
-        }
+        if (cached) setSpots(cached.data);
       } else {
         const spotsData = (data || []) as SkateSpot[];
         setSpots(spotsData);
@@ -207,7 +215,6 @@ export default function MapScreen() {
         if (cachedShops) setShops(cachedShops.data);
       } else {
         console.error('Error loading spots:', error);
-        Alert.alert('Error', 'Could not load skate spots. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -217,9 +224,10 @@ export default function MapScreen() {
   const onRegionDidChange = () => {
     if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
     regionDebounceRef.current = setTimeout(async () => {
+      if (!userLocation && loading) return;
       if (mapRef.current) {
         const center = await mapRef.current.getCenter();
-        if (center) loadSpots(center[1], center[0]);
+        if (center) void loadSpots(center[1], center[0]);
       }
     }, 800);
   };
@@ -236,11 +244,8 @@ export default function MapScreen() {
 
   const toggleSave = async (spot: SkateSpot) => {
     const next = new Set(savedSpotIds);
-    if (next.has(spot.id)) {
-      next.delete(spot.id);
-    } else {
-      next.add(spot.id);
-    }
+    if (next.has(spot.id)) next.delete(spot.id);
+    else next.add(spot.id);
     setSavedSpotIds(next);
     await AsyncStorage.setItem(SAVED_SPOTS_KEY, JSON.stringify(Array.from(next)));
   };
@@ -249,11 +254,7 @@ export default function MapScreen() {
     if (!user || !selectedSpot || reportingCondition) return;
     setReportingCondition(true);
     try {
-      const savedCondition = await spotsService.reportCondition(
-        selectedSpot.id,
-        user.id,
-        condition
-      );
+      const savedCondition = await spotsService.reportCondition(selectedSpot.id, user.id, condition);
       setSpotCondition(savedCondition.condition);
     } catch (error) {
       Alert.alert(
@@ -268,28 +269,13 @@ export default function MapScreen() {
   const filteredSpots = useMemo(
     () =>
       spots.filter(spot => {
-        // DB values are free text (existing rows are seeded as e.g. "PARK"), so
-        // normalize case before matching against the lowercase filter keys.
         const type = (spot.spot_type?.toLowerCase() ?? 'park') as keyof typeof activeFilters;
         return activeFilters[type] ?? false;
       }),
     [spots, activeFilters]
   );
 
-  const filteredShops = useMemo(
-    () => (activeFilters.shop ? shops : []),
-    [shops, activeFilters.shop]
-  );
-
-  if (loading) {
-    return (
-      <View className="flex-1 bg-[#07090D] justify-center items-center">
-        <LoadingSkeleton height={200} className="mx-4 mb-4" />
-        <Text className="text-base text-gray-500 mt-2.5">Loading map...</Text>
-      </View>
-    );
-  }
-
+  const filteredShops = useMemo(() => (activeFilters.shop ? shops : []), [shops, activeFilters.shop]);
   const savedIdsArray = Array.from(savedSpotIds);
 
   return (
@@ -305,7 +291,7 @@ export default function MapScreen() {
       >
         <Mapbox.Camera
           ref={cameraRef}
-          zoomLevel={12}
+          zoomLevel={userLocation ? 12 : 2}
           centerCoordinate={centerCoordinates}
           animationMode="flyTo"
           animationDuration={1000}
@@ -333,10 +319,10 @@ export default function MapScreen() {
           onPress={(event: any) => {
             const f = event.features[0];
             if (f?.properties && !f.properties.cluster) {
-              const s = filteredSpots.find((sp: SkateSpot) => sp.id === f.properties!.spotId);
-              if (s) {
+              const spot = filteredSpots.find((item: SkateSpot) => item.id === f.properties!.spotId);
+              if (spot) {
                 setSelectedShop(null);
-                setSelectedSpot(s);
+                setSelectedSpot(spot);
               }
             }
           }}
@@ -360,7 +346,6 @@ export default function MapScreen() {
               textFont: ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
             }}
           />
-          {/* Regular unclustered spots */}
           <Mapbox.CircleLayer
             id="unclustered-point"
             filter={['!', ['has', 'point_count']]}
@@ -368,12 +353,9 @@ export default function MapScreen() {
               circleColor: [
                 'match',
                 ['get', 'spotType'],
-                'street',
-                '#F59E0B',
-                'diy',
-                '#A855F7',
-                'quest',
-                '#22C55E',
+                'street', '#F59E0B',
+                'diy', '#A855F7',
+                'quest', '#22C55E',
                 '#D2673D',
               ],
               circleRadius: 8,
@@ -381,7 +363,6 @@ export default function MapScreen() {
               circleStrokeColor: '#ffffff',
             }}
           />
-          {/* Saved spots — gold ring rendered on top */}
           <Mapbox.CircleLayer
             id="saved-points"
             filter={[
@@ -397,6 +378,7 @@ export default function MapScreen() {
             }}
           />
         </Mapbox.ShapeSource>
+
         {filteredShops.length > 0 && (
           <Mapbox.ShapeSource
             id="skate-shops"
@@ -429,6 +411,7 @@ export default function MapScreen() {
             />
           </Mapbox.ShapeSource>
         )}
+
         {showDirections && userLocation && (selectedSpot || selectedShop) && (
           <MapDirections
             from={[userLocation.coords.longitude, userLocation.coords.latitude]}
@@ -498,8 +481,9 @@ export default function MapScreen() {
 
       <View className="absolute top-[50px] left-5 bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
         <Text className="text-white font-bold text-sm">
-          {filteredSpots.length} spots{activeFilters.shop ? ` · ${filteredShops.length} shops` : ''}{' '}
-          nearby
+          {loading
+            ? 'Finding nearby spots…'
+            : `${filteredSpots.length} spots${activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby`}
         </Text>
       </View>
 
@@ -550,10 +534,8 @@ export default function MapScreen() {
           </View>
         )}
 
-      {/* Spot info panel */}
       {selectedSpot && !showDirections && (
         <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
-          {/* Header row */}
           <View className="flex-row justify-between items-start mb-1">
             <View className="flex-1 mr-2">
               <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-0.5">
@@ -590,7 +572,6 @@ export default function MapScreen() {
             </View>
           </View>
 
-          {/* Quick condition report */}
           <View className="mb-3">
             <Text className="text-xs text-gray-400 mb-1.5 font-medium">Report conditions:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -621,7 +602,6 @@ export default function MapScreen() {
             </ScrollView>
           </View>
 
-          {/* Action buttons */}
           <View className="flex-row gap-2.5">
             <TouchableOpacity
               className="flex-1 bg-[#D2673D] p-3 rounded-lg items-center flex-row justify-center gap-1.5"
