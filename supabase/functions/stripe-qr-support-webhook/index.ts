@@ -79,6 +79,46 @@ Deno.serve(async (req: Request) => {
           });
           if (ledgerError) console.error("Support-fund credit insert failed", ledgerError);
         }
+
+        if (paymentIntentId) {
+          try {
+            const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+              expand: ["latest_charge.balance_transaction"],
+            });
+            const charge = typeof intent.latest_charge === "object" ? intent.latest_charge as Stripe.Charge : null;
+            const balance = charge && typeof charge.balance_transaction === "object"
+              ? charge.balance_transaction as Stripe.BalanceTransaction
+              : null;
+            const feeCents = Number(balance?.fee || 0);
+
+            if (feeCents > 0) {
+              const { data: existingFee } = await admin
+                .from("support_fund_ledger")
+                .select("id,amount_cents")
+                .eq("purchase_id", purchaseId)
+                .eq("entry_type", "processing_fee")
+                .maybeSingle();
+
+              if (existingFee) {
+                if (feeCents !== Number(existingFee.amount_cents || 0)) {
+                  await admin.from("support_fund_ledger").update({ amount_cents: feeCents }).eq("id", existingFee.id);
+                }
+              } else {
+                await admin.from("support_fund_ledger").insert({
+                  purchase_id: purchaseId,
+                  user_id: userId,
+                  amount_cents: feeCents,
+                  currency: "usd",
+                  entry_type: "processing_fee",
+                  purpose: "skateboard_support_fund",
+                  description: "Payment processor fee for QR Hunt purchase",
+                });
+              }
+            }
+          } catch (feeError) {
+            console.error("Could not record Stripe processing fee", feeError);
+          }
+        }
       }
     }
   }
