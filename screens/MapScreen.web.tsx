@@ -9,6 +9,10 @@ import { Logger } from '../lib/logger';
 import { SkateSpot } from '../types';
 
 const FALLBACK: [number, number] = [-122.4324, 37.78825];
+const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.0537, 44.6368];
+const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
+const PORTAL_DIMENSION_LOGO =
+  'https://raw.githubusercontent.com/treesus6/SkateQuest-Mobile/main/assets/supporters/portal-dimension.png';
 
 export default function MapScreen() {
   const router = useRouter();
@@ -96,14 +100,52 @@ export default function MapScreen() {
     const mapbox = window.mapboxgl;
     const map = mapRef.current;
     if (!mapbox || !map) return;
+
     markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = spots.map(spot => {
-      const marker = new mapbox.Marker({ color: '#d2673d' })
+
+    const spotMarkers = spots.map(spot =>
+      new mapbox.Marker({ color: '#d2673d' })
         .setLngLat([spot.longitude, spot.latitude])
         .setPopup(new mapbox.Popup({ offset: 18 }).setText(spot.name))
-        .addTo(map);
-      return marker;
+        .addTo(map)
+    );
+
+    // Portal Dimension belongs on the map at Newport Skatepark — nowhere else.
+    const sponsorElement = document.createElement('button');
+    sponsorElement.type = 'button';
+    sponsorElement.title = 'Portal Dimension — Newport Skatepark';
+    sponsorElement.setAttribute('aria-label', 'Open Portal Dimension website');
+    sponsorElement.style.width = '58px';
+    sponsorElement.style.height = '58px';
+    sponsorElement.style.borderRadius = '12px';
+    sponsorElement.style.border = '2px solid #D2673D';
+    sponsorElement.style.background = '#fff';
+    sponsorElement.style.padding = '3px';
+    sponsorElement.style.cursor = 'pointer';
+    sponsorElement.style.boxShadow = '0 4px 14px rgba(0,0,0,.35)';
+
+    const sponsorImage = document.createElement('img');
+    sponsorImage.src = PORTAL_DIMENSION_LOGO;
+    sponsorImage.alt = 'Portal Dimension';
+    sponsorImage.style.width = '100%';
+    sponsorImage.style.height = '100%';
+    sponsorImage.style.objectFit = 'contain';
+    sponsorImage.style.display = 'block';
+    sponsorElement.appendChild(sponsorImage);
+    sponsorElement.addEventListener('click', () => {
+      window.open(PORTAL_DIMENSION_URL, '_blank', 'noopener,noreferrer');
     });
+
+    const sponsorMarker = new mapbox.Marker({ element: sponsorElement, anchor: 'bottom' })
+      .setLngLat(PORTAL_DIMENSION_COORDINATES)
+      .setPopup(
+        new mapbox.Popup({ offset: 20 }).setHTML(
+          '<strong>Portal Dimension</strong><br/>Newport Skatepark partner — tap the logo to visit.'
+        )
+      )
+      .addTo(map);
+
+    markersRef.current = [...spotMarkers, sponsorMarker];
   }, [spots]);
 
   if (!token) {
