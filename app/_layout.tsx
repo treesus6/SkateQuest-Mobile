@@ -67,12 +67,15 @@ function AuthGuard() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const authScreen = segments[1];
+    const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
     if (!user && !inAuthGroup) {
       // Not signed in — send to login
       router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
-      // Signed in — send to app
+    } else if (user && inAuthGroup && !isPasswordRecovery) {
+      // Normal signed-in users leave auth screens, but a recovery link creates
+      // a temporary authenticated session that must remain on reset-password.
       router.replace('/(tabs)/');
     }
   }, [user, loading, segments]);
