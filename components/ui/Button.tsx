@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -14,25 +14,25 @@ interface ButtonProps {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-terracotta',
-  secondary: 'bg-brand-purple',
-  outline: 'border border-brand-terracotta bg-transparent',
-  ghost: 'bg-transparent',
-  danger: 'bg-red-500',
+  primary: 'bg-[#D2673D] border border-[#D2673D]',
+  secondary: 'bg-[#1A2230] border border-[#334155]',
+  outline: 'border border-[#D2673D] bg-[#D2673D]/5',
+  ghost: 'bg-transparent border border-transparent',
+  danger: 'bg-red-600 border border-red-500',
 };
 
 const textVariantClasses: Record<ButtonVariant, string> = {
   primary: 'text-white',
-  secondary: 'text-white',
-  outline: 'text-brand-terracotta',
-  ghost: 'text-brand-terracotta',
+  secondary: 'text-[#F7F4EF]',
+  outline: 'text-[#E17A52]',
+  ghost: 'text-[#E17A52]',
   danger: 'text-white',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 rounded-md',
-  md: 'px-5 py-2.5 rounded-lg',
-  lg: 'px-6 py-3.5 rounded-xl',
+  sm: 'px-3.5 py-2 rounded-xl',
+  md: 'px-5 py-3 rounded-xl',
+  lg: 'px-6 py-4 rounded-2xl',
 };
 
 const textSizeClasses: Record<ButtonSize, string> = {
@@ -53,9 +53,12 @@ export default function Button({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      className={`items-center ${variantClasses[variant]} ${sizeClasses[size]} ${disabled ? 'opacity-50' : ''} ${className}`}
+      activeOpacity={0.78}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      className={`items-center justify-center ${variantClasses[variant]} ${sizeClasses[size]} ${disabled ? 'opacity-45' : ''} ${className}`}
     >
-      <Text className={`font-bold ${textVariantClasses[variant]} ${textSizeClasses[size]}`}>
+      <Text className={`font-black tracking-wide ${textVariantClasses[variant]} ${textSizeClasses[size]}`}>
         {title}
       </Text>
     </TouchableOpacity>
