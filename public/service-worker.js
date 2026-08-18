@@ -1,4 +1,4 @@
-const CACHE = 'skatequest-shell-v3';
+const CACHE = 'skatequest-shell-v4';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const scopedPath = path => `${SCOPE_PATH.replace(/\/$/, '')}${path}`;
 const SHELL = [
@@ -7,6 +7,7 @@ const SHELL = [
   scopedPath('/icon-192.svg'),
   scopedPath('/icon-512.svg'),
 ];
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches
@@ -15,6 +16,7 @@ self.addEventListener('install', event => {
       .then(() => self.skipWaiting())
   );
 });
+
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches
@@ -23,14 +25,26 @@ self.addEventListener('activate', event => {
       .then(() => self.clients.claim())
   );
 });
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
-  if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match(scopedPath('/'))));
+
+  // Always prefer the newest page/app code. Fall back to cache only when offline.
+  if (request.mode === 'navigate' || ['script', 'style'].includes(request.destination)) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request).then(cached => cached || caches.match(scopedPath('/'))))
+    );
     return;
   }
-  if (['script', 'style', 'font', 'image'].includes(request.destination)) {
+
+  // Images/fonts are safe to cache-first for speed.
+  if (['font', 'image'].includes(request.destination)) {
     event.respondWith(
       caches.match(request).then(
         cached =>
