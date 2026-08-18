@@ -33,26 +33,6 @@ interface LeaderboardEntry {
 }
 
 export const spotClaimsService = {
-  async claimSpot(
-    spotId: string,
-    latitude: number,
-    longitude: number
-  ): Promise<{ success: boolean; action: string; xp_reward: number; previous_holder?: string; distance_meters?: number }> {
-    try {
-      const { data, error } = await supabase.rpc('claim_spot_verified', {
-        p_spot_id: spotId,
-        p_latitude: latitude,
-        p_longitude: longitude,
-      });
-      if (error) throw error;
-      if (!data) throw new Error('Failed to claim spot');
-      return data;
-    } catch (error) {
-      Logger.error('spotClaimsService.claimSpot failed', error);
-      throw new ServiceError('Failed to claim spot', 'CLAIM_SPOT_FAILED', error);
-    }
-  },
-
   async getSpotClaim(spotId: string): Promise<SpotClaimInfo | null> {
     try {
       const { data, error } = await supabase.rpc('get_spot_claim_info', { p_spot_id: spotId });
