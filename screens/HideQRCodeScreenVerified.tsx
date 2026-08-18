@@ -19,6 +19,7 @@ import { useNavigation } from '../lib/useNavigation';
 import { getCurrentLocation } from '../lib/currentLocation';
 import { supabase } from '../lib/supabase';
 import { SkateEvents } from '../lib/analytics';
+import QRTrickReviewPanel from '../components/QRTrickReviewPanel';
 
 function SkateboardQRCode({ value }: { value: string }) {
   return (
@@ -164,7 +165,7 @@ export default function HideQRCodeScreenVerified() {
         <SkateboardQRCode value={createdCode} />
         <Text selectable className="text-gray-300 font-mono text-base mb-2">{createdCode}</Text>
         <Text className="text-gray-500 text-xs text-center mb-8">$2 support purchase recorded · 50 XP only after approved trick proof.</Text>
-        <TouchableOpacity className="bg-[#FF5A3C] py-4 px-8 rounded-xl items-center w-full" onPress={() => navigation.goBack()}><Text className="text-white font-black">Done</Text></TouchableOpacity>
+        <TouchableOpacity className="bg-[#FF5A3C] py-4 px-8 rounded-xl items-center w-full" onPress={() => setCreatedCode(null)}><Text className="text-white font-black">Back to QR Hunts</Text></TouchableOpacity>
       </ScrollView>
     );
   }
@@ -178,6 +179,8 @@ export default function HideQRCodeScreenVerified() {
           <View className="flex-row items-center"><HeartHandshake size={22} color="#FF8A63" /><Text className="text-white font-black text-lg ml-2">Hunt + trick + give back</Text></View>
           <Text className="text-gray-300 text-sm mt-2">Every hidden QR costs $2. The payment is tracked in SkateQuest's skateboard support fund for boards, gear, and youth skate access. A QR cannot be generated until Stripe confirms payment.</Text>
         </View>
+
+        <QRTrickReviewPanel />
 
         <View className={`rounded-xl p-4 mb-5 border ${purchaseId ? 'bg-emerald-500/10 border-emerald-700' : 'bg-[#121826] border-[#2A3344]'}`}>
           <Text className={purchaseId ? 'text-emerald-300 font-black' : 'text-white font-black'}>{purchaseId ? '✓ $2 payment confirmed' : '$2 payment required'}</Text>
