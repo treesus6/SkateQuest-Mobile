@@ -1,276 +1,298 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  Modal,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { CheckCircle } from 'lucide-react-native';
+import { CheckCircle, Clock3, Video } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/useAuthStore';
+import { useNavigation } from '../lib/useNavigation';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface BingoCard {
+interface BingoCardRow {
   id: string;
-  week_number: number;
-  tricks: string[];
-}
-
-interface BingoProgress {
-  id: string; // always the bingo_cards row id
   user_id: string;
-  bingo_card_id: string;
-  landed_cells: number[];
+  card_data: { tricks?: string[]; week_start?: string } | null;
+  completed_cells: number[] | null;
+  completed: boolean | null;
+  week_start: string | null;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+interface BingoSubmission {
+  id: string;
+  cell_index: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
 
-const DEFAULT_TRICKS = [
-  'Kickflip', 'Heelflip', 'Ollie', 'Pop Shove-it', '360 Flip',
-  'Backside 180', 'Frontside 180', 'Varial Flip', 'Hardflip', 'Inward Heel',
-  'Noseslide', 'Tailslide', 'Boardslide', 'Bluntslide', 'Nosegrind',
-  '5-0 Grind', '50-50 Grind', 'Smith Grind', 'Feeble Grind', 'Crooked Grind',
-  'Manual', 'Nose Manual', 'Casper', 'Hospital Flip', 'FREE',
-];
+interface BingoReward {
+  reward_key: string;
+  xp_awarded: number;
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Returns all winning lines for a 5×5 grid (rows, cols, diagonals). */
 function getWinningLines(): number[][] {
   const lines: number[][] = [];
-  for (let r = 0; r < 5; r++) {
-    lines.push([r * 5, r * 5 + 1, r * 5 + 2, r * 5 + 3, r * 5 + 4]); // row
+  for (let row = 0; row < 5; row += 1) {
+    lines.push([row * 5, row * 5 + 1, row * 5 + 2, row * 5 + 3, row * 5 + 4]);
   }
-  for (let c = 0; c < 5; c++) {
-    lines.push([c, c + 5, c + 10, c + 15, c + 20]); // col
+  for (let column = 0; column < 5; column += 1) {
+    lines.push([column, column + 5, column + 10, column + 15, column + 20]);
   }
-  lines.push([0, 6, 12, 18, 24]); // diagonal TL→BR
-  lines.push([4, 8, 12, 16, 20]); // diagonal TR→BL
+  lines.push([0, 6, 12, 18, 24]);
+  lines.push([4, 8, 12, 16, 20]);
   return lines;
 }
 
-function getCompletedLines(landed: number[]): number[][] {
-  const set = new Set(landed);
-  return getWinningLines().filter((line) => line.every((i) => set.has(i)));
-}
-
-function isFullCard(landed: number[]): boolean {
-  return landed.length === 25;
+function getCompletedLines(completedCells: number[]): number[][] {
+  const completed = new Set(completedCells);
+  return getWinningLines().filter(line => line.every(cell => completed.has(cell)));
 }
 
 function getMsUntilNextMonday(): number {
   const now = new Date();
-  const day = now.getDay(); // 0 Sun … 6 Sat
+  const day = now.getDay();
   const daysUntilMonday = day === 0 ? 1 : 8 - day;
   const next = new Date(now);
   next.setDate(now.getDate() + daysUntilMonday);
   next.setHours(0, 0, 0, 0);
-  return next.getTime() - now.getTime();
+  return Math.max(0, next.getTime() - now.getTime());
 }
 
 function formatCountdown(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const d = Math.floor(totalSec / 86400);
-  const h = Math.floor((totalSec % 86400) / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${d}d ${h}h ${m}m ${s}s`;
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return `${days}d ${hours}h ${minutes}m`;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function TrickBingoScreen() {
-  const [card, setCard] = useState<BingoCard | null>(null);
-  const [progress, setProgress] = useState<BingoProgress | null>(null);
+  const navigation = useNavigation<any>();
+  const user = useAuthStore(state => state.user);
+  const [card, setCard] = useState<BingoCardRow | null>(null);
+  const [submissions, setSubmissions] = useState<BingoSubmission[]>([]);
+  const [rewards, setRewards] = useState<BingoReward[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(getMsUntilNextMonday());
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [celebrationVisible, setCelebrationVisible] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user?.id ?? null);
-    });
+    const timer = setInterval(() => setCountdown(getMsUntilNextMonday()), 60_000);
+    return () => clearInterval(timer);
   }, []);
 
-  // ── Countdown timer ───────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => setCountdown(getMsUntilNextMonday()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const loadCard = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-  // ── Fetch card + progress ─────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
     try {
-      const { data: existing } = await supabase
-        .from('bingo_cards')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: cardResult, error: cardError } = await supabase.rpc('get_or_create_weekly_bingo_card');
+      if (cardError) throw cardError;
 
-      if (existing) {
-        const cd = (existing.card_data ?? {}) as { tricks?: string[]; week_number?: number };
-        setCard({ id: existing.id, week_number: cd.week_number ?? 1, tricks: cd.tricks ?? DEFAULT_TRICKS });
-        setProgress({ id: existing.id, user_id: userId, bingo_card_id: existing.id, landed_cells: (existing.completed_cells as number[]) ?? [] });
-      } else {
-        const { data: newRow } = await supabase
-          .from('bingo_cards')
-          .insert({ user_id: userId, card_data: { tricks: DEFAULT_TRICKS, week_number: 1 }, completed_cells: [] })
-          .select()
-          .single();
-        if (newRow) {
-          setCard({ id: newRow.id, week_number: 1, tricks: DEFAULT_TRICKS });
-          setProgress({ id: newRow.id, user_id: userId, bingo_card_id: newRow.id, landed_cells: [] });
-        }
-      }
+      const resolvedCard = (Array.isArray(cardResult) ? cardResult[0] : cardResult) as BingoCardRow | null;
+      if (!resolvedCard?.id) throw new Error('Weekly Bingo card was not created.');
+
+      const [submissionResult, rewardResult] = await Promise.all([
+        supabase
+          .from('bingo_cell_submissions')
+          .select('id,cell_index,status')
+          .eq('bingo_card_id', resolvedCard.id)
+          .eq('user_id', user.id),
+        supabase
+          .from('bingo_rewards')
+          .select('reward_key,xp_awarded')
+          .eq('bingo_card_id', resolvedCard.id)
+          .eq('user_id', user.id),
+      ]);
+
+      if (submissionResult.error) throw submissionResult.error;
+      if (rewardResult.error) throw rewardResult.error;
+
+      setCard(resolvedCard);
+      setSubmissions((submissionResult.data ?? []) as BingoSubmission[]);
+      setRewards((rewardResult.data ?? []) as BingoReward[]);
+    } catch (error: any) {
+      console.error('Failed to load Trick Bingo:', error);
+      Alert.alert('Could not load Trick Bingo', error?.message || 'Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [userId]);
+  }, [user?.id]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    void loadCard();
+  }, [loadCard]);
 
-  // ── Show toast briefly ────────────────────────────────────────────────────
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
-  };
+  useEffect(() => {
+    if (!card?.id || !user?.id) return;
 
-  // ── Cell tap ──────────────────────────────────────────────────────────────
-  const handleCellTap = async (index: number) => {
-    if (!card || !progress || !userId) return;
+    const channel = supabase
+      .channel(`bingo-live:${card.id}:${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bingo_cards', filter: `id=eq.${card.id}` },
+        () => void loadCard()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bingo_cell_submissions', filter: `bingo_card_id=eq.${card.id}` },
+        () => void loadCard()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bingo_rewards', filter: `bingo_card_id=eq.${card.id}` },
+        () => void loadCard()
+      )
+      .subscribe();
 
-    const alreadyLanded = progress.landed_cells.includes(index);
-    const newLanded = alreadyLanded
-      ? progress.landed_cells.filter((i) => i !== index)
-      : [...progress.landed_cells, index];
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [card?.id, user?.id, loadCard]);
 
-    const prevLines = getCompletedLines(progress.landed_cells);
-    const newLines = getCompletedLines(newLanded);
-    const newLineCount = newLines.length - prevLines.length;
+  const tricks = card?.card_data?.tricks ?? [];
+  const completedCells = card?.completed_cells ?? [];
+  const completedSet = useMemo(() => new Set(completedCells), [completedCells]);
+  const pendingSet = useMemo(
+    () => new Set(submissions.filter(item => item.status === 'PENDING').map(item => item.cell_index)),
+    [submissions]
+  );
+  const completedLines = useMemo(() => getCompletedLines(completedCells), [completedCells]);
+  const highlightedCells = useMemo(() => new Set(completedLines.flat()), [completedLines]);
+  const earnedXp = rewards.reduce((sum, reward) => sum + Number(reward.xp_awarded || 0), 0);
 
-    const updatedProgress: BingoProgress = { ...progress, landed_cells: newLanded };
-    setProgress(updatedProgress);
-
-    // Persist via bingo_cards completed_cells
-    await supabase
-      .from('bingo_cards')
-      .update({ completed_cells: newLanded, completed: isFullCard(newLanded) })
-      .eq('id', progress.id);
-
-    // Feedback
-    if (isFullCard(newLanded)) {
-      setCelebrationVisible(true);
-    } else if (newLineCount > 0) {
-      showToast(`BINGO! +${newLineCount * 50} XP`);
+  const openProofUpload = (cellIndex: number) => {
+    if (!card) return;
+    if (completedSet.has(cellIndex)) {
+      Alert.alert('Already verified', 'This square already passed the Judge’s Booth.');
+      return;
     }
+    if (pendingSet.has(cellIndex)) {
+      Alert.alert('Proof pending', 'Your video is already in the Judge’s Booth for this square.');
+      return;
+    }
+
+    const trickName = tricks[cellIndex];
+    if (!trickName) return;
+    navigation.navigate('UploadMedia', {
+      bingoCardId: card.id,
+      bingoCellIndex: cellIndex,
+      initialTrickName: trickName,
+    });
   };
 
-  // ── Derived state ─────────────────────────────────────────────────────────
-  const landed = progress?.landed_cells ?? [];
-  const completedLines = getCompletedLines(landed);
-  const highlightedCells = new Set(completedLines.flat());
-
-  const cellStyle = (index: number): string => {
-    const isLanded = landed.includes(index);
-    const isHighlighted = highlightedCells.has(index);
-    if (isLanded && isHighlighted) return 'bg-[#FF6B35] border-[#FFD700] border-2';
-    if (isLanded) return 'bg-[#FF6B35] border-[#FF6B35] border-2';
-    return 'bg-[#1a1a1a] border-[#333] border';
-  };
-
-  // ─── Render ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <View className="flex-1 bg-[#0a0a0a] items-center justify-center">
         <ActivityIndicator color="#FF6B35" size="large" />
+        <Text className="text-gray-500 mt-3">Loading verified Bingo card…</Text>
       </View>
     );
   }
 
-  if (!card) {
+  if (!card || tricks.length !== 25) {
     return (
       <View className="flex-1 bg-[#0a0a0a] items-center justify-center px-6">
-        <Text className="text-white text-lg text-center">No bingo card available this week.</Text>
+        <Text className="text-white text-lg font-bold text-center">Trick Bingo is unavailable right now.</Text>
+        <Text className="text-gray-500 text-sm text-center mt-2">The server did not return a valid 25-trick card.</Text>
+        <TouchableOpacity className="bg-[#FF6B35] rounded-xl px-5 py-3 mt-5" onPress={() => void loadCard()}>
+          <Text className="text-white font-bold">Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const rowsCompleted = completedLines.filter((l) => l[1] === l[0] + 1).length;
-  const totalXP = rowsCompleted * 50 + (isFullCard(landed) ? 500 : 0);
-
   return (
-    <ScrollView className="flex-1 bg-[#0a0a0a]" contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Header */}
+    <ScrollView
+      className="flex-1 bg-[#0a0a0a]"
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor="#FF6B35"
+          onRefresh={() => {
+            setRefreshing(true);
+            void loadCard();
+          }}
+        />
+      }
+    >
       <View className="px-5 pt-10 pb-4">
-        <Text className="text-3xl font-extrabold text-white">
-          Week {card.week_number} Bingo Card
+        <Text className="text-3xl font-extrabold text-white">Weekly Trick Bingo</Text>
+        <Text className="text-[#777] text-sm mt-1">
+          New card in <Text className="text-[#FF6B35] font-bold">{formatCountdown(countdown)}</Text>
         </Text>
-        <Text className="text-[#666] text-sm mt-1">
-          Resets in:{' '}
-          <Text className="text-[#FF6B35] font-bold">{formatCountdown(countdown)}</Text>
+        <Text className="text-gray-400 text-sm leading-5 mt-3">
+          Tap a square, upload a real video, and pass the Judge’s Booth. Only approved proof fills the card.
         </Text>
 
-        {/* XP info strip */}
-        <View className="flex-row mt-3 gap-x-3">
-          <View className="bg-[#1a1a1a] rounded-lg px-3 py-2 flex-row items-center">
-            <Text className="text-[#FFD700] font-bold text-sm">+50 XP</Text>
-            <Text className="text-[#666] text-sm ml-1">per row/col/diag</Text>
+        <View className="flex-row mt-4 gap-2">
+          <View className="flex-1 bg-[#171717] rounded-xl px-3 py-3">
+            <Text className="text-[#FFD700] font-extrabold text-base">+50 XP</Text>
+            <Text className="text-[#777] text-xs mt-1">each verified row, column, or diagonal</Text>
           </View>
-          <View className="bg-[#1a1a1a] rounded-lg px-3 py-2 flex-row items-center">
-            <Text className="text-[#FFD700] font-bold text-sm">+500 XP</Text>
-            <Text className="text-[#666] text-sm ml-1">full card</Text>
+          <View className="flex-1 bg-[#171717] rounded-xl px-3 py-3">
+            <Text className="text-[#FFD700] font-extrabold text-base">+500 XP</Text>
+            <Text className="text-[#777] text-xs mt-1">verified full card bonus</Text>
           </View>
         </View>
 
-        {/* Progress bar */}
         <View className="mt-4">
-          <Text className="text-[#666] text-xs mb-1">
-            {landed.length} / 25 tricks landed
-          </Text>
+          <View className="flex-row justify-between mb-1">
+            <Text className="text-[#777] text-xs">{completedCells.length} / 25 verified</Text>
+            <Text className="text-[#FFD700] text-xs font-bold">{earnedXp} XP earned</Text>
+          </View>
           <View className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
             <View
               className="h-2 bg-[#FF6B35] rounded-full"
-              style={{ width: `${(landed.length / 25) * 100}%` }}
+              style={{ width: `${(completedCells.length / 25) * 100}%` }}
             />
           </View>
         </View>
       </View>
 
-      {/* 5×5 Grid */}
       <View className="px-4">
-        {[0, 1, 2, 3, 4].map((row) => (
+        {[0, 1, 2, 3, 4].map(row => (
           <View key={row} className="flex-row justify-between mb-2">
-            {[0, 1, 2, 3, 4].map((col) => {
-              const index = row * 5 + col;
-              const isLanded = landed.includes(index);
+            {[0, 1, 2, 3, 4].map(column => {
+              const index = row * 5 + column;
+              const verified = completedSet.has(index);
+              const pending = pendingSet.has(index);
+              const highlighted = highlightedCells.has(index);
+              const cellClass = verified
+                ? highlighted
+                  ? 'bg-[#FF6B35] border-[#FFD700] border-2'
+                  : 'bg-[#FF6B35] border-[#FF6B35] border-2'
+                : pending
+                  ? 'bg-[#2B2417] border-[#D8A43A] border-2'
+                  : 'bg-[#1a1a1a] border-[#333] border';
+
               return (
                 <TouchableOpacity
-                  key={col}
-                  onPress={() => handleCellTap(index)}
-                  activeOpacity={0.7}
-                  className={`rounded-lg items-center justify-center p-1 ${cellStyle(index)}`}
+                  key={column}
+                  onPress={() => openProofUpload(index)}
+                  activeOpacity={0.75}
+                  className={`rounded-lg items-center justify-center p-1 ${cellClass}`}
                   style={{ width: '19%', aspectRatio: 1 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${tricks[index]}: ${verified ? 'verified' : pending ? 'pending judging' : 'needs video proof'}`}
                 >
-                  {isLanded && (
-                    <CheckCircle size={14} color="#fff" style={{ marginBottom: 2 }} />
+                  {verified ? (
+                    <CheckCircle size={15} color="#fff" style={{ marginBottom: 2 }} />
+                  ) : pending ? (
+                    <Clock3 size={15} color="#FFD166" style={{ marginBottom: 2 }} />
+                  ) : (
+                    <Video size={14} color="#777" style={{ marginBottom: 2 }} />
                   )}
-                  <Text
-                    className="text-white text-center font-semibold"
-                    style={{ fontSize: 9 }}
-                    numberOfLines={3}
-                  >
-                    {card.tricks[index]}
+                  <Text className="text-white text-center font-semibold" style={{ fontSize: 9 }} numberOfLines={3}>
+                    {tricks[index]}
                   </Text>
                 </TouchableOpacity>
               );
@@ -279,67 +301,21 @@ export default function TrickBingoScreen() {
         ))}
       </View>
 
-      {/* Total XP earned */}
-      {totalXP > 0 && (
-        <View className="mx-5 mt-4 bg-[#1a1a1a] rounded-xl p-4 items-center">
-          <Text className="text-[#666] text-sm">XP Earned This Week</Text>
-          <Text className="text-[#FFD700] text-3xl font-extrabold mt-1">+{totalXP} XP</Text>
-        </View>
-      )}
-
-      {/* Completed lines summary */}
       {completedLines.length > 0 && (
-        <View className="mx-5 mt-3 bg-[#1a1a1a] rounded-xl p-4">
-          <Text className="text-white font-bold mb-1">
-            {completedLines.length} BINGO{completedLines.length > 1 ? 'S' : ''} completed!
+        <View className="mx-5 mt-4 bg-[#171717] rounded-xl p-4">
+          <Text className="text-white font-bold">
+            {completedLines.length} verified BINGO{completedLines.length === 1 ? '' : 'S'}
           </Text>
-          <Text className="text-[#666] text-sm">
-            Keep landing tricks to fill the whole card for the +500 XP bonus.
-          </Text>
+          <Text className="text-[#777] text-sm mt-1">XP shown above comes from server-recorded Bingo rewards only.</Text>
         </View>
       )}
 
-      {/* Toast */}
-      {toastMessage && (
-        <View
-          className="mx-10 mt-4 bg-[#FF6B35] rounded-2xl p-4 items-center"
-          style={{ position: 'absolute', top: 80, left: 40, right: 40 }}
-        >
-          <Text className="text-white text-xl font-extrabold">{toastMessage}</Text>
+      {card.completed && (
+        <View className="mx-5 mt-4 bg-[#2B2417] border border-[#FFD700] rounded-xl p-5 items-center">
+          <Text className="text-[#FFD700] text-2xl font-extrabold">FULL CARD VERIFIED</Text>
+          <Text className="text-white text-sm text-center mt-2">Every square passed community judging.</Text>
         </View>
       )}
-
-      {/* Full-card celebration modal */}
-      <Modal
-        visible={celebrationVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setCelebrationVisible(false)}
-      >
-        <View className="flex-1 bg-black/80 items-center justify-center px-8">
-          <View className="bg-[#1a1a1a] rounded-3xl p-8 items-center w-full">
-            <Text style={{ fontSize: 48 }}>🛹</Text>
-            <Text className="text-[#FFD700] text-4xl font-extrabold mt-2 text-center">
-              FULL CARD!
-            </Text>
-            <Text className="text-white text-lg text-center mt-2">
-              You landed every trick this week!
-            </Text>
-            <View className="mt-4 bg-[#FF6B35] rounded-xl px-6 py-3">
-              <Text className="text-white text-2xl font-extrabold">+500 XP BONUS</Text>
-            </View>
-            <Text className="text-[#666] text-sm mt-4 text-center">
-              Come back next Monday for a fresh card.
-            </Text>
-            <TouchableOpacity
-              onPress={() => setCelebrationVisible(false)}
-              className="mt-6 bg-[#333] rounded-xl px-8 py-3"
-            >
-              <Text className="text-white font-bold text-base">Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
