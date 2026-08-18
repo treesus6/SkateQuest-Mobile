@@ -9,7 +9,8 @@ import { Logger } from '../lib/logger';
 import { SkateSpot } from '../types';
 
 const FALLBACK: [number, number] = [-122.4324, 37.78825];
-const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.0537, 44.6368];
+// Portal Dimension sits beside the actual Newport, Oregon skatepark record.
+const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
 const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
 const PORTAL_DIMENSION_LOGO =
   'https://raw.githubusercontent.com/treesus6/SkateQuest-Mobile/main/assets/supporters/portal-dimension.png';
@@ -172,7 +173,7 @@ export default function MapScreen() {
 
     const sponsorElement = document.createElement('button');
     sponsorElement.type = 'button';
-    sponsorElement.title = 'Portal Dimension — Newport Skatepark';
+    sponsorElement.title = 'Portal Dimension — Newport, Oregon Skatepark';
     sponsorElement.setAttribute('aria-label', 'Open Portal Dimension website');
     sponsorElement.style.width = '58px';
     sponsorElement.style.height = '58px';
@@ -200,7 +201,7 @@ export default function MapScreen() {
       .setLngLat(PORTAL_DIMENSION_COORDINATES)
       .setPopup(
         new mapbox.Popup({ offset: 20 }).setHTML(
-          '<strong>Portal Dimension</strong><br/>Newport Skatepark partner — tap the logo to visit.'
+          '<strong>Portal Dimension</strong><br/>Newport, Oregon skatepark partner — tap the logo to visit.'
         )
       )
       .addTo(map);
