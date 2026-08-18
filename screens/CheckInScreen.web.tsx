@@ -12,7 +12,6 @@ import { ChevronLeft, Clock, MapPin, Users, Zap } from 'lucide-react-native';
 import { useNavigation, useRoute } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
-import { streaksService } from '../lib/streaksService';
 import { getBrowserLocation } from '../lib/browserLocation';
 
 const XP_PER_CHECKIN = 25;
@@ -170,7 +169,6 @@ export default function CheckInScreen() {
           : `Checked in · verified ${Math.round(verifiedDistance)}m from the spot`
       );
       void fetchCheckIns();
-      streaksService.updateOnActivity(user.id).catch(() => undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not verify your location.';
       setLocationMessage(message);
