@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - app/**
+      - assets/**
       - components/**
+      - hooks/**
       - lib/**
       - public/**
       - screens/**
