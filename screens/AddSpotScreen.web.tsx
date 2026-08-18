@@ -15,7 +15,7 @@ import { spotsService } from '../lib/spotsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Logger } from '../lib/logger';
 
-const FALLBACK: [number, number] = [-122.4324, 37.78825];
+const NEUTRAL_CENTER: [number, number] = [0, 20];
 const OBSTACLES = [
   'Stairs',
   'Handrail',
@@ -36,11 +36,14 @@ export default function AddSpotScreen() {
   const container = useRef<any>(null);
   const map = useRef<MapboxGLMap | null>(null);
   const marker = useRef<MapboxGLMarker | null>(null);
+  const routedCoordinates =
+    Number.isFinite(Number(route.params?.longitude)) && Number.isFinite(Number(route.params?.latitude));
   const [coordinates, setCoordinates] = useState<[number, number]>(
-    route.params?.longitude && route.params?.latitude
-      ? [route.params.longitude, route.params.latitude]
-      : FALLBACK
+    routedCoordinates
+      ? [Number(route.params.longitude), Number(route.params.latitude)]
+      : NEUTRAL_CENTER
   );
+  const [hasCoordinates, setHasCoordinates] = useState(routedCoordinates);
   const [name, setName] = useState('');
   const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>(
     'Beginner'
@@ -62,20 +65,28 @@ export default function AddSpotScreen() {
       container: container.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: coordinates,
-      zoom: 14,
+      zoom: hasCoordinates ? 14 : 2,
       attributionControl: true,
     });
-    const pin = new mapbox.Marker({ color: '#d2673d' }).setLngLat(coordinates).addTo(instance);
+    const pin = hasCoordinates
+      ? new mapbox.Marker({ color: '#d2673d' }).setLngLat(coordinates).addTo(instance)
+      : null;
     instance.on('click', event => {
       const next: [number, number] = [event.lngLat.lng, event.lngLat.lat];
       setCoordinates(next);
-      pin.setLngLat(next);
+      setHasCoordinates(true);
+      if (marker.current) {
+        marker.current.setLngLat(next);
+      } else {
+        marker.current = new mapbox.Marker({ color: '#d2673d' }).setLngLat(next).addTo(instance);
+      }
     });
     map.current = instance;
     marker.current = pin;
     return () => {
-      pin.remove();
+      marker.current?.remove();
       instance.remove();
+      marker.current = null;
     };
   }, []);
 
@@ -85,7 +96,14 @@ export default function AddSpotScreen() {
       const position = await getBrowserLocation();
       const next: [number, number] = [position.longitude, position.latitude];
       setCoordinates(next);
-      marker.current?.setLngLat(next);
+      setHasCoordinates(true);
+      if (marker.current) {
+        marker.current.setLngLat(next);
+      } else if (map.current && window.mapboxgl) {
+        marker.current = new window.mapboxgl.Marker({ color: '#d2673d' })
+          .setLngLat(next)
+          .addTo(map.current);
+      }
       map.current?.flyTo({ center: next, zoom: 16 });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Location is unavailable.';
@@ -98,6 +116,10 @@ export default function AddSpotScreen() {
     if (!user) return;
     if (!name.trim()) {
       Alert.alert('Spot name required', 'Enter a name for this skate spot.');
+      return;
+    }
+    if (!hasCoordinates) {
+      Alert.alert('Location required', 'Tap the map or use your current location before saving this spot.');
       return;
     }
     setSubmitting(true);
@@ -142,8 +164,7 @@ export default function AddSpotScreen() {
           Add a real skate spot
         </Text>
         <Text style={{ color: '#AAB1BC' }}>
-          Tap the map or use your current location. Your submission is saved to the existing
-          SkateQuest database.
+          Tap the actual spot on the map or use your current location. SkateQuest will not invent a location for a submission.
         </Text>
         {locationError ? (
           <Text selectable style={{ color: '#FCA5A5' }}>
@@ -157,8 +178,10 @@ export default function AddSpotScreen() {
           onChangeText={setName}
           placeholder="Downtown ledges"
         />
-        <Text style={{ color: '#D1D5DB' }}>
-          Coordinates: {coordinates[1].toFixed(6)}, {coordinates[0].toFixed(6)}
+        <Text style={{ color: hasCoordinates ? '#D1D5DB' : '#FBBF24' }}>
+          {hasCoordinates
+            ? `Coordinates: ${coordinates[1].toFixed(6)}, ${coordinates[0].toFixed(6)}`
+            : 'Choose the real spot location before saving.'}
         </Text>
         <Choice
           label="Difficulty"
