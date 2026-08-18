@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -13,62 +13,107 @@ export default function TrickOfWeekScreen() {
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [user?.id]);
 
   const loadData = async () => {
     const today = new Date().toISOString().split('T')[0];
-    const { data: totw } = await supabase
+    const { data: totw, error: totwError } = await supabase
       .from('trick_of_week')
       .select('*')
       .lte('week_start', today)
       .gte('week_end', today)
-      .single();
+      .maybeSingle();
+
+    if (totwError) {
+      console.error('Trick of the Week load failed:', totwError);
+      setCurrent(null);
+      setSubmissions([]);
+      return;
+    }
+
     setCurrent(totw);
+    if (!totw) {
+      setSubmissions([]);
+      setUserVotes(new Set());
+      return;
+    }
 
-    if (totw) {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const weekNum = Math.ceil(
-        ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
+    const { data: subs, error: subsError } = await supabase
+      .from('trick_of_week_submissions')
+      .select('id, user_id, video_url, thumbnail_url, votes, created_at, profile:profiles!trick_of_week_submissions_user_id_fkey(username)')
+      .eq('totw_id', totw.id)
+      .order('votes', { ascending: false })
+      .order('created_at', { ascending: true });
+
+    if (subsError) {
+      console.error('Trick of the Week submissions failed:', subsError);
+      setSubmissions([]);
+    } else {
+      setSubmissions(
+        (subs || []).map((submission: any) => ({
+          id: submission.id,
+          video_url: submission.video_url,
+          thumbnail_url: submission.thumbnail_url,
+          votes: submission.votes ?? 0,
+          username: submission.profile?.username || 'Skater',
+        }))
       );
+    }
 
-      const { data: subs } = await supabase
-        .from('clip_submissions')
-        .select('*, media(url), profile:user_id(username)')
-        .eq('week_number', weekNum)
-        .eq('year', now.getFullYear())
-        .order('votes', { ascending: false });
+    if (user) {
+      const { data: votes, error: votesError } = await supabase
+        .from('trick_of_week_votes')
+        .select('submission_id')
+        .eq('user_id', user.id);
 
-      const formattedSubs = (subs || []).map((s: any) => ({
-        id: s.id, // Use clip_submission id for voting
-        media_id: s.media_id,
-        votes: s.votes,
-        username: s.profile?.username || 'Skater',
-      }));
-      setSubmissions(formattedSubs);
-
-      if (user) {
-        const { data: votes } = await supabase
-          .from('clip_votes')
-          .select('submission_id')
-          .eq('user_id', user.id);
-        setUserVotes(new Set(votes?.map(v => v.submission_id) || []));
+      if (votesError) {
+        console.error('Trick of the Week votes failed:', votesError);
+        setUserVotes(new Set());
+      } else {
+        setUserVotes(new Set(votes?.map(vote => vote.submission_id).filter(Boolean) || []));
       }
+    } else {
+      setUserVotes(new Set());
     }
   };
 
-  const vote = async (subId: string, _currentVotes: number) => {
+  const vote = async (subId: string) => {
     if (!user || userVotes.has(subId)) return;
+
+    const previousVotes = new Set(userVotes);
+    const previousSubmissions = submissions;
+
     setUserVotes(prev => new Set([...prev, subId]));
     setSubmissions(prev =>
       prev
-        .map(s => (s.id === subId ? { ...s, votes: s.votes + 1 } : s))
+        .map(submission =>
+          submission.id === subId
+            ? { ...submission, votes: (submission.votes ?? 0) + 1 }
+            : submission
+        )
         .sort((a, b) => b.votes - a.votes)
     );
 
-    await supabase.from('clip_votes').insert({ user_id: user.id, submission_id: subId });
-    await supabase.rpc('increment_clip_votes', { submission_id: subId });
+    const { data, error } = await supabase.rpc('vote_trick_of_week', {
+      p_submission_id: subId,
+    });
+
+    if (error) {
+      setUserVotes(previousVotes);
+      setSubmissions(previousSubmissions);
+      Alert.alert('Vote failed', error.message || 'Please try again.');
+      return;
+    }
+
+    const voteCount = Number((data as { votes?: number } | null)?.votes ?? 0);
+    setSubmissions(prev =>
+      prev
+        .map(submission =>
+          submission.id === subId ? { ...submission, votes: voteCount } : submission
+        )
+        .sort((a, b) => b.votes - a.votes)
+    );
   };
 
   if (!current)
@@ -109,7 +154,7 @@ export default function TrickOfWeekScreen() {
 
       <FlatList
         data={submissions}
-        keyExtractor={i => i.id}
+        keyExtractor={item => item.id}
         contentContainerStyle={{ padding: 16, gap: 10 }}
         renderItem={({ item, index }) => (
           <View style={s.card}>
@@ -122,10 +167,12 @@ export default function TrickOfWeekScreen() {
             </View>
             <TouchableOpacity
               style={[s.voteBtn, userVotes.has(item.id) && s.votedBtn]}
-              onPress={() => vote(item.id, item.votes)}
-              disabled={userVotes.has(item.id)}
+              onPress={() => void vote(item.id)}
+              disabled={!user || userVotes.has(item.id)}
             >
-              <Text style={s.voteBtnTxt}>{userVotes.has(item.id) ? '✓ Voted' : 'Vote'}</Text>
+              <Text style={s.voteBtnTxt}>
+                {!user ? 'Sign in' : userVotes.has(item.id) ? '✓ Voted' : 'Vote'}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
