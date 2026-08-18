@@ -7,7 +7,7 @@
  *  - Trick counter (tap to log tricks during the session)
  *  - Spotify mini-player (opens Spotify to a playlist)
  *  - End session → saves to Apple Health / Google Fit
- *  - Awards XP based on session duration
+ *  - Awards XP from server-measured session duration
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -37,7 +37,7 @@ import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { feedService } from '../lib/feedService';
-import { profilesService } from '../lib/profilesService';
+import { supabase } from '../lib/supabase';
 import {
   SessionTimer,
   saveSkateSessionToHealth,
@@ -45,11 +45,9 @@ import {
 } from '../lib/healthService';
 import { RootStackParamList } from '../types';
 
-// XP awarded per minute of skating (capped at 60 min = 120 XP per session)
 const XP_PER_MINUTE = 2;
 const MAX_SESSION_XP = 120;
 
-// Spotify skate playlists (curated — users can also open their own)
 const SKATE_PLAYLISTS = [
   { name: 'Skate Punk Classics', uri: 'spotify:playlist:37i9dQZF1DX9tPFwDMOaN1' },
   { name: 'Hip-Hop Skate Bangers', uri: 'spotify:playlist:37i9dQZF1DXbTxeAdrVG2l' },
@@ -72,11 +70,26 @@ type RouteParams = {
   };
 };
 
+type StartSessionResult = {
+  session_id?: string;
+  started_at?: string;
+  resumed?: boolean;
+};
+
+type FinishSessionResult = {
+  session_id?: string;
+  duration_minutes?: number;
+  xp_awarded?: number;
+  trick_count?: number;
+  already_completed?: boolean;
+};
+
 export default function ActiveSessionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RouteParams, 'ActiveSession'>>();
   const { user } = useAuthStore();
 
+  const spotId = route.params?.spotId;
   const spotName = route.params?.spotName || 'Unknown Spot';
 
   const timerRef = useRef(new SessionTimer());
@@ -86,13 +99,15 @@ export default function ActiveSessionScreen() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [trickCount, setTrickCount] = useState(0);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [serverSessionId, setServerSessionId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [healthSynced, setHealthSynced] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const calories = estimateCalories(Math.floor(elapsedSeconds / 60));
-  const xpEarned = Math.min(Math.floor(elapsedSeconds / 60) * XP_PER_MINUTE, MAX_SESSION_XP);
+  const estimatedXp = Math.min(Math.floor(elapsedSeconds / 60) * XP_PER_MINUTE, MAX_SESSION_XP);
 
   useEffect(() => {
     return () => {
@@ -100,14 +115,33 @@ export default function ActiveSessionScreen() {
     };
   }, []);
 
-  const startSession = useCallback(() => {
-    timerRef.current.start();
-    setIsRunning(true);
-    setSessionStarted(true);
-    intervalRef.current = setInterval(() => {
-      setElapsedSeconds(timerRef.current.getDurationSeconds());
-    }, 1000);
-  }, []);
+  const startSession = useCallback(async () => {
+    if (!user?.id || starting) return;
+    setStarting(true);
+    try {
+      const { data, error } = await supabase.rpc('start_skate_activity_session', {
+        p_spot_id: spotId || null,
+        p_spot_name: spotName,
+      });
+      if (error) throw error;
+
+      const result = (data ?? {}) as StartSessionResult;
+      if (!result.session_id) throw new Error('The server did not create a session.');
+
+      setServerSessionId(result.session_id);
+      timerRef.current.start();
+      setElapsedSeconds(0);
+      setIsRunning(true);
+      setSessionStarted(true);
+      intervalRef.current = setInterval(() => {
+        setElapsedSeconds(timerRef.current.getDurationSeconds());
+      }, 1000);
+    } catch (error: any) {
+      Alert.alert('Could not start session', error?.message || 'Check your connection and try again.');
+    } finally {
+      setStarting(false);
+    }
+  }, [spotId, spotName, starting, user?.id]);
 
   const pauseSession = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -134,27 +168,33 @@ export default function ActiveSessionScreen() {
   };
 
   const saveSession = async () => {
-    if (!user) return;
+    if (!user?.id || !serverSessionId) {
+      Alert.alert('Session not saved', 'This session is missing its verified server record.');
+      return;
+    }
     setSaving(true);
 
-    const durationMinutes = timerRef.current.getDurationMinutes();
-
     try {
-      // Award XP
-      if (xpEarned > 0) {
-        await profilesService.incrementXp(user.id, xpEarned).catch(() => {});
-      }
+      const { data, error } = await supabase.rpc('finish_skate_activity_session', {
+        p_session_id: serverSessionId,
+        p_trick_count: trickCount,
+      });
+      if (error) throw error;
 
-      // Log to activity feed
-      await feedService.create({
+      const result = (data ?? {}) as FinishSessionResult;
+      const durationMinutes = Math.max(0, Number(result.duration_minutes ?? 0));
+      const xpAwarded = Math.max(0, Number(result.xp_awarded ?? 0));
+      const verifiedCalories = estimateCalories(durationMinutes);
+
+      const { error: feedError } = await feedService.create({
         user_id: user.id,
         activity_type: 'skate_session',
         title: `Skated ${spotName} for ${durationMinutes} min`,
-        description: `${trickCount} tricks logged · ~${calories} cal burned`,
-        xp_earned: xpEarned,
-      }).catch(() => {});
+        description: `${trickCount} tricks logged · ~${verifiedCalories} cal burned`,
+        xp_earned: xpAwarded,
+      });
+      if (feedError) console.warn('Verified session saved, but feed activity failed:', feedError.message);
 
-      // Sync to Apple Health / Google Fit
       const startTime = timerRef.current.getStartTime() || new Date();
       const endTime = timerRef.current.getEndTime() || new Date();
 
@@ -162,7 +202,7 @@ export default function ActiveSessionScreen() {
         startTime,
         endTime,
         durationMinutes,
-        caloriesBurned: calories,
+        caloriesBurned: verifiedCalories,
         spotName,
       });
 
@@ -171,11 +211,11 @@ export default function ActiveSessionScreen() {
       setShowEndModal(false);
       Alert.alert(
         'Session Complete!',
-        `${durationMinutes} min · ${trickCount} tricks · +${xpEarned} XP${healthResult.success ? '\n✓ Saved to Health app' : ''}`,
+        `${durationMinutes} min · ${trickCount} tricks · +${xpAwarded} XP${healthResult.success ? '\n✓ Saved to Health app' : ''}`,
         [{ text: 'Awesome!', onPress: () => navigation.goBack() }]
       );
-    } catch (_err) {
-      Alert.alert('Error', 'Could not save session. Your XP may not have been updated.');
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Could not save the verified session.');
     } finally {
       setSaving(false);
     }
@@ -192,7 +232,6 @@ export default function ActiveSessionScreen() {
 
   return (
     <View className="flex-1 bg-gray-900">
-      {/* Header */}
       <View className="bg-gray-800 px-4 pt-12 pb-4">
         <View className="flex-row items-center gap-2 mb-1">
           <MapPin size={14} color="#d2673d" />
@@ -202,7 +241,6 @@ export default function ActiveSessionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20 }}>
-        {/* Timer Display */}
         <View className="bg-gray-800 rounded-3xl p-8 items-center mb-5">
           <View className="flex-row items-center gap-2 mb-2">
             <Clock size={14} color="#9CA3AF" />
@@ -219,7 +257,6 @@ export default function ActiveSessionScreen() {
           )}
         </View>
 
-        {/* Stats Row */}
         <View className="flex-row gap-3 mb-5">
           <View className="flex-1 bg-gray-800 rounded-2xl p-4 items-center">
             <Flame size={20} color="#FF6B35" />
@@ -228,8 +265,8 @@ export default function ActiveSessionScreen() {
           </View>
           <View className="flex-1 bg-gray-800 rounded-2xl p-4 items-center">
             <Zap size={20} color="#FFD700" />
-            <Text className="text-white text-xl font-black mt-1">+{xpEarned}</Text>
-            <Text className="text-gray-400 text-xs">XP earned</Text>
+            <Text className="text-white text-xl font-black mt-1">+{estimatedXp}</Text>
+            <Text className="text-gray-400 text-xs">XP estimate</Text>
           </View>
           <View className="flex-1 bg-gray-800 rounded-2xl p-4 items-center">
             <Trophy size={20} color="#9333EA" />
@@ -238,7 +275,6 @@ export default function ActiveSessionScreen() {
           </View>
         </View>
 
-        {/* Trick Counter */}
         <TouchableOpacity
           className="bg-brand-terracotta rounded-2xl p-5 items-center mb-3 active:opacity-80"
           onPress={logTrick}
@@ -249,7 +285,6 @@ export default function ActiveSessionScreen() {
           <Text className="text-white/70 text-xs">Tap every time you land one</Text>
         </TouchableOpacity>
 
-        {/* Spotify Button */}
         <TouchableOpacity
           className="bg-[#1DB954] rounded-2xl p-4 flex-row items-center justify-center gap-3 mb-3"
           onPress={() => setShowPlaylistModal(true)}
@@ -258,7 +293,6 @@ export default function ActiveSessionScreen() {
           <Text className="text-white font-bold text-base">Open Skate Playlist</Text>
         </TouchableOpacity>
 
-        {/* Health Sync Note */}
         {!healthSynced && (
           <View className="flex-row items-center gap-2 bg-gray-800 rounded-xl px-4 py-3 mb-5">
             <Heart size={14} color="#EF4444" />
@@ -268,14 +302,16 @@ export default function ActiveSessionScreen() {
           </View>
         )}
 
-        {/* Start / Pause / End Controls */}
         {!sessionStarted ? (
           <TouchableOpacity
             className="bg-brand-green rounded-2xl py-5 items-center"
-            onPress={startSession}
+            onPress={() => void startSession()}
+            disabled={starting}
           >
             <Play size={28} color="#fff" fill="#fff" />
-            <Text className="text-white font-black text-lg mt-1">Start Session</Text>
+            <Text className="text-white font-black text-lg mt-1">
+              {starting ? 'Starting...' : 'Start Session'}
+            </Text>
           </TouchableOpacity>
         ) : (
           <View className="flex-row gap-3">
@@ -298,13 +334,12 @@ export default function ActiveSessionScreen() {
         )}
       </ScrollView>
 
-      {/* End Session Confirmation Modal */}
       <Modal visible={showEndModal} transparent animationType="fade" onRequestClose={() => setShowEndModal(false)}>
         <View className="flex-1 bg-black/70 items-center justify-center px-6">
           <View className="bg-gray-800 rounded-3xl p-6 w-full">
             <Text className="text-white text-xl font-black text-center mb-1">End Session?</Text>
             <Text className="text-gray-400 text-sm text-center mb-5">
-              {Math.floor(elapsedSeconds / 60)} min · {trickCount} tricks · +{xpEarned} XP
+              {Math.floor(elapsedSeconds / 60)} min · {trickCount} tricks · up to +{estimatedXp} XP
             </Text>
 
             <View className="bg-gray-700 rounded-2xl p-4 mb-5">
@@ -313,7 +348,7 @@ export default function ActiveSessionScreen() {
                 <Text className="text-white text-sm font-bold">Health Sync</Text>
               </View>
               <Text className="text-gray-400 text-xs">
-                This session will be saved to Apple Health / Google Fit as a Skateboarding workout.
+                Final duration and XP are verified by SkateQuest when you save the session.
               </Text>
             </View>
 
@@ -327,7 +362,7 @@ export default function ActiveSessionScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 className="flex-1 bg-brand-terracotta rounded-xl py-3 items-center"
-                onPress={saveSession}
+                onPress={() => void saveSession()}
                 disabled={saving}
               >
                 <Text className="text-white font-bold">{saving ? 'Saving...' : 'Save & End'}</Text>
@@ -337,7 +372,6 @@ export default function ActiveSessionScreen() {
         </View>
       </Modal>
 
-      {/* Spotify Playlist Modal */}
       <Modal visible={showPlaylistModal} transparent animationType="slide" onRequestClose={() => setShowPlaylistModal(false)}>
         <View className="flex-1 bg-black/60 justify-end">
           <View className="bg-gray-800 rounded-t-3xl p-6">
