@@ -15,28 +15,14 @@ import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';
-import { feedService } from '../lib/feedService';
-import { profilesService } from '../lib/profilesService';
 import { UserTrick, RootStackParamList } from '../types';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 const COMMON_TRICKS = [
-  'Ollie',
-  'Kickflip',
-  'Heelflip',
-  'Pop Shove-it',
-  'Frontside 180',
-  'Backside 180',
-  'Varial Kickflip',
-  'Hardflip',
-  'Treflip',
-  '50-50 Grind',
-  'Boardslide',
-  'Noseslide',
-  'Tailslide',
-  'Feeble Grind',
-  'Smith Grind',
+  'Ollie', 'Kickflip', 'Heelflip', 'Pop Shove-it', 'Frontside 180', 'Backside 180',
+  'Varial Kickflip', 'Hardflip', 'Treflip', '50-50 Grind', 'Boardslide', 'Noseslide',
+  'Tailslide', 'Feeble Grind', 'Smith Grind',
 ];
 
 const STATUS_CONFIG: Record<string, { icon: typeof Zap; color: string; label: string }> = {
@@ -71,20 +57,15 @@ export default function TrickTrackerScreen() {
 
   const addTrick = async () => {
     if (!newTrickName.trim() || !user) return;
-
     try {
       const { error } = await userTricksService.create({
         user_id: user.id,
         trick_name: newTrickName.trim(),
         status: 'trying',
       });
-
       if (error) {
-        if ((error as any).code === '23505') {
-          Alert.alert('Error', 'You already have this trick in your list');
-        } else {
-          throw error;
-        }
+        if ((error as any).code === '23505') Alert.alert('Error', 'You already have this trick in your list');
+        else throw error;
       } else {
         setNewTrickName('');
         setShowAddModal(false);
@@ -103,26 +84,12 @@ export default function TrickTrackerScreen() {
     try {
       const { error } = await userTricksService.updateStatus(trick.id, newStatus);
       if (error) throw error;
-
       if (newStatus === 'landed' && trick.status === 'trying') {
-        await feedService.create({
-          user_id: user.id,
-          activity_type: 'trick_landed',
-          title: `Landed a ${trick.trick_name}!`,
-          xp_earned: 25,
-        });
-
-        const { error: xpError } = await profilesService.incrementXp(user.id, 25);
-        if (xpError) {
-          Alert.alert(
-            'Landed!',
-            `You landed a ${trick.trick_name}. The trick was saved, but the +25 XP reward could not be verified.`
-          );
-        } else {
-          Alert.alert('Congrats!', `You landed a ${trick.trick_name}! +25 XP`);
-        }
+        Alert.alert(
+          'Saved to your tracker',
+          `${trick.trick_name} is marked landed in your personal progress log. Self-reported tracker status does not award XP; verified challenges and proof clips do.`
+        );
       }
-
       refetch();
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -145,202 +112,59 @@ export default function TrickTrackerScreen() {
   const deleteTrick = (trick: UserTrick) => {
     Alert.alert('Delete Trick', `Remove ${trick.trick_name} from your list?`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await userTricksService.delete(trick.id);
-          refetch();
-        },
-      },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await userTricksService.delete(trick.id); refetch(); } },
     ]);
   };
 
   const renderTrick = ({ item }: { item: UserTrick }) => {
     const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.trying;
     const Icon = config.icon;
-
     return (
       <Card>
         <View className="flex-row items-center mb-3">
           <Icon color={config.color} size={28} />
           <View className="flex-1 ml-3">
-            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-              {item.trick_name}
-            </Text>
+            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">{item.trick_name}</Text>
             <View className="flex-row gap-2.5 mt-1">
-              <Text style={{ color: config.color }} className="text-xs font-bold">
-                {config.label}
-              </Text>
+              <Text style={{ color: config.color }} className="text-xs font-bold">{config.label}</Text>
               <Text className="text-xs text-gray-500">{item.attempts} attempts</Text>
             </View>
           </View>
         </View>
-
         <View className="flex-row gap-2">
-          <TouchableOpacity
-            className="flex-1 bg-brand-terracotta py-2.5 rounded-lg items-center"
-            onPress={() => incrementAttempts(item)}
-          >
-            <Text className="text-white text-sm font-bold">+1 Try</Text>
-          </TouchableOpacity>
-
-          {item.status === 'trying' && (
-            <TouchableOpacity
-              className="flex-1 bg-brand-green py-2.5 rounded-lg items-center"
-              onPress={() => updateTrickStatus(item, 'landed')}
-            >
-              <Text className="text-white text-sm font-bold">Landed!</Text>
-            </TouchableOpacity>
-          )}
-
-          {item.status === 'landed' && (
-            <TouchableOpacity
-              className="flex-1 bg-blue-500 py-2.5 rounded-lg items-center"
-              onPress={() => updateTrickStatus(item, 'consistent')}
-            >
-              <Text className="text-white text-sm font-bold">Consistent</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            className="bg-red-500 px-3 py-2.5 rounded-lg items-center"
-            onPress={() => deleteTrick(item)}
-          >
-            <Trash2 color="#fff" size={16} />
-          </TouchableOpacity>
+          <TouchableOpacity className="flex-1 bg-brand-terracotta py-2.5 rounded-lg items-center" onPress={() => incrementAttempts(item)}><Text className="text-white text-sm font-bold">+1 Try</Text></TouchableOpacity>
+          {item.status === 'trying' && <TouchableOpacity className="flex-1 bg-brand-green py-2.5 rounded-lg items-center" onPress={() => updateTrickStatus(item, 'landed')}><Text className="text-white text-sm font-bold">Mark Landed</Text></TouchableOpacity>}
+          {item.status === 'landed' && <TouchableOpacity className="flex-1 bg-blue-500 py-2.5 rounded-lg items-center" onPress={() => updateTrickStatus(item, 'consistent')}><Text className="text-white text-sm font-bold">Mark Consistent</Text></TouchableOpacity>}
+          <TouchableOpacity className="bg-red-500 px-3 py-2.5 rounded-lg items-center" onPress={() => deleteTrick(item)}><Trash2 color="#fff" size={16} /></TouchableOpacity>
         </View>
+        <Text className="text-[11px] text-gray-400 mt-2">Personal tracker status — not community-verified and not an XP reward.</Text>
       </Card>
     );
   };
 
   const trickOfTheDayHeader = (
     <View className="bg-purple-50 dark:bg-purple-950/40 rounded-2xl p-4 mb-4 border border-purple-200 dark:border-purple-800">
-      <View className="flex-row items-center gap-1.5 mb-1">
-        <Star color="#9333EA" size={14} fill="#9333EA" />
-        <Text className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">
-          Trick of the Day
-        </Text>
-      </View>
-      <Text className="text-2xl font-black text-gray-800 dark:text-gray-100 mb-3">
-        {todayTrick}
-      </Text>
+      <View className="flex-row items-center gap-1.5 mb-1"><Star color="#9333EA" size={14} fill="#9333EA" /><Text className="text-purple-600 dark:text-purple-400 text-xs font-bold uppercase tracking-wider">Trick of the Day</Text></View>
+      <Text className="text-2xl font-black text-gray-800 dark:text-gray-100 mb-3">{todayTrick}</Text>
       <View className="flex-row gap-2">
-        {todayTrickDone ? (
-          <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-green-500 py-2.5 rounded-xl">
-            <CheckCircle size={14} color="#fff" />
-            <Text className="text-white text-sm font-bold">Landed!</Text>
-          </View>
-        ) : (
-          <TouchableOpacity
-            className="flex-1 bg-purple-600 py-2.5 rounded-xl items-center"
-            onPress={() => {
-              setNewTrickName(todayTrick);
-              setShowAddModal(true);
-            }}
-          >
-            <Text className="text-white text-sm font-bold">Add to My Tricks</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          className="flex-1 border border-purple-400 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5"
-          onPress={() => navigation.navigate('TrickTutorials', { initialSearch: todayTrick })}
-        >
-          <BookOpen size={13} color="#9333EA" />
-          <Text className="text-purple-600 dark:text-purple-400 text-sm font-bold">Tutorial</Text>
-        </TouchableOpacity>
+        {todayTrickDone ? <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-green-500 py-2.5 rounded-xl"><CheckCircle size={14} color="#fff" /><Text className="text-white text-sm font-bold">In my tracker</Text></View> : <TouchableOpacity className="flex-1 bg-purple-600 py-2.5 rounded-xl items-center" onPress={() => { setNewTrickName(todayTrick); setShowAddModal(true); }}><Text className="text-white text-sm font-bold">Add to My Tricks</Text></TouchableOpacity>}
+        <TouchableOpacity className="flex-1 border border-purple-400 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5" onPress={() => navigation.navigate('TrickTutorials', { initialSearch: todayTrick })}><BookOpen size={13} color="#9333EA" /><Text className="text-purple-600 dark:text-purple-400 text-sm font-bold">Tutorial</Text></TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-terracotta p-4 rounded-b-2xl flex-row justify-between items-center">
-        <Text className="text-2xl font-bold text-white">Trick Tracker</Text>
-        <TouchableOpacity
-          className="bg-white px-4 py-2 rounded-full flex-row items-center gap-1.5"
-          onPress={() => setShowAddModal(true)}
-        >
-          <Plus color="#d2673d" size={14} />
-          <Text className="text-brand-terracotta font-bold text-sm">Add Trick</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={tricks ?? []}
-        renderItem={renderTrick}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16 }}
-        ListHeaderComponent={trickOfTheDayHeader}
-        ListEmptyComponent={
-          <View className="items-center mt-12">
-            <Text className="text-lg font-bold text-gray-400">No tricks yet</Text>
-            <Text className="text-sm text-gray-300 mt-1">Add a trick you're working on!</Text>
-          </View>
-        }
-      />
-
-      <Modal
-        visible={showAddModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View
-            className="bg-white dark:bg-gray-800 rounded-t-2xl p-5"
-            style={{ maxHeight: '80%' }}
-          >
-            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-4">
-              Add New Trick
-            </Text>
-
-            <TextInput
-              className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 text-gray-800 dark:text-gray-100"
-              placeholder="Trick name"
-              placeholderTextColor="#999"
-              value={newTrickName}
-              onChangeText={setNewTrickName}
-              autoFocus
-            />
-
-            <Text className="text-sm font-semibold text-gray-500 mb-2.5">Common Tricks:</Text>
-            <ScrollView>
-              <View className="flex-row flex-wrap gap-2 mb-5">
-                {COMMON_TRICKS.map(trick => (
-                  <TouchableOpacity
-                    key={trick}
-                    className="bg-gray-200 dark:bg-gray-600 px-3 py-1.5 rounded-full"
-                    onPress={() => setNewTrickName(trick)}
-                  >
-                    <Text className="text-sm text-gray-700 dark:text-gray-200">{trick}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            <View className="flex-row gap-2.5">
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowAddModal(false);
-                  setNewTrickName('');
-                }}
-                variant="secondary"
-                size="lg"
-                className="flex-1"
-              />
-              <Button
-                title="Add"
-                onPress={addTrick}
-                variant="primary"
-                size="lg"
-                className="flex-1 bg-brand-green"
-                disabled={!newTrickName.trim()}
-              />
-            </View>
-          </View>
-        </View>
+      <View className="bg-brand-terracotta p-4 rounded-b-2xl flex-row justify-between items-center"><View><Text className="text-2xl font-bold text-white">Trick Tracker</Text><Text className="text-xs text-white/80 mt-0.5">Personal progress log</Text></View><TouchableOpacity className="bg-white px-4 py-2 rounded-full flex-row items-center gap-1.5" onPress={() => setShowAddModal(true)}><Plus color="#d2673d" size={14} /><Text className="text-brand-terracotta font-bold text-sm">Add Trick</Text></TouchableOpacity></View>
+      <FlatList data={tricks ?? []} renderItem={renderTrick} keyExtractor={item => item.id} contentContainerStyle={{ padding: 16 }} ListHeaderComponent={trickOfTheDayHeader} ListEmptyComponent={<View className="items-center mt-12"><Text className="text-lg font-bold text-gray-400">No tricks yet</Text><Text className="text-sm text-gray-300 mt-1">Add a trick you're working on.</Text></View>} />
+      <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+        <View className="flex-1 bg-black/50 justify-end"><View className="bg-white dark:bg-gray-800 rounded-t-2xl p-5" style={{ maxHeight: '80%' }}>
+          <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-4">Add New Trick</Text>
+          <TextInput className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-base mb-4 text-gray-800 dark:text-gray-100" placeholder="Trick name" placeholderTextColor="#999" value={newTrickName} onChangeText={setNewTrickName} autoFocus />
+          <Text className="text-sm font-semibold text-gray-500 mb-2.5">Common Tricks:</Text>
+          <ScrollView><View className="flex-row flex-wrap gap-2 mb-5">{COMMON_TRICKS.map(trick => <TouchableOpacity key={trick} className="bg-gray-200 dark:bg-gray-600 px-3 py-1.5 rounded-full" onPress={() => setNewTrickName(trick)}><Text className="text-sm text-gray-700 dark:text-gray-200">{trick}</Text></TouchableOpacity>)}</View></ScrollView>
+          <View className="flex-row gap-2.5"><Button title="Cancel" onPress={() => { setShowAddModal(false); setNewTrickName(''); }} variant="secondary" size="lg" className="flex-1"/><Button title="Add" onPress={addTrick} variant="primary" size="lg" className="flex-1 bg-brand-green" disabled={!newTrickName.trim()}/></View>
+        </View></View>
       </Modal>
     </View>
   );
