@@ -85,9 +85,13 @@ export default function UploadMediaScreen() {
   };
 
   const handleUpload = async () => {
-    if (!mediaUri || !user) return;
+    if (!mediaUri || !user || !mediaType) return;
     setUploading(true);
     try {
+      if ((totwId || bountyId) && mediaType !== 'video') {
+        throw new Error('This challenge requires video proof. Choose or record a video clip.');
+      }
+
       const mediaResult =
         mediaType === 'photo'
           ? await uploadImage(mediaUri, 'user_photos', user.id)
@@ -98,42 +102,43 @@ export default function UploadMediaScreen() {
         trickName: trickName || analysis?.trickName || undefined,
       });
 
-      if (analysis && user)
+      if (analysis) {
         await saveAnalysisResult(
           user.id,
           analysis.trickName ?? 'Unknown Trick',
           analysis,
           mediaUri
         );
+      }
 
       if (totwId) {
-        const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const weekNum = Math.ceil(
-          ((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7
-        );
-
-        await supabase.from('clip_submissions').insert({
-          user_id: user.id,
-          media_id: media.id,
-          week_number: weekNum,
-          year: now.getFullYear(),
-          trick_name: trickName || analysis?.trickName || 'New Trick',
-          votes: 0,
-        });
+        const { error: totwError } = await supabase
+          .from('trick_of_week_submissions')
+          .upsert(
+            {
+              user_id: user.id,
+              totw_id: totwId,
+              video_url: media.url,
+              thumbnail_url: media.thumbnail_url ?? null,
+            },
+            { onConflict: 'user_id,totw_id' }
+          );
+        if (totwError) throw totwError;
       }
 
+      let bountyReward = 0;
       if (bountyId) {
-        await supabase.from('bounty_submissions').insert({
-          bounty_id: bountyId,
-          user_id: user.id,
-          media_id: media.id,
-          status: 'pending',
+        const { data: bountyResult, error: bountyError } = await supabase.rpc('claim_bounty', {
+          p_bounty_id: bountyId,
+          p_media_id: media.id,
         });
+        if (bountyError) throw bountyError;
+        bountyReward = Number((bountyResult as { xp_reward?: number } | null)?.xp_reward ?? 0);
       }
 
-      // Activity feed creation is handled by the service which now uses the correct table
-      await feedService.create({
+      // Feed creation is separate from the durable media row. The live activity_feed table
+      // now exists; a bounty claim also creates its own bounty_claimed activity in the RPC.
+      const { error: feedError } = await feedService.create({
         user_id: user.id,
         activity_type: 'media_uploaded',
         title:
@@ -144,13 +149,22 @@ export default function UploadMediaScreen() {
         xp_earned: 10,
         media_id: media.id,
       });
+      if (feedError) {
+        console.warn('Media uploaded but feed activity could not be created:', feedError.message);
+      }
 
-      Alert.alert('Success', 'Media uploaded!', [
+      const successMessage = bountyId
+        ? `Media uploaded and bounty claimed${bountyReward ? ` for +${bountyReward} XP` : ''}!`
+        : totwId
+          ? 'Media uploaded and Trick of the Week entry submitted!'
+          : 'Media uploaded!';
+
+      Alert.alert('Success', successMessage, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
       console.error('Upload error:', error);
-      Alert.alert('Error', 'Failed to upload media');
+      Alert.alert('Error', error?.message || 'Failed to upload media');
     } finally {
       setUploading(false);
     }
