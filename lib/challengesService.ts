@@ -5,10 +5,14 @@ import { ServiceError } from './serviceError';
 export const challengesService = {
   async getActive() {
     try {
+      const now = new Date().toISOString();
       return await supabase
         .from('challenges')
         .select('*')
-        .eq('status', 'active')
+        .eq('active', true)
+        .eq('status', 'pending')
+        .or(`starts_at.is.null,starts_at.lte.${now}`)
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
         .order('created_at', { ascending: false });
     } catch (error) {
       Logger.error('challengesService.getActive failed', error);
