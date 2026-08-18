@@ -5,7 +5,6 @@ import { ChevronLeft, Clock, MapPin, Users, Zap, CalendarDays } from 'lucide-rea
 import { useNavigation, useRoute } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
-import { streaksService } from '../lib/streaksService';
 
 type RouteParams = { spotId: string; spotName: string; latitude: number; longitude: number };
 type CheckInRecord = { id: string; park_id: string; park_name?: string | null; user_id: string; latitude: number; longitude: number; created_at: string; profiles?: { username?: string } | null };
@@ -84,7 +83,6 @@ export default function CheckInScreen() {
       setShowSessionPrompt(true);
       setLocationMessage(`Checked in${result.xp_awarded ? ` — +${result.xp_awarded} XP` : ''} · ${Math.round(result.distance_meters ?? 0)}m away`);
       await fetchCheckIns();
-      streaksService.updateOnActivity(user.id).catch(() => undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not verify your location.';
       setLocationMessage(message);
