@@ -11,7 +11,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNetworkStore } from '../stores/useNetworkStore';
-import { ChallengeProvider } from '../contexts/ChallengeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
 import Toast from '../components/Toast';
@@ -28,7 +27,6 @@ import { supabase } from '../lib/supabase';
 
 import '../global.css';
 
-// ─── Sentry: init before any component renders ───────────────────────────────
 const sentryDsn =
   (Constants.expoConfig?.extra?.sentryDsn as string | undefined) ??
   process.env.EXPO_PUBLIC_SENTRY_DSN;
@@ -52,12 +50,9 @@ Sentry.init({
     return event;
   },
 });
-// ─────────────────────────────────────────────────────────────────────────────
 
-// Keep splash visible while auth resolves
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// ─── Auth Guard ───────────────────────────────────────────────────────────────
 function AuthGuard() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
@@ -71,16 +66,12 @@ function AuthGuard() {
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
     if (!user && !inAuthGroup) {
-      // Not signed in — send to login
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {
-      // Normal signed-in users leave auth screens, but a recovery link creates
-      // a temporary authenticated session that must remain on reset-password.
       router.replace('/(tabs)/');
     }
   }, [user, loading, segments]);
 
-  // Hide splash once auth state is known
   useEffect(() => {
     if (!loading) {
       SplashScreen.hideAsync().catch(() => {});
@@ -97,7 +88,6 @@ function AuthGuard() {
 
   return <Slot />;
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 function RootLayout() {
   useEffect(() => {
@@ -108,9 +98,6 @@ function RootLayout() {
       try {
         validateEnvironment();
 
-        // expo-system-ui and expo-updates are native app services. The PWA has
-        // its own HTML theme/service-worker update path and should not let a
-        // native-only API abort the rest of web initialization.
         if (Platform.OS !== 'web') {
           await SystemUI.setBackgroundColorAsync('#d2673d');
         }
@@ -165,18 +152,15 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ErrorBoundary>
-          <ChallengeProvider>
-            <StatusBar style="light" />
-            <OfflineIndicator />
-            <Toast />
-            <PwaInstallGuide />
-            <AuthGuard />
-          </ChallengeProvider>
+          <StatusBar style="light" />
+          <OfflineIndicator />
+          <Toast />
+          <PwaInstallGuide />
+          <AuthGuard />
         </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-// Wrap entire app with Sentry for native crash reporting
 export default Sentry.wrap(RootLayout);
