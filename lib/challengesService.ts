@@ -3,17 +3,24 @@ import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
 export const challengesService = {
-  async getActive() {
+  async getActive(userId?: string) {
     try {
       const now = new Date().toISOString();
-      return await supabase
+      let query = supabase
         .from('challenges')
         .select('*')
         .eq('active', true)
         .eq('status', 'pending')
         .or(`starts_at.is.null,starts_at.lte.${now}`)
-        .or(`expires_at.is.null,expires_at.gt.${now}`)
-        .order('created_at', { ascending: false });
+        .or(`expires_at.is.null,expires_at.gt.${now}`);
+
+      if (userId) {
+        query = query.or(`challenger_id.is.null,challenger_id.eq.${userId}`);
+      } else {
+        query = query.is('challenger_id', null);
+      }
+
+      return await query.order('created_at', { ascending: false });
     } catch (error) {
       Logger.error('challengesService.getActive failed', error);
       throw new ServiceError('Failed to fetch active challenges', 'CHALLENGES_GET_ACTIVE_FAILED', error);
