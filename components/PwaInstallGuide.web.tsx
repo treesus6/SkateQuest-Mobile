@@ -8,19 +8,24 @@ const serviceWorkerScope = `${webBaseUrl || ''}/`;
 
 export default function PwaInstallGuide() {
   const [visible, setVisible] = useState(false);
+
   useEffect(() => {
     if ('serviceWorker' in navigator && window.isSecureContext) {
       navigator.serviceWorker
-        .register(serviceWorkerPath, { scope: serviceWorkerScope })
+        .register(serviceWorkerPath, { scope: serviceWorkerScope, updateViaCache: 'none' })
+        .then(registration => registration.update())
         .catch(error => console.error('Service worker registration failed', error));
     }
+
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone;
     const isiPhone = /iPhone|iPod/.test(navigator.userAgent);
     setVisible(Boolean(isiPhone && !standalone && localStorage.getItem(DISMISSED_KEY) !== 'true'));
   }, []);
+
   if (!visible) return null;
+
   return (
     <View
       accessibilityRole="alert"
