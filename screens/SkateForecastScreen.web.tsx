@@ -26,23 +26,22 @@ export default function SkateForecastScreen() {
       setLoading(true);
       setLocationMessage(null);
 
-      let lat = 37.78825;
-      let lon = -122.4324;
+      let loc;
       try {
-        const loc = await getBrowserLocation();
-        lat = loc.latitude;
-        lon = loc.longitude;
+        loc = await getBrowserLocation();
       } catch (error) {
+        setForecasts([]);
         setLocationMessage(
           error instanceof Error
             ? error.message
-            : 'Location unavailable. Showing the default area until location is enabled.'
+            : 'Location is required to show a local skate forecast.'
         );
+        return;
       }
 
       const { data: spots, error: spotsError } = await supabase.rpc('get_nearby_spots', {
-        lat,
-        lng: lon,
+        lat: loc.latitude,
+        lng: loc.longitude,
         radius_meters: 50000,
       });
       if (spotsError) throw spotsError;
@@ -200,7 +199,11 @@ export default function SkateForecastScreen() {
             ))
           ) : (
             <View style={s.empty}>
-              <Text style={s.emptyText}>No spots found nearby. Try adding some spots to the map!</Text>
+              <Text style={s.emptyText}>
+                {locationMessage
+                  ? 'Enable location, then pull down to retry the local skate forecast.'
+                  : 'No skate spots were found within 50 km of your current location.'}
+              </Text>
             </View>
           )}
         </View>
