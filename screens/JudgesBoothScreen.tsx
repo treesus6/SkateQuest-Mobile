@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { ThumbsDown, ThumbsUp } from 'lucide-react-native';
 import { Video, ResizeMode } from '../components/VideoPlayer';
-import { ThumbsUp, ThumbsDown } from 'lucide-react-native';
-import { challengesService } from '../lib/challengesService';
-import { useAuthStore } from '../stores/useAuthStore';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import { challengesService } from '../lib/challengesService';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
+type SubmissionSource = 'challenge' | 'bounty';
+
 interface Submission {
   id: string;
-  challenge_id: string | null;
+  source: SubmissionSource;
   user_id: string;
   video_url: string;
-  username?: string;
-  challenge_description?: string;
+  username: string;
+  title: string;
+  subtitle?: string;
+  submitted_at: string;
   stomped_votes: number;
   bail_votes: number;
 }
@@ -23,17 +27,14 @@ interface Submission {
 interface JudgeResult {
   success?: boolean;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED';
-  stomped_votes?: number;
-  bail_votes?: number;
   xp_earned?: number;
+  judge_xp?: number;
   bonus_xp?: number;
-  judge_vote_count?: number;
 }
 
 export default function JudgesBoothScreen() {
   const { user } = useAuthStore();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
   const [votesThisSession, setVotesThisSession] = useState(0);
@@ -52,48 +53,99 @@ export default function JudgesBoothScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('challenge_submissions')
-        .select(
-          `*, profiles!challenge_submissions_user_id_fkey(username), challenges!challenge_submissions_challenge_id_fkey(description)`
-        )
-        .eq('status', 'PENDING')
-        .neq('user_id', user.id)
-        .order('submitted_at', { ascending: true })
-        .limit(50);
+      const [challengeResponse, bountyResponse] = await Promise.all([
+        supabase
+          .from('challenge_submissions')
+          .select(
+            `id,user_id,video_url,submitted_at,stomped_votes,bail_votes,profiles!challenge_submissions_user_id_fkey(username),challenges!challenge_submissions_challenge_id_fkey(description)`
+          )
+          .eq('status', 'PENDING')
+          .neq('user_id', user.id)
+          .order('submitted_at', { ascending: true })
+          .limit(50),
+        supabase
+          .from('bounty_submissions')
+          .select(
+            `id,user_id,video_url,trick_name,submitted_at,stomped_votes,bail_votes,profiles!bounty_submissions_user_id_fkey(username),bounties!bounty_submissions_bounty_id_fkey(park_name,xp_reward)`
+          )
+          .eq('status', 'PENDING')
+          .neq('user_id', user.id)
+          .order('submitted_at', { ascending: true })
+          .limit(50),
+      ]);
 
-      if (error) throw error;
+      if (challengeResponse.error) throw challengeResponse.error;
+      if (bountyResponse.error) throw bountyResponse.error;
 
-      const pending = data ?? [];
-      const ids = pending.map((item: any) => item.id);
-      let votedIds = new Set<string>();
+      const challengeRows = challengeResponse.data ?? [];
+      const bountyRows = bountyResponse.data ?? [];
+      const challengeIds = challengeRows.map((row: any) => row.id);
+      const bountyIds = bountyRows.map((row: any) => row.id);
 
-      if (ids.length) {
-        const { data: votes, error: votesError } = await supabase
-          .from('submission_votes')
-          .select('submission_id')
-          .eq('user_id', user.id)
-          .in('submission_id', ids);
-        if (votesError) throw votesError;
-        votedIds = new Set((votes ?? []).map((vote: any) => vote.submission_id));
-      }
+      const [challengeVotesResponse, bountyVotesResponse] = await Promise.all([
+        challengeIds.length
+          ? supabase
+              .from('submission_votes')
+              .select('submission_id')
+              .eq('user_id', user.id)
+              .in('submission_id', challengeIds)
+          : Promise.resolve({ data: [], error: null }),
+        bountyIds.length
+          ? supabase
+              .from('bounty_submission_votes')
+              .select('submission_id')
+              .eq('user_id', user.id)
+              .in('submission_id', bountyIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
-      const formatted: Submission[] = pending
-        .filter((item: any) => !votedIds.has(item.id))
-        .slice(0, 20)
-        .map((item: any) => ({
-          id: item.id,
-          challenge_id: item.challenge_id,
-          user_id: item.user_id,
-          video_url: item.video_url,
-          username: item.profiles?.username || 'Unknown',
-          challenge_description: item.challenges?.description || 'Skate challenge submission',
-          stomped_votes: item.stomped_votes ?? 0,
-          bail_votes: item.bail_votes ?? 0,
+      if (challengeVotesResponse.error) throw challengeVotesResponse.error;
+      if (bountyVotesResponse.error) throw bountyVotesResponse.error;
+
+      const judgedChallenges = new Set(
+        (challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+      const judgedBounties = new Set(
+        (bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+
+      const challengeQueue: Submission[] = challengeRows
+        .filter((row: any) => !judgedChallenges.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          source: 'challenge',
+          user_id: row.user_id,
+          video_url: row.video_url,
+          username: row.profiles?.username || 'Unknown',
+          title: row.challenges?.description || 'Skate challenge submission',
+          subtitle: 'Challenge proof',
+          submitted_at: row.submitted_at,
+          stomped_votes: row.stomped_votes ?? 0,
+          bail_votes: row.bail_votes ?? 0,
         }));
 
-      setCurrentIndex(0);
-      setSubmissions(formatted);
+      const bountyQueue: Submission[] = bountyRows
+        .filter((row: any) => !judgedBounties.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          source: 'bounty',
+          user_id: row.user_id,
+          video_url: row.video_url,
+          username: row.profiles?.username || 'Unknown',
+          title: row.trick_name,
+          subtitle: `Bounty proof${row.bounties?.park_name ? ` · ${row.bounties.park_name}` : ''}${row.bounties?.xp_reward ? ` · ${row.bounties.xp_reward} XP` : ''}`,
+          submitted_at: row.submitted_at,
+          stomped_votes: row.stomped_votes ?? 0,
+          bail_votes: row.bail_votes ?? 0,
+        }));
+
+      setSubmissions(
+        [...challengeQueue, ...bountyQueue]
+          .sort(
+            (a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime()
+          )
+          .slice(0, 20)
+      );
     } catch (error) {
       console.error('Error fetching submissions:', error);
       Alert.alert('Could not load judging queue', 'Check your connection and try again.');
@@ -102,51 +154,57 @@ export default function JudgesBoothScreen() {
     }
   };
 
+  const removeCurrentSubmission = (submissionId: string) => {
+    setSubmissions(current => current.filter(item => item.id !== submissionId));
+  };
+
   const handleVote = async (vote: 'stomped' | 'bail') => {
     if (voting || !user?.id || submissions.length === 0) return;
 
-    const submission = submissions[currentIndex];
+    const submission = submissions[0];
     setVoting(true);
     try {
-      const { data, error: voteError } = await challengesService.vote(submission.id, user.id, vote);
-      if (voteError) throw voteError;
+      const response =
+        submission.source === 'bounty'
+          ? await supabase.rpc('judge_bounty_submission', {
+              p_submission_id: submission.id,
+              p_vote: vote,
+            })
+          : await challengesService.vote(submission.id, user.id, vote);
 
-      const result = (data ?? {}) as JudgeResult;
-      const earned = result.xp_earned ?? 10;
-      const bonus = result.bonus_xp ?? 0;
+      if (response.error) throw response.error;
 
-      const newVoteCount = votesThisSession + 1;
-      const newXpEarned = xpEarned + earned;
-      setVotesThisSession(newVoteCount);
-      setXpEarned(newXpEarned);
+      const result = (response.data ?? {}) as JudgeResult;
+      const earned = Number(result.judge_xp ?? result.xp_earned ?? 10);
+      const bonus = Number(result.bonus_xp ?? 0);
+      const nextVotes = votesThisSession + 1;
+      const nextXp = xpEarned + earned;
+
+      setVotesThisSession(nextVotes);
+      setXpEarned(nextXp);
+      removeCurrentSubmission(submission.id);
 
       if (bonus > 0) {
-        Alert.alert('Bonus!', `+${bonus} XP bonus for your 5th judging vote!`);
+        Alert.alert('Judging Bonus!', `+${bonus} bonus XP earned.`);
       }
-
-      setSubmissions(current => current.filter(item => item.id !== submission.id));
-      setCurrentIndex(0);
 
       if (submissions.length === 1) {
         Alert.alert(
-          'All Done!',
-          `You've reviewed everything currently available.\n\nXP earned this session: ${newXpEarned}`,
-          [{ text: 'Awesome!', onPress: () => void fetchPendingSubmissions() }]
+          'All Caught Up!',
+          `You reviewed everything currently available.\n\nXP earned this session: ${nextXp}`,
+          [{ text: 'Nice', onPress: () => void fetchPendingSubmissions() }]
         );
       }
     } catch (error: any) {
-      const message = String(error?.message ?? error ?? '');
-      if (message.toLowerCase().includes('already voted')) {
-        Alert.alert('Already Voted', "You've already judged this submission.");
-        setSubmissions(current => current.filter(item => item.id !== submission.id));
-        setCurrentIndex(0);
-      } else if (message.toLowerCase().includes('own submission')) {
-        Alert.alert('Cannot Vote', "You can't vote on your own submission.");
-        setSubmissions(current => current.filter(item => item.id !== submission.id));
-        setCurrentIndex(0);
-      } else if (message.toLowerCase().includes('no longer pending')) {
-        setSubmissions(current => current.filter(item => item.id !== submission.id));
-        setCurrentIndex(0);
+      const message = String(error?.message ?? error ?? '').toLowerCase();
+      if (message.includes('already voted')) {
+        Alert.alert('Already Voted', "You've already judged this clip.");
+        removeCurrentSubmission(submission.id);
+      } else if (message.includes('own submission')) {
+        Alert.alert('Cannot Vote', "You can't judge your own clip.");
+        removeCurrentSubmission(submission.id);
+      } else if (message.includes('no longer pending')) {
+        removeCurrentSubmission(submission.id);
       } else {
         Alert.alert('Error', 'Failed to submit vote. Please try again.');
       }
@@ -166,15 +224,15 @@ export default function JudgesBoothScreen() {
   if (submissions.length === 0) {
     return (
       <View className="flex-1 bg-gray-900 justify-center items-center px-6">
-        <Text className="text-lg font-bold text-white mb-2">No submissions to review!</Text>
+        <Text className="text-lg font-bold text-white mb-2">No clips to judge!</Text>
         <Text className="text-sm text-gray-500 text-center">
-          You're caught up. New real clip submissions will appear here when they're ready for judging.
+          You're caught up. New challenge and bounty proof clips will show here when skaters submit them.
         </Text>
       </View>
     );
   }
 
-  const currentSubmission = submissions[Math.min(currentIndex, submissions.length - 1)];
+  const currentSubmission = submissions[0];
 
   return (
     <View className="flex-1 bg-black">
@@ -201,28 +259,32 @@ export default function JudgesBoothScreen() {
         }}
       >
         <View className="flex-row justify-between items-center">
-          <Text
-            className="text-2xl font-bold text-white"
-            style={{
-              textShadowColor: 'rgba(0,0,0,0.75)',
-              textShadowOffset: { width: -1, height: 1 },
-              textShadowRadius: 10,
-            }}
-          >
-            Judge's Booth
-          </Text>
-          <Text className="text-base text-white font-semibold">
-            {currentIndex + 1} / {submissions.length}
-          </Text>
+          <View>
+            <Text
+              className="text-2xl font-bold text-white"
+              style={{
+                textShadowColor: 'rgba(0,0,0,0.75)',
+                textShadowOffset: { width: -1, height: 1 },
+                textShadowRadius: 10,
+              }}
+            >
+              Judge's Booth
+            </Text>
+            <Text className="text-xs font-bold text-brand-terracotta mt-1">
+              {currentSubmission.source === 'bounty' ? 'BOUNTY PROOF' : 'CHALLENGE PROOF'}
+            </Text>
+          </View>
+          <Text className="text-base text-white font-semibold">{submissions.length} left</Text>
         </View>
 
         <View className="bg-black/60 p-4 rounded-xl">
           <Text className="text-lg font-bold text-brand-terracotta mb-2">
             @{currentSubmission.username}
           </Text>
-          <Text className="text-base text-white font-semibold mb-3">
-            {currentSubmission.challenge_description}
-          </Text>
+          <Text className="text-base text-white font-semibold mb-1">{currentSubmission.title}</Text>
+          {currentSubmission.subtitle ? (
+            <Text className="text-sm text-gray-300 mb-3">{currentSubmission.subtitle}</Text>
+          ) : null}
           <View className="flex-row gap-5">
             <View className="flex-row items-center gap-1">
               <ThumbsUp color="#4ade80" size={16} />
@@ -258,12 +320,12 @@ export default function JudgesBoothScreen() {
 
         <View className="bg-black/70 py-2 px-4 rounded-full self-center">
           <Text className="text-sm font-bold text-green-400">
-            Votes: {votesThisSession} | XP: +{xpEarned}
+            Votes this session: {votesThisSession} | XP: +{xpEarned}
           </Text>
         </View>
       </View>
 
-      {voting && (
+      {voting ? (
         <View
           style={{
             position: 'absolute',
@@ -278,7 +340,7 @@ export default function JudgesBoothScreen() {
         >
           <ActivityIndicator size="large" color="#fff" />
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
