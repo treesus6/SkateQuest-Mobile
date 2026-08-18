@@ -1,4 +1,4 @@
-const CACHE = 'skatequest-shell-v4';
+const CACHE = 'skatequest-shell-v5';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const scopedPath = path => `${SCOPE_PATH.replace(/\/$/, '')}${path}`;
 const SHELL = [
@@ -7,6 +7,11 @@ const SHELL = [
   scopedPath('/icon-192.svg'),
   scopedPath('/icon-512.svg'),
 ];
+
+function isSensitiveAuthNavigation(url) {
+  const path = url.pathname.replace(SCOPE_PATH.replace(/\/$/, ''), '') || '/';
+  return path === '/callback' || path === '/reset-password';
+}
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -28,7 +33,15 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  // Authentication callback/recovery URLs can contain one-time codes or tokens.
+  // Never persist those request URLs in Cache Storage.
+  if (request.mode === 'navigate' && isSensitiveAuthNavigation(url)) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Always prefer the newest page/app code. Fall back to cache only when offline.
   if (request.mode === 'navigate' || ['script', 'style'].includes(request.destination)) {
