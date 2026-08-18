@@ -69,19 +69,19 @@ export default function UploadMediaScreen() {
       if (challengeId) { const { error } = await supabase.rpc('submit_challenge_proof', { p_challenge_id: challengeId, p_media_id: media.id }); if (error) throw error; }
       if (totwId) { const { error } = await supabase.from('trick_of_week_submissions').upsert({ user_id: user.id, totw_id: totwId, video_url: media.url, thumbnail_url: media.thumbnail_url ?? null }, { onConflict: 'user_id,totw_id' }); if (error) throw error; }
       if (isClipOfWeek) { const { error } = await supabase.from('clip_of_week_submissions').insert({ user_id: user.id, media_id: media.id, week_number: clipWeek, year: clipYear, trick_name: trickName.trim() || null }); if (error) throw error; }
-      if (bountyId) { const { error } = await supabase.rpc('claim_bounty', { p_bounty_id: bountyId, p_media_id: media.id }); if (error) throw error; }
+      if (bountyId) { const { error } = await supabase.rpc('submit_bounty_claim', { p_bounty_id: bountyId, p_media_id: media.id }); if (error) throw error; }
       if (!bountyId) {
         const feedTitle = challengeId ? `Submitted challenge proof${trickName.trim() ? `: ${trickName.trim()}` : ''}` : totwId ? `Submitted Trick of the Week clip${trickName.trim() ? `: ${trickName.trim()}` : ''}` : isClipOfWeek ? `Submitted Clip of the Week${trickName.trim() ? `: ${trickName.trim()}` : ''}` : trickName.trim() ? `Posted a ${trickName.trim()} clip` : `Posted a new ${mediaType}`;
         const { error: feedError } = await feedService.create({ user_id: user.id, activity_type: 'media_uploaded', title: feedTitle, description: caption || analysis?.style_notes || undefined, xp_earned: 10, media_id: media.id });
         if (feedError) console.warn('Media uploaded but feed activity could not be created:', feedError.message);
       }
-      const successMessage = challengeId ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.' : bountyId ? 'Bounty claimed with your uploaded video proof and XP awarded.' : totwId ? 'Media uploaded and Trick of the Week entry submitted!' : isClipOfWeek ? 'Media uploaded and Clip of the Week entry submitted!' : 'Media uploaded!';
+      const successMessage = challengeId ? 'Challenge proof uploaded and sent to the Judge’s Booth. Challenge XP is awarded only after community approval.' : bountyId ? 'Bounty proof uploaded and sent to the Judge’s Booth. Bounty XP is awarded only after community approval.' : totwId ? 'Media uploaded and Trick of the Week entry submitted!' : isClipOfWeek ? 'Media uploaded and Clip of the Week entry submitted!' : 'Media uploaded!';
       Alert.alert('Success', successMessage, [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (error: any) { console.error('Upload error:', error); Alert.alert('Error', error?.message || 'Failed to upload media'); }
     finally { setUploading(false); }
   };
 
-  const submitButtonTitle = uploading ? 'Uploading...' : challengeId ? 'Submit Challenge Proof' : bountyId ? 'Claim Bounty With Video' : 'Upload';
+  const submitButtonTitle = uploading ? 'Uploading...' : challengeId ? 'Submit Challenge Proof' : bountyId ? 'Submit Bounty Proof' : 'Upload';
   return (
     <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
       <View className="bg-brand-terracotta p-4 flex-row justify-between items-center"><TouchableOpacity onPress={() => navigation.goBack()}><Text className="text-white text-base">← Back</Text></TouchableOpacity><Text className="text-xl font-bold text-white">Upload Media</Text><View style={{ width: 60 }} /></View>
