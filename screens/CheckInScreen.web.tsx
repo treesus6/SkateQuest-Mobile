@@ -161,8 +161,8 @@ export default function CheckInScreen() {
         .catch(() => undefined);
 
       const { error: xpError } = await supabase.rpc('increment_xp', {
-        user_id: user.id,
-        amount: XP_PER_CHECKIN,
+        p_user_id: user.id,
+        p_xp_amount: XP_PER_CHECKIN,
       });
 
       setAlreadyCheckedIn(true);
