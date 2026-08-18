@@ -20,6 +20,7 @@ import { getCurrentLocation } from '../lib/currentLocation';
 import { supabase } from '../lib/supabase';
 import { SkateEvents } from '../lib/analytics';
 import QRTrickReviewPanel from '../components/QRTrickReviewPanel';
+import QRSupportFundCard from '../components/QRSupportFundCard';
 
 function SkateboardQRCode({ value }: { value: string }) {
   return (
@@ -180,6 +181,7 @@ export default function HideQRCodeScreenVerified() {
           <Text className="text-gray-300 text-sm mt-2">Every hidden QR costs $2. The payment is tracked in SkateQuest's skateboard support fund for boards, gear, and youth skate access. A QR cannot be generated until Stripe confirms payment.</Text>
         </View>
 
+        <QRSupportFundCard />
         <QRTrickReviewPanel />
 
         <View className={`rounded-xl p-4 mb-5 border ${purchaseId ? 'bg-emerald-500/10 border-emerald-700' : 'bg-[#121826] border-[#2A3344]'}`}>
