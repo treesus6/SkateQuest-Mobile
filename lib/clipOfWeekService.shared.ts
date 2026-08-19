@@ -15,6 +15,19 @@ export interface WeeklyClip {
   profiles: { username: string } | null;
 }
 
+type ClipSource = {
+  id: string;
+  video_url?: string | null;
+  url?: string | null;
+  title?: string | null;
+  caption?: string | null;
+  trick_name?: string | null;
+  park_name?: string | null;
+  thumbnail_url?: string | null;
+};
+
+type ProfileSource = { id: string; username?: string | null };
+
 function currentWeekStart(): string {
   const now = new Date();
   const day = now.getDay();
@@ -58,9 +71,15 @@ export const clipOfWeekService = {
       const loadError = profilesResult.error || mediaResult.error || skateTvResult.error || votesResult.error;
       if (loadError) return { data: null, error: loadError };
 
-      const profiles = new Map((profilesResult.data ?? []).map((row: any) => [row.id, row]));
-      const media = new Map((mediaResult.data ?? []).map((row: any) => [row.id, row]));
-      const skateTv = new Map((skateTvResult.data ?? []).map((row: any) => [row.id, row]));
+      const profiles = new Map<string, ProfileSource>(
+        ((profilesResult.data ?? []) as ProfileSource[]).map(row => [row.id, row])
+      );
+      const media = new Map<string, ClipSource>(
+        ((mediaResult.data ?? []) as ClipSource[]).map(row => [row.id, row])
+      );
+      const skateTv = new Map<string, ClipSource>(
+        ((skateTvResult.data ?? []) as ClipSource[]).map(row => [row.id, row])
+      );
       const voteCounts = new Map<string, number>();
       (votesResult.data ?? []).forEach((row: any) => {
         voteCounts.set(row.nomination_id, (voteCounts.get(row.nomination_id) ?? 0) + 1);
@@ -72,6 +91,7 @@ export const clipOfWeekService = {
           if (!source) return null;
           const videoUrl = source.video_url ?? source.url ?? '';
           if (!videoUrl) return null;
+          const profile = profiles.get(row.user_id);
           return {
             id: row.skatetv_clip_id ?? row.media_id,
             nomination_id: row.id,
@@ -82,7 +102,7 @@ export const clipOfWeekService = {
             video_url: videoUrl,
             thumbnail_url: source.thumbnail_url ?? '',
             votes: voteCounts.get(row.id) ?? 0,
-            profiles: profiles.get(row.user_id) ? { username: profiles.get(row.user_id)?.username ?? 'Skater' } : null,
+            profiles: profile ? { username: profile.username ?? 'Skater' } : null,
           } satisfies WeeklyClip;
         })
         .filter(Boolean) as WeeklyClip[];
