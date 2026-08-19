@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Check, Clock, Crosshair, Flame, MapPin, Play, Trophy, Upload, X, Zap } from 'lucide-react-native';
+import { Crosshair, Flame, MapPin, Play, Trophy, Upload, X, Zap } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useRoute } from '../lib/useNavigation';
 import { supabase } from '../lib/supabase';
