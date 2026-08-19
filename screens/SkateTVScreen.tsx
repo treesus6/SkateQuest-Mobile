@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Eye, Flame, Heart, MapPin, Play, Plus, Sparkles, Upload, Video } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { uploadSkateTVClip } from '../lib/uploadMedia';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -41,13 +43,14 @@ export default function SkateTVScreen() {
   const [likedClips, setLikedClips] = useState<Set<string>>(new Set());
   const [uploadModal, setUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [uploadVideo, setUploadVideo] = useState<string | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadTrick, setUploadTrick] = useState('');
   const [uploadPark, setUploadPark] = useState('');
 
   useEffect(() => {
-    loadClips();
+    void loadClips();
   }, [activeTab]);
 
   const loadClips = async () => {
@@ -59,29 +62,27 @@ export default function SkateTVScreen() {
     if (activeTab === 'featured') query = query.eq('featured', true);
     const { data } = await query;
     setClips(data || []);
+    setRefreshing(false);
   };
+
+  const stats = useMemo(() => ({
+    clips: clips.length,
+    views: clips.reduce((sum, clip) => sum + (clip.views || 0), 0),
+    likes: clips.reduce((sum, clip) => sum + (clip.likes || 0), 0),
+  }), [clips]);
 
   const likeClip = async (clipId: string, currentLikes: number) => {
     if (!user || likedClips.has(clipId)) return;
     setLikedClips(prev => new Set([...prev, clipId]));
     setClips(prev => prev.map(c => (c.id === clipId ? { ...c, likes: c.likes + 1 } : c)));
     await supabase.from('skatetv_likes').insert({ user_id: user.id, clip_id: clipId });
-    await supabase
-      .from('skatetv_clips')
-      .update({ likes: currentLikes + 1 })
-      .eq('id', clipId);
+    await supabase.from('skatetv_clips').update({ likes: currentLikes + 1 }).eq('id', clipId);
   };
 
   const watchClip = async (clip: Clip) => {
-    await supabase
-      .from('skatetv_clips')
-      .update({ views: clip.views + 1 })
-      .eq('id', clip.id);
-    if (clip.video_url.includes('youtube')) {
-      Linking.openURL(clip.video_url);
-    } else {
-      Linking.openURL(clip.video_url);
-    }
+    setClips(prev => prev.map(c => c.id === clip.id ? { ...c, views: c.views + 1 } : c));
+    await supabase.from('skatetv_clips').update({ views: clip.views + 1 }).eq('id', clip.id);
+    Linking.openURL(clip.video_url).catch(() => Alert.alert('Could not open clip', 'Try again in a moment.'));
   };
 
   const pickVideo = async () => {
@@ -96,9 +97,7 @@ export default function SkateTVScreen() {
       quality: 0.8,
       videoMaxDuration: 60,
     });
-    if (!result.canceled) {
-      setUploadVideo(result.assets[0].uri);
-    }
+    if (!result.canceled) setUploadVideo(result.assets[0].uri);
   };
 
   const submitClip = async () => {
@@ -112,8 +111,7 @@ export default function SkateTVScreen() {
     try {
       const { url, error } = await uploadSkateTVClip(uploadVideo, user.id);
       if (error || !url) throw new Error(error || 'Upload failed');
-
-      await supabase.from('skatetv_clips').insert({
+      const { error: insertError } = await supabase.from('skatetv_clips').insert({
         user_id: user.id,
         video_url: url,
         thumbnail_url: null,
@@ -124,20 +122,15 @@ export default function SkateTVScreen() {
         views: 0,
         featured: false,
       });
+      if (insertError) throw insertError;
 
-      Alert.alert('🛹 Clip uploaded!', 'Your clip is live on SkateTV.', [
-        {
-          text: 'Sick!',
-          onPress: () => {
-            setUploadModal(false);
-            setUploadVideo(null);
-            setUploadTitle('');
-            setUploadTrick('');
-            setUploadPark('');
-            loadClips();
-          },
-        },
-      ]);
+      setUploadModal(false);
+      setUploadVideo(null);
+      setUploadTitle('');
+      setUploadTrick('');
+      setUploadPark('');
+      await loadClips();
+      Alert.alert('Clip is live', 'Your clip was posted to SkateTV.');
     } catch (err: any) {
       Alert.alert('Upload failed', err.message || 'Try again');
     } finally {
@@ -145,171 +138,113 @@ export default function SkateTVScreen() {
     }
   };
 
-  const tabs = [
-    { key: 'featured', label: '🔥 Featured' },
-    { key: 'recent', label: '🕐 Recent' },
-  ];
-
   return (
     <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <View style={s.headerRow}>
-          <View>
-            <Text style={s.title}>📺 SkateTV</Text>
-            <Text style={s.sub}>Best clips from the community</Text>
-          </View>
-          <TouchableOpacity style={s.uploadBtn} onPress={() => setUploadModal(true)}>
-            <Text style={s.uploadTxt}>+ Post Clip</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={s.tabs}>
-        {tabs.map(tab => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[s.tab, activeTab === tab.key && s.tabOn]}
-            onPress={() => setActiveTab(tab.key as any)}
-          >
-            <Text style={[s.tabTxt, activeTab === tab.key && s.tabTxtOn]}>{tab.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <FlatList
         data={clips}
-        keyExtractor={i => i.id}
-        contentContainerStyle={{ padding: 12, gap: 12 }}
-        renderItem={({ item }) => (
-          <View style={s.card}>
-            <TouchableOpacity style={s.thumb} onPress={() => watchClip(item)}>
-              {item.thumbnail_url ? (
-                <Image source={{ uri: item.thumbnail_url }} style={s.thumbImg} />
-              ) : (
-                <View style={s.thumbPlaceholder}>
-                  <Text style={s.thumbIcon}>🎥</Text>
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadClips(); }} tintColor="#D2673D" />}
+        contentContainerStyle={s.list}
+        ListHeaderComponent={
+          <>
+            <View style={s.hero}>
+              <View style={s.heroTop}>
+                <View style={{ flex: 1 }}>
+                  <View style={s.kickerRow}><Video size={14} color="#D2673D" /><Text style={s.kicker}>SKATEQUEST VIDEO</Text></View>
+                  <Text style={s.title}>SkateTV</Text>
+                  <Text style={s.sub}>Community clips, real spots, real tricks.</Text>
                 </View>
+                <TouchableOpacity style={s.uploadBtn} onPress={() => setUploadModal(true)}>
+                  <Plus size={18} color="#fff" strokeWidth={3} />
+                  <Text style={s.uploadTxt}>Post</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={s.statsRow}>
+                <View style={s.stat}><Text style={s.statValue}>{stats.clips}</Text><Text style={s.statLabel}>CLIPS</Text></View>
+                <View style={s.stat}><Text style={s.statValue}>{stats.views}</Text><Text style={s.statLabel}>VIEWS</Text></View>
+                <View style={s.stat}><Text style={s.statValue}>{stats.likes}</Text><Text style={s.statLabel}>LIKES</Text></View>
+              </View>
+            </View>
+
+            <View style={s.tabs}>
+              {(['featured', 'recent'] as const).map(tab => (
+                <TouchableOpacity key={tab} style={[s.tab, activeTab === tab && s.tabOn]} onPress={() => setActiveTab(tab)}>
+                  {tab === 'featured' ? <Flame size={16} color={activeTab === tab ? '#fff' : '#7B8493'} /> : <Sparkles size={16} color={activeTab === tab ? '#fff' : '#7B8493'} />}
+                  <Text style={[s.tabTxt, activeTab === tab && s.tabTxtOn]}>{tab === 'featured' ? 'Featured' : 'Fresh'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        }
+        renderItem={({ item, index }) => (
+          <View style={[s.card, index === 0 && item.featured && s.cardHero]}>
+            <TouchableOpacity style={[s.thumb, index === 0 && item.featured && s.thumbHero]} onPress={() => void watchClip(item)} activeOpacity={0.9}>
+              {item.thumbnail_url ? <Image source={{ uri: item.thumbnail_url }} style={s.thumbImg} contentFit="cover" /> : (
+                <View style={s.thumbPlaceholder}><Video color="#D2673D" size={42} strokeWidth={1.8} /><Text style={s.noThumb}>Clip ready to watch</Text></View>
               )}
-              {item.featured && (
-                <View style={s.featBadge}>
-                  <Text style={s.featTxt}>🔥 FEATURED</Text>
-                </View>
-              )}
-              <View style={s.playBtn}>
-                <Text style={s.playIcon}>▶</Text>
+              <View style={s.scrim} />
+              {item.featured ? <View style={s.featBadge}><Flame size={12} color="#fff" /><Text style={s.featTxt}>FEATURED</Text></View> : null}
+              <View style={s.playBtn}><Play color="#fff" size={22} fill="#fff" /></View>
+              <View style={s.thumbMeta}>
+                <Text style={s.clipTitle} numberOfLines={2}>{item.title || 'Skate clip'}</Text>
+                <Text style={s.username}>@{item.profiles?.username || 'skater'}</Text>
               </View>
             </TouchableOpacity>
 
             <View style={s.info}>
-              <View style={s.infoTop}>
-                <View style={s.avatar}>
-                  <Text style={s.avatarTxt}>🛹</Text>
-                </View>
-                <View style={s.infoText}>
-                  <Text style={s.clipTitle}>{item.title || 'Skate clip'}</Text>
-                  {item.trick_name ? <Text style={s.trickName}>{item.trick_name}</Text> : null}
-                  {item.park_name ? <Text style={s.parkName}>📍 {item.park_name}</Text> : null}
-                  <Text style={s.username}>@{item.profiles?.username || 'skater'}</Text>
-                </View>
+              <View style={s.tagsRow}>
+                {item.trick_name ? <View style={s.tag}><Text style={s.tagText}>{item.trick_name}</Text></View> : null}
+                {item.park_name ? <View style={s.locationTag}><MapPin size={12} color="#9CA3AF" /><Text style={s.locationText} numberOfLines={1}>{item.park_name}</Text></View> : null}
               </View>
-
               <View style={s.actions}>
-                <TouchableOpacity style={s.action} onPress={() => likeClip(item.id, item.likes)}>
-                  <Text style={s.actionIcon}>{likedClips.has(item.id) ? '❤️' : '🤍'}</Text>
+                <TouchableOpacity style={s.action} onPress={() => void likeClip(item.id, item.likes)}>
+                  <Heart size={19} color={likedClips.has(item.id) ? '#D2673D' : '#9CA3AF'} fill={likedClips.has(item.id) ? '#D2673D' : 'transparent'} />
                   <Text style={s.actionCount}>{item.likes}</Text>
                 </TouchableOpacity>
-                <View style={s.action}>
-                  <Text style={s.actionIcon}>👁</Text>
-                  <Text style={s.actionCount}>{item.views}</Text>
-                </View>
-                <TouchableOpacity style={s.watchBtn} onPress={() => watchClip(item)}>
-                  <Text style={s.watchTxt}>Watch ▶</Text>
-                </TouchableOpacity>
+                <View style={s.action}><Eye size={19} color="#9CA3AF" /><Text style={s.actionCount}>{item.views}</Text></View>
+                <TouchableOpacity style={s.watchBtn} onPress={() => void watchClip(item)}><Play size={14} color="#fff" fill="#fff" /><Text style={s.watchTxt}>Watch clip</Text></TouchableOpacity>
               </View>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <View style={s.empty}>
-            <Text style={s.emptyIcon}>📺</Text>
-            <Text style={s.emptyText}>No clips yet. Be the first to post!</Text>
-          </View>
+          <TouchableOpacity style={s.empty} onPress={() => setUploadModal(true)}>
+            <Video color="#D2673D" size={42} />
+            <Text style={s.emptyTitle}>{activeTab === 'featured' ? 'No featured clips yet' : 'No clips yet'}</Text>
+            <Text style={s.emptyText}>Post a real skate clip and get the feed moving.</Text>
+            <View style={s.emptyCta}><Upload size={16} color="#fff" /><Text style={s.emptyCtaText}>Post a clip</Text></View>
+          </TouchableOpacity>
         }
       />
 
-      {/* Upload Modal */}
-      <Modal visible={uploadModal} transparent animationType="slide">
+      <Modal visible={uploadModal} transparent animationType="slide" onRequestClose={() => setUploadModal(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modal}>
+            <View style={s.modalHandle} />
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Post a Clip 🎥</Text>
-              <TouchableOpacity onPress={() => setUploadModal(false)}>
-                <Text style={s.closeBtn}>✕</Text>
-              </TouchableOpacity>
+              <View><Text style={s.modalKicker}>DROP A CLIP</Text><Text style={s.modalTitle}>Post to SkateTV</Text></View>
+              <TouchableOpacity style={s.closeBtn} onPress={() => setUploadModal(false)}><Text style={s.closeTxt}>×</Text></TouchableOpacity>
             </View>
-            <ScrollView style={s.modalBody}>
-              {/* Video picker */}
-              <TouchableOpacity
-                style={[s.videoPicker, uploadVideo && s.videoPickerDone]}
-                onPress={pickVideo}
-              >
-                {uploadVideo ? (
-                  <Text style={s.videoPickerDoneTxt}>✓ Video selected — tap to change</Text>
-                ) : (
-                  <>
-                    <Text style={s.videoPickerIcon}>🎥</Text>
-                    <Text style={s.videoPickerTxt}>Tap to select your clip</Text>
-                    <Text style={s.videoPickerSub}>Max 60 seconds · MP4 or MOV</Text>
-                  </>
-                )}
+            <ScrollView style={s.modalBody} contentContainerStyle={{ paddingBottom: 26 }}>
+              <TouchableOpacity style={[s.videoPicker, uploadVideo && s.videoPickerDone]} onPress={pickVideo}>
+                <Upload size={30} color={uploadVideo ? '#4ADE80' : '#D2673D'} />
+                <Text style={[s.videoPickerTxt, uploadVideo && { color: '#4ADE80' }]}>{uploadVideo ? 'Video selected — tap to change' : 'Choose your skate clip'}</Text>
+                <Text style={s.videoPickerSub}>Up to 60 seconds</Text>
               </TouchableOpacity>
 
               <Text style={s.lbl}>Title *</Text>
-              <TextInput
-                style={s.input}
-                placeholder="What's this clip?"
-                placeholderTextColor="#4B5563"
-                value={uploadTitle}
-                onChangeText={setUploadTitle}
-              />
-
+              <TextInput style={s.input} placeholder="What went down?" placeholderTextColor="#596273" value={uploadTitle} onChangeText={setUploadTitle} />
               <Text style={s.lbl}>Trick</Text>
-              <TextInput
-                style={s.input}
-                placeholder="Kickflip, Boardslide, etc."
-                placeholderTextColor="#4B5563"
-                value={uploadTrick}
-                onChangeText={setUploadTrick}
-              />
-
+              <TextInput style={s.input} placeholder="Kickflip, boardslide, line..." placeholderTextColor="#596273" value={uploadTrick} onChangeText={setUploadTrick} />
               <Text style={s.lbl}>Spot</Text>
-              <TextInput
-                style={s.input}
-                placeholder="Where was this?"
-                placeholderTextColor="#4B5563"
-                value={uploadPark}
-                onChangeText={setUploadPark}
-              />
+              <TextInput style={s.input} placeholder="Where did you skate?" placeholderTextColor="#596273" value={uploadPark} onChangeText={setUploadPark} />
 
-              <View style={s.proofNote}>
-                <Text style={s.proofNoteTxt}>
-                  📸 Clips posted here also count as proof for daily quests
-                </Text>
-              </View>
+              <View style={s.proofNote}><Sparkles size={16} color="#D2673D" /><Text style={s.proofNoteTxt}>Your real clip can also support quest and challenge proof flows.</Text></View>
 
-              <TouchableOpacity
-                style={[s.postBtn, (!uploadVideo || uploading) && s.postBtnDis]}
-                onPress={submitClip}
-                disabled={!uploadVideo || uploading}
-              >
-                {uploading ? (
-                  <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                    <ActivityIndicator color="white" size="small" />
-                    <Text style={s.postBtnTxt}>Uploading...</Text>
-                  </View>
-                ) : (
-                  <Text style={s.postBtnTxt}>Post to SkateTV 🛹</Text>
-                )}
+              <TouchableOpacity style={[s.postBtn, (!uploadVideo || uploading) && s.postBtnDis]} onPress={() => void submitClip()} disabled={!uploadVideo || uploading}>
+                {uploading ? <ActivityIndicator color="#fff" /> : <><Upload size={18} color="#fff" /><Text style={s.postBtnTxt}>Post clip</Text></>}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -320,161 +255,73 @@ export default function SkateTVScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#05070B' },
-  header: { padding: 16, paddingBottom: 8 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '900', color: '#F3F4F6' },
-  sub: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  uploadBtn: {
-    backgroundColor: '#d2673d',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  uploadTxt: { color: 'white', fontWeight: '700', fontSize: 13 },
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 4 },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#111827' },
-  tabOn: { backgroundColor: '#d2673d' },
-  tabTxt: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
-  tabTxtOn: { color: 'white' },
-  card: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1a2030',
-  },
-  thumb: {
-    height: 200,
-    backgroundColor: '#0a0e1a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  thumbImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  thumbPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  thumbIcon: { fontSize: 48 },
-  featBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: '#d2673d',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  featTxt: { color: 'white', fontSize: 10, fontWeight: '900' },
-  playBtn: {
-    position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(210,103,61,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playIcon: { color: 'white', fontSize: 20, marginLeft: 4 },
-  info: { padding: 12 },
-  infoTop: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(210,103,61,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarTxt: { fontSize: 16 },
-  infoText: { flex: 1 },
-  clipTitle: { color: '#F3F4F6', fontWeight: '700', fontSize: 15, marginBottom: 2 },
-  trickName: { color: '#d2673d', fontSize: 13, fontWeight: '600' },
-  parkName: { color: '#6B7280', fontSize: 12 },
-  username: { color: '#4B5563', fontSize: 11, marginTop: 2 },
-  actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actionIcon: { fontSize: 18 },
-  actionCount: { color: '#9CA3AF', fontSize: 13 },
-  watchBtn: {
-    marginLeft: 'auto' as any,
-    backgroundColor: 'rgba(210,103,61,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(210,103,61,0.4)',
-  },
-  watchTxt: { color: '#d2673d', fontWeight: '700', fontSize: 13 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: '#4B5563', fontSize: 15, textAlign: 'center' },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modal: {
-    backgroundColor: '#111827',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderColor: '#1a2030',
-  },
-  modalTitle: { color: '#F3F4F6', fontSize: 18, fontWeight: '900' },
-  closeBtn: { color: '#6B7280', fontSize: 18, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: '#07090D' },
+  list: { padding: 14, paddingBottom: 40, gap: 14 },
+  hero: { backgroundColor: '#0F1623', borderRadius: 24, padding: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kicker: { color: '#D2673D', fontWeight: '900', fontSize: 10, letterSpacing: 1.8 },
+  title: { color: '#F7F4EF', fontSize: 34, fontWeight: '900', letterSpacing: -1.2, marginTop: 4 },
+  sub: { color: '#8E97A4', fontSize: 13, marginTop: 4 },
+  uploadBtn: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: '#D2673D', paddingHorizontal: 15, paddingVertical: 11, borderRadius: 14 },
+  uploadTxt: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  statsRow: { flexDirection: 'row', marginTop: 18, backgroundColor: '#0A0E16', borderRadius: 16, paddingVertical: 13 },
+  stat: { flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#1C2430' },
+  statValue: { color: '#F7F4EF', fontSize: 18, fontWeight: '900' },
+  statLabel: { color: '#596273', fontSize: 9, fontWeight: '800', letterSpacing: 1.2, marginTop: 2 },
+  tabs: { flexDirection: 'row', gap: 8 },
+  tab: { flexDirection: 'row', gap: 7, alignItems: 'center', backgroundColor: '#0F1623', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: '#1C2430' },
+  tabOn: { backgroundColor: '#D2673D', borderColor: '#D2673D' },
+  tabTxt: { color: '#7B8493', fontSize: 13, fontWeight: '800' },
+  tabTxtOn: { color: '#fff' },
+  card: { backgroundColor: '#0F1623', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  cardHero: { borderColor: 'rgba(210,103,61,0.45)' },
+  thumb: { height: 235, backgroundColor: '#0A0E16', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  thumbHero: { height: 280 },
+  thumbImg: { width: '100%', height: '100%' },
+  thumbPlaceholder: { alignItems: 'center', gap: 9 },
+  noThumb: { color: '#6F7886', fontSize: 12, fontWeight: '700' },
+  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 110, backgroundColor: 'rgba(0,0,0,0.5)' },
+  featBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#D2673D', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9 },
+  featTxt: { color: '#fff', fontWeight: '900', fontSize: 9, letterSpacing: 1 },
+  playBtn: { position: 'absolute', width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(210,103,61,0.93)', alignItems: 'center', justifyContent: 'center', paddingLeft: 3 },
+  thumbMeta: { position: 'absolute', left: 14, right: 14, bottom: 13 },
+  clipTitle: { color: '#fff', fontSize: 19, fontWeight: '900' },
+  username: { color: '#D6DAE0', fontSize: 12, marginTop: 3, fontWeight: '700' },
+  info: { padding: 14 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 13 },
+  tag: { backgroundColor: 'rgba(210,103,61,0.13)', borderWidth: 1, borderColor: 'rgba(210,103,61,0.32)', borderRadius: 9, paddingHorizontal: 9, paddingVertical: 5 },
+  tagText: { color: '#D2673D', fontWeight: '800', fontSize: 11 },
+  locationTag: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  locationText: { color: '#9CA3AF', fontSize: 11, fontWeight: '600', maxWidth: 190 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionCount: { color: '#9CA3AF', fontSize: 12, fontWeight: '700' },
+  watchBtn: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#D2673D', borderRadius: 11, paddingHorizontal: 12, paddingVertical: 8 },
+  watchTxt: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  empty: { alignItems: 'center', backgroundColor: '#0F1623', borderRadius: 20, padding: 34, borderWidth: 1, borderColor: '#1C2430' },
+  emptyTitle: { color: '#F7F4EF', fontWeight: '900', fontSize: 19, marginTop: 12 },
+  emptyText: { color: '#7B8493', textAlign: 'center', marginTop: 6, lineHeight: 19 },
+  emptyCta: { flexDirection: 'row', gap: 7, backgroundColor: '#D2673D', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, marginTop: 18 },
+  emptyCtaText: { color: '#fff', fontWeight: '900' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#0F1623', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%', borderWidth: 1, borderColor: '#1C2430' },
+  modalHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: '#394252', alignSelf: 'center', marginTop: 9 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#1C2430' },
+  modalKicker: { color: '#D2673D', fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
+  modalTitle: { color: '#F7F4EF', fontSize: 23, fontWeight: '900', marginTop: 3 },
+  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1A2230', alignItems: 'center', justifyContent: 'center' },
+  closeTxt: { color: '#A7AFBB', fontSize: 25, lineHeight: 28 },
   modalBody: { padding: 20 },
-  videoPicker: {
-    backgroundColor: '#0a0e1a',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#1a2030',
-    borderStyle: 'dashed',
-    padding: 30,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  videoPickerDone: { borderColor: '#d2673d', borderStyle: 'solid' },
-  videoPickerIcon: { fontSize: 36, marginBottom: 8 },
-  videoPickerTxt: { color: '#9CA3AF', fontWeight: '600', fontSize: 15, marginBottom: 4 },
-  videoPickerSub: { color: '#4B5563', fontSize: 12 },
-  videoPickerDoneTxt: { color: '#d2673d', fontWeight: '700', fontSize: 14 },
-  lbl: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#0a0e1a',
-    color: '#F3F4F6',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#1a2030',
-    marginBottom: 14,
-  },
-  proofNote: {
-    backgroundColor: 'rgba(210,103,61,0.08)',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(210,103,61,0.2)',
-  },
-  proofNoteTxt: { color: '#d2673d', fontSize: 13, textAlign: 'center' },
-  postBtn: {
-    backgroundColor: '#d2673d',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  postBtnDis: { opacity: 0.5 },
-  postBtnTxt: { color: 'white', fontWeight: '700', fontSize: 16 },
+  videoPicker: { backgroundColor: '#0A0E16', borderRadius: 16, borderWidth: 1.5, borderColor: '#2A3341', borderStyle: 'dashed', padding: 28, alignItems: 'center', marginBottom: 18 },
+  videoPickerDone: { borderColor: '#2F7A52', borderStyle: 'solid', backgroundColor: 'rgba(74,222,128,0.05)' },
+  videoPickerTxt: { color: '#C8CDD5', fontWeight: '800', fontSize: 14, marginTop: 9 },
+  videoPickerSub: { color: '#596273', fontSize: 11, marginTop: 4 },
+  lbl: { color: '#9CA3AF', fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 6 },
+  input: { backgroundColor: '#0A0E16', color: '#F3F4F6', borderRadius: 13, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, borderWidth: 1, borderColor: '#202938', marginBottom: 14 },
+  proofNote: { flexDirection: 'row', gap: 9, alignItems: 'flex-start', backgroundColor: 'rgba(210,103,61,0.08)', borderRadius: 13, padding: 13, marginBottom: 18, borderWidth: 1, borderColor: 'rgba(210,103,61,0.2)' },
+  proofNoteTxt: { color: '#B7BEC8', fontSize: 12, lineHeight: 18, flex: 1 },
+  postBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#D2673D', borderRadius: 14, padding: 16 },
+  postBtnDis: { opacity: 0.45 },
+  postBtnTxt: { color: '#fff', fontWeight: '900', fontSize: 15 },
 });
