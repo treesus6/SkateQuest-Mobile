@@ -33,7 +33,7 @@ export const feedService = {
   },
 
   subscribeToFeed(callback: (payload: any) => void) {
-    return supabase
+    const channel = supabase
       .channel('feed-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, callback)
       .subscribe(status => {
@@ -41,5 +41,11 @@ export const feedService = {
           Logger.error('Feed realtime subscription failed');
         }
       });
+
+    return {
+      unsubscribe: () => {
+        void channel.unsubscribe();
+      },
+    };
   },
 };
