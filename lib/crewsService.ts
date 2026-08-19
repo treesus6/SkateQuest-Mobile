@@ -46,7 +46,7 @@ export const crewsService = {
         .eq('spot_id', spotId)
         .order('total_points', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
     } catch (error) {
       Logger.error('crewsService.getTerritoryForSpot failed', error);
       throw new ServiceError('Failed to fetch territory', 'CREWS_TERRITORY_GET_FAILED', error);
@@ -60,28 +60,31 @@ export const crewsService = {
         .select('*')
         .eq('spot_id', spotId)
         .eq('crew_id', crewId)
-        .single();
+        .maybeSingle();
     } catch (error) {
       Logger.error('crewsService.getCrewTerritory failed', error);
       throw new ServiceError('Failed to fetch crew territory', 'CREWS_TERRITORY_CREW_GET_FAILED', error);
     }
   },
 
-  async updateTerritory(territoryId: string, updates: { total_points: number; last_activity: string }) {
+  async claimTerritory(input: {
+    spotId: string;
+    latitude: number;
+    longitude: number;
+    trickName: string;
+    proofUrl?: string | null;
+  }) {
     try {
-      return await supabase.from('crew_territories').update(updates).eq('id', territoryId);
+      return await supabase.rpc('claim_crew_territory', {
+        p_spot_id: input.spotId,
+        p_latitude: input.latitude,
+        p_longitude: input.longitude,
+        p_trick_name: input.trickName,
+        p_proof_url: input.proofUrl ?? null,
+      });
     } catch (error) {
-      Logger.error('crewsService.updateTerritory failed', error);
-      throw new ServiceError('Failed to update territory', 'CREWS_TERRITORY_UPDATE_FAILED', error);
-    }
-  },
-
-  async createTerritory(territory: { spot_id: string; crew_id: string; total_points: number }) {
-    try {
-      return await supabase.from('crew_territories').insert(territory);
-    } catch (error) {
-      Logger.error('crewsService.createTerritory failed', error);
-      throw new ServiceError('Failed to create territory', 'CREWS_TERRITORY_CREATE_FAILED', error);
+      Logger.error('crewsService.claimTerritory failed', error);
+      throw new ServiceError('Failed to claim crew territory', 'CREWS_TERRITORY_CLAIM_FAILED', error);
     }
   },
 
