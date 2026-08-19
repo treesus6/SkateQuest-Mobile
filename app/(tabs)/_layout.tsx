@@ -3,8 +3,10 @@ import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity, View, Text, Animated, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { useChallenges } from '../../contexts/ChallengeContext';
 import LevelUpModal from '../../components/LevelUpModal';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { profilesService } from '../../lib/profilesService';
+import { supabase } from '../../lib/supabase';
 import { Home, Map as MapIcon, Zap, Users, UserRound, Video, MapPin, Bot, Footprints } from 'lucide-react-native';
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
@@ -168,18 +170,82 @@ function SkateQuestTabBar({ state, navigation }: any) {
   );
 }
 
+function readLevelFromProgress(progress: unknown): number | null {
+  const row = Array.isArray(progress) ? progress[0] : progress;
+  if (!row || typeof row !== 'object') return null;
+  const value = Number((row as { current_level?: unknown; level?: unknown }).current_level ?? (row as { level?: unknown }).level);
+  return Number.isFinite(value) && value >= 1 ? value : null;
+}
+
 // ─── Level Up Wrapper ─────────────────────────────────────────────────────────
+// Uses the server-managed profile XP and get_level_progress RPC. It deliberately
+// does not restore the old local ChallengeContext, which used hard-coded XP.
 function LevelUpWrapper({ children }: { children: React.ReactNode }) {
-  const { level } = useChallenges();
-  const [lastLevel, setLastLevel] = useState(level);
+  const { user } = useAuthStore();
+  const [level, setLevel] = useState(1);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const lastLevelRef = React.useRef<number | null>(null);
+
+  const applyXp = React.useCallback(async (rawXp: unknown, announceIncrease: boolean) => {
+    const xp = Number(rawXp ?? 0);
+    if (!Number.isFinite(xp) || xp < 0) return;
+
+    const { data, error } = await profilesService.getLevelProgress(xp);
+    if (error || !data) return;
+
+    const nextLevel = readLevelFromProgress(data);
+    if (nextLevel === null) return;
+
+    const previousLevel = lastLevelRef.current;
+    setLevel(nextLevel);
+    if (announceIncrease && previousLevel !== null && nextLevel > previousLevel) {
+      setShowLevelUp(true);
+    }
+    lastLevelRef.current = nextLevel;
+  }, []);
 
   useEffect(() => {
-    if (level > lastLevel) {
-      setShowLevelUp(true);
-      setLastLevel(level);
+    let active = true;
+
+    if (!user?.id) {
+      lastLevelRef.current = null;
+      setLevel(1);
+      setShowLevelUp(false);
+      return () => {
+        active = false;
+      };
     }
-  }, [level, lastLevel]);
+
+    const loadInitialLevel = async () => {
+      const { data, error } = await profilesService.getById(user.id);
+      if (!active || error || !data) return;
+      await applyXp(data.xp, false);
+    };
+
+    void loadInitialLevel();
+
+    const channel = supabase
+      .channel(`profile-progression-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        payload => {
+          if (!active) return;
+          void applyXp((payload.new as { xp?: unknown })?.xp, true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, applyXp]);
 
   return (
     <>
