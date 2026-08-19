@@ -1,33 +1,20 @@
 /**
- * HypeButton.tsx
- * Replaces the standard "Like" button with a multi-tap "Hype" button.
- *
- * - Users can tap up to 50 times to give a clip more Hype
- * - Each tap adds to the hype count with a satisfying animation
- * - The button pulses and changes color as hype accumulates
- * - Hype count is debounced and saved to the server after 1.5s of inactivity
+ * Multi-tap Hype control backed by the server's per-user hype counter.
+ * A skater can contribute up to 50 hype taps to a media item.
  */
-
-import React, { useRef, useState, useCallback } from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  View,
-  Animated,
-  Vibration,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { Flame } from 'lucide-react-native';
 
 const MAX_HYPE = 50;
 const DEBOUNCE_MS = 1500;
 
-// Color progression as hype increases
 function getHypeColor(count: number): string {
-  if (count === 0) return '#9CA3AF'; // gray
-  if (count < 5) return '#FF9800';  // orange
-  if (count < 15) return '#FF6B35'; // deep orange
-  if (count < 30) return '#EF4444'; // red
-  return '#9333EA';                  // purple — maxed out
+  if (count === 0) return '#9CA3AF';
+  if (count < 5) return '#FF9800';
+  if (count < 15) return '#FF6B35';
+  if (count < 30) return '#EF4444';
+  return '#9333EA';
 }
 
 function getHypeLabel(count: number): string {
@@ -41,7 +28,7 @@ function getHypeLabel(count: number): string {
 interface HypeButtonProps {
   mediaId: string;
   initialHypeCount: number;
-  userHypeCount?: number; // how many times THIS user has hyped (0-50)
+  userHypeCount?: number;
   onHype: (mediaId: string, newUserHypeCount: number) => Promise<void>;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -57,17 +44,32 @@ export default function HypeButton({
   const [myHype, setMyHype] = useState(userHypeCount);
   const [pendingHype, setPendingHype] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  // The parent receives the authoritative server totals. Once there is no local
+  // write pending, keep this control synchronized with that source of truth.
+  useEffect(() => {
+    if (pendingHype !== 0) return;
+    setTotalHype(initialHypeCount);
+    setMyHype(userHypeCount);
+  }, [initialHypeCount, userHypeCount, pendingHype]);
 
   const hypeColor = getHypeColor(myHype);
   const hypeLabel = getHypeLabel(myHype);
   const isMaxed = myHype >= MAX_HYPE;
-
   const iconSize = size === 'sm' ? 14 : size === 'lg' ? 22 : 18;
   const textSize = size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
 
   const animateTap = useCallback(() => {
-    // Quick scale pop
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 1.3, duration: 80, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 120, useNativeDriver: true }),
@@ -80,6 +82,8 @@ export default function HypeButton({
     Vibration.vibrate(30);
     animateTap();
 
+    const serverMyHype = userHypeCount;
+    const serverTotalHype = initialHypeCount;
     const newMyHype = Math.min(myHype + 1, MAX_HYPE);
     const addedHype = newMyHype - myHype;
 
@@ -87,23 +91,28 @@ export default function HypeButton({
     setTotalHype(prev => prev + addedHype);
     setPendingHype(prev => prev + addedHype);
 
-    // Debounce the server save
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
         await onHype(mediaId, newMyHype);
-        setPendingHype(0);
+        if (mountedRef.current) setPendingHype(0);
       } catch {
-        // Silently fail — optimistic update stays
+        if (!mountedRef.current) return;
+        // Never leave a failed optimistic write displayed as real engagement.
+        setMyHype(serverMyHype);
+        setTotalHype(serverTotalHype);
+        setPendingHype(0);
       }
     }, DEBOUNCE_MS);
-  }, [isMaxed, myHype, mediaId, onHype, animateTap]);
+  }, [animateTap, initialHypeCount, isMaxed, mediaId, myHype, onHype, userHypeCount]);
 
   return (
     <TouchableOpacity
       onPress={handleTap}
       disabled={isMaxed}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Hype media. You added ${myHype} of ${MAX_HYPE}. Total ${totalHype}.`}
       className="flex-row items-center gap-1.5"
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -118,19 +127,18 @@ export default function HypeButton({
         <Text className={`font-bold ${textSize}`} style={{ color: hypeColor }}>
           {totalHype > 0 ? totalHype.toLocaleString() : hypeLabel}
         </Text>
-        {myHype > 0 && (
-          <Text className="text-[10px] text-gray-400" style={{ color: hypeColor + '99' }}>
+        {myHype > 0 ? (
+          <Text className="text-[10px] text-gray-400" style={{ color: `${hypeColor}99` }}>
             {isMaxed ? 'MAX HYPE' : `${myHype}/${MAX_HYPE}`}
           </Text>
-        )}
+        ) : null}
       </View>
 
-      {/* Pending indicator */}
-      {pendingHype > 0 && (
+      {pendingHype > 0 ? (
         <View className="bg-brand-terracotta/20 rounded-full px-1.5 py-0.5">
           <Text className="text-brand-terracotta text-[10px] font-bold">+{pendingHype}</Text>
         </View>
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 }
