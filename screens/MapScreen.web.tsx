@@ -35,7 +35,7 @@ export default function MapScreen() {
 
   const openSpot = useCallback(
     (spot: SkateSpot) => {
-      router.push({ pathname: '/(screens)/spot-detail', params: { spotId: spot.id } });
+      router.push({ pathname: '/spot-detail' as any, params: { spotId: spot.id } });
     },
     [router]
   );
@@ -256,7 +256,7 @@ export default function MapScreen() {
         />
         <MapButton
           label="Add a spot"
-          onPress={() => router.push('/(screens)/add-spot')}
+          onPress={() => router.push('/add-spot' as any)}
           icon={<Plus color="#D2673D" />}
         />
       </View>
