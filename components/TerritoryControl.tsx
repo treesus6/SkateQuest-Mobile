@@ -2,17 +2,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import * as Location from 'expo-location';
 import { Crosshair, Flag, MapPin, ShieldCheck, Swords, Trophy } from 'lucide-react-native';
 import { crewsService } from '../lib/crewsService';
-import { getBrowserLocation } from '../lib/browserLocation';
+import { getVerifiedCoordinates } from '../lib/verifiedLocation';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const ACCENT = '#D2673D';
@@ -35,20 +33,6 @@ interface UserCrew {
   id: string;
   name: string;
   color: string;
-}
-
-async function currentCoordinates() {
-  if (Platform.OS === 'web') {
-    const location = await getBrowserLocation();
-    return { latitude: location.latitude, longitude: location.longitude };
-  }
-
-  const permission = await Location.requestForegroundPermissionsAsync();
-  if (permission.status !== 'granted') {
-    throw new Error('Location permission is required to prove you are at this skate spot.');
-  }
-  const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-  return { latitude: location.coords.latitude, longitude: location.coords.longitude };
 }
 
 export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlProps) {
@@ -115,7 +99,7 @@ export default function TerritoryControl({ spotId, onUpdate }: TerritoryControlP
 
     try {
       setCapturing(true);
-      const coordinates = await currentCoordinates();
+      const coordinates = await getVerifiedCoordinates();
       const { data, error } = await crewsService.claimTerritory({
         spotId,
         latitude: coordinates.latitude,
