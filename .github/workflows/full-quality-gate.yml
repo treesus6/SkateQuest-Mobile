@@ -1,0 +1,76 @@
+name: SkateQuest Full Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Type, lint, test, Expo, web
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      EXPO_PUBLIC_ENV: test
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      EXPO_NO_TELEMETRY: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test -- --runInBand
+
+      - name: Expo Doctor
+        run: npx expo-doctor
+
+      - name: Prepare native Mapbox web stub
+        run: |
+          rm -rf node_modules/@rnmapbox/maps
+          mkdir -p node_modules/@rnmapbox/maps
+          echo '{"name":"@rnmapbox/maps","version":"10.3.2","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
+          echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
+          printf 'declare namespace MapboxGL {\n  type Camera = any;\n  type MapView = any;\n  const StyleURL: { [key: string]: string };\n  const MapView: any;\n  const Camera: any;\n  const UserLocation: any;\n  const ShapeSource: any;\n  const CircleLayer: any;\n  const SymbolLayer: any;\n  const LineLayer: any;\n  const PointAnnotation: any;\n  const Images: any;\n  const MarkerView: any;\n  const Callout: any;\n  function setAccessToken(token: string | undefined): void;\n}\nexport = MapboxGL;\n' > node_modules/@rnmapbox/maps/index.d.ts
+
+      - name: Export web
+        run: npx expo export --platform web --output-dir dist-quality
+
+      - name: Verify key routes
+        run: |
+          test -f dist-quality/index.html
+          test -f dist-quality/map.html
+          test -f dist-quality/login.html
+          test -f dist-quality/quests.html
+          test -f dist-quality/crew.html
+          test -f dist-quality/profile.html
+          test -f dist-quality/skate-tv.html
+          test -f dist-quality/manifest.webmanifest
+          test -f dist-quality/service-worker.js
