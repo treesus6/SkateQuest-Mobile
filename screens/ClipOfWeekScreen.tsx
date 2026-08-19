@@ -89,7 +89,7 @@ export default function ClipOfWeekScreen() {
   const [votingId, setVotingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) router.replace('/(auth)/login' as any);
+    if (!authLoading && !user) router.replace('/login' as any);
   }, [authLoading, user, router]);
 
   const fetchSubmissions = useCallback(async () => {
@@ -252,7 +252,7 @@ export default function ClipOfWeekScreen() {
       <View className="mx-4 mt-7">
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => router.push({ pathname: '/(screens)/upload-media' as any, params: { clipWeek: String(week), clipYear: String(year) } })}
+          onPress={() => router.push({ pathname: '/upload-media' as any, params: { clipWeek: String(week), clipYear: String(year) } })}
           className="bg-[#D2673D] rounded-2xl py-5 flex-row items-center justify-center gap-3"
         >
           <Upload size={22} color="#fff" />
