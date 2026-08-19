@@ -95,16 +95,28 @@ export const spotClaimsService = {
 
   subscribeToSpotClaim(spotId: string, onUpdate: (payload: any) => void) {
     const subscription = supabase.channel(`spot_claim:${spotId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'spot_claims', filter: `spot_id=eq.${spotId}` }, onUpdate).subscribe();
-    return { unsubscribe: () => subscription.unsubscribe() };
+    return {
+      unsubscribe: () => {
+        void subscription.unsubscribe();
+      },
+    };
   },
 
   subscribeToUserClaims(userId: string, onUpdate: (payload: any) => void) {
     const subscription = supabase.channel(`user_claims:${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'spot_claims', filter: `user_id=eq.${userId}` }, onUpdate).subscribe();
-    return { unsubscribe: () => subscription.unsubscribe() };
+    return {
+      unsubscribe: () => {
+        void subscription.unsubscribe();
+      },
+    };
   },
 
   subscribeToClaimHistory(spotId: string, onUpdate: (payload: any) => void) {
     const subscription = supabase.channel(`claim_history:${spotId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'spot_claim_history', filter: `spot_id=eq.${spotId}` }, onUpdate).subscribe();
-    return { unsubscribe: () => subscription.unsubscribe() };
+    return {
+      unsubscribe: () => {
+        void subscription.unsubscribe();
+      },
+    };
   },
 };
