@@ -49,7 +49,9 @@ export default function FeedScreen() {
 
   useEffect(() => {
     const subscription = feedService.subscribeToFeed(() => refetchRef.current());
-    return () => subscription.unsubscribe();
+    return () => {
+      void subscription.unsubscribe();
+    };
   }, []);
 
   const handleHype = useCallback(async (activityId: string, mediaId: string, newCount: number) => {
