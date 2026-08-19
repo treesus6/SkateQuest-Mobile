@@ -125,7 +125,7 @@ export default function QRGeocacheScannerVerified({ spotId, spotLat, spotLng, on
   }
 
   if (!cameraPermission.granted) {
-    return <Permission message="Camera access is required to scan a physical QR." primary="Allow camera" onPrimary={requestCameraPermission} onCancel={onCancel} />;
+    return <Permission message="Camera access is required to scan a physical QR." primary="Allow camera" onPrimary={async () => { await requestCameraPermission(); }} onCancel={onCancel} />;
   }
 
   if (!location) {
