@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Crosshair, Clock3, MapPin, Radio, Send, ShieldCheck, Sparkles, Users } from 'lucide-react-native';
+import { Crosshair, Clock3, MapPin, Radio, Send, ShieldCheck, Users } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
 import { getVerifiedCoordinates, VerifiedCoordinates } from '../lib/verifiedLocation';
@@ -61,7 +61,7 @@ export default function LiveCheckInScreen() {
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) console.error('Live check-ins failed to load', error);
-    setCheckins((data || []) as CheckIn[]);
+    setCheckins((data || []) as unknown as CheckIn[]);
     setRefreshing(false);
   };
 
