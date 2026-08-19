@@ -1,21 +1,15 @@
 import React from 'react';
-import { View, Text, FlatList, Alert } from 'react-native';
+import { View, Text, FlatList, Alert, TouchableOpacity } from 'react-native';
+import { CalendarDays, MapPin, Users, Clock, ChevronRight } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { eventsService, Event } from '../lib/eventsService';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import { AnimatedListItem, ScreenFadeIn } from '../components/ui';
-import { EmptyStates } from '../components/EmptyState';
+import { ScreenFadeIn } from '../components/ui';
 import RetryBanner from '../components/RetryBanner';
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 export default function EventsScreen() {
@@ -35,11 +29,8 @@ export default function EventsScreen() {
           try {
             const { error } = await eventsService.rsvp(eventId, user.id);
             if (error) {
-              if (error.code === '23505') {
-                Alert.alert('Already registered', 'You already RSVPed to this event!');
-              } else {
-                throw error;
-              }
+              if (error.code === '23505') Alert.alert('Already registered', 'You already RSVPed to this event!');
+              else throw error;
             } else {
               Alert.alert('Success', 'RSVP confirmed!');
               refetch();
@@ -52,47 +43,81 @@ export default function EventsScreen() {
     ]);
   };
 
-  const renderEvent = ({ item, index }: { item: Event; index: number }) => (
-    <AnimatedListItem index={index}>
-    <Card className="flex-row">
-      <View className="bg-brand-orange rounded-lg p-3 items-center justify-center min-w-[70px] mr-4">
-        <Text className="text-white text-sm font-bold">{formatDate(item.date)}</Text>
-        <Text className="text-white text-xs mt-1">{item.time}</Text>
+  const upcoming = events ?? [];
+  const totalAttending = upcoming.reduce((sum, event) => sum + Number(event.attendee_count || 0), 0);
+
+  const renderEvent = ({ item }: { item: Event }) => (
+    <View className="bg-[#10151D] border border-[#252D39] rounded-[20px] p-4 mb-3">
+      <View className="flex-row items-start gap-3">
+        <View className="w-[64px] rounded-2xl bg-[#1B1110] border border-[#4F2A21] p-3 items-center">
+          <Text className="text-[#D2673D] text-[10px] font-black uppercase">{new Date(item.date).toLocaleDateString('en-US', { month: 'short' })}</Text>
+          <Text className="text-white text-2xl font-black mt-0.5">{new Date(item.date).getDate()}</Text>
+        </View>
+        <View className="flex-1">
+          <Text className="text-white text-[17px] font-black">{item.title}</Text>
+          {item.description ? <Text className="text-[#A7AFBA] text-sm mt-1 leading-5" numberOfLines={2}>{item.description}</Text> : null}
+
+          <View className="flex-row items-center gap-1.5 mt-3">
+            <Clock size={12} color="#7B8493" />
+            <Text className="text-[#7B8493] text-xs">{formatDate(item.date)} · {item.time}</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5 mt-1.5">
+            <MapPin size={12} color="#7B8493" />
+            <Text className="text-[#7B8493] text-xs flex-1">{(item as any).spot_name || item.location}</Text>
+          </View>
+          <View className="flex-row items-center gap-1.5 mt-1.5">
+            <Users size={12} color="#4ADE80" />
+            <Text className="text-[#8DD5A3] text-xs font-bold">{item.attendee_count} attending</Text>
+          </View>
+        </View>
       </View>
 
-      <View className="flex-1">
-        <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-1">{item.title}</Text>
-        {item.description ? (
-          <Text className="text-sm text-gray-500 dark:text-gray-400 mb-2">{item.description}</Text>
-        ) : null}
-        <Text className="text-sm text-gray-400 dark:text-gray-500 mb-1">{(item as any).spot_name || item.location}</Text>
-        <Text className="text-xs text-gray-300 dark:text-gray-500">{item.attendee_count} attending</Text>
-      </View>
-
-      <View className="self-start ml-2">
-        <Button title="RSVP" onPress={() => rsvp(item.id)} variant="primary" size="sm" className="bg-brand-green" />
-      </View>
-    </Card>
-    </AnimatedListItem>
+      <TouchableOpacity onPress={() => rsvp(item.id)} className="mt-4 bg-[#D2673D] rounded-xl py-3.5 flex-row items-center justify-center gap-2">
+        <Text className="text-white text-sm font-black">RSVP</Text>
+        <ChevronRight size={16} color="#fff" />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
     <ScreenFadeIn>
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-        <View className="bg-brand-orange p-5 rounded-b-2xl">
-          <Text className="text-2xl font-bold text-white text-center">Events</Text>
-          <Text className="text-sm text-white/90 text-center mt-1">Upcoming skate sessions</Text>
+      <View className="flex-1 bg-[#07090D]">
+        <View className="px-5 pt-12 pb-5">
+          <Text className="text-[#D2673D] text-[11px] font-black tracking-[2px]">PULL UP</Text>
+          <Text className="text-white text-[30px] font-black mt-1">Events</Text>
+          <Text className="text-[#7B8493] text-sm mt-1">Sessions, meetups and skate events happening next.</Text>
+
+          <View className="flex-row gap-2 mt-4">
+            <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+              <CalendarDays size={16} color="#D2673D" />
+              <Text className="text-white text-xl font-black mt-1">{upcoming.length}</Text>
+              <Text className="text-[#697383] text-[11px]">upcoming</Text>
+            </View>
+            <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+              <Users size={16} color="#4ADE80" />
+              <Text className="text-white text-xl font-black mt-1">{totalAttending}</Text>
+              <Text className="text-[#697383] text-[11px]">people going</Text>
+            </View>
+          </View>
         </View>
 
         <RetryBanner error={queryError} onRetry={refetch} loading={loading} />
         <FlatList
-          data={events ?? []}
+          data={upcoming}
           renderItem={renderEvent}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
           refreshing={loading}
           onRefresh={refetch}
-          ListEmptyComponent={<EmptyStates.NoEvents />}
+          ListEmptyComponent={
+            <View className="items-center mt-20 px-8">
+              <View className="w-16 h-16 rounded-2xl bg-[#10151D] border border-[#252D39] items-center justify-center">
+                <CalendarDays size={28} color="#596271" />
+              </View>
+              <Text className="text-white text-lg font-black mt-4">No upcoming events</Text>
+              <Text className="text-[#697383] text-sm text-center mt-2">New skate sessions and events will show here when they’re posted.</Text>
+            </View>
+          }
         />
       </View>
     </ScreenFadeIn>
