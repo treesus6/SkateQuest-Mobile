@@ -1,0 +1,81 @@
+name: Report SkateQuest Full Quality Gate
+
+on:
+  workflow_run:
+    workflows: ['SkateQuest Full Quality Gate']
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+  statuses: write
+
+jobs:
+  report:
+    if: ${{ github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish quality status and manage issue
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const ok = run.conclusion === 'success';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[quality-gate] Full SkateQuest quality gate failed';
+
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: run.head_sha,
+              state: ok ? 'success' : 'failure',
+              target_url: run.html_url,
+              description: ok
+                ? 'Type, lint, tests, Expo Doctor, and web export passed'
+                : `Full quality gate: ${run.conclusion}`.slice(0, 140),
+              context: 'SkateQuest full quality',
+            });
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find(issue => !issue.pull_request && issue.title === title);
+
+            if (!ok) {
+              const body = [
+                'The full SkateQuest quality gate failed on `main`.',
+                '',
+                `- Commit: \`${run.head_sha}\``,
+                `- Conclusion: **${run.conclusion}**`,
+                `- Workflow run: ${run.html_url}`,
+                '',
+                'This gate runs type-check, lint, Jest, Expo Doctor, web export, and key-route export verification.',
+              ].join('\n');
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body });
+              }
+              return;
+            }
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Recovered on commit \`${run.head_sha}\`. Full quality gate passed.`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+            }
