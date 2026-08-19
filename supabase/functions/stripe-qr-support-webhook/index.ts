@@ -10,8 +10,20 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(supabaseUrl, serviceRoleKey);
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  const webhookSecret = Deno.env.get("STRIPE_QR_SUPPORT_WEBHOOK_SECRET");
+
+  let webhookSecret = Deno.env.get("STRIPE_QR_SUPPORT_WEBHOOK_SECRET") || null;
+  if (!webhookSecret) {
+    const { data: vaultSecret, error: vaultError } = await admin.rpc("get_server_vault_secret", {
+      p_name: "stripe_qr_support_webhook_secret",
+    });
+    if (vaultError) console.error("Could not read Stripe webhook secret from Vault", vaultError);
+    if (typeof vaultSecret === "string" && vaultSecret.length > 0) webhookSecret = vaultSecret;
+  }
+
   if (!stripeKey || !webhookSecret) return json({ error: "Webhook is not configured" }, 503);
 
   const signature = req.headers.get("stripe-signature") || "";
@@ -26,11 +38,6 @@ Deno.serve(async (req: Request) => {
     console.error("Invalid Stripe webhook signature", error);
     return json({ error: "Bad signature" }, 400);
   }
-
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
 
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
