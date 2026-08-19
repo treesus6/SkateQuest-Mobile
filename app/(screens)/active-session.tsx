@@ -1,1 +1,1 @@
-export { default } from '../../screens/ActiveSessionScreenVerified';
+export { default } from '../../screens/ActiveSessionScreen';
