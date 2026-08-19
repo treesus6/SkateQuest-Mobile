@@ -21,32 +21,20 @@ export const crewsService = {
         .order('total_xp', { ascending: false });
     } catch (error) {
       Logger.error('crewsService.getAll failed', error);
-      throw new ServiceError(
-        'Failed to fetch crews',
-        'CREWS_GET_ALL_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to fetch crews', 'CREWS_GET_ALL_FAILED', error);
     }
   },
 
   async create(crew: { name: string; description: string; created_by: string }) {
     try {
-      return await supabase.from('crews').insert([
-        {
-          name: crew.name,
-          description: crew.description,
-          created_by: crew.created_by,
-          member_count: 1,
-          total_xp: 0,
-        },
-      ]);
+      if (!crew.created_by) throw new Error('Authentication required');
+      return await supabase.rpc('create_crew', {
+        p_name: crew.name,
+        p_description: crew.description,
+      });
     } catch (error) {
       Logger.error('crewsService.create failed', error);
-      throw new ServiceError(
-        'Failed to create crew',
-        'CREWS_CREATE_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to create crew', 'CREWS_CREATE_FAILED', error);
     }
   },
 
@@ -81,10 +69,7 @@ export const crewsService = {
 
   async updateTerritory(territoryId: string, updates: { total_points: number; last_activity: string }) {
     try {
-      return await supabase
-        .from('crew_territories')
-        .update(updates)
-        .eq('id', territoryId);
+      return await supabase.from('crew_territories').update(updates).eq('id', territoryId);
     } catch (error) {
       Logger.error('crewsService.updateTerritory failed', error);
       throw new ServiceError('Failed to update territory', 'CREWS_TERRITORY_UPDATE_FAILED', error);
@@ -106,7 +91,7 @@ export const crewsService = {
         .from('crew_members')
         .select('crew_id, crews!crew_members_crew_id_fkey(name, color_hex)')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
     } catch (error) {
       Logger.error('crewsService.getUserCrew failed', error);
       throw new ServiceError('Failed to fetch user crew', 'CREWS_USER_CREW_GET_FAILED', error);
@@ -115,19 +100,10 @@ export const crewsService = {
 
   async join(crewId: string, userId: string) {
     try {
-      return await supabase.from('crew_members').insert([
-        {
-          crew_id: crewId,
-          user_id: userId,
-        },
-      ]);
+      return await supabase.from('crew_members').insert([{ crew_id: crewId, user_id: userId }]);
     } catch (error) {
       Logger.error('crewsService.join failed', error);
-      throw new ServiceError(
-        'Failed to join crew',
-        'CREWS_JOIN_FAILED',
-        error
-      );
+      throw new ServiceError('Failed to join crew', 'CREWS_JOIN_FAILED', error);
     }
   },
 };
