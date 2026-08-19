@@ -10,6 +10,7 @@ permissions:
   pages: write
   id-token: write
   issues: write
+  statuses: write
 
 concurrency:
   group: github-pages
@@ -134,7 +135,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Open or close web deployment health issue
+      - name: Publish web health status and manage failure issue
         uses: actions/github-script@v9
         env:
           BUILD_RESULT: ${{ needs.build.result }}
@@ -148,6 +149,19 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: context.sha,
+              state: failed ? 'failure' : 'success',
+              target_url: runUrl,
+              description: failed
+                ? `Build ${process.env.BUILD_RESULT}; deploy/HTTPS ${process.env.DEPLOY_RESULT}`.slice(0, 140)
+                : 'Production HTTPS PWA is healthy',
+              context: 'SkateQuest production web',
+            });
+
             const body = [
               'SkateQuest production web deployment health check failed.',
               '',
