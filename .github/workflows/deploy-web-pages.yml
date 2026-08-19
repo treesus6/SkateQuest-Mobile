@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: github-pages
@@ -91,7 +92,7 @@ jobs:
           path: dist
 
   deploy:
-    name: Deploy to GitHub Pages
+    name: Deploy and verify GitHub Pages
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -103,3 +104,97 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify production HTTPS PWA
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --location --max-time 20 \
+              https://skatequest.me/manifest.webmanifest -o /tmp/skatequest-manifest \
+              && grep -q '"name": "SkateQuest"' /tmp/skatequest-manifest \
+              && curl --fail --silent --show-error --location --max-time 20 \
+                https://skatequest.me/service-worker.js -o /tmp/skatequest-sw \
+              && grep -q 'skatequest-shell-' /tmp/skatequest-sw; then
+              echo 'SkateQuest production HTTPS PWA is reachable and serving the expected assets.'
+              exit 0
+            fi
+            echo "Production PWA check attempt ${attempt} failed; retrying."
+            sleep 10
+          done
+
+          echo 'Production HTTPS PWA did not become healthy after deployment.' >&2
+          exit 1
+
+  report-web-health:
+    name: Report production web health
+    if: always()
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Open or close web deployment health issue
+        uses: actions/github-script@v9
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        with:
+          script: |
+            const title = '[web-deploy] Production PWA deployment failed';
+            const failed =
+              process.env.BUILD_RESULT !== 'success' ||
+              process.env.DEPLOY_RESULT !== 'success';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = [
+              'SkateQuest production web deployment health check failed.',
+              '',
+              `- Build: **${process.env.BUILD_RESULT}**`,
+              `- Deploy / HTTPS smoke check: **${process.env.DEPLOY_RESULT}**`,
+              `- Commit: \`${context.sha}\``,
+              `- Workflow run: ${runUrl}`,
+              '',
+              'The deploy workflow verifies the exported PWA plus the live HTTPS manifest and service worker at `https://skatequest.me`.',
+            ].join('\n');
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find(
+              issue => !issue.pull_request && issue.title === title
+            );
+
+            if (failed) {
+              if (existing) {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body,
+                });
+              } else {
+                await github.rest.issues.create({ owner, repo, title, body });
+              }
+              return;
+            }
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Recovered on commit \`${context.sha}\`. Production HTTPS smoke check passed.`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+            }
