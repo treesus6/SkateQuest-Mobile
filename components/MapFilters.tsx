@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { MapPin, Building2, Hammer, Smartphone, ShoppingCart, Check, X } from 'lucide-react-native';
-import Button from './ui/Button';
+import { MapPin, Building2, Hammer, Smartphone, ShoppingCart, Check, X, SlidersHorizontal } from 'lucide-react-native';
 
 interface MapFiltersProps {
   visible: boolean;
@@ -17,77 +16,103 @@ interface MapFiltersProps {
 }
 
 const FILTER_TYPES = [
-  { key: 'park' as const, label: 'Parks', icon: MapPin, color: '#10b981' },
-  { key: 'street' as const, label: 'Street', icon: Building2, color: '#3b82f6' },
-  { key: 'diy' as const, label: 'DIY', icon: Hammer, color: '#f59e0b' },
-  { key: 'quest' as const, label: 'Quests', icon: Smartphone, color: '#8b5cf6' },
-  { key: 'shop' as const, label: 'Shops', icon: ShoppingCart, color: '#ef4444' },
+  { key: 'park' as const, label: 'Parks', sub: 'Skateparks & bowls', icon: MapPin, color: '#D2673D' },
+  { key: 'street' as const, label: 'Street', sub: 'Rails, ledges & stairs', icon: Building2, color: '#F59E0B' },
+  { key: 'diy' as const, label: 'DIY', sub: 'Community-built spots', icon: Hammer, color: '#A855F7' },
+  { key: 'quest' as const, label: 'Quest Spots', sub: 'Locations tied to missions', icon: Smartphone, color: '#22C55E' },
+  { key: 'shop' as const, label: 'Skate Shops', sub: 'Local shops & community stores', icon: ShoppingCart, color: '#38BDF8' },
 ];
 
 export default function MapFilters({ visible, onClose, filters, onFilterChange }: MapFiltersProps) {
   const [localFilters, setLocalFilters] = useState(filters);
 
+  useEffect(() => {
+    if (visible) setLocalFilters(filters);
+  }, [filters, visible]);
+
+  const activeCount = useMemo(
+    () => Object.values(localFilters).filter(Boolean).length,
+    [localFilters]
+  );
+
+  const apply = (next: typeof filters) => {
+    setLocalFilters(next);
+    onFilterChange(next);
+  };
+
   const toggleFilter = (type: keyof typeof filters) => {
-    const newFilters = { ...localFilters, [type]: !localFilters[type] };
-    setLocalFilters(newFilters);
-    onFilterChange(newFilters);
-  };
-
-  const selectAll = () => {
-    const allOn = { park: true, street: true, diy: true, quest: true, shop: true };
-    setLocalFilters(allOn);
-    onFilterChange(allOn);
-  };
-
-  const selectNone = () => {
-    const allOff = { park: false, street: false, diy: false, quest: false, shop: false };
-    setLocalFilters(allOff);
-    onFilterChange(allOff);
+    apply({ ...localFilters, [type]: !localFilters[type] });
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/70 justify-end">
-        <View className="bg-gray-800 rounded-t-2xl pt-5 pb-10 px-5" style={{ maxHeight: '70%' }}>
-          <View className="flex-row justify-between items-center mb-5">
-            <Text className="text-2xl font-bold text-white">Map Filters</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X color="#666" size={24} />
+      <View className="flex-1 bg-black/75 justify-end">
+        <View className="bg-[#0B1018] rounded-t-[28px] pt-4 pb-8 px-5 border-t border-[#202733]" style={{ maxHeight: '82%' }}>
+          <View className="w-12 h-1 rounded-full bg-[#303845] self-center mb-5" />
+
+          <View className="flex-row justify-between items-start mb-5">
+            <View className="flex-row items-center gap-3 flex-1 pr-4">
+              <View className="w-11 h-11 rounded-2xl bg-[#2A1812] items-center justify-center">
+                <SlidersHorizontal color="#D2673D" size={21} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[11px] font-black tracking-[2px] text-[#D2673D] uppercase">Map Layers</Text>
+                <Text className="text-2xl font-black text-white mt-0.5">What do you want to find?</Text>
+                <Text className="text-xs text-[#7C8795] mt-1">{activeCount} of {FILTER_TYPES.length} layers visible</Text>
+              </View>
+            </View>
+            <TouchableOpacity className="w-10 h-10 rounded-full bg-[#141B25] items-center justify-center" onPress={onClose}>
+              <X color="#9AA4B2" size={20} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="mb-5">
-            {FILTER_TYPES.map(({ key, label, icon: Icon, color }) => (
-              <TouchableOpacity
-                key={key}
-                className="flex-row justify-between items-center bg-gray-900 rounded-xl p-4 mb-3"
-                style={localFilters[key] ? { borderWidth: 2, borderColor: color } : { borderWidth: 1, borderColor: '#333' }}
-                onPress={() => toggleFilter(key)}
-              >
-                <View className="flex-row items-center flex-1">
-                  <Icon color={color} size={24} />
-                  <Text className="text-lg font-semibold text-white ml-3">{label}</Text>
-                </View>
-                <View
-                  className="w-7 h-7 rounded-md border-2 justify-center items-center"
-                  style={localFilters[key] ? { backgroundColor: color, borderColor: color } : { borderColor: '#666' }}
+          <ScrollView showsVerticalScrollIndicator={false} className="mb-5">
+            {FILTER_TYPES.map(({ key, label, sub, icon: Icon, color }) => {
+              const active = localFilters[key];
+              return (
+                <TouchableOpacity
+                  key={key}
+                  className="flex-row items-center rounded-2xl p-4 mb-3 bg-[#111721] border"
+                  style={{ borderColor: active ? `${color}88` : '#252D39' }}
+                  onPress={() => toggleFilter(key)}
+                  activeOpacity={0.8}
                 >
-                  {localFilters[key] && <Check color="#fff" size={18} />}
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View className="w-12 h-12 rounded-2xl items-center justify-center" style={{ backgroundColor: `${color}18` }}>
+                    <Icon color={color} size={23} />
+                  </View>
+                  <View className="flex-1 ml-3">
+                    <Text className="text-[16px] font-black text-white">{label}</Text>
+                    <Text className="text-xs text-[#7C8795] mt-1">{sub}</Text>
+                  </View>
+                  <View
+                    className="w-8 h-8 rounded-xl border-2 justify-center items-center"
+                    style={active ? { backgroundColor: color, borderColor: color } : { borderColor: '#4A5563', backgroundColor: '#0B1018' }}
+                  >
+                    {active && <Check color="#fff" size={18} strokeWidth={3} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
-          <View className="flex-row gap-3 mb-4">
-            <View className="flex-1">
-              <Button title="Select All" onPress={selectAll} variant="secondary" size="md" />
-            </View>
-            <View className="flex-1">
-              <Button title="Clear All" onPress={selectNone} variant="secondary" size="md" />
-            </View>
+          <View className="flex-row gap-3 mb-3">
+            <TouchableOpacity
+              className="flex-1 min-h-[48px] rounded-2xl bg-[#151C27] border border-[#2A3340] items-center justify-center"
+              onPress={() => apply({ park: false, street: false, diy: false, quest: false, shop: false })}
+            >
+              <Text className="font-black text-[#AAB3BF]">Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 min-h-[48px] rounded-2xl bg-[#151C27] border border-[#2A3340] items-center justify-center"
+              onPress={() => apply({ park: true, street: true, diy: true, quest: true, shop: true })}
+            >
+              <Text className="font-black text-[#AAB3BF]">Show all</Text>
+            </TouchableOpacity>
           </View>
 
-          <Button title="Done" onPress={onClose} variant="primary" size="lg" />
+          <TouchableOpacity className="min-h-[54px] rounded-2xl bg-[#D2673D] items-center justify-center" onPress={onClose}>
+            <Text className="text-white text-base font-black">Back to the map</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
