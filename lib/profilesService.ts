@@ -48,9 +48,11 @@ export const profilesService = {
     }
   },
 
-  async getLevelProgress(userId: string) {
+  async getLevelProgress(userIdOrXp: string | number) {
     try {
-      return await supabase.rpc('get_level_progress', { p_user_id: userId });
+      return typeof userIdOrXp === 'string'
+        ? await supabase.rpc('get_level_progress', { p_user_id: userIdOrXp })
+        : await supabase.rpc('get_level_progress', { p_user_xp: Math.max(0, Math.floor(userIdOrXp)) });
     } catch (error) {
       Logger.error('profilesService.getLevelProgress failed', error);
       throw new ServiceError('Failed to get level progress', 'PROFILES_LEVEL_PROGRESS_FAILED', error);
