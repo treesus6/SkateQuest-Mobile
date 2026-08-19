@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
@@ -56,21 +56,20 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 function AuthGuard() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
-  const segments = useSegments();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const authScreen = segments[1];
-    const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
+    const inAuthGroup = pathname.startsWith('/(auth)') || pathname === '/login' || pathname === '/reset-password';
+    const isPasswordRecovery = pathname.endsWith('/reset-password');
 
     if (!user && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {
       router.replace('/(tabs)/');
     }
-  }, [user, loading, segments]);
+  }, [user, loading, pathname, router]);
 
   useEffect(() => {
     if (!loading) {
@@ -117,7 +116,7 @@ function RootLayout() {
         startBackgroundSync([], mutationExecutor);
 
         if (Platform.OS !== 'web') {
-          checkForOTAUpdate({ silent: true });
+          void checkForOTAUpdate({ silent: true });
         }
 
         Logger.info('SkateQuest initialized');
@@ -139,7 +138,7 @@ function RootLayout() {
     });
 
     setupGlobalErrorHandler();
-    initializeApp();
+    void initializeApp();
 
     return () => {
       cleanupAuth();
