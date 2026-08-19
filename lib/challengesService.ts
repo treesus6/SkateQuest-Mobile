@@ -40,24 +40,6 @@ export const challengesService = {
     }
   },
 
-  async complete(challengeId: string, userId: string) {
-    try {
-      return await supabase
-        .from('challenges')
-        .update({
-          status: 'completed',
-          completed_by: userId,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', challengeId)
-        .select()
-        .single();
-    } catch (error) {
-      Logger.error('challengesService.complete failed', error);
-      throw new ServiceError('Failed to complete challenge', 'CHALLENGES_COMPLETE_FAILED', error);
-    }
-  },
-
   async vote(submissionId: string, _voterId: string, voteType: string) {
     try {
       return await supabase.rpc('judge_challenge_submission', {
@@ -67,18 +49,6 @@ export const challengesService = {
     } catch (error) {
       Logger.error('challengesService.vote failed', error);
       throw new ServiceError('Failed to submit vote', 'CHALLENGES_VOTE_FAILED', error);
-    }
-  },
-
-  async updateSubmission(submissionId: string, updates: Record<string, any>) {
-    try {
-      return await supabase
-        .from('challenge_submissions')
-        .update(updates)
-        .eq('id', submissionId);
-    } catch (error) {
-      Logger.error('challengesService.updateSubmission failed', error);
-      throw new ServiceError('Failed to update submission', 'CHALLENGES_UPDATE_SUBMISSION_FAILED', error);
     }
   },
 
