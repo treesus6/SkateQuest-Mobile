@@ -100,7 +100,9 @@ export default function SpotClaimsScreen() {
   useEffect(() => {
     void loadData();
     const subscription = spotClaimsService.subscribeToUserClaims(user?.id || '', () => void loadData());
-    return () => subscription.unsubscribe();
+    return () => {
+      void subscription.unsubscribe();
+    };
   }, [user?.id, loadData]);
 
   const handleRefresh = useCallback(async () => {
