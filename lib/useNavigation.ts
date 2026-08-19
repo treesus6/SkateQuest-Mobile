@@ -64,6 +64,7 @@ export const SCREEN_MAP: Record<string, string> = {
   Playlists: '/playlists',
   Shops: '/shops',
   Crews: '/crews',
+  CrewDetails: '/crew-details',
   Community: '/scene',
   Events: '/events',
   QRScanner: '/qr-scanner',
