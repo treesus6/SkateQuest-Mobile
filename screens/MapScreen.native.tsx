@@ -128,7 +128,7 @@ export default function MapScreen() {
     };
   }, [selectedSpot?.id]);
 
-  const useLocation = (location: Location.LocationObject) => {
+  const applyLocation = (location: Location.LocationObject) => {
     setUserLocation(location);
     setCenterCoordinates([location.coords.longitude, location.coords.latitude]);
     cameraRef.current?.setCamera({
@@ -150,7 +150,7 @@ export default function MapScreen() {
       const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
       if (lastKnown) {
         usedLastKnown = true;
-        useLocation(lastKnown);
+        applyLocation(lastKnown);
         void loadSpots(lastKnown.coords.latitude, lastKnown.coords.longitude);
       }
 
@@ -161,7 +161,7 @@ export default function MapScreen() {
         setTimeout(() => reject(new Error('Location request timed out')), LOCATION_TIMEOUT_MS);
       });
       const location = await Promise.race([currentPromise, timeoutPromise]);
-      useLocation(location);
+      applyLocation(location);
       await loadSpots(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.warn('Location unavailable; keeping the map usable:', error);
