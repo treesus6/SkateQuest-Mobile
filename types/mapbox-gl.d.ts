@@ -32,7 +32,11 @@ declare global {
       zoom: number;
       attributionControl?: boolean;
     }) => MapboxGLMap;
-    Marker: new (options?: { color?: string; element?: HTMLElement }) => MapboxGLMarker;
+    Marker: new (options?: {
+      color?: string;
+      element?: HTMLElement;
+      anchor?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+    }) => MapboxGLMarker;
     Popup: new (options?: { offset?: number }) => MapboxGLPopup;
   }
 
