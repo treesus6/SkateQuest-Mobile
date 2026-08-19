@@ -61,8 +61,9 @@ function AuthGuard() {
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const authScreen = segments[1];
+    const routeSegments = segments as readonly string[];
+    const inAuthGroup = routeSegments[0] === '(auth)';
+    const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
     if (!user && !inAuthGroup) {
