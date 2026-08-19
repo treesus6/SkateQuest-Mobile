@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Check, Clock, Crosshair, MapPin, Play, Upload, X } from 'lucide-react-native';
+import { Crosshair, Play, Upload } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useRoute } from '../lib/useNavigation';
 import { supabase } from '../lib/supabase';
@@ -234,7 +234,7 @@ export default function CallOutsScreenVerified() {
         {!busy && received && item.status === 'accepted' && !item.challenged_video_url ? (
           <TouchableOpacity className="mt-4 bg-brand-green rounded-xl py-3 flex-row justify-center items-center gap-2" onPress={() => submitProof(item)}>
             <Upload size={17} color="#fff" />
-            <Text className="font-bold text-white">Upload landing video</Text>
+            <Text className="text-white font-bold">Upload landing video</Text>
           </TouchableOpacity>
         ) : null}
 
