@@ -8,6 +8,7 @@ declare global {
 
   interface MapboxGLPopup {
     setText(text: string): MapboxGLPopup;
+    setHTML(html: string): MapboxGLPopup;
   }
 
   interface MapboxGLMap {
@@ -31,7 +32,7 @@ declare global {
       zoom: number;
       attributionControl?: boolean;
     }) => MapboxGLMap;
-    Marker: new (options?: { color?: string }) => MapboxGLMarker;
+    Marker: new (options?: { color?: string; element?: HTMLElement }) => MapboxGLMarker;
     Popup: new (options?: { offset?: number }) => MapboxGLPopup;
   }
 
