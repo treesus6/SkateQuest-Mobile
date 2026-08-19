@@ -9,12 +9,11 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Alert,
+  RefreshControl,
 } from 'react-native'
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
-import { ChevronLeft, MessageSquare, X, PenLine } from 'lucide-react-native'
+import { ChevronLeft, MessageSquare, X, PenLine, MapPin, Users, Sparkles } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
-
-// ── Types ────────────────────────────────────────────────────────────────────
 
 type SpotReviewsRouteParams = {
   SpotReviews: { spotId: string; spotName: string }
@@ -29,14 +28,20 @@ interface SpotComment {
   profiles: { username: string } | null
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function formatDate(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.max(0, Math.floor(diff / 60000))
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return formatDate(iso)
+}
 
 export default function SpotReviewsScreen() {
   const navigation = useNavigation()
@@ -45,14 +50,15 @@ export default function SpotReviewsScreen() {
 
   const [comments, setComments] = useState<SpotComment[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [commentText, setCommentText] = useState('')
 
-  const fetchComments = useCallback(async () => {
+  const fetchComments = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError(null)
       const { data, error: fetchError } = await supabase
         .from('spot_comments')
@@ -65,12 +71,18 @@ export default function SpotReviewsScreen() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load comments')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [spotId])
 
   useEffect(() => {
     fetchComments()
+  }, [fetchComments])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchComments(true)
+    setRefreshing(false)
   }, [fetchComments])
 
   const handleSubmit = async () => {
@@ -80,9 +92,7 @@ export default function SpotReviewsScreen() {
     }
     try {
       setSubmitting(true)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not logged in')
 
       const { error: insertError } = await supabase.from('spot_comments').insert({
@@ -94,7 +104,7 @@ export default function SpotReviewsScreen() {
 
       setModalVisible(false)
       setCommentText('')
-      fetchComments()
+      await fetchComments(true)
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit comment')
     } finally {
@@ -102,176 +112,112 @@ export default function SpotReviewsScreen() {
     }
   }
 
+  const uniqueSkaters = new Set(comments.map(c => c.user_id)).size
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: '#1a1a1a',
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
-          <ChevronLeft size={24} color="#FF6B35" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Reviews</Text>
-          <Text style={{ color: '#666', fontSize: 13 }} numberOfLines={1}>
-            {spotName}
-          </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#07090D' }}>
+      <View style={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: '#111722', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#232A36' }}
+          >
+            <ChevronLeft size={22} color="#F3F4F6" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#D2673D', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 }}>SPOT TALK</Text>
+            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }} numberOfLines={1}>{spotName}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setModalVisible(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#D2673D', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 14 }}
+          >
+            <PenLine size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '900' }}>Post</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#FF6B35',
-            paddingHorizontal: 14,
-            paddingVertical: 8,
-            borderRadius: 20,
-            gap: 6,
-          }}
-        >
-          <PenLine size={16} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Review</Text>
-        </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#FF6B35" />
+          <ActivityIndicator size="large" color="#D2673D" />
+          <Text style={{ color: '#7B8493', marginTop: 12 }}>Loading the scene…</Text>
         </View>
       ) : error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#FF6B35', fontSize: 15, textAlign: 'center' }}>{error}</Text>
+          <Text style={{ color: '#F87171', fontSize: 15, textAlign: 'center' }}>{error}</Text>
+          <TouchableOpacity onPress={() => fetchComments()} style={{ marginTop: 16, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 18, paddingVertical: 11 }}>
+            <Text style={{ color: '#fff', fontWeight: '800' }}>Try again</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-          {/* Comment count summary */}
-          <View
-            style={{
-              backgroundColor: '#1a1a1a',
-              borderRadius: 16,
-              padding: 20,
-              alignItems: 'center',
-              marginBottom: 16,
-            }}
-          >
-            <MessageSquare size={36} color="#FF6B35" />
-            <Text style={{ color: '#fff', fontSize: 28, fontWeight: '900', marginTop: 8 }}>
-              {comments.length}
-            </Text>
-            <Text style={{ color: '#666', fontSize: 13, marginTop: 4 }}>
-              {comments.length === 1 ? 'review' : 'reviews'}
-            </Text>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 44 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#D2673D" />}
+        >
+          <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#252D39', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+              <MapPin size={17} color="#D2673D" />
+              <Text style={{ color: '#F3F4F6', fontSize: 16, fontWeight: '900' }}>What skaters are saying</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#0B1017', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#202733' }}>
+                <MessageSquare size={17} color="#D2673D" />
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 7 }}>{comments.length}</Text>
+                <Text style={{ color: '#7B8493', fontSize: 12 }}>posts</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#0B1017', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#202733' }}>
+                <Users size={17} color="#8B5CF6" />
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 7 }}>{uniqueSkaters}</Text>
+                <Text style={{ color: '#7B8493', fontSize: 12 }}>skaters</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Comments list */}
           {comments.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: '#1a1a1a',
-                borderRadius: 16,
-                padding: 32,
-                alignItems: 'center',
-              }}
-            >
-              <MessageSquare size={40} color="#333" />
-              <Text
-                style={{
-                  color: '#666',
-                  fontSize: 15,
-                  marginTop: 12,
-                  textAlign: 'center',
-                }}
-              >
-                No reviews yet. Be the first to review this spot!
-              </Text>
+            <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#252D39' }}>
+              <View style={{ width: 58, height: 58, borderRadius: 18, backgroundColor: '#171018', alignItems: 'center', justifyContent: 'center' }}>
+                <Sparkles size={26} color="#D2673D" />
+              </View>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 14 }}>Start the spot talk</Text>
+              <Text style={{ color: '#7B8493', fontSize: 14, lineHeight: 20, marginTop: 6, textAlign: 'center' }}>Share the ground, security, traffic, best lines, or anything skaters should know.</Text>
+              <TouchableOpacity onPress={() => setModalVisible(true)} style={{ marginTop: 18, backgroundColor: '#D2673D', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12 }}>
+                <Text style={{ color: '#fff', fontWeight: '900' }}>Post first report</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            comments.map((comment) => (
-              <View
-                key={comment.id}
-                style={{
-                  backgroundColor: '#1a1a1a',
-                  borderRadius: 16,
-                  padding: 16,
-                  marginBottom: 12,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 8,
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>
-                    {comment.profiles?.username ?? 'Skater'}
-                  </Text>
-                  <Text style={{ color: '#666', fontSize: 12 }}>
-                    {formatDate(comment.created_at)}
-                  </Text>
+            comments.map(comment => (
+              <View key={comment.id} style={{ backgroundColor: '#10151D', borderRadius: 18, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: '#252D39' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+                    <View style={{ width: 34, height: 34, borderRadius: 11, backgroundColor: '#1B1110', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#D2673D', fontWeight: '900' }}>{(comment.profiles?.username ?? 'S').slice(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View>
+                      <Text style={{ color: '#F3F4F6', fontSize: 14, fontWeight: '900' }}>@{comment.profiles?.username ?? 'skater'}</Text>
+                      <Text style={{ color: '#5F6876', fontSize: 11 }}>{timeAgo(comment.created_at)}</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={{ color: '#ccc', fontSize: 14, lineHeight: 20 }}>
-                  {comment.content}
-                </Text>
+                <Text style={{ color: '#C5CAD2', fontSize: 14, lineHeight: 21 }}>{comment.content}</Text>
               </View>
             ))
           )}
         </ScrollView>
       )}
 
-      {/* Write Review Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => {
-          setModalVisible(false)
-          setCommentText('')
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: '#0a0a0a',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 24,
-              maxHeight: '70%',
-            }}
-          >
-            {/* Modal header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>
-                Write a Review
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(false)
-                  setCommentText('')
-                }}
-              >
-                <X size={22} color="#666" />
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => { setModalVisible(false); setCommentText('') }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#10151D', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, borderWidth: 1, borderColor: '#2A303A' }}>
+            <View style={{ width: 42, height: 4, borderRadius: 2, backgroundColor: '#343B47', alignSelf: 'center', marginBottom: 18 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+              <View style={{ flex: 1, paddingRight: 20 }}>
+                <Text style={{ color: '#D2673D', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 }}>ADD TO THE SCENE</Text>
+                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 3 }}>{spotName}</Text>
+                <Text style={{ color: '#7B8493', fontSize: 13, marginTop: 5 }}>Keep it useful for skaters who are about to pull up.</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setModalVisible(false); setCommentText('') }} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#0B1017', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={19} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
 
@@ -280,37 +226,19 @@ export default function SpotReviewsScreen() {
               onChangeText={setCommentText}
               multiline
               numberOfLines={5}
-              placeholder="Describe the spot, the vibe, the security..."
-              placeholderTextColor="#444"
-              style={{
-                backgroundColor: '#1a1a1a',
-                borderRadius: 12,
-                padding: 14,
-                color: '#fff',
-                fontSize: 14,
-                minHeight: 120,
-                textAlignVertical: 'top',
-                marginBottom: 24,
-              }}
+              maxLength={280}
+              placeholder="Ground quality, bust factor, best line, crowd, lighting…"
+              placeholderTextColor="#596271"
+              style={{ backgroundColor: '#090D13', borderRadius: 16, padding: 15, color: '#fff', fontSize: 14, minHeight: 130, textAlignVertical: 'top', borderWidth: 1, borderColor: '#252D39' }}
             />
+            <Text style={{ color: '#596271', fontSize: 11, textAlign: 'right', marginTop: 7 }}>{commentText.length}/280</Text>
 
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={submitting}
-              style={{
-                backgroundColor: submitting ? '#333' : '#FF6B35',
-                borderRadius: 14,
-                paddingVertical: 16,
-                alignItems: 'center',
-              }}
+              disabled={submitting || !commentText.trim()}
+              style={{ backgroundColor: submitting || !commentText.trim() ? '#353B45' : '#D2673D', borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 14 }}
             >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-                  Submit Review
-                </Text>
-              )}
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900' }}>Post spot report</Text>}
             </TouchableOpacity>
           </View>
         </View>
