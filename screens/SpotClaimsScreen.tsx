@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { Trophy, Crown, Flame, TrendingUp, MapPin, Camera } from 'lucide-react-native';
+import { Trophy, Crown, Flame, TrendingUp, MapPin, Camera, ShieldCheck, Crosshair } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { spotClaimsService } from '../lib/spotClaimsService';
-import Card from '../components/ui/Card';
 import { Logger } from '../lib/logger';
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../lib/useNavigation';
@@ -41,9 +40,7 @@ function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) 
   const toRad = (degrees: number) => (degrees * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -100,9 +97,7 @@ export default function SpotClaimsScreen() {
   useEffect(() => {
     void loadData();
     const subscription = spotClaimsService.subscribeToUserClaims(user?.id || '', () => void loadData());
-    return () => {
-      void subscription.unsubscribe();
-    };
+    return () => { void subscription.unsubscribe(); };
   }, [user?.id, loadData]);
 
   const handleRefresh = useCallback(async () => {
@@ -116,25 +111,13 @@ export default function SpotClaimsScreen() {
     setClaimingId(spot.id);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        throw new Error('Location permission is required for King of the Hill.');
-      }
+      if (status !== 'granted') throw new Error('Location permission is required for King of the Hill.');
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const distance = distanceMeters(
-        position.coords.latitude,
-        position.coords.longitude,
-        spot.latitude,
-        spot.longitude
-      );
+      const distance = distanceMeters(position.coords.latitude, position.coords.longitude, spot.latitude, spot.longitude);
       if (distance > 150) {
         throw new Error(`Move closer to ${spot.name}. You are about ${Math.round(distance)}m away and must be within 150m.`);
       }
-
-      navigation.navigate('UploadMedia', {
-        spotId: spot.id,
-        spotName: spot.name,
-        challengeType: 'king_of_hill',
-      });
+      navigation.navigate('UploadMedia', { spotId: spot.id, spotName: spot.name, challengeType: 'king_of_hill' });
     } catch (error: any) {
       Alert.alert('Cannot submit claim yet', error?.message || 'Move closer to the spot and try again.');
     } finally {
@@ -143,59 +126,125 @@ export default function SpotClaimsScreen() {
   };
 
   if (loading) {
-    return <SafeAreaView className="flex-1 bg-brand-beige dark:bg-gray-900 items-center justify-center"><ActivityIndicator size="large" color="#d2673d" /></SafeAreaView>;
+    return (
+      <SafeAreaView className="flex-1 bg-[#07090D] items-center justify-center">
+        <ActivityIndicator size="large" color="#D2673D" />
+      </SafeAreaView>
+    );
   }
 
-  return <SafeAreaView className="flex-1 bg-brand-beige dark:bg-gray-900">
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />} contentContainerStyle={{ paddingBottom: 30 }}>
-      <View className="bg-brand-terracotta px-4 py-4 rounded-b-2xl mb-4">
-        <View className="flex-row items-center gap-2 mb-2"><Crown size={28} color="white" fill="white" /><Text className="text-2xl font-bold text-white">King of the Hill</Text></View>
-        <Text className="text-white/90 text-sm">Be at the spot, land something on video, and let the community judge the takeover.</Text>
-      </View>
-
-      <View className="px-4">
-        <Card className="mb-4 border-l-4 border-brand-terracotta">
-          <View className="flex-row justify-between items-center">
-            <View><Text className="text-lg font-bold text-gray-900 dark:text-white">Your Ranking</Text><Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">{userRank ? `${userRank.claimed_spots} verified spots · ${userRank.total_claim_strength} strength` : 'Win a verified spot claim to enter the board'}</Text></View>
-            <Text className="text-2xl font-black text-brand-terracotta">{userRank ? `#${userRank.rank}` : '—'}</Text>
+  return (
+    <SafeAreaView className="flex-1 bg-[#07090D]">
+      <ScrollView refreshControl={<RefreshControl tintColor="#D2673D" refreshing={refreshing} onRefresh={handleRefresh} />} contentContainerStyle={{ paddingBottom: 36 }}>
+        <View className="px-5 pt-4 pb-5">
+          <Text className="text-[#D2673D] text-[11px] font-black tracking-[2px]">TERRITORY GAME</Text>
+          <View className="flex-row items-center gap-2 mt-1">
+            <Crown size={23} color="#FFD166" fill="#FFD166" />
+            <Text className="text-white text-[30px] font-black">King of the Hill</Text>
           </View>
-        </Card>
+          <Text className="text-[#7B8493] text-sm mt-1">Be at the spot, land it on video, and earn the takeover through verification.</Text>
 
-        <View className="flex-row items-center gap-2 mb-3"><MapPin size={20} color="#d2673d" /><Text className="text-lg font-bold text-gray-900 dark:text-white">Nearby Spots</Text></View>
-        {nearbySpots.length === 0 ? (
-          <Card className="mb-4"><Text className="text-gray-500 dark:text-gray-400">Allow location to find spots within 5 km. You must be within 150m and submit a real video to challenge a spot.</Text></Card>
-        ) : nearbySpots.map(spot => {
-          const owned = userClaims.some(claim => claim.spot_id === spot.id);
-          return (
-            <Card key={spot.id} className="mb-2">
-              <View className="flex-row items-center justify-between gap-3">
-                <View className="flex-1">
-                  <Text className="font-bold text-gray-900 dark:text-white">{spot.name}</Text>
-                  <Text className="text-xs text-gray-500 mt-1">Within 150m + real video + Judge&apos;s Booth approval required.</Text>
-                </View>
-                <Pressable
-                  disabled={claimingId === spot.id || owned}
-                  onPress={() => void handleClaim(spot)}
-                  className={`px-4 py-2 rounded-full ${owned ? 'bg-gray-300 dark:bg-gray-700' : 'bg-brand-terracotta'}`}
-                >
-                  <View className="flex-row items-center gap-1.5">
-                    {!owned ? <Camera size={14} color="white" /> : null}
-                    <Text className={owned ? 'text-gray-500 font-bold' : 'text-white font-bold'}>{claimingId === spot.id ? 'Checking…' : owned ? 'Yours' : 'Challenge'}</Text>
-                  </View>
-                </Pressable>
+          <View className="flex-row gap-2 mt-4">
+            <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+              <Trophy size={16} color="#FFD166" />
+              <Text className="text-white text-xl font-black mt-1">{userRank ? `#${userRank.rank}` : '—'}</Text>
+              <Text className="text-[#697383] text-[11px]">your rank</Text>
+            </View>
+            <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+              <Crown size={16} color="#D2673D" />
+              <Text className="text-white text-xl font-black mt-1">{userClaims.length}</Text>
+              <Text className="text-[#697383] text-[11px]">held spots</Text>
+            </View>
+            <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+              <MapPin size={16} color="#38BDF8" />
+              <Text className="text-white text-xl font-black mt-1">{nearbySpots.length}</Text>
+              <Text className="text-[#697383] text-[11px]">nearby</Text>
+            </View>
+          </View>
+
+          <View className="bg-[#0B1017] border border-[#202733] rounded-2xl p-4 mt-4">
+            <View className="flex-row gap-3">
+              <Crosshair size={18} color="#D2673D" />
+              <View className="flex-1">
+                <Text className="text-white text-sm font-black">Real-world claim rules</Text>
+                <Text className="text-[#7B8493] text-xs leading-5 mt-1">Within 150m of the spot + real video submission + verification before a takeover counts.</Text>
               </View>
-            </Card>
-          );
-        })}
+            </View>
+          </View>
+        </View>
 
-        {userClaims.length > 0 && <>
-          <View className="flex-row items-center gap-2 mt-4 mb-3"><Flame size={20} color="#F59E0B" fill="#F59E0B" /><Text className="text-lg font-bold text-gray-900 dark:text-white">Your Verified Claims</Text></View>
-          {userClaims.map(item => <Card key={item.claim_id} className="mb-2"><Text className="font-semibold text-gray-900 dark:text-white">{item.spot_name}</Text><Text className="text-xs text-gray-500 mt-1">Strength {item.claim_strength} · held since {new Date(item.claimed_at).toLocaleDateString()}</Text></Card>)}
-        </>}
+        <View className="px-4">
+          <Text className="text-white text-lg font-black mb-3">Nearby Claimable Spots</Text>
+          {nearbySpots.length === 0 ? (
+            <View className="bg-[#10151D] border border-[#252D39] rounded-[20px] p-5 mb-4">
+              <MapPin size={24} color="#596271" />
+              <Text className="text-white font-black mt-3">No nearby spots loaded</Text>
+              <Text className="text-[#697383] text-sm leading-5 mt-1">Allow location access to find spots within 5 km. A claim still requires you to get within 150m.</Text>
+            </View>
+          ) : nearbySpots.map(spot => {
+            const owned = userClaims.some(claim => claim.spot_id === spot.id);
+            return (
+              <View key={spot.id} className="bg-[#10151D] border border-[#252D39] rounded-[18px] p-4 mb-3">
+                <View className="flex-row items-center justify-between gap-3">
+                  <View className="flex-1">
+                    <Text className="text-white text-[16px] font-black">{spot.name}</Text>
+                    <Text className="text-[#697383] text-xs mt-1">Real video and approval required.</Text>
+                  </View>
+                  <Pressable
+                    disabled={claimingId === spot.id || owned}
+                    onPress={() => void handleClaim(spot)}
+                    className={`px-4 py-3 rounded-xl border ${owned ? 'bg-[#0C1118] border-[#252D39]' : 'bg-[#D2673D] border-[#D2673D]'}`}
+                  >
+                    <View className="flex-row items-center gap-1.5">
+                      {owned ? <ShieldCheck size={14} color="#4ADE80" /> : <Camera size={14} color="#fff" />}
+                      <Text className={owned ? 'text-[#4ADE80] text-xs font-black' : 'text-white text-xs font-black'}>
+                        {claimingId === spot.id ? 'CHECKING…' : owned ? 'YOURS' : 'CHALLENGE'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
 
-        <View className="flex-row items-center gap-2 mt-4 mb-3"><TrendingUp size={20} color="#d2673d" /><Text className="text-lg font-bold text-gray-900 dark:text-white">Global Leaderboard</Text></View>
-        <Card className="p-0 overflow-hidden">{leaderboard.slice(0,20).map((item,index) => <View key={item.user_id} className={`flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-700 ${item.user_id === user?.id ? 'bg-brand-terracotta/10' : ''}`}><View className="w-9 items-center">{index < 3 ? <Trophy size={18} color={index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32'} /> : <Text className="font-bold text-gray-500">#{item.rank}</Text>}</View><View className="flex-1 ml-2"><Text className="font-semibold text-gray-900 dark:text-white">{item.display_name}</Text><Text className="text-xs text-gray-500">{item.claimed_spots} spots · {item.total_claim_strength} strength</Text></View></View>)}</Card>
-      </View>
-    </ScrollView>
-  </SafeAreaView>;
+          {userClaims.length > 0 ? (
+            <View className="mt-3">
+              <View className="flex-row items-center gap-2 mb-3">
+                <Flame size={18} color="#F59E0B" fill="#F59E0B" />
+                <Text className="text-white text-lg font-black">Your Verified Claims</Text>
+              </View>
+              {userClaims.map(item => (
+                <View key={item.claim_id} className="bg-[#10151D] border border-[#252D39] rounded-[18px] p-4 mb-3">
+                  <Text className="text-white font-black">{item.spot_name}</Text>
+                  <Text className="text-[#7B8493] text-xs mt-1">Strength {item.claim_strength} · held since {new Date(item.claimed_at).toLocaleDateString()}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <View className="flex-row items-center gap-2 mt-3 mb-3">
+            <TrendingUp size={18} color="#D2673D" />
+            <Text className="text-white text-lg font-black">Global Leaderboard</Text>
+          </View>
+          <View className="bg-[#10151D] border border-[#252D39] rounded-[20px] overflow-hidden">
+            {leaderboard.slice(0, 20).map((item, index) => (
+              <View key={item.user_id} className={`flex-row items-center px-4 py-3 border-b border-[#252D39] ${item.user_id === user?.id ? 'bg-[#1B1110]' : ''}`}>
+                <View className="w-9 items-center">
+                  {index < 3 ? (
+                    <Trophy size={18} color={index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32'} />
+                  ) : (
+                    <Text className="text-[#7B8493] font-black">#{item.rank}</Text>
+                  )}
+                </View>
+                <View className="flex-1 ml-2">
+                  <Text className="text-white font-black">{item.display_name}</Text>
+                  <Text className="text-[#697383] text-xs mt-0.5">{item.claimed_spots} spots · {item.total_claim_strength} strength</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
