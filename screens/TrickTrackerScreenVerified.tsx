@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, FlatList, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { BookOpen, CheckCircle, Plus, Star, Target, Trash2, Zap } from 'lucide-react-native';
+import { BookOpen, CheckCircle, Star, Target, Trash2, Zap } from 'lucide-react-native';
 import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
