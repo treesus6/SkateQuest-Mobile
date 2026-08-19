@@ -7,11 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Users } from 'lucide-react-native';
+import { Users, GraduationCap, HandHelping, UserRoundCheck } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { mentorshipService } from '../lib/mentorshipService';
 import MentorshipCard from '../components/MentorshipCard';
-import Card from '../components/ui/Card';
 import { Logger } from '../lib/logger';
 
 export default function MentorshipListScreen() {
@@ -20,7 +19,7 @@ export default function MentorshipListScreen() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, _setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
@@ -37,17 +36,16 @@ export default function MentorshipListScreen() {
       Logger.error('Failed to load mentorship data', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-brand-beige dark:bg-gray-900 items-center justify-center">
-        <ActivityIndicator size="large" color="#d2673d" />
+      <SafeAreaView className="flex-1 bg-[#07090D] items-center justify-center">
+        <ActivityIndicator size="large" color="#D2673D" />
       </SafeAreaView>
     );
   }
@@ -58,13 +56,32 @@ export default function MentorshipListScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-terracotta px-4 py-4 rounded-b-2xl mb-4">
-        <View className="flex-row items-center gap-2 mb-2">
-          <Users size={28} color="white" fill="white" strokeWidth={1.5} />
-          <Text className="text-2xl font-bold text-white">Mentorship</Text>
+    <SafeAreaView className="flex-1 bg-[#07090D]">
+      <View className="px-5 pt-4 pb-5">
+        <Text className="text-[#D2673D] text-[11px] font-black tracking-[2px]">PASS IT FORWARD</Text>
+        <View className="flex-row items-center gap-2 mt-1">
+          <Users size={22} color="#D2673D" />
+          <Text className="text-white text-[30px] font-black">Mentorship</Text>
         </View>
-        <Text className="text-white/90 text-sm">Learn from & teach the community</Text>
+        <Text className="text-[#7B8493] text-sm mt-1">Learn from experienced skaters and help the next person progress.</Text>
+
+        <View className="flex-row gap-2 mt-4">
+          <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+            <GraduationCap size={16} color="#C084FC" />
+            <Text className="text-white text-xl font-black mt-1">{stats?.mentors_count ?? mentors.length}</Text>
+            <Text className="text-[#697383] text-[11px]">mentors</Text>
+          </View>
+          <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+            <HandHelping size={16} color="#38BDF8" />
+            <Text className="text-white text-xl font-black mt-1">{stats?.mentees_count ?? mentees.length}</Text>
+            <Text className="text-[#697383] text-[11px]">mentees</Text>
+          </View>
+          <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+            <UserRoundCheck size={16} color="#4ADE80" />
+            <Text className="text-white text-xl font-black mt-1">{allRelationships.length}</Text>
+            <Text className="text-[#697383] text-[11px]">connections</Text>
+          </View>
+        </View>
       </View>
 
       <FlatList
@@ -82,49 +99,18 @@ export default function MentorshipListScreen() {
             />
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadData()} />}
-        ListHeaderComponent={
-          stats && (stats.mentees_count > 0 || stats.mentors_count > 0) ? (
-            <View className="px-4 mb-4 gap-2 flex-row">
-              {stats.mentees_count > 0 && (
-                <Card className="flex-1">
-                  <View className="items-center">
-                    <Text className="text-2xl font-bold text-brand-terracotta">
-                      {stats.mentees_count}
-                    </Text>
-                    <Text className="text-xs text-gray-500 dark:text-gray-400">Mentees</Text>
-                  </View>
-                </Card>
-              )}
-              {stats.mentors_count > 0 && (
-                <Card className="flex-1">
-                  <View className="items-center">
-                    <Text className="text-2xl font-bold text-brand-terracotta">
-                      {stats.mentors_count}
-                    </Text>
-                    <Text className="text-xs text-gray-500 dark:text-gray-400">Mentors</Text>
-                  </View>
-                </Card>
-              )}
-            </View>
-          ) : null
-        }
+        refreshControl={<RefreshControl tintColor="#D2673D" refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
         ListEmptyComponent={
-          <View className="px-4 mt-8 items-center">
-            <Card>
-              <View className="items-center py-8">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  No mentorships yet
-                </Text>
-                <Text className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                  Become a mentor or find a mentor to get started
-                </Text>
-              </View>
-            </Card>
+          <View className="items-center mt-20 px-8">
+            <View className="w-16 h-16 rounded-2xl bg-[#10151D] border border-[#252D39] items-center justify-center">
+              <Users size={28} color="#596271" />
+            </View>
+            <Text className="text-white text-lg font-black mt-4">No mentorships yet</Text>
+            <Text className="text-[#697383] text-sm text-center mt-2">When you connect as a mentor or learner, the relationship will show here.</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 28 }}
       />
     </SafeAreaView>
   );
