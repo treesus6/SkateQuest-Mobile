@@ -77,6 +77,9 @@ jobs:
       - name: Verify core PWA export
         run: |
           test -f dist/index.html
+          test -f dist/map.html
+          test -f dist/login.html
+          test -f dist/quests.html
           test -f dist/manifest.webmanifest
           test -f dist/service-worker.js
           grep -q '"name": "SkateQuest"' dist/manifest.webmanifest
@@ -106,25 +109,34 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify production HTTPS PWA
+      - name: Verify production HTTPS PWA and key routes
         shell: bash
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5 6; do
             if curl --fail --silent --show-error --location --max-time 20 \
-              https://skatequest.me/manifest.webmanifest -o /tmp/skatequest-manifest \
+                https://skatequest.me/ -o /tmp/skatequest-home \
+              && grep -qi '<html' /tmp/skatequest-home \
+              && curl --fail --silent --show-error --location --max-time 20 \
+                https://skatequest.me/map -o /tmp/skatequest-map \
+              && grep -qi '<html' /tmp/skatequest-map \
+              && curl --fail --silent --show-error --location --max-time 20 \
+                https://skatequest.me/login -o /tmp/skatequest-login \
+              && grep -qi '<html' /tmp/skatequest-login \
+              && curl --fail --silent --show-error --location --max-time 20 \
+                https://skatequest.me/manifest.webmanifest -o /tmp/skatequest-manifest \
               && grep -q '"name": "SkateQuest"' /tmp/skatequest-manifest \
               && curl --fail --silent --show-error --location --max-time 20 \
                 https://skatequest.me/service-worker.js -o /tmp/skatequest-sw \
               && grep -q 'skatequest-shell-' /tmp/skatequest-sw; then
-              echo 'SkateQuest production HTTPS PWA is reachable and serving the expected assets.'
+              echo 'SkateQuest production HTTPS PWA, home, map, and login routes are reachable.'
               exit 0
             fi
-            echo "Production PWA check attempt ${attempt} failed; retrying."
+            echo "Production web check attempt ${attempt} failed; retrying."
             sleep 10
           done
 
-          echo 'Production HTTPS PWA did not become healthy after deployment.' >&2
+          echo 'Production HTTPS app or a key route did not become healthy after deployment.' >&2
           exit 1
 
   report-web-health:
@@ -157,8 +169,8 @@ jobs:
               state: failed ? 'failure' : 'success',
               target_url: runUrl,
               description: failed
-                ? `Build ${process.env.BUILD_RESULT}; deploy/HTTPS ${process.env.DEPLOY_RESULT}`.slice(0, 140)
-                : 'Production HTTPS PWA is healthy',
+                ? `Build ${process.env.BUILD_RESULT}; deploy/routes ${process.env.DEPLOY_RESULT}`.slice(0, 140)
+                : 'Production HTTPS app and key routes are healthy',
               context: 'SkateQuest production web',
             });
 
@@ -166,11 +178,11 @@ jobs:
               'SkateQuest production web deployment health check failed.',
               '',
               `- Build: **${process.env.BUILD_RESULT}**`,
-              `- Deploy / HTTPS smoke check: **${process.env.DEPLOY_RESULT}**`,
+              `- Deploy / HTTPS route smoke check: **${process.env.DEPLOY_RESULT}**`,
               `- Commit: \`${context.sha}\``,
               `- Workflow run: ${runUrl}`,
               '',
-              'The deploy workflow verifies the exported PWA plus the live HTTPS manifest and service worker at `https://skatequest.me`.',
+              'The deploy workflow verifies the exported PWA plus live HTTPS home, map, login, manifest, and service-worker responses at `https://skatequest.me`.',
             ].join('\n');
 
             const { data: openIssues } = await github.rest.issues.listForRepo({
@@ -202,7 +214,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: existing.number,
-                body: `Recovered on commit \`${context.sha}\`. Production HTTPS smoke check passed.`,
+                body: `Recovered on commit \`${context.sha}\`. Production HTTPS route smoke check passed.`,
               });
               await github.rest.issues.update({
                 owner,
