@@ -21,6 +21,7 @@ export default function ScreensLayout() {
       <Stack.Screen name="playlists"          options={{ title: 'Session Playlists' }} />
       <Stack.Screen name="shops"              options={{ title: 'Skate Shops' }} />
       <Stack.Screen name="crews"              options={{ title: 'Crews' }} />
+      <Stack.Screen name="crew-details"       options={{ title: 'Crew' }} />
       <Stack.Screen name="events"             options={{ title: 'Events' }} />
       <Stack.Screen name="qr-scanner"         options={{ title: 'Scan QR' }} />
       <Stack.Screen name="upload-media"       options={{ title: 'Upload Media' }} />
