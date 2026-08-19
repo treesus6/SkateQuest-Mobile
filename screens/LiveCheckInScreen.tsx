@@ -1,25 +1,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, RefreshControl } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock3, MapPin, Radio, Send, Sparkles, Users } from 'lucide-react-native';
+import { Crosshair, Clock3, MapPin, Radio, Send, ShieldCheck, Sparkles, Users } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { spotsService } from '../lib/spotsService';
+import { getVerifiedCoordinates, VerifiedCoordinates } from '../lib/verifiedLocation';
 import { useAuthStore } from '../stores/useAuthStore';
 
 interface CheckIn {
   id: string;
   user_id: string;
   park_name: string;
-  message: string;
+  message: string | null;
   created_at: string;
-  profiles: { username: string };
+  expires_at: string | null;
+  profiles: { username: string } | null;
+}
+
+interface NearbySpot {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  distance_meters?: number | null;
 }
 
 export default function LiveCheckInScreen() {
   const { user } = useAuthStore();
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
-  const [parkName, setParkName] = useState('');
+  const [nearbySpots, setNearbySpots] = useState<NearbySpot[]>([]);
+  const [selectedSpotId, setSelectedSpotId] = useState('');
+  const [verifiedPosition, setVerifiedPosition] = useState<VerifiedCoordinates | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -29,31 +54,76 @@ export default function LiveCheckInScreen() {
   }, []);
 
   const loadCheckins = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('live_checkins')
-      .select('*, profiles(username)')
+      .select('id,user_id,park_name,message,created_at,expires_at,profiles(username)')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(50);
-    setCheckins(data || []);
+    if (error) console.error('Live check-ins failed to load', error);
+    setCheckins((data || []) as CheckIn[]);
     setRefreshing(false);
   };
 
-  const checkIn = async () => {
-    if (!parkName.trim() || !user) return;
-    setLoading(true);
-    const { error } = await supabase.from('live_checkins').insert({
-      user_id: user.id,
-      park_name: parkName.trim(),
-      message: message.trim(),
-    });
-    if (error) Alert.alert('Could not check in', error.message);
-    else {
-      setParkName('');
-      setMessage('');
-      await loadCheckins();
+  const findNearbySpots = async () => {
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in before checking in.');
+      return;
     }
-    setLoading(false);
+    try {
+      setLocating(true);
+      const position = await getVerifiedCoordinates();
+      const { data, error } = await spotsService.getNearby(position.latitude, position.longitude, 5000);
+      if (error) throw error;
+      const spots = ((data || []) as NearbySpot[]).filter(
+        spot => spot?.id && spot?.name && Number.isFinite(Number(spot.latitude)) && Number.isFinite(Number(spot.longitude))
+      );
+      setVerifiedPosition(position);
+      setNearbySpots(spots);
+      setSelectedSpotId(current => (spots.some(spot => spot.id === current) ? current : spots[0]?.id || ''));
+      if (!spots.length) {
+        Alert.alert('No nearby SkateQuest spots', 'Add the real spot to the map first, then come back to check in.');
+      }
+    } catch (error: any) {
+      Alert.alert('Location unavailable', error?.message || 'Could not verify your location.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const checkIn = async () => {
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in before checking in.');
+      return;
+    }
+    if (!selectedSpotId || !verifiedPosition) {
+      Alert.alert('Choose a real nearby spot', 'Use your location first, then choose the spot where you are skating.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const freshPosition = await getVerifiedCoordinates();
+      const { data, error } = await supabase.rpc('verified_live_check_in', {
+        p_spot_id: selectedSpotId,
+        p_latitude: freshPosition.latitude,
+        p_longitude: freshPosition.longitude,
+        p_message: message.trim() || null,
+      });
+      if (error) throw error;
+      const result = (data || {}) as { xp_awarded?: number; distance_meters?: number; spot_name?: string };
+      setMessage('');
+      setVerifiedPosition(freshPosition);
+      await loadCheckins();
+      Alert.alert(
+        'Checked in',
+        `${result.spot_name || 'Spot'} verified${Number.isFinite(Number(result.distance_meters)) ? ` · ${Math.round(Number(result.distance_meters))}m away` : ''}${result.xp_awarded ? ` · +${result.xp_awarded} XP` : ''}.`
+      );
+    } catch (error: any) {
+      Alert.alert('Could not check in', error?.message || 'Your location could not be verified at this spot.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const timeAgo = (date: string) => {
@@ -63,7 +133,10 @@ export default function LiveCheckInScreen() {
     return `${Math.floor(mins / 60)}h ago`;
   };
 
-  const activeParks = useMemo(() => new Set(checkins.map(item => item.park_name.trim().toLowerCase())).size, [checkins]);
+  const activeParks = useMemo(
+    () => new Set(checkins.map(item => item.park_name.trim().toLowerCase())).size,
+    [checkins]
+  );
 
   return (
     <SafeAreaView style={s.container}>
@@ -71,29 +144,74 @@ export default function LiveCheckInScreen() {
         data={checkins}
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadCheckins(); }} tintColor="#D2673D" />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              void loadCheckins();
+            }}
+            tintColor="#D2673D"
+          />
+        }
         contentContainerStyle={s.list}
         ListHeaderComponent={
           <>
             <View style={s.hero}>
               <View style={s.kickerRow}><Radio size={14} color="#4ADE80" /><Text style={s.kicker}>LIVE SCENE</Text></View>
               <Text style={s.title}>Who's skating now</Text>
-              <Text style={s.sub}>Real check-ins from skaters who are out right now.</Text>
+              <Text style={s.sub}>GPS-verified check-ins from real SkateQuest spots.</Text>
 
               <View style={s.statsRow}>
                 <View style={s.stat}><Users size={19} color="#D2673D" /><Text style={s.statValue}>{checkins.length}</Text><Text style={s.statLabel}>SKATERS</Text></View>
                 <View style={s.stat}><MapPin size={19} color="#D2673D" /><Text style={s.statValue}>{activeParks}</Text><Text style={s.statLabel}>SPOTS</Text></View>
-                <View style={s.stat}><Clock3 size={19} color="#D2673D" /><Text style={s.statValue}>4h</Text><Text style={s.statLabel}>WINDOW</Text></View>
+                <View style={[s.stat, { borderRightWidth: 0 }]}><Clock3 size={19} color="#D2673D" /><Text style={s.statValue}>4h</Text><Text style={s.statLabel}>WINDOW</Text></View>
               </View>
             </View>
 
             <View style={s.checkinCard}>
-              <View style={s.formHeader}><View><Text style={s.formKicker}>CHECK IN</Text><Text style={s.formTitle}>Put yourself on the scene</Text></View><Sparkles size={20} color="#D2673D" /></View>
-              <TextInput style={s.input} placeholder="Park or spot name" placeholderTextColor="#5B6573" value={parkName} onChangeText={setParkName} />
-              <TextInput style={[s.input, s.messageInput]} placeholder="What's the session like? (optional)" placeholderTextColor="#5B6573" value={message} onChangeText={setMessage} multiline />
-              <TouchableOpacity style={[s.btn, (!parkName.trim() || loading) && s.btnDis]} onPress={() => void checkIn()} disabled={!parkName.trim() || loading}>
-                <Send size={17} color="#fff" /><Text style={s.btnTxt}>{loading ? 'Checking in…' : "I'm skating here"}</Text>
+              <View style={s.formHeader}>
+                <View><Text style={s.formKicker}>VERIFIED CHECK IN</Text><Text style={s.formTitle}>Put yourself on the scene</Text></View>
+                <ShieldCheck size={21} color="#4ADE80" />
+              </View>
+
+              <TouchableOpacity style={s.locationButton} onPress={() => void findNearbySpots()} disabled={locating || loading}>
+                {locating ? <ActivityIndicator size="small" color="#D2673D" /> : <Crosshair size={18} color="#D2673D" />}
+                <Text style={s.locationButtonText}>{locating ? 'Finding real spots…' : 'Use my location'}</Text>
               </TouchableOpacity>
+
+              {nearbySpots.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.spotChips}>
+                  {nearbySpots.slice(0, 20).map(spot => {
+                    const selected = selectedSpotId === spot.id;
+                    return (
+                      <TouchableOpacity key={spot.id} style={[s.spotChip, selected && s.spotChipActive]} onPress={() => setSelectedSpotId(spot.id)}>
+                        <MapPin size={13} color={selected ? '#fff' : '#D2673D'} />
+                        <Text style={[s.spotChipText, selected && s.spotChipTextActive]} numberOfLines={1}>{spot.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
+
+              <TextInput
+                style={[s.input, s.messageInput]}
+                placeholder="What's the session like? (optional)"
+                placeholderTextColor="#5B6573"
+                value={message}
+                onChangeText={setMessage}
+                maxLength={280}
+                multiline
+              />
+              <TouchableOpacity
+                style={[s.btn, (!selectedSpotId || loading) && s.btnDis]}
+                onPress={() => void checkIn()}
+                disabled={!selectedSpotId || loading}
+              >
+                {loading ? <ActivityIndicator size="small" color="#fff" /> : <Send size={17} color="#fff" />}
+                <Text style={s.btnTxt}>{loading ? 'Verifying…' : "I'm skating here"}</Text>
+              </TouchableOpacity>
+              <Text style={s.verifyNote}>Server checks your fresh GPS position and only accepts check-ins within 150m of the selected real spot.</Text>
             </View>
 
             <View style={s.sectionHeader}><Text style={s.sectionTitle}>Live right now</Text><Text style={s.sectionMeta}>refreshes automatically</Text></View>
@@ -113,7 +231,7 @@ export default function LiveCheckInScreen() {
           <View style={s.empty}>
             <Radio size={42} color="#D2673D" />
             <Text style={s.emptyTitle}>The scene is quiet</Text>
-            <Text style={s.emptyText}>Nobody is checked in right now. Be the first skater to light up the map.</Text>
+            <Text style={s.emptyText}>Nobody is GPS-verified at a spot right now. Be the first skater to light it up.</Text>
           </View>
         }
       />
@@ -137,11 +255,19 @@ const s = StyleSheet.create({
   formHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
   formKicker: { color: '#D2673D', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
   formTitle: { color: '#F7F4EF', fontWeight: '900', fontSize: 18, marginTop: 3 },
+  locationButton: { minHeight: 46, borderRadius: 13, backgroundColor: '#0A0E16', borderWidth: 1, borderColor: '#293648', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 },
+  locationButtonText: { color: '#D8E0EA', fontWeight: '800', fontSize: 13 },
+  spotChips: { gap: 8, paddingBottom: 10 },
+  spotChip: { maxWidth: 190, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: '#293648', paddingVertical: 8, paddingHorizontal: 11, backgroundColor: '#0A0E16' },
+  spotChipActive: { backgroundColor: '#D2673D', borderColor: '#D2673D' },
+  spotChipText: { color: '#AEB8C5', fontSize: 11, fontWeight: '800', maxWidth: 145 },
+  spotChipTextActive: { color: '#fff' },
   input: { backgroundColor: '#0A0E16', color: '#F3F4F6', paddingHorizontal: 14, paddingVertical: 13, borderRadius: 13, fontSize: 14, borderWidth: 1, borderColor: '#202938', marginBottom: 9 },
   messageInput: { minHeight: 58, textAlignVertical: 'top' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#D2673D', padding: 14, borderRadius: 13 },
   btnDis: { opacity: 0.45 },
   btnTxt: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  verifyNote: { color: '#697382', fontSize: 10, lineHeight: 15, marginTop: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 7, marginBottom: 1 },
   sectionTitle: { color: '#F7F4EF', fontWeight: '900', fontSize: 18 },
   sectionMeta: { color: '#596273', fontSize: 10, fontWeight: '700' },
