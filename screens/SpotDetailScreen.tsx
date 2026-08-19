@@ -22,6 +22,11 @@ import {
   AlertTriangle,
   CalendarDays,
   Users,
+  MessageCircle,
+  Navigation,
+  ExternalLink,
+  Activity as ActivityIcon,
+  ChevronRight,
 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
@@ -29,12 +34,9 @@ import { spotsService } from '../lib/spotsService';
 import { challengesService } from '../lib/challengesService';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge, SpotComment } from '../types';
 import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
-import PortalDimensionLogo from '../components/PortalDimensionLogo';
 import KingOfTheHill from '../components/KingOfTheHill';
 import TerritoryControl from '../components/TerritoryControl';
 import GhostClipViewer from '../components/GhostClipViewer';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import SpotMiniMap from '../components/SpotMiniMap';
 
@@ -51,9 +53,9 @@ const CONDITION_OPTIONS = [
 ];
 
 const SESSION_STATUS_COLORS: Record<string, string> = {
-  upcoming: '#6B4CE6',
-  live: '#10B981',
-  ended: '#9CA3AF',
+  upcoming: '#8B5CF6',
+  live: '#22C55E',
+  ended: '#7B8493',
 };
 
 const SESSION_STATUS_LABELS: Record<string, string> = {
@@ -92,7 +94,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const [rsvpingId, setRsvpingId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadSpotData();
+    void loadSpotData();
   }, [spotId]);
 
   const loadSpotData = async () => {
@@ -116,7 +118,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         .limit(50);
       setComments(commentsData || []);
 
-      loadSpotSessions(spotData?.name);
+      void loadSpotSessions();
     } catch (error: any) {
       console.error('Error loading spot:', error);
       Alert.alert('Error', error.message);
@@ -125,7 +127,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     }
   };
 
-  const loadSpotSessions = async (_spotName?: string) => {
+  const loadSpotSessions = async () => {
     if (!user?.id) return;
     setLoadingSessions(true);
     try {
@@ -146,7 +148,6 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       const profilesRes = creatorIds.length
         ? await supabase.from('profiles').select('id, username').in('id', creatorIds)
         : { data: [], error: null };
-
       const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p.username]));
 
       setSessions(
@@ -165,7 +166,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         })
       );
     } catch {
-      // sessions are supplemental — don't surface load errors
+      // Sessions are supplemental to the spot page.
     } finally {
       setLoadingSessions(false);
     }
@@ -174,8 +175,6 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const toggleSessionRSVP = async (session: SpotSession) => {
     if (!user?.id || session.status === 'ended') return;
     setRsvpingId(session.id);
-
-    // Optimistic update first
     setSessions(prev =>
       prev.map(s =>
         s.id === session.id
@@ -194,11 +193,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         p_user_id: user.id,
       });
       if (error) throw error;
-      const result = data as {
-        error?: string;
-        is_attending?: boolean;
-        attendee_count?: number;
-      } | null;
+      const result = data as { error?: string; is_attending?: boolean; attendee_count?: number } | null;
       if (result?.error === 'full') {
         Alert.alert('Session Full', 'This session has reached its maximum participants.');
         setSessions(prev =>
@@ -224,15 +219,10 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
         );
       }
     } catch {
-      // Revert optimistic update on failure
       setSessions(prev =>
         prev.map(s =>
           s.id === session.id
-            ? {
-                ...s,
-                is_attending: session.is_attending,
-                attendee_count: session.attendee_count,
-              }
+            ? { ...s, is_attending: session.is_attending, attendee_count: session.attendee_count }
             : s
         )
       );
@@ -255,7 +245,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       });
       await spotsService.uploadPhoto(spotId, media.id, user.id, photos.length === 0);
       Alert.alert('Success', 'Photo uploaded!');
-      loadSpotData();
+      await loadSpotData();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
@@ -269,7 +259,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       await spotsService.reportCondition(spotId, user.id, condition);
       Alert.alert('Success', 'Condition reported!');
       setShowConditionsModal(false);
-      loadSpotData();
+      await loadSpotData();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -280,15 +270,11 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     try {
       setSubmittingComment(true);
       const { error } = await supabase.from('spot_comments').insert([
-        {
-          spot_id: spotId,
-          user_id: user.id,
-          content: commentText.trim(),
-        },
+        { spot_id: spotId, user_id: user.id, content: commentText.trim() },
       ]);
       if (error) throw error;
       setCommentText('');
-      loadSpotData();
+      await loadSpotData();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
@@ -298,14 +284,10 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
   const getDifficultyColor = (difficulty?: string) => {
     switch (difficulty) {
-      case 'Beginner':
-        return '#4CAF50';
-      case 'Intermediate':
-        return '#FF9800';
-      case 'Advanced':
-        return '#f44336';
-      default:
-        return '#999';
+      case 'Beginner': return '#22C55E';
+      case 'Intermediate': return '#F59E0B';
+      case 'Advanced': return '#EF4444';
+      default: return '#7B8493';
     }
   };
 
@@ -313,402 +295,268 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
+      <View className="flex-1 bg-[#07090D] p-4 pt-8">
         <LoadingSkeleton height={300} className="mb-4" />
+        <LoadingSkeleton height={120} className="mb-4" />
         <LoadingSkeleton height={100} className="mb-4" />
-        <LoadingSkeleton height={80} className="mb-4" />
       </View>
     );
   }
 
   if (!spot) {
     return (
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900 justify-center items-center">
-        <Text className="text-lg text-gray-400">Spot not found</Text>
+      <View className="flex-1 bg-[#07090D] justify-center items-center px-8">
+        <MapPin size={34} color="#596271" />
+        <Text className="text-white text-lg font-black mt-3">Spot not found</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View style={{ height: 300 }} className="bg-black relative">
+    <ScrollView className="flex-1 bg-[#07090D]" contentContainerStyle={{ paddingBottom: 36 }}>
+      <View style={{ height: 320 }} className="bg-black relative">
         {photos.length > 0 ? (
           <>
             <ScrollView
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={e =>
-                setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width))
-              }
+              onMomentumScrollEnd={e => setActivePhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
             >
               {photos.map(photo => (
-                <Image
-                  key={photo.id}
-                  source={{ uri: photo.media?.url }}
-                  style={{ width, height: 300 }}
-                  resizeMode="cover"
-                />
+                <Image key={photo.id} source={{ uri: photo.media?.url }} style={{ width, height: 320 }} resizeMode="cover" />
               ))}
             </ScrollView>
-            <View className="absolute bottom-[60px] left-0 right-0 flex-row justify-center gap-1.5">
+            <View className="absolute bottom-[74px] left-0 right-0 flex-row justify-center gap-1.5">
               {photos.map((_, index) => (
-                <View
-                  key={index}
-                  className={`w-2 h-2 rounded-full ${index === activePhotoIndex ? 'bg-white' : 'bg-white/50'}`}
-                />
+                <View key={index} className={`w-2 h-2 rounded-full ${index === activePhotoIndex ? 'bg-white' : 'bg-white/40'}`} />
               ))}
             </View>
           </>
         ) : (
-          <View className="flex-1 justify-center items-center bg-gray-800">
-            <Text className="text-lg font-bold text-white">No photos yet</Text>
-            <Text className="text-sm text-gray-400 mt-1">Be the first to add one!</Text>
+          <View className="flex-1 justify-center items-center bg-[#0B1017]">
+            <Camera size={38} color="#596271" />
+            <Text className="text-lg font-black text-white mt-3">No photos yet</Text>
+            <Text className="text-sm text-[#697383] mt-1">Be the first skater to show the spot.</Text>
           </View>
         )}
+        <View className="absolute left-0 right-0 bottom-0 h-24 bg-black/45" />
         <TouchableOpacity
-          className="absolute bottom-4 right-4 bg-brand-terracotta px-5 py-2.5 rounded-full shadow-lg flex-row items-center gap-1.5"
+          className="absolute bottom-5 right-5 bg-[#D2673D] px-4 py-3 rounded-2xl flex-row items-center gap-2"
           onPress={uploadSpotPhoto}
           disabled={uploading}
         >
-          {uploading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Camera color="#fff" size={14} />
-              <Text className="text-white text-sm font-bold">Add Photo</Text>
-            </>
-          )}
+          {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Camera color="#fff" size={15} />}
+          <Text className="text-white text-sm font-black">{uploading ? 'Uploading' : 'Add Photo'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View className="bg-white dark:bg-gray-800 p-5 -mt-5 rounded-t-2xl">
-        <Text className="text-[28px] font-bold text-gray-800 dark:text-gray-100 mb-3">
-          {spot.name}
-        </Text>
-        <View className="flex-row items-center gap-3 mb-4">
-          <View
-            className="px-3 py-1.5 rounded-xl"
-            style={{ backgroundColor: getDifficultyColor(spot.difficulty) }}
-          >
-            <Text className="text-white text-xs font-bold">{spot.difficulty || 'Unknown'}</Text>
+      <View className="px-5 pt-5 pb-4">
+        <Text className="text-[#D2673D] text-[10px] font-black tracking-[1.7px]">SPOT INTEL</Text>
+        <Text className="text-white text-[30px] font-black mt-1">{spot.name}</Text>
+        <View className="flex-row flex-wrap items-center gap-2 mt-3">
+          <View className="px-3 py-1.5 rounded-full border" style={{ backgroundColor: `${getDifficultyColor(spot.difficulty)}18`, borderColor: `${getDifficultyColor(spot.difficulty)}55` }}>
+            <Text className="text-[10px] font-black uppercase" style={{ color: getDifficultyColor(spot.difficulty) }}>{spot.difficulty || 'Unknown'}</Text>
           </View>
-          <TouchableOpacity
-            className="flex-row items-center gap-1"
-            onPress={() => navigation.navigate('SpotReviews', { spotId, spotName: spot.name })}
-          >
-            <Star color="#FFD700" size={16} fill="#FFD700" />
-            <Text className="text-sm font-bold text-gray-800 dark:text-gray-100">
-              {spot.rating ? spot.rating.toFixed(1) : '—'}
-            </Text>
-            <Text className="text-xs text-brand-terracotta font-semibold ml-0.5">Reviews →</Text>
+          <TouchableOpacity className="flex-row items-center gap-1.5 bg-[#10151D] border border-[#252D39] px-3 py-1.5 rounded-full" onPress={() => navigation.navigate('SpotReviews', { spotId, spotName: spot.name })}>
+            <Star color="#FFD166" size={14} fill="#FFD166" />
+            <Text className="text-white text-xs font-black">{spot.rating ? spot.rating.toFixed(1) : '—'}</Text>
+            <Text className="text-[#D2673D] text-[10px] font-black">REVIEWS</Text>
           </TouchableOpacity>
         </View>
-        {spot.tricks && spot.tricks.length > 0 && (
-          <View className="mt-2.5">
-            <Text className="text-sm font-bold text-gray-500 dark:text-gray-400 mb-2">
-              Popular Tricks:
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
+
+        {spot.tricks && spot.tricks.length > 0 ? (
+          <View className="mt-4">
+            <Text className="text-[#7B8493] text-[10px] font-black tracking-[1.4px]">POPULAR TRICKS</Text>
+            <View className="flex-row flex-wrap gap-2 mt-2">
               {spot.tricks.map((trick, index) => (
-                <View
-                  key={index}
-                  className="bg-brand-beige dark:bg-gray-700 px-3 py-1.5 rounded-xl"
-                >
-                  <Text className="text-sm text-brand-terracotta font-semibold">{trick}</Text>
+                <View key={`${trick}-${index}`} className="bg-[#10151D] border border-[#252D39] px-3 py-2 rounded-full">
+                  <Text className="text-[#D4D8DE] text-xs font-bold">{trick}</Text>
                 </View>
               ))}
             </View>
           </View>
-        )}
-        {spot.sponsor_name && spot.sponsor_url && (
-          <TouchableOpacity
-            className="mt-4 p-4 bg-brand-terracotta rounded-xl flex-row items-center justify-between"
-            onPress={() => Linking.openURL(spot.sponsor_url!)}
-          >
+        ) : null}
+
+        {spot.sponsor_name && spot.sponsor_url ? (
+          <TouchableOpacity className="mt-4 bg-[#1B1110] border border-[#5B2D22] rounded-2xl p-4 flex-row items-center gap-3" onPress={() => Linking.openURL(spot.sponsor_url!)}>
+            <ExternalLink size={18} color="#D2673D" />
             <View className="flex-1">
-              <Text className="text-[11px] text-white/80 font-semibold mb-1">Supported by</Text>
-              <Text className="text-base text-white font-bold">{spot.sponsor_name}</Text>
+              <Text className="text-[#A96C59] text-[10px] font-black tracking-wider">SUPPORTED BY</Text>
+              <Text className="text-white text-base font-black mt-0.5">{spot.sponsor_name}</Text>
             </View>
-            <Text className="text-2xl text-white ml-2.5">→</Text>
+            <ChevronRight size={18} color="#D2673D" />
           </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <View className="mx-4 bg-[#10151D] border border-[#252D39] rounded-[22px] p-4 mb-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center gap-2">
+            <MapPin color="#D2673D" size={18} />
+            <Text className="text-white text-lg font-black">Location</Text>
+          </View>
+          <Navigation size={16} color="#697383" />
+        </View>
+        <TouchableOpacity style={{ height: 205, borderRadius: 16, overflow: 'hidden' }} onPress={() => navigation.navigate('Map')}>
+          <SpotMiniMap latitude={spot.latitude} longitude={spot.longitude} />
+          <View className="absolute bottom-0 left-0 right-0 bg-black/70 p-3 items-center">
+            <Text className="text-white text-xs font-black">OPEN ON MAP</Text>
+          </View>
+        </TouchableOpacity>
+        <Text className="text-[#596271] text-[11px] font-mono mt-3">{spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}</Text>
+      </View>
+
+      <View className="mx-4 mb-4"><KingOfTheHill spotId={spotId} /></View>
+      <View className="mx-4 mb-4"><TerritoryControl spotId={spotId} /></View>
+      <View className="mx-4 mb-4"><GhostClipViewer spotId={spotId} /></View>
+
+      <View className="mx-4 bg-[#10151D] border border-[#252D39] rounded-[22px] p-4 mb-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center gap-2">
+            <ActivityIcon color="#F87171" size={18} />
+            <Text className="text-white text-lg font-black">Live Conditions</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowConditionsModal(true)} className="bg-[#251112] border border-[#532326] px-3 py-2 rounded-xl">
+            <Text className="text-[#FCA5A5] text-[10px] font-black">REPORT</Text>
+          </TouchableOpacity>
+        </View>
+        {conditions.length > 0 ? conditions.map(c => (
+          <View key={c.id} className="flex-row items-center py-3 border-b border-[#252D39] last:border-0">
+            <AlertTriangle size={15} color="#F59E0B" />
+            <View className="flex-1 ml-3">
+              <Text className="text-white text-sm font-black">{getConditionLabel(c.condition)}</Text>
+              <Text className="text-[#697383] text-xs mt-0.5">by {c.reporter?.username || 'skater'} · {getTimeAgo(c.created_at)}</Text>
+            </View>
+          </View>
+        )) : (
+          <Text className="text-[#697383] text-sm text-center py-4">No recent conditions reported.</Text>
         )}
       </View>
 
-      <Card className="mx-4">
-        <View className="flex-row items-center gap-2 mb-2.5">
-          <MapPin color="#d2673d" size={18} />
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">Location</Text>
-        </View>
-        <TouchableOpacity
-          style={{ height: 200, borderRadius: 10, overflow: 'hidden' }}
-          onPress={() => navigation.navigate('Map')}
-        >
-          <SpotMiniMap latitude={spot.latitude} longitude={spot.longitude} />
-          <View className="absolute bottom-0 left-0 right-0 bg-black/60 p-2.5 items-center">
-            <Text className="text-white text-sm font-semibold">Tap to view on map</Text>
-          </View>
-        </TouchableOpacity>
-        <View className="mt-2.5 p-2.5 bg-brand-beige dark:bg-gray-700 rounded-lg">
-          <Text className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-            {spot.latitude.toFixed(6)}, {spot.longitude.toFixed(6)}
-          </Text>
-        </View>
-      </Card>
-
-      <PortalDimensionLogo skateparkName={spot.name} />
-
-      <KingOfTheHill spotId={spotId} />
-
-      <TerritoryControl spotId={spotId} />
-
-      <GhostClipViewer spotId={spotId} />
-
-      <Card className="mx-4">
-        <View className="flex-row items-center gap-2 mb-3">
-          <AlertTriangle color="#ef4444" size={18} />
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-            Live Conditions
-          </Text>
-        </View>
-        {conditions.length > 0 ? (
-          conditions.map(c => (
-            <View
-              key={c.id}
-              className="flex-row items-center py-2.5 border-b border-gray-100 dark:border-gray-700"
-            >
-              <View className="flex-1 ml-3">
-                <Text className="text-[15px] font-bold text-gray-800 dark:text-gray-100">
-                  {getConditionLabel(c.condition)}
-                </Text>
-                <Text className="text-xs text-gray-400 mt-0.5">
-                  by {c.reporter?.username} · {getTimeAgo(c.created_at)}
-                </Text>
-              </View>
-            </View>
-          ))
-        ) : (
-          <Text className="text-sm text-gray-400 text-center mb-3">
-            No recent conditions reported
-          </Text>
-        )}
-        <Button
-          title="+ Report Condition"
-          onPress={() => setShowConditionsModal(true)}
-          variant="primary"
-          size="sm"
-          className="bg-brand-green mt-2.5"
-        />
-      </Card>
-
-      {challenges.length > 0 && (
-        <Card className="mx-4">
+      {challenges.length > 0 ? (
+        <View className="mx-4 bg-[#10151D] border border-[#252D39] rounded-[22px] p-4 mb-4">
           <View className="flex-row items-center gap-2 mb-3">
-            <Target color="#d2673d" size={18} />
-            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-              Active Challenges
-            </Text>
+            <Target color="#D2673D" size={18} />
+            <Text className="text-white text-lg font-black">Active Challenges</Text>
           </View>
           {challenges.map(ch => (
-            <TouchableOpacity
-              key={ch.id}
-              className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700"
-              onPress={() => navigation.navigate('ChallengesTab')}
-            >
-              <Text className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">
-                {ch.trick}
-              </Text>
-              <Text className="text-sm font-bold text-brand-terracotta">+{ch.xp_reward} XP</Text>
+            <TouchableOpacity key={ch.id} className="flex-row justify-between items-center py-3 border-b border-[#252D39] last:border-0" onPress={() => navigation.navigate('ChallengesTab')}>
+              <Text className="text-[#D4D8DE] text-sm font-bold flex-1">{ch.trick}</Text>
+              <Text className="text-[#4ADE80] text-xs font-black">+{ch.xp_reward} XP</Text>
             </TouchableOpacity>
           ))}
-        </Card>
-      )}
+        </View>
+      ) : null}
 
-      {/* Sessions at this spot */}
-      <Card className="mx-4">
+      <View className="mx-4 bg-[#10151D] border border-[#252D39] rounded-[22px] p-4 mb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-2">
-            <CalendarDays color="#6B4CE6" size={18} />
-            <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-              Sessions Here
-            </Text>
+            <CalendarDays color="#A78BFA" size={18} />
+            <Text className="text-white text-lg font-black">Sessions Here</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Sessions', { spotId, spotName: spot.name })}
-          >
-            <Text className="text-sm font-bold text-brand-terracotta">See all →</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Sessions', { spotId, spotName: spot.name })}>
+            <Text className="text-[#A78BFA] text-xs font-black">SEE ALL</Text>
           </TouchableOpacity>
         </View>
 
         {loadingSessions ? (
-          <ActivityIndicator color="#6B4CE6" size="small" style={{ marginBottom: 12 }} />
+          <ActivityIndicator color="#A78BFA" size="small" style={{ marginVertical: 12 }} />
         ) : sessions.length === 0 ? (
-          <Text className="text-sm text-gray-400 text-center mb-3">
-            No upcoming sessions — be the first to plan one!
-          </Text>
-        ) : (
-          sessions.map(s => (
-            <View key={s.id} className="py-2.5 border-b border-gray-100 dark:border-gray-700">
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 mr-3">
-                  <Text className="text-[15px] font-bold text-gray-800 dark:text-gray-100">
-                    {s.title}
-                  </Text>
-                  <Text className="text-xs text-gray-400 mt-0.5">
-                    {formatSessionDate(s.scheduled_time)}
-                  </Text>
-                  <View className="flex-row items-center gap-2 mt-1">
-                    <View
-                      className="px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: SESSION_STATUS_COLORS[s.status] + '22' }}
-                    >
-                      <Text
-                        style={{ color: SESSION_STATUS_COLORS[s.status] }}
-                        className="text-[11px] font-bold"
-                      >
-                        {SESSION_STATUS_LABELS[s.status]}
-                      </Text>
-                    </View>
-                    <View className="flex-row items-center gap-1">
-                      <Users size={11} color="#9CA3AF" />
-                      <Text className="text-xs text-gray-400">
-                        {s.attendee_count}
-                        {s.max_attendees ? `/${s.max_attendees}` : ''} going
-                      </Text>
-                    </View>
+          <Text className="text-[#697383] text-sm text-center py-4">No upcoming sessions — be the first to plan one.</Text>
+        ) : sessions.map(s => (
+          <View key={s.id} className="py-3 border-b border-[#252D39] last:border-0">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1">
+                <Text className="text-white text-sm font-black">{s.title}</Text>
+                <Text className="text-[#7B8493] text-xs mt-1">{formatSessionDate(s.scheduled_time)}</Text>
+                <View className="flex-row items-center gap-2 mt-2">
+                  <View className="px-2 py-1 rounded-full" style={{ backgroundColor: `${SESSION_STATUS_COLORS[s.status]}20`, borderWidth: 1, borderColor: `${SESSION_STATUS_COLORS[s.status]}55` }}>
+                    <Text style={{ color: SESSION_STATUS_COLORS[s.status] }} className="text-[9px] font-black">{SESSION_STATUS_LABELS[s.status]}</Text>
+                  </View>
+                  <View className="flex-row items-center gap-1">
+                    <Users size={11} color="#7B8493" />
+                    <Text className="text-[#7B8493] text-xs">{s.attendee_count}{s.max_attendees ? `/${s.max_attendees}` : ''} going</Text>
                   </View>
                 </View>
-                {s.status !== 'ended' && (
-                  <TouchableOpacity
-                    className={`px-3 py-1.5 rounded-full ${s.is_attending ? 'bg-brand-green' : 'border border-[#6B4CE6]'}`}
-                    onPress={() => toggleSessionRSVP(s)}
-                    disabled={rsvpingId === s.id}
-                  >
-                    {rsvpingId === s.id ? (
-                      <ActivityIndicator size="small" color={s.is_attending ? '#fff' : '#6B4CE6'} />
-                    ) : (
-                      <Text
-                        className={`text-xs font-bold ${s.is_attending ? 'text-white' : 'text-[#6B4CE6]'}`}
-                      >
-                        {s.is_attending ? 'Going ✓' : 'RSVP'}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
               </View>
+              {s.status !== 'ended' ? (
+                <TouchableOpacity className={`px-3 py-2 rounded-xl border ${s.is_attending ? 'bg-[#12331F] border-[#285D39]' : 'bg-[#171020] border-[#4A3562]'}`} onPress={() => toggleSessionRSVP(s)} disabled={rsvpingId === s.id}>
+                  {rsvpingId === s.id ? <ActivityIndicator size="small" color="#A78BFA" /> : <Text className={`text-[10px] font-black ${s.is_attending ? 'text-[#4ADE80]' : 'text-[#C4B5FD]'}`}>{s.is_attending ? 'GOING ✓' : 'RSVP'}</Text>}
+                </TouchableOpacity>
+              ) : null}
             </View>
-          ))
-        )}
-
-        <Button
-          title="+ Plan a Session Here"
-          onPress={() =>
-            navigation.navigate('Sessions', {
-              spotId,
-              spotName: spot.name,
-              autoCreate: true,
-            })
-          }
-          variant="primary"
-          size="sm"
-          className="bg-[#6B4CE6] mt-3"
-        />
-      </Card>
-
-      <Card className="mx-4">
-        <View className="flex-row items-center gap-2 mb-3">
-          <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
-            💬 Comments ({comments.length})
-          </Text>
-        </View>
-
-        {comments.length === 0 && (
-          <Text className="text-sm text-gray-400 text-center mb-3">
-            No comments yet — be the first!
-          </Text>
-        )}
-
-        {comments.slice(0, 10).map(c => (
-          <View key={c.id} className="py-3 border-b border-gray-100 dark:border-gray-700">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-xs font-bold text-brand-terracotta">
-                {c.author?.username ?? 'Skater'}
-              </Text>
-              <Text className="text-xs text-gray-400">{getTimeAgo(c.created_at)}</Text>
-            </View>
-            <Text className="text-sm text-gray-700 dark:text-gray-300">{c.content}</Text>
           </View>
         ))}
 
-        {user && (
+        <TouchableOpacity className="bg-[#7C3AED] rounded-xl py-3.5 items-center mt-3" onPress={() => navigation.navigate('Sessions', { spotId, spotName: spot.name, autoCreate: true })}>
+          <Text className="text-white text-xs font-black">+ PLAN A SESSION HERE</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View className="mx-4 bg-[#10151D] border border-[#252D39] rounded-[22px] p-4 mb-4">
+        <View className="flex-row items-center gap-2 mb-3">
+          <MessageCircle size={18} color="#38BDF8" />
+          <Text className="text-white text-lg font-black">Comments</Text>
+          <View className="bg-[#102334] border border-[#214967] rounded-full px-2 py-0.5">
+            <Text className="text-[#7DD3FC] text-[10px] font-black">{comments.length}</Text>
+          </View>
+        </View>
+
+        {comments.length === 0 ? <Text className="text-[#697383] text-sm text-center py-4">No comments yet — start the spot talk.</Text> : null}
+        {comments.slice(0, 10).map(c => (
+          <View key={c.id} className="py-3 border-b border-[#252D39] last:border-0">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-[#D2673D] text-xs font-black">@{c.author?.username ?? 'skater'}</Text>
+              <Text className="text-[#596271] text-[10px]">{getTimeAgo(c.created_at)}</Text>
+            </View>
+            <Text className="text-[#C5CAD2] text-sm leading-5">{c.content}</Text>
+          </View>
+        ))}
+
+        {user ? (
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View className="flex-row items-center gap-2 mt-3">
               <TextInput
-                className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-gray-100"
-                placeholder="Drop a comment..."
-                placeholderTextColor="#9CA3AF"
+                className="flex-1 bg-[#090D13] border border-[#252D39] rounded-xl px-4 py-3 text-sm text-white"
+                placeholder="Drop useful spot intel..."
+                placeholderTextColor="#596271"
                 value={commentText}
                 onChangeText={setCommentText}
                 maxLength={280}
                 returnKeyType="send"
                 onSubmitEditing={submitComment}
               />
-              <TouchableOpacity
-                className="bg-brand-terracotta px-4 py-2.5 rounded-xl"
-                onPress={submitComment}
-                disabled={submittingComment || !commentText.trim()}
-              >
-                {submittingComment ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text className="text-white font-bold text-sm">Post</Text>
-                )}
+              <TouchableOpacity className={`px-4 py-3 rounded-xl ${commentText.trim() ? 'bg-[#D2673D]' : 'bg-[#353B45]'}`} onPress={submitComment} disabled={submittingComment || !commentText.trim()}>
+                {submittingComment ? <ActivityIndicator color="#fff" size="small" /> : <Text className="text-white font-black text-xs">POST</Text>}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
-        )}
-      </Card>
-
-      <View className="px-4 pb-8">
-        <Button
-          title="View All Challenges"
-          onPress={() => navigation.navigate('ChallengesTab')}
-          variant="primary"
-          size="lg"
-        />
+        ) : null}
       </View>
 
-      <Modal
-        visible={showConditionsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowConditionsModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white dark:bg-gray-800 rounded-t-2xl p-5 pb-10">
-            <Text className="text-[22px] font-bold text-gray-800 dark:text-gray-100 mb-1">
-              Report Condition
-            </Text>
-            <Text className="text-sm text-gray-500 mb-5">What's the spot like right now?</Text>
-            <View className="flex-row flex-wrap gap-2.5 mb-5">
+      <TouchableOpacity className="mx-4 bg-[#D2673D] rounded-2xl py-4 flex-row items-center justify-center gap-2" onPress={() => navigation.navigate('ChallengesTab')}>
+        <Target size={17} color="#fff" />
+        <Text className="text-white font-black">VIEW ALL CHALLENGES</Text>
+      </TouchableOpacity>
+
+      <Modal visible={showConditionsModal} transparent animationType="slide" onRequestClose={() => setShowConditionsModal(false)}>
+        <View className="flex-1 bg-black/70 justify-end">
+          <View className="bg-[#10151D] border border-[#2A303A] rounded-t-[28px] p-5 pb-9">
+            <View className="w-10 h-1 bg-[#343B47] rounded-full self-center mb-4" />
+            <Text className="text-[#F87171] text-[10px] font-black tracking-[1.5px]">LIVE SPOT INTEL</Text>
+            <Text className="text-white text-[22px] font-black mt-1">Report Condition</Text>
+            <Text className="text-[#7B8493] text-sm mt-1 mb-5">What is the spot like right now?</Text>
+            <View className="flex-row flex-wrap gap-2.5">
               {CONDITION_OPTIONS.map(option => (
-                <TouchableOpacity
-                  key={option.value}
-                  className="w-[31%] bg-gray-100 dark:bg-gray-700 p-4 rounded-xl items-center"
-                  onPress={() => reportCondition(option.value)}
-                >
-                  <Text className="text-[11px] text-gray-800 dark:text-gray-100 font-semibold text-center mt-1">
-                    {option.label}
-                  </Text>
+                <TouchableOpacity key={option.value} className="w-[31%] bg-[#0B1017] border border-[#252D39] p-4 rounded-xl items-center" onPress={() => reportCondition(option.value)}>
+                  <Text className="text-[#D4D8DE] text-[10px] font-black text-center">{option.label.toUpperCase()}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Button
-              title="Cancel"
-              onPress={() => setShowConditionsModal(false)}
-              variant="secondary"
-              size="lg"
-            />
+            <TouchableOpacity className="bg-[#0B1017] border border-[#252D39] rounded-xl py-4 items-center mt-5" onPress={() => setShowConditionsModal(false)}>
+              <Text className="text-[#AEB5C0] font-black">Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
