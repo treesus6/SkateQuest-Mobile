@@ -10,10 +10,9 @@ import {
   TextInput,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Globe, Instagram, Search, Star, Map } from 'lucide-react-native';
+import { Globe, Instagram, Search, Star, Map, Users, Store } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { sceneService, MapSponsor, CATEGORY_LABELS, CATEGORY_EMOJI } from '../lib/sceneService';
-import Card from '../components/ui/Card';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
 const CATEGORIES = [
@@ -47,9 +46,7 @@ export default function SceneScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     let result = entries;
@@ -57,10 +54,7 @@ export default function SceneScreen() {
     if (query.trim()) {
       const q = query.toLowerCase();
       result = result.filter(
-        s =>
-          s.name.toLowerCase().includes(q) ||
-          s.city?.toLowerCase().includes(q) ||
-          s.state?.toLowerCase().includes(q)
+        s => s.name.toLowerCase().includes(q) || s.city?.toLowerCase().includes(q) || s.state?.toLowerCase().includes(q)
       );
     }
     setFiltered(result);
@@ -69,137 +63,124 @@ export default function SceneScreen() {
   const handleWebsite = async (entry: MapSponsor) => {
     if (!entry.website_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'website_tap');
-    try {
-      await Linking.openURL(entry.website_url);
-    } catch {
-      Alert.alert('Could not open link');
-    }
+    try { await Linking.openURL(entry.website_url); } catch { Alert.alert('Could not open link'); }
   };
 
   const handleInstagram = async (entry: MapSponsor) => {
     if (!entry.instagram_url) return;
     await sceneService.trackTap(entry.id, user?.id ?? null, 'instagram_tap');
-    try {
-      await Linking.openURL(entry.instagram_url);
-    } catch {
-      Alert.alert('Could not open link');
-    }
+    try { await Linking.openURL(entry.instagram_url); } catch { Alert.alert('Could not open link'); }
   };
+
+  const featuredCount = entries.filter(entry => entry.featured).length;
 
   const renderEntry = ({ item }: { item: MapSponsor }) => {
     const emoji = CATEGORY_EMOJI[item.category] || '🤙';
     const label = CATEGORY_LABELS[item.category] || 'Community';
     return (
-      <Card>
+      <View className="bg-[#10151D] border border-[#252D39] rounded-[20px] p-4 mb-3">
         <View className="flex-row items-start gap-3">
           {item.logo_url ? (
-            <Image
-              source={{ uri: item.logo_url }}
-              style={{ width: 56, height: 56, borderRadius: 12 }}
-              contentFit="contain"
-            />
+            <View className="w-14 h-14 rounded-2xl bg-white overflow-hidden items-center justify-center">
+              <Image source={{ uri: item.logo_url }} style={{ width: 56, height: 56 }} contentFit="contain" />
+            </View>
           ) : (
-            <View className="w-14 h-14 rounded-xl bg-brand-terracotta/15 items-center justify-center">
+            <View className="w-14 h-14 rounded-2xl bg-[#1B1110] items-center justify-center border border-[#4E2B22]">
               <Text className="text-2xl">{emoji}</Text>
             </View>
           )}
           <View className="flex-1">
             <View className="flex-row items-center gap-2 flex-wrap">
-              <Text className="text-base font-black text-gray-900 dark:text-gray-100">
-                {item.name}
-              </Text>
-              {item.featured && <Star size={12} color="#FFD700" fill="#FFD700" />}
+              <Text className="text-[17px] font-black text-white">{item.name}</Text>
+              {item.featured && <Star size={13} color="#FFD166" fill="#FFD166" />}
             </View>
-            <Text className="text-xs text-brand-terracotta font-semibold mt-0.5">
-              {emoji} {label}
-            </Text>
-            {item.tagline ? (
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.tagline}</Text>
-            ) : null}
+            <Text className="text-[11px] text-[#D2673D] font-black uppercase tracking-wider mt-1">{emoji} {label}</Text>
+            {item.tagline ? <Text className="text-sm text-[#AEB5C0] mt-2 leading-5">{item.tagline}</Text> : null}
             {item.city || item.state ? (
-              <Text className="text-xs text-gray-400 mt-1">
-                📍 {[item.city, item.state].filter(Boolean).join(', ')}
-              </Text>
+              <Text className="text-xs text-[#697383] mt-2">📍 {[item.city, item.state].filter(Boolean).join(', ')}</Text>
             ) : null}
-            <View className="flex-row gap-2 mt-2">
-              {item.website_url ? (
-                <TouchableOpacity
-                  onPress={() => handleWebsite(item)}
-                  className="flex-row items-center gap-1 bg-brand-terracotta rounded-lg px-3 py-1.5"
-                >
-                  <Globe size={12} color="white" />
-                  <Text className="text-white text-xs font-bold">Website</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.instagram_url ? (
-                <TouchableOpacity
-                  onPress={() => handleInstagram(item)}
-                  className="flex-row items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-1.5"
-                >
-                  <Instagram size={12} color="#E1306C" />
-                  <Text className="text-gray-700 dark:text-gray-200 text-xs font-semibold">IG</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
           </View>
         </View>
-      </Card>
+
+        {(item.website_url || item.instagram_url) ? (
+          <View className="flex-row gap-2 mt-4">
+            {item.website_url ? (
+              <TouchableOpacity onPress={() => handleWebsite(item)} className="flex-1 bg-[#D2673D] rounded-xl py-3 flex-row items-center justify-center gap-2">
+                <Globe size={14} color="white" />
+                <Text className="text-white text-xs font-black">Website</Text>
+              </TouchableOpacity>
+            ) : null}
+            {item.instagram_url ? (
+              <TouchableOpacity onPress={() => handleInstagram(item)} className="flex-1 bg-[#0B1017] border border-[#252D39] rounded-xl py-3 flex-row items-center justify-center gap-2">
+                <Instagram size={14} color="#E879F9" />
+                <Text className="text-[#D4D8DE] text-xs font-black">Instagram</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
     );
   };
 
   if (loading) {
     return (
-      <View className="flex-1 bg-brand-beige dark:bg-gray-900 p-4">
-        {[1, 2, 3].map(i => (
-          <LoadingSkeleton key={i} height={100} className="mb-3" />
-        ))}
+      <View className="flex-1 bg-[#07090D] p-4 pt-10">
+        <LoadingSkeleton height={140} className="mb-4" />
+        {[1, 2, 3].map(i => <LoadingSkeleton key={i} height={110} className="mb-3" />)}
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-brand-beige dark:bg-gray-900">
-      <View className="bg-brand-terracotta p-5 pb-4 rounded-b-2xl">
-        <View className="flex-row items-center justify-center gap-2 mb-1">
-          <Map size={20} color="white" />
-          <Text className="text-2xl font-black text-white">The Scene</Text>
+    <View className="flex-1 bg-[#07090D]">
+      <View className="px-5 pt-12 pb-4">
+        <View className="flex-row items-center gap-2">
+          <Map size={19} color="#D2673D" />
+          <Text className="text-[#D2673D] text-[11px] font-black tracking-[2px]">KEEP IT IN THE COMMUNITY</Text>
         </View>
-        <Text className="text-white/80 text-xs text-center mb-3">
-          Local shops, brands and crews
-        </Text>
-        <View className="flex-row items-center bg-white/20 rounded-xl px-3">
-          <Search color="rgba(255,255,255,0.8)" size={16} />
+        <Text className="text-white text-[30px] font-black mt-2">The Scene</Text>
+        <Text className="text-[#7B8493] text-sm mt-1">Skate shops, brands, crews, media and DIY supporters.</Text>
+
+        <View className="flex-row gap-2 mt-4">
+          <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+            <Users size={16} color="#D2673D" />
+            <Text className="text-white text-xl font-black mt-1">{entries.length}</Text>
+            <Text className="text-[#697383] text-[11px]">scene entries</Text>
+          </View>
+          <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-2xl p-3">
+            <Star size={16} color="#FFD166" />
+            <Text className="text-white text-xl font-black mt-1">{featuredCount}</Text>
+            <Text className="text-[#697383] text-[11px]">featured</Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center bg-[#10151D] border border-[#252D39] rounded-2xl px-4 mt-4">
+          <Search color="#687383" size={18} />
           <TextInput
-            className="flex-1 py-2.5 px-2 text-white"
-            placeholder="Search by name or city..."
-            placeholderTextColor="rgba(255,255,255,0.6)"
+            className="flex-1 py-3.5 px-3 text-white"
+            placeholder="Search name, city or state..."
+            placeholderTextColor="#596271"
             value={query}
             onChangeText={setQuery}
           />
+          {query ? <Text className="text-[#7B8493] text-xs">{filtered.length}</Text> : null}
         </View>
       </View>
 
-      <View className="px-4 pt-3 pb-1">
+      <View className="pb-2">
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
           data={CATEGORIES}
           keyExtractor={c => c.key}
           renderItem={({ item: cat }) => (
             <TouchableOpacity
               onPress={() => setActiveCategory(cat.key)}
-              className={`mr-2 px-3 py-1.5 rounded-full flex-row items-center gap-1 ${
-                activeCategory === cat.key ? 'bg-brand-terracotta' : 'bg-gray-100 dark:bg-gray-700'
-              }`}
+              className={`mr-2 px-3.5 py-2 rounded-full flex-row items-center gap-1.5 border ${activeCategory === cat.key ? 'bg-[#D2673D] border-[#D2673D]' : 'bg-[#10151D] border-[#252D39]'}`}
             >
               <Text className="text-sm">{cat.emoji}</Text>
-              <Text
-                className={`text-xs font-semibold ${
-                  activeCategory === cat.key ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                {cat.label}
-              </Text>
+              <Text className={`text-xs font-black ${activeCategory === cat.key ? 'text-white' : 'text-[#9AA3AF]'}`}>{cat.label}</Text>
             </TouchableOpacity>
           )}
         />
@@ -209,27 +190,15 @@ export default function SceneScreen() {
         data={filtered}
         keyExtractor={item => item.id}
         renderItem={renderEntry}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              load();
-            }}
-          />
-        }
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
+        refreshControl={<RefreshControl tintColor="#D2673D" refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
         ListEmptyComponent={
-          <View className="items-center mt-20">
-            <Text className="text-4xl mb-3">🛹</Text>
-            <Text className="text-lg font-bold text-gray-400">
-              {query ? 'No results' : 'Nothing here yet'}
-            </Text>
-            <Text className="text-sm text-gray-300 mt-1 text-center px-8">
-              {query
-                ? 'Try a different search'
-                : 'Know a local shop or brand that should be here? Let us know.'}
-            </Text>
+          <View className="items-center mt-20 px-8">
+            <View className="w-16 h-16 rounded-2xl bg-[#10151D] items-center justify-center border border-[#252D39]">
+              <Store size={28} color="#596271" />
+            </View>
+            <Text className="text-white text-lg font-black mt-4">{query ? 'No scene matches' : 'Nothing here yet'}</Text>
+            <Text className="text-[#697383] text-sm text-center mt-2">{query ? 'Try another search or category.' : 'Community entries will appear here as they are added.'}</Text>
           </View>
         }
       />
