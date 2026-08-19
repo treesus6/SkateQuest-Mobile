@@ -29,6 +29,7 @@ interface ConversationMember {
   conversation_id: string;
   user_id: string;
   joined_at: string;
+  last_read_at?: string | null;
 }
 
 export const messagesService = {
@@ -70,6 +71,10 @@ export const messagesService = {
 
   async createDirectConversation(userId: string, recipientId: string): Promise<string> {
     try {
+      if (!userId || !recipientId || userId === recipientId) {
+        throw new Error('Invalid conversation participants');
+      }
+
       const { data, error } = await supabase.rpc('create_or_get_direct_conversation', {
         p_user1_id: userId,
         p_user2_id: recipientId,
@@ -91,39 +96,18 @@ export const messagesService = {
   async createCrewConversation(
     crewId: string,
     name: string,
-    userId: string
+    _userId: string
   ): Promise<Conversation> {
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({
-          type: 'crew',
-          name,
-          crew_id: crewId,
-          created_by: userId,
-        })
-        .select('*')
-        .single();
+      const { data: conversationId, error } = await supabase.rpc('create_crew_conversation', {
+        p_crew_id: crewId,
+        p_name: name,
+      });
 
       if (error) throw error;
-      if (!data) throw new Error('Failed to create conversation');
+      if (!conversationId) throw new Error('Failed to create crew conversation');
 
-      // Add crew members to conversation
-      const crewMembers = await supabase
-        .from('crew_members')
-        .select('user_id')
-        .eq('crew_id', crewId);
-
-      if (crewMembers.data) {
-        await supabase.from('conversation_members').insert(
-          crewMembers.data.map(member => ({
-            conversation_id: data.id,
-            user_id: member.user_id,
-          }))
-        );
-      }
-
-      return data;
+      return await messagesService.getConversationById(conversationId);
     } catch (error) {
       Logger.error('messagesService.createCrewConversation failed', error);
       throw new ServiceError(
@@ -172,7 +156,7 @@ export const messagesService = {
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
-      return (data || []).reverse(); // Reverse to show oldest first
+      return (data || []).reverse();
     } catch (error) {
       Logger.error('messagesService.getMessages failed', error);
       throw new ServiceError('Failed to load messages', 'MESSAGES_FETCH_FAILED', error);
@@ -181,12 +165,15 @@ export const messagesService = {
 
   async sendMessage(conversationId: string, userId: string, content: string): Promise<Message> {
     try {
+      const cleanContent = content.trim();
+      if (!cleanContent) throw new Error('Message cannot be empty');
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           user_id: userId,
-          content,
+          content: cleanContent,
         })
         .select('*')
         .single();
@@ -202,9 +189,12 @@ export const messagesService = {
 
   async updateMessage(messageId: string, content: string): Promise<Message> {
     try {
+      const cleanContent = content.trim();
+      if (!cleanContent) throw new Error('Message cannot be empty');
+
       const { data, error } = await supabase
         .from('messages')
-        .update({ content, updated_at: new Date().toISOString() })
+        .update({ content: cleanContent, updated_at: new Date().toISOString() })
         .eq('id', messageId)
         .select('*')
         .single();
