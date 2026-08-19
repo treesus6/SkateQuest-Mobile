@@ -43,15 +43,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # GitHub Pages only needs the web bundle. Avoid installing the native
-          # Mapbox package that is used by Android/iOS builds and requires a
-          # private Mapbox downloads token.
-          node -e "const fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));delete p.dependencies['@rnmapbox/maps'];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-
+          # Keep package.json and package-lock.json untouched so npm ci can
+          # perform its required frozen install. The native Mapbox package is
+          # installed from the lockfile, then replaced with a tiny web-build
+          # stub so Expo cannot accidentally pull native code into the PWA.
           npm ci
 
-          git checkout -- package.json
-
+          rm -rf node_modules/@rnmapbox/maps
           mkdir -p node_modules/@rnmapbox/maps
           echo '{"name":"@rnmapbox/maps","version":"10.3.2","main":"index.js","types":"index.d.ts"}' > node_modules/@rnmapbox/maps/package.json
           echo 'module.exports={};' > node_modules/@rnmapbox/maps/index.js
