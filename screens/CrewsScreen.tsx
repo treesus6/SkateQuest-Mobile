@@ -15,12 +15,14 @@ import { ChevronRight, Flame, Plus, Trophy, Users, X, Zap } from 'lucide-react-n
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { crewsService, Crew } from '../lib/crewsService';
+import { useNavigation } from '../lib/useNavigation';
 
 const ACCENT = '#D2673D';
 const BG = '#05070B';
 const CARD = '#101722';
 
 export default function CrewsScreen() {
+  const navigation = useNavigation();
   const user = useAuthStore(s => s.user);
   const {
     data: crews,
@@ -85,7 +87,11 @@ export default function CrewsScreen() {
   };
 
   const renderCrew = ({ item, index }: { item: Crew; index: number }) => (
-    <TouchableOpacity activeOpacity={0.9} style={[s.crewCard, index === 0 && s.topCrewCard]}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={[s.crewCard, index === 0 && s.topCrewCard]}
+      onPress={() => navigation.navigate('CrewDetails', { crewId: item.id })}
+    >
       <View style={s.cardTopRow}>
         <View style={s.crewIdentity}>
           <View style={[s.crewAvatar, index === 0 && s.topCrewAvatar]}>
@@ -124,7 +130,13 @@ export default function CrewsScreen() {
           <Zap color={ACCENT} size={15} />
           <Text style={s.repText}>Build rep together</Text>
         </View>
-        <Pressable style={s.joinButton} onPress={() => void joinCrew(item.id, item.name)}>
+        <Pressable
+          style={s.joinButton}
+          onPress={event => {
+            event.stopPropagation();
+            void joinCrew(item.id, item.name);
+          }}
+        >
           <Text style={s.joinText}>JOIN</Text>
           <ChevronRight color="#fff" size={16} strokeWidth={3} />
         </Pressable>
@@ -181,7 +193,7 @@ export default function CrewsScreen() {
               <View style={s.sectionHeader}>
                 <View>
                   <Text style={s.sectionTitle}>Active crews</Text>
-                  <Text style={s.sectionSub}>Tap join to roll with them</Text>
+                  <Text style={s.sectionSub}>Tap a crew for details or join right away</Text>
                 </View>
                 <View style={s.livePill}>
                   <View style={s.liveDot} />
