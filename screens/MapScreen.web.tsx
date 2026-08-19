@@ -192,7 +192,7 @@ export default function MapScreen() {
       window.open(PORTAL_DIMENSION_URL, '_blank', 'noopener,noreferrer');
     });
 
-    const sponsorMarker = new mapbox.Marker({ element: sponsorElement, anchor: 'bottom' })
+    const sponsorMarker = new mapbox.Marker({ element: sponsorElement })
       .setLngLat(PORTAL_DIMENSION_COORDINATES)
       .setPopup(
         new mapbox.Popup({ offset: 20 }).setHTML(
