@@ -12,7 +12,6 @@ const INK = '#07080B';
 const PAPER = '#F6F0E5';
 const ORANGE = '#E36D3F';
 const ACID = '#D9F34A';
-const BLUE = '#72A9FF';
 const MUTED = '#7F8793';
 
 const NEUTRAL_CENTER: [number, number] = [0, 20];
@@ -350,7 +349,6 @@ function MapError({ message }: { message: string }) {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
   map: { flex: 1, minHeight: 420 },
-
   topHud: { position: 'absolute', top: 15, left: 14, right: 14, alignItems: 'flex-start', gap: 8 },
   sceneCard: { width: 145, minHeight: 111, backgroundColor: INK, borderRadius: 21, borderWidth: 2, borderColor: PAPER, padding: 13, transform: [{ rotate: '-1.5deg' }], shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
   sceneCardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -362,13 +360,10 @@ const s = StyleSheet.create({
   gpsChipText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   errorCard: { maxWidth: 340, marginTop: 2, backgroundColor: INK, borderColor: ORANGE, borderWidth: 2, borderRadius: 16, padding: 11, flexDirection: 'row', gap: 9 },
   errorText: { color: PAPER, flex: 1, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
-
   controlStack: { position: 'absolute', right: 14, bottom: 244, gap: 9 },
   mapButton: { width: 51, height: 51, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: INK, shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 5 }, elevation: 7 },
-
   loadingBadge: { position: 'absolute', top: '46%', alignSelf: 'center', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 13, borderRadius: 14, backgroundColor: ACID, borderWidth: 2, borderColor: INK },
   loadingBadgeText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-
   spotRailWrap: { position: 'absolute', left: 0, right: 0, bottom: 92, maxHeight: 132 },
   spotRail: { paddingHorizontal: 14, gap: 10, alignItems: 'flex-end' },
   spotCard: { width: 252, minHeight: 116, borderRadius: 20, backgroundColor: INK, borderWidth: 2, borderColor: PAPER, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 7 },
@@ -389,11 +384,9 @@ const s = StyleSheet.create({
   openSpotBtnSelected: { backgroundColor: ORANGE },
   openSpotText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
   openSpotArrow: { color: INK, fontSize: 18, fontWeight: '900' },
-
   emptyCard: { width: 276, minHeight: 110, borderRadius: 20, padding: 15, backgroundColor: INK, borderWidth: 2, borderColor: PAPER },
   emptyTitle: { color: PAPER, fontSize: 15, fontWeight: '900', marginTop: 7 },
   emptyText: { color: '#A4ABB6', fontSize: 10.5, lineHeight: 15, marginTop: 4 },
-
   errorScreen: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
   errorStamp: { width: 68, height: 68, borderRadius: 19, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
   errorScreenKicker: { color: ORANGE, fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginTop: 4 },
