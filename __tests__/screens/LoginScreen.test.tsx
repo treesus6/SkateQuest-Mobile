@@ -3,7 +3,6 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import LoginScreen from '../../screens/LoginScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// Mock the auth store
 jest.mock('../../stores/useAuthStore');
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 
@@ -24,7 +23,8 @@ describe('LoginScreen', () => {
     const { getByPlaceholderText, getByText } = await render(
       <LoginScreen navigation={mockNavigation} />
     );
-    expect(getByText('SKATEQUEST')).toBeTruthy();
+    expect(getByText('THE SCENE IS OUT THERE')).toBeTruthy();
+    expect(getByText('FIND IT. SKATE IT. PROVE IT.')).toBeTruthy();
     expect(getByText('Sign in with your email and password')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
