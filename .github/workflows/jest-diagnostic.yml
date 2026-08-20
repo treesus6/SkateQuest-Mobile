@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chatgpt/jest-diagnostic
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
