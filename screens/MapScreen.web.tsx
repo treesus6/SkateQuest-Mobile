@@ -1,15 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
-import { Crosshair, MapPin, Plus, RotateCcw, TriangleAlert } from 'lucide-react-native';
+import { Crosshair, Flame, MapPin, Plus, RotateCcw, TriangleAlert } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
 import { Logger } from '../lib/logger';
 import { SkateSpot } from '../types';
 
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
+const MUTED = '#7F8793';
+
 const NEUTRAL_CENTER: [number, number] = [0, 20];
-// Portal Dimension sits beside the actual Newport, Oregon skatepark record.
 const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
 const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
 const PORTAL_DIMENSION_LOGO =
@@ -29,6 +35,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const token =
     (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
     process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -63,10 +70,7 @@ export default function MapScreen() {
       await loadSpots(next);
       return true;
     } catch (locationError) {
-      const message =
-        locationError instanceof Error
-          ? locationError.message
-          : 'Could not determine your location.';
+      const message = locationError instanceof Error ? locationError.message : 'Could not determine your location.';
       setHasRealCenter(false);
       setSpots([]);
       setError(message);
@@ -79,12 +83,10 @@ export default function MapScreen() {
 
   useEffect(() => {
     let active = true;
-
     const bootMapData = async () => {
       await locateUser();
       if (active) setLoading(false);
     };
-
     void bootMapData();
     return () => {
       active = false;
@@ -97,6 +99,7 @@ export default function MapScreen() {
       setError('The map library could not be loaded. Check your connection and try again.');
       return;
     }
+
     window.mapboxgl.accessToken = token;
     const map = new window.mapboxgl.Map({
       container: containerRef.current,
@@ -105,10 +108,9 @@ export default function MapScreen() {
       zoom: hasRealCenter ? 12 : 2,
       attributionControl: true,
     });
+
     map.on('load', () => setError(current => (current?.includes('map library') ? null : current)));
-    map.on('error', () =>
-      setError('Map tiles could not be loaded. Check the Mapbox token and network.')
-    );
+    map.on('error', () => setError('Map tiles could not be loaded. Check the Mapbox token and network.'));
     map.on('moveend', () => {
       if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
       moveReloadTimerRef.current = setTimeout(() => {
@@ -122,6 +124,7 @@ export default function MapScreen() {
         });
       }, 250);
     });
+
     mapRef.current = map;
     return () => {
       if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
@@ -145,24 +148,30 @@ export default function MapScreen() {
     markersRef.current.forEach(marker => marker.remove());
 
     const spotMarkers = spots.map(spot => {
+      const selected = selectedSpot?.id === spot.id;
       const el = document.createElement('button');
       el.type = 'button';
       el.title = spot.name;
       el.setAttribute('aria-label', `Open ${spot.name}`);
-      el.style.width = '24px';
-      el.style.height = '24px';
-      el.style.borderRadius = '999px';
-      el.style.border = '3px solid white';
-      el.style.background = '#D2673D';
-      el.style.boxShadow = '0 2px 8px rgba(0,0,0,.45)';
+      el.style.width = selected ? '34px' : '28px';
+      el.style.height = selected ? '34px' : '28px';
+      el.style.borderRadius = selected ? '11px' : '999px';
+      el.style.border = `3px solid ${INK}`;
+      el.style.background = selected ? ORANGE : ACID;
+      el.style.boxShadow = selected
+        ? '0 0 0 5px rgba(227,109,63,.23), 0 7px 16px rgba(0,0,0,.38)'
+        : '0 0 0 4px rgba(217,243,74,.22), 0 5px 12px rgba(0,0,0,.32)';
       el.style.cursor = 'pointer';
+      el.style.transition = 'all 160ms ease';
       el.addEventListener('click', event => {
         event.stopPropagation();
-        openSpot(spot);
+        setSelectedSpot(spot);
+        map.flyTo({ center: [spot.longitude, spot.latitude], zoom: 15 });
       });
+
       return new mapbox.Marker({ element: el })
         .setLngLat([spot.longitude, spot.latitude])
-        .setPopup(new mapbox.Popup({ offset: 18 }).setText(`${spot.name} — tap marker to open`))
+        .setPopup(new mapbox.Popup({ offset: 18 }).setText(spot.name))
         .addTo(map);
     });
 
@@ -172,12 +181,12 @@ export default function MapScreen() {
     sponsorElement.setAttribute('aria-label', 'Open Portal Dimension website');
     sponsorElement.style.width = '58px';
     sponsorElement.style.height = '58px';
-    sponsorElement.style.borderRadius = '12px';
-    sponsorElement.style.border = '2px solid #D2673D';
+    sponsorElement.style.borderRadius = '14px';
+    sponsorElement.style.border = `3px solid ${ORANGE}`;
     sponsorElement.style.background = '#fff';
     sponsorElement.style.padding = '3px';
     sponsorElement.style.cursor = 'pointer';
-    sponsorElement.style.boxShadow = '0 4px 14px rgba(0,0,0,.35)';
+    sponsorElement.style.boxShadow = '0 6px 18px rgba(0,0,0,.34)';
 
     const sponsorImage = document.createElement('img');
     sponsorImage.src = PORTAL_DIMENSION_LOGO;
@@ -202,135 +211,125 @@ export default function MapScreen() {
       .addTo(map);
 
     markersRef.current = [...spotMarkers, sponsorMarker];
-  }, [spots, openSpot]);
+  }, [spots, selectedSpot?.id]);
 
   if (!token) {
     return <MapError message="Mapbox is not configured. Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN." />;
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#07090D' }}>
-      <View ref={containerRef} nativeID="skatequest-web-map" style={{ flex: 1, minHeight: 420 }} />
+    <View style={s.container}>
+      <View ref={containerRef} nativeID="skatequest-web-map" style={s.map} />
 
-      <View style={{ position: 'absolute', top: 16, left: 16, right: 16, gap: 10 }}>
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            backgroundColor: '#D2673D',
-            borderRadius: 999,
-            paddingHorizontal: 14,
-            paddingVertical: 9,
-          }}
-        >
-          <Text style={{ color: 'white', fontWeight: '800' }}>
-            {hasRealCenter ? `${spots.length} real spots nearby` : 'Move the map or enable location'}
-          </Text>
+      <View pointerEvents="box-none" style={s.topHud}>
+        <View style={s.sceneCard}>
+          <View style={s.sceneCardTop}>
+            <View style={s.sceneDot} />
+            <Text style={s.sceneKicker}>SCENE MAP</Text>
+          </View>
+          <Text style={s.sceneCount}>{hasRealCenter ? spots.length : '—'}</Text>
+          <Text style={s.sceneLabel}>{hasRealCenter ? 'REAL SPOTS NEARBY' : 'ENABLE GPS TO LOAD'}</Text>
         </View>
+
+        <View style={s.gpsChip}>
+          <Crosshair color={INK} size={14} strokeWidth={3} />
+          <Text style={s.gpsChipText}>{hasRealCenter ? 'GPS LIVE' : 'GPS OFF'}</Text>
+        </View>
+
         {error ? (
-          <View
-            style={{
-              backgroundColor: '#15100F',
-              borderColor: '#6B3325',
-              borderWidth: 1,
-              borderRadius: 14,
-              padding: 12,
-              flexDirection: 'row',
-              gap: 10,
-            }}
-          >
-            <TriangleAlert color="#D2673D" size={20} />
-            <Text selectable style={{ color: '#F3F4F6', flex: 1 }}>{error}</Text>
+          <View style={s.errorCard}>
+            <TriangleAlert color={ORANGE} size={19} />
+            <Text selectable style={s.errorText}>{error}</Text>
           </View>
         ) : null}
       </View>
 
-      <View style={{ position: 'absolute', right: 16, bottom: 118, gap: 10 }}>
+      <View style={s.controlStack}>
         <MapButton
           label="Use my location"
-          onPress={() => {
-            void locateUser();
-          }}
-          icon={
-            locationLoading ? <ActivityIndicator color="#D2673D" /> : <Crosshair color="#D2673D" />
-          }
+          onPress={() => void locateUser()}
+          accent={ACID}
+          icon={locationLoading ? <ActivityIndicator color={INK} /> : <Crosshair color={INK} size={21} strokeWidth={2.8} />}
         />
         <MapButton
           label="Add a spot"
           onPress={() => router.push('/add-spot' as any)}
-          icon={<Plus color="#D2673D" />}
+          accent={ORANGE}
+          icon={<Plus color={INK} size={23} strokeWidth={3} />}
         />
       </View>
 
       {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#D2673D"
-          style={{ position: 'absolute', top: '45%', alignSelf: 'center' }}
-        />
+        <View style={s.loadingBadge}>
+          <ActivityIndicator color={INK} />
+          <Text style={s.loadingBadgeText}>SCANNING THE SCENE</Text>
+        </View>
       ) : null}
 
       <ScrollView
         horizontal
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 14 }}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+        style={s.spotRailWrap}
+        contentContainerStyle={s.spotRail}
         showsHorizontalScrollIndicator={false}
       >
-        {spots.slice(0, 15).map(spot => (
-          <View
-            key={spot.id}
-            style={{
-              width: 205,
-              padding: 14,
-              borderRadius: 16,
-              backgroundColor: selectedSpot?.id === spot.id ? '#2A1812' : '#10151D',
-              borderWidth: 1,
-              borderColor: '#343A45',
-              gap: 9,
-            }}
-          >
+        {spots.slice(0, 15).map((spot, index) => {
+          const selected = selectedSpot?.id === spot.id;
+          return (
             <Pressable
+              key={spot.id}
               onPress={() => {
                 setSelectedSpot(spot);
                 mapRef.current?.flyTo({ center: [spot.longitude, spot.latitude], zoom: 15 });
               }}
+              style={[s.spotCard, selected && s.spotCardSelected, index % 2 === 1 && s.spotCardTilt]}
             >
-              <Text numberOfLines={1} style={{ color: 'white', fontWeight: '800' }}>{spot.name}</Text>
-              <Text style={{ color: '#AAB1BC', marginTop: 4 }}>{spot.spot_type ?? 'Skate spot'}</Text>
+              <View style={[s.spotRank, selected && s.spotRankSelected]}>
+                <Text style={s.spotRankText}>{String(index + 1).padStart(2, '0')}</Text>
+              </View>
+              <View style={s.spotCopy}>
+                <View style={s.spotTypeRow}>
+                  <MapPin color={selected ? INK : ORANGE} size={12} />
+                  <Text style={[s.spotType, selected && s.spotTypeSelected]}>{String(spot.spot_type ?? 'SKATE SPOT').toUpperCase()}</Text>
+                </View>
+                <Text numberOfLines={1} style={[s.spotName, selected && s.spotNameSelected]}>{spot.name}</Text>
+                <Text numberOfLines={1} style={[s.spotMeta, selected && s.spotMetaSelected]}>
+                  {spot.difficulty ? `${spot.difficulty} • ` : ''}{spot.tricks?.length ?? 0} TRICKS LOGGED
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={event => {
+                  event.stopPropagation?.();
+                  openSpot(spot);
+                }}
+                style={[s.openSpotBtn, selected && s.openSpotBtnSelected]}
+              >
+                <Text style={s.openSpotText}>OPEN</Text>
+                <Text style={s.openSpotArrow}>↗</Text>
+              </Pressable>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => openSpot(spot)}
-              style={{
-                backgroundColor: '#D2673D',
-                borderRadius: 10,
-                minHeight: 38,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: 'white', fontWeight: '900' }}>Open spot</Text>
-            </Pressable>
+          );
+        })}
+
+        {spots.length === 0 && !loading ? (
+          <View style={s.emptyCard}>
+            <Flame color={ORANGE} size={24} />
+            <Text style={s.emptyTitle}>NO SPOTS IN RANGE</Text>
+            <Text style={s.emptyText}>Move the map, use GPS, or add the spot everyone is missing.</Text>
           </View>
-        ))}
+        ) : null}
       </ScrollView>
     </View>
   );
 }
 
-function MapButton({ label, onPress, icon }: { label: string; onPress: () => void; icon: React.ReactNode }) {
+function MapButton({ label, onPress, icon, accent }: { label: string; onPress: () => void; icon: React.ReactNode; accent: string }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={{
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: 'white',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={[s.mapButton, { backgroundColor: accent }]}
     >
       {icon}
     </Pressable>
@@ -339,19 +338,64 @@ function MapButton({ label, onPress, icon }: { label: string; onPress: () => voi
 
 function MapError({ message }: { message: string }) {
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: '#07090D',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        gap: 12,
-      }}
-    >
-      <MapPin color="#D2673D" size={36} />
-      <Text selectable style={{ color: 'white', textAlign: 'center', fontSize: 16 }}>{message}</Text>
-      <RotateCcw color="#9CA3AF" />
+    <View style={s.errorScreen}>
+      <View style={s.errorStamp}><MapPin color={INK} size={34} /></View>
+      <Text style={s.errorScreenKicker}>MAP OFFLINE</Text>
+      <Text selectable style={s.errorScreenText}>{message}</Text>
+      <RotateCcw color={MUTED} />
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: INK },
+  map: { flex: 1, minHeight: 420 },
+
+  topHud: { position: 'absolute', top: 15, left: 14, right: 14, alignItems: 'flex-start', gap: 8 },
+  sceneCard: { width: 145, minHeight: 111, backgroundColor: INK, borderRadius: 21, borderWidth: 2, borderColor: PAPER, padding: 13, transform: [{ rotate: '-1.5deg' }], shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
+  sceneCardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sceneDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACID },
+  sceneKicker: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 1.35 },
+  sceneCount: { color: ACID, fontSize: 35, lineHeight: 37, fontWeight: '900', marginTop: 5 },
+  sceneLabel: { color: PAPER, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.85, marginTop: 2 },
+  gpsChip: { position: 'absolute', right: 0, top: 0, minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: 13, backgroundColor: ACID, borderWidth: 2, borderColor: INK, transform: [{ rotate: '1.5deg' }] },
+  gpsChipText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  errorCard: { maxWidth: 340, marginTop: 2, backgroundColor: INK, borderColor: ORANGE, borderWidth: 2, borderRadius: 16, padding: 11, flexDirection: 'row', gap: 9 },
+  errorText: { color: PAPER, flex: 1, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
+
+  controlStack: { position: 'absolute', right: 14, bottom: 244, gap: 9 },
+  mapButton: { width: 51, height: 51, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: INK, shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 5 }, elevation: 7 },
+
+  loadingBadge: { position: 'absolute', top: '46%', alignSelf: 'center', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 13, borderRadius: 14, backgroundColor: ACID, borderWidth: 2, borderColor: INK },
+  loadingBadgeText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+
+  spotRailWrap: { position: 'absolute', left: 0, right: 0, bottom: 92, maxHeight: 132 },
+  spotRail: { paddingHorizontal: 14, gap: 10, alignItems: 'flex-end' },
+  spotCard: { width: 252, minHeight: 116, borderRadius: 20, backgroundColor: INK, borderWidth: 2, borderColor: PAPER, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 7 },
+  spotCardSelected: { backgroundColor: ACID, borderColor: INK, transform: [{ rotate: '-1deg' }] },
+  spotCardTilt: { transform: [{ rotate: '0.6deg' }] },
+  spotRank: { width: 38, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  spotRankSelected: { backgroundColor: ORANGE },
+  spotRankText: { color: INK, fontSize: 13, fontWeight: '900', transform: [{ rotate: '-90deg' }] },
+  spotCopy: { flex: 1, paddingHorizontal: 11, paddingVertical: 12, justifyContent: 'center' },
+  spotTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  spotType: { color: ORANGE, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.9 },
+  spotTypeSelected: { color: INK },
+  spotName: { color: PAPER, fontSize: 16, fontWeight: '900', marginTop: 5, letterSpacing: -0.35 },
+  spotNameSelected: { color: INK },
+  spotMeta: { color: '#A4ABB6', fontSize: 8.5, fontWeight: '800', marginTop: 4 },
+  spotMetaSelected: { color: 'rgba(7,8,11,0.68)' },
+  openSpotBtn: { width: 52, backgroundColor: PAPER, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  openSpotBtnSelected: { backgroundColor: ORANGE },
+  openSpotText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  openSpotArrow: { color: INK, fontSize: 18, fontWeight: '900' },
+
+  emptyCard: { width: 276, minHeight: 110, borderRadius: 20, padding: 15, backgroundColor: INK, borderWidth: 2, borderColor: PAPER },
+  emptyTitle: { color: PAPER, fontSize: 15, fontWeight: '900', marginTop: 7 },
+  emptyText: { color: '#A4ABB6', fontSize: 10.5, lineHeight: 15, marginTop: 4 },
+
+  errorScreen: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
+  errorStamp: { width: 68, height: 68, borderRadius: 19, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  errorScreenKicker: { color: ORANGE, fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginTop: 4 },
+  errorScreenText: { color: PAPER, textAlign: 'center', fontSize: 15, lineHeight: 21, maxWidth: 330 },
+});
