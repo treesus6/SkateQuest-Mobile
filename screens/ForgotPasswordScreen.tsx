@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, CheckCircle2, KeyRound, Mail } from 'lucide-react-native';
 import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -23,7 +22,6 @@ const BLUE = '#72A9FF';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { resetPassword } = useAuthStore();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +44,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.container}>
-      <View style={[s.page, { paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 18) }]}>
+      <View style={s.page}>
         <View style={s.poster}>
           <View style={s.orangeSlash} />
           <View style={s.acidSlash} />
@@ -126,7 +124,7 @@ export default function ForgotPasswordScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
-  page: { flex: 1, justifyContent: 'center', paddingHorizontal: 14 },
+  page: { flex: 1, justifyContent: 'center', paddingHorizontal: 14, paddingTop: 18, paddingBottom: 18 },
   poster: { minHeight: 235, backgroundColor: '#11141A', borderRadius: 28, borderWidth: 1, borderColor: '#2A2E36', padding: 20, overflow: 'hidden', position: 'relative' },
   orangeSlash: { position: 'absolute', width: 245, height: 78, right: -84, top: 24, backgroundColor: ORANGE, transform: [{ rotate: '34deg' }] },
   acidSlash: { position: 'absolute', width: 190, height: 24, left: -65, bottom: 38, backgroundColor: ACID, transform: [{ rotate: '-12deg' }] },
@@ -134,7 +132,6 @@ const s = StyleSheet.create({
   posterStamp: { width: 66, height: 66, borderRadius: 19, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
   posterKicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.6, marginTop: 23 },
   posterTitle: { color: PAPER, fontSize: 40, lineHeight: 37, fontWeight: '900', letterSpacing: -2, marginTop: 4 },
-
   ticket: { marginTop: -8, backgroundColor: PAPER, borderRadius: 26, borderWidth: 2, borderColor: INK, padding: 19, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
   ticketTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   kicker: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.45 },
