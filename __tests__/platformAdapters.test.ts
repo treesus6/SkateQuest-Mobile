@@ -51,4 +51,35 @@ describe('web/native platform selection', () => {
     expect(workflow).toContain("EXPO_PUBLIC_BASE_URL: ''");
     expect(workflow).toContain('actions/deploy-pages@v4');
   });
+
+  it('shows the beta/support notice on web and Android only', () => {
+    const web = fs.readFileSync(
+      path.join(__dirname, '..', 'components', 'BetaNotice.web.tsx'),
+      'utf8'
+    );
+    const base = fs.readFileSync(path.join(__dirname, '..', 'components', 'BetaNotice.tsx'), 'utf8');
+    const native = fs.readFileSync(
+      path.join(__dirname, '..', 'components', 'BetaNotice.native.tsx'),
+      'utf8'
+    );
+    const appConfig = fs.readFileSync(path.join(__dirname, '..', 'app.config.js'), 'utf8');
+    const workflow = fs.readFileSync(
+      path.join(__dirname, '..', '.github', 'workflows', 'deploy-web-pages.yml'),
+      'utf8'
+    );
+
+    expect(web).toContain('SkateQuest is still in beta.');
+    expect(native).toContain("Platform.OS !== 'android'");
+    expect(native).toContain('SkateQuest Android is still in beta.');
+    expect(base).toContain("export { default } from './BetaNotice.native'");
+    expect(web).toContain('EXPO_PUBLIC_SUPPORT_EMAIL');
+    expect(native).toContain('EXPO_PUBLIC_SUPPORT_EMAIL');
+    expect(web).toContain('mailto:');
+    expect(native).toContain('mailto:');
+    expect(appConfig).toContain(
+      "supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'treevanderveer@gmail.com'"
+    );
+    expect(appConfig).not.toContain('support@sk8.quest');
+    expect(workflow).toContain('EXPO_PUBLIC_SUPPORT_EMAIL: treevanderveer@gmail.com');
+  });
 });
