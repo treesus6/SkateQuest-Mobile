@@ -208,7 +208,7 @@ export default function HomeScreen() {
             </View>
             <Pressable onPress={() => go('Profile')} style={s.avatar}>
               {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                <Image source={{ uri: profile.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
                 <Text style={s.avatarText}>{(profile?.username || 'SQ').slice(0, 2).toUpperCase()}</Text>
               )}
@@ -217,7 +217,7 @@ export default function HomeScreen() {
 
           <View style={s.hero}>
             {heroClip?.thumbnail_url ? (
-              <Image source={{ uri: heroClip.thumbnail_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+              <Image source={{ uri: heroClip.thumbnail_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : null}
             <View style={s.heroShade} />
             <View style={s.heroOrangeSlash} />
@@ -303,7 +303,7 @@ export default function HomeScreen() {
               <Pressable key={clip.id} style={[s.clipCard, index === 0 && s.clipCardLead]} onPress={() => go('SkateTV')}>
                 <View style={s.clipMedia}>
                   {clip.thumbnail_url ? (
-                    <Image source={{ uri: clip.thumbnail_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                    <Image source={{ uri: clip.thumbnail_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
                   ) : (
                     <View style={s.clipFallback}><Video color={ORANGE} size={34} /></View>
                   )}
@@ -336,7 +336,7 @@ export default function HomeScreen() {
               <Pressable key={item.id} style={[s.skaterChip, { transform: [{ rotate: `${index % 2 === 0 ? -1.2 : 1.2}deg` }] }]} onPress={() => go('LiveCheckIn')}>
                 <View style={s.skaterAvatar}>
                   {item.profiles?.avatar_url ? (
-                    <Image source={{ uri: item.profiles.avatar_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                    <Image source={{ uri: item.profiles.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
                   ) : (
                     <Text style={s.skaterAvatarText}>{String(item.profiles?.username || 'S').slice(0, 1).toUpperCase()}</Text>
                   )}
@@ -435,7 +435,7 @@ const s = StyleSheet.create({
   loadingStamp: { width: 68, height: 68, borderRadius: 18, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
   loadingStampText: { color: INK, fontSize: 26, fontWeight: '900' },
   loadingText: { color: MUTED, marginTop: 10, fontWeight: '700' },
-  backgroundTexture: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  backgroundTexture: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, overflow: 'hidden' },
   textureLineA: { position: 'absolute', width: 240, height: 3, backgroundColor: 'rgba(227,109,63,0.16)', top: 112, right: -80, transform: [{ rotate: '-18deg' }] },
   textureLineB: { position: 'absolute', width: 180, height: 2, backgroundColor: 'rgba(216,240,75,0.12)', top: 228, left: -50, transform: [{ rotate: '23deg' }] },
   textureBlob: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: 'rgba(99,167,255,0.05)', top: 460, right: -120 },
@@ -445,7 +445,7 @@ const s = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 15, overflow: 'hidden', backgroundColor: '#171A20', borderWidth: 2, borderColor: PAPER, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '3deg' }] },
   avatarText: { color: PAPER, fontWeight: '900', fontSize: 15 },
   hero: { marginHorizontal: 14, height: 350, borderRadius: 28, overflow: 'hidden', backgroundColor: '#15171D', borderWidth: 1, borderColor: '#292D36' },
-  heroShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4,5,7,0.58)' },
+  heroShade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(4,5,7,0.58)' },
   heroOrangeSlash: { position: 'absolute', width: 250, height: 78, backgroundColor: 'rgba(227,109,63,0.95)', right: -95, top: 32, transform: [{ rotate: '34deg' }] },
   heroAcidSlash: { position: 'absolute', width: 180, height: 22, backgroundColor: ACID, left: -66, bottom: 44, transform: [{ rotate: '-12deg' }] },
   heroContent: { flex: 1, padding: 22, justifyContent: 'flex-end' },
@@ -500,7 +500,7 @@ const s = StyleSheet.create({
   clipCardLead: { width: 274 },
   clipMedia: { height: 164, backgroundColor: '#1A1E25', overflow: 'hidden' },
   clipFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#171A20' },
-  clipShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.16)' },
+  clipShade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.16)' },
   playButton: { position: 'absolute', left: 12, bottom: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.66)', alignItems: 'center', justifyContent: 'center' },
   clipIndex: { position: 'absolute', top: 10, right: 10, minWidth: 34, height: 26, paddingHorizontal: 8, borderRadius: 8, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '3deg' }] },
   clipIndexText: { color: INK, fontWeight: '900', fontSize: 10 },

@@ -42,7 +42,7 @@ describe('SignupScreen', () => {
       <SignupScreen navigation={mockNavigation} />
     );
     await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    await fireEvent.changeText(getByPlaceholderText('Password (min 8 characters)'), '12345');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 8 characters)'), '1234567');
     await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
@@ -68,9 +68,7 @@ describe('SignupScreen', () => {
   });
 
   it('shows error from signup failure', async () => {
-    const mockSignUp = jest.fn().mockResolvedValue({
-      error: { message: 'Email already in use' },
-    });
+    const mockSignUp = jest.fn().mockResolvedValue({ error: { message: 'Email already in use' } });
     mockUseAuthStore.mockReturnValue({ signUp: mockSignUp, loading: false });
 
     const { getByPlaceholderText, getByText } = await render(

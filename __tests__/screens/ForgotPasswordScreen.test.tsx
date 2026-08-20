@@ -34,8 +34,11 @@ describe('ForgotPasswordScreen', () => {
     const mockReset = jest.fn().mockResolvedValue({ error: null });
     mockUseAuthStore.mockReturnValue({ resetPassword: mockReset, loading: false });
     const { getByText } = await render(<ForgotPasswordScreen />);
+
     await fireEvent.press(getByText('SEND RESET LINK'));
+
     expect(mockReset).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   it('calls resetPassword with email', async () => {
@@ -65,6 +68,7 @@ describe('ForgotPasswordScreen', () => {
 
     await waitFor(() => {
       expect(getByText('Check your email')).toBeTruthy();
+      expect(getByText('We sent password reset instructions to test@example.com.')).toBeTruthy();
     });
     expect(queryByPlaceholderText('Email address')).toBeNull();
   });

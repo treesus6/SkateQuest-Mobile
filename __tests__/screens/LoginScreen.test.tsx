@@ -3,7 +3,6 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import LoginScreen from '../../screens/LoginScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// Mock the auth store
 jest.mock('../../stores/useAuthStore');
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 
@@ -21,7 +20,7 @@ describe('LoginScreen', () => {
   });
 
   it('renders login form', async () => {
-    const { getByPlaceholderText, getByText } = await render(
+    const { getByPlaceholderText, getByText, queryByText } = await render(
       <LoginScreen navigation={mockNavigation} />
     );
     expect(getByText('SKATEQUEST')).toBeTruthy();
@@ -30,6 +29,7 @@ describe('LoginScreen', () => {
     expect(getByPlaceholderText('Password')).toBeTruthy();
     expect(getByText('Sign In')).toBeTruthy();
     expect(getByText('Continue with Google')).toBeTruthy();
+    expect(queryByText('Continue with Facebook')).toBeNull();
   });
 
   it('shows validation error for empty fields', async () => {
@@ -58,9 +58,7 @@ describe('LoginScreen', () => {
   });
 
   it('shows error from sign in failure', async () => {
-    const mockSignIn = jest.fn().mockResolvedValue({
-      error: { message: 'Invalid credentials' },
-    });
+    const mockSignIn = jest.fn().mockResolvedValue({ error: { message: 'Invalid credentials' } });
     mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: false });
 
     const { getByPlaceholderText, getByText } = await render(
@@ -89,10 +87,7 @@ describe('LoginScreen', () => {
   });
 
   it('shows loading state', async () => {
-    mockUseAuthStore.mockReturnValue({
-      signIn: jest.fn(),
-      loading: true,
-    });
+    mockUseAuthStore.mockReturnValue({ signIn: jest.fn(), loading: true });
     const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
     expect(queryByText('Sign In')).toBeNull();
   });

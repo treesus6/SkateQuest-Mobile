@@ -7,8 +7,6 @@ import { profilesService } from '../../lib/profilesService';
 
 jest.mock('../../stores/useAuthStore');
 jest.mock('../../lib/profilesService');
-
-// Mock LoadingSkeleton to avoid Animated.loop issues in test environment
 jest.mock('../../components/ui/LoadingSkeleton', () => ({
   __esModule: true,
   default: () => null,
@@ -36,6 +34,7 @@ interface MockProfile {
 
 describe('ProfileScreen - Integration', () => {
   const mockSignOut = jest.fn();
+  const mockDeleteAccount = jest.fn().mockResolvedValue({ error: null });
   const mockUser = { id: 'user-abc-123', email: 'skater@test.com' };
   const mockProfile: MockProfile = {
     id: 'user-abc-123',
@@ -51,7 +50,11 @@ describe('ProfileScreen - Integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuthStore.mockReturnValue({ user: mockUser, signOut: mockSignOut });
+    mockUseAuthStore.mockReturnValue({
+      user: mockUser,
+      signOut: mockSignOut,
+      deleteAccount: mockDeleteAccount,
+    });
     mockGetLevelProgress.mockResolvedValue({ data: null, error: null });
   });
 
@@ -76,9 +79,8 @@ describe('ProfileScreen - Integration', () => {
       mockGetById.mockReturnValue(new Promise(() => {}));
       mockGetLevelProgress.mockReturnValue(new Promise(() => {}));
       const { queryByText } = await render(<ProfileScreen />);
-      // While loading, profile content is not yet rendered
       expect(queryByText('Sign Out')).toBeNull();
-      expect(queryByText('SkaterPro')).toBeNull();
+      expect(queryByText('@SkaterPro')).toBeNull();
     });
   });
 
@@ -86,36 +88,25 @@ describe('ProfileScreen - Integration', () => {
     it('should display the username after loading', async () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(
-        () => {
-          expect(getByText('SkaterPro')).toBeTruthy();
-        },
-        { timeout: 3000 }
-      );
+      await waitFor(() => expect(getByText('@SkaterPro')).toBeTruthy(), { timeout: 3000 });
     });
 
     it('should display the user email', async () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(
-        () => {
-          expect(getByText('skater@test.com')).toBeTruthy();
-        },
-        { timeout: 3000 }
-      );
+      await waitFor(() => expect(getByText('skater@test.com')).toBeTruthy(), { timeout: 3000 });
     });
 
-    it('should display XP, Level, Spots, and Challenges stats', async () => {
+    it('should display XP, level, spots, and challenges stats', async () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
       await waitFor(() => {
-        expect(getByText('1250')).toBeTruthy();
-        expect(getByText('5')).toBeTruthy();
+        expect(getByText('1,250')).toBeTruthy();
+        expect(getByText('LVL 5')).toBeTruthy();
         expect(getByText('12')).toBeTruthy();
         expect(getByText('3')).toBeTruthy();
       });
       expect(getByText('XP')).toBeTruthy();
-      expect(getByText('Level')).toBeTruthy();
       expect(getByText('Spots')).toBeTruthy();
       expect(getByText('Challenges')).toBeTruthy();
     });
@@ -135,14 +126,11 @@ describe('ProfileScreen - Integration', () => {
         },
       });
       const { getByText, getAllByText } = await render(<ProfileScreen />);
-      await waitFor(
-        () => {
-          expect(getByText('Skater')).toBeTruthy();
-          expect(getAllByText('0').length).toBeGreaterThan(0);
-          expect(getByText('1')).toBeTruthy();
-        },
-        { timeout: 3000 }
-      );
+      await waitFor(() => {
+        expect(getByText('@Skater')).toBeTruthy();
+        expect(getAllByText('0').length).toBeGreaterThan(0);
+        expect(getByText('LVL 1')).toBeTruthy();
+      }, { timeout: 3000 });
     });
   });
 
@@ -161,17 +149,15 @@ describe('ProfileScreen - Integration', () => {
       });
       const { getByText } = await render(<ProfileScreen />);
       await waitFor(() => {
-        expect(getByText(/Level 5/)).toBeTruthy();
-        expect(getByText(/750 XP needed for next level/)).toBeTruthy();
+        expect(getByText('Level 6')).toBeTruthy();
+        expect(getByText('750 XP left — keep skating.')).toBeTruthy();
       });
     });
 
     it('should not display level progress when rpc fails', async () => {
       setupProfileQuery({ rpcError: { message: 'RPC function not found' } });
       const { queryByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(queryByText(/XP needed for next level/)).toBeNull();
-      });
+      await waitFor(() => expect(queryByText(/XP left — keep skating/)).toBeNull());
     });
   });
 
@@ -179,25 +165,19 @@ describe('ProfileScreen - Integration', () => {
     it('should display the streak when it is greater than zero', async () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(getByText(/7 Day Streak/)).toBeTruthy();
-      });
+      await waitFor(() => expect(getByText('7 day streak')).toBeTruthy());
     });
 
     it('should not display the streak section when streak is zero', async () => {
       setupProfileQuery({ profileData: { ...mockProfile, streak: 0 } });
       const { queryByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(queryByText(/Day Streak/)).toBeNull();
-      });
+      await waitFor(() => expect(queryByText(/day streak/i)).toBeNull());
     });
 
     it('should not display the streak section when streak is not set', async () => {
       setupProfileQuery({ profileData: { ...mockProfile, streak: null } });
       const { queryByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(queryByText(/Day Streak/)).toBeNull();
-      });
+      await waitFor(() => expect(queryByText(/day streak/i)).toBeNull());
     });
   });
 
@@ -206,26 +186,28 @@ describe('ProfileScreen - Integration', () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
       await waitFor(() => {
-        expect(getByText(/First Kickflip/)).toBeTruthy();
-        expect(getByText(/Park Master/)).toBeTruthy();
+        expect(getByText('First Kickflip')).toBeTruthy();
+        expect(getByText('Park Master')).toBeTruthy();
       });
     });
 
     it('should not display the badges section when badges is empty', async () => {
       setupProfileQuery({ profileData: { ...mockProfile, badges: {} } });
       const { queryByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(queryByText('Badges')).toBeNull();
-      });
+      await waitFor(() => expect(queryByText('Unlocked badges')).toBeNull());
     });
 
     it('should not display badges that are unlocked: false', async () => {
-      const customBadges: MockBadges = { 'First Kickflip': true, 'Secret Badge': false };
-      setupProfileQuery({ profileData: { ...mockProfile, badges: customBadges } });
+      setupProfileQuery({
+        profileData: {
+          ...mockProfile,
+          badges: { 'First Kickflip': true, 'Secret Badge': false },
+        },
+      });
       const { getByText, queryByText } = await render(<ProfileScreen />);
       await waitFor(() => {
-        expect(getByText(/First Kickflip/)).toBeTruthy();
-        expect(queryByText(/Secret Badge/)).toBeNull();
+        expect(getByText('First Kickflip')).toBeTruthy();
+        expect(queryByText('Secret Badge')).toBeNull();
       });
     });
   });
@@ -234,9 +216,7 @@ describe('ProfileScreen - Integration', () => {
     it('should show an Alert confirmation when Sign Out is pressed', async () => {
       setupProfileQuery({});
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
+      await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
       await fireEvent.press(getByText('Sign Out'));
       expect(Alert.alert).toHaveBeenCalledWith(
         'Sign Out',
@@ -258,13 +238,9 @@ describe('ProfileScreen - Integration', () => {
         }
       );
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
+      await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
       await fireEvent.press(getByText('Sign Out'));
-      await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalledTimes(1);
-      });
+      await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
     });
 
     it('should not call signOut when Cancel is pressed in the alert', async () => {
@@ -276,9 +252,7 @@ describe('ProfileScreen - Integration', () => {
         }
       );
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
+      await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
       await fireEvent.press(getByText('Sign Out'));
       expect(mockSignOut).not.toHaveBeenCalled();
     });
@@ -298,14 +272,13 @@ describe('ProfileScreen - Integration', () => {
           expect.arrayContaining([expect.objectContaining({ text: 'Sign Out' })])
         );
       });
-      // The component does not attempt to auto-create a replacement profile.
       expect(mockCreate).not.toHaveBeenCalled();
     });
   });
 
   describe('no user state', () => {
     it('should not attempt to load profile when user is null', async () => {
-      mockUseAuthStore.mockReturnValue({ user: null, signOut: mockSignOut });
+      mockUseAuthStore.mockReturnValue({ user: null, signOut: mockSignOut, deleteAccount: mockDeleteAccount });
       await render(<ProfileScreen />);
       expect(mockGetById).not.toHaveBeenCalled();
     });
@@ -316,9 +289,7 @@ describe('ProfileScreen - Integration', () => {
       setupProfileQuery({ profileError: { code: 'GENERIC', message: 'Something went wrong' } });
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       const { getByText } = await render(<ProfileScreen />);
-      await waitFor(() => {
-        expect(getByText('Sign Out')).toBeTruthy();
-      });
+      await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
       consoleSpy.mockRestore();
     });
   });
