@@ -1,0 +1,47 @@
+name: Refresh Expo SDK 57 lock
+
+on:
+  push:
+    branches:
+      - chatgpt/expo-sdk57-patch-align
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.1
+          cache: npm
+
+      - name: Install current lock
+        run: npm ci
+
+      - name: Align Expo SDK packages
+        run: npx expo install --fix
+
+      - name: Show dependency changes
+        run: git diff -- package.json package-lock.json
+
+      - name: Commit refreshed dependency lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit."
+          else
+            git commit -m "Align Expo SDK 57 patch dependencies"
+            git push
+          fi
+
+      - name: Verify Expo Doctor
+        run: npx expo-doctor
