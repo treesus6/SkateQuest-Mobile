@@ -4,8 +4,8 @@ import { crewsService } from '../../lib/crewsService';
 import { supabase } from '../../lib/supabase';
 
 // The supabase mock is set up globally in jest.setup.js
-// We cast it here for type-safe mock manipulation
 const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
+const mockRpc = supabase.rpc as unknown as { mockResolvedValue: (value: any) => void; mock: { calls: any[][] } };
 
 describe('crewsService', () => {
   beforeEach(() => {
@@ -71,41 +71,32 @@ describe('crewsService', () => {
   });
 
   describe('create', () => {
-    it('should insert a new crew with correct default values', async () => {
+    it('should create a crew through the server RPC', async () => {
       const newCrew = {
         name: 'New Crew',
         description: 'A brand new crew',
         created_by: 'user-123',
       };
-
-      const mockInsert = jest.fn().mockResolvedValue({ data: { id: 'new-id', ...newCrew, member_count: 1, total_xp: 0 }, error: null });
-      mockFrom.mockReturnValue({ insert: mockInsert });
+      const created = { id: 'new-id', ...newCrew, member_count: 1, total_xp: 0 };
+      mockRpc.mockResolvedValue({ data: created, error: null });
 
       const result = await crewsService.create(newCrew);
 
-      expect(mockFrom).toHaveBeenCalledWith('crews');
-      expect(mockInsert).toHaveBeenCalledWith([
-        {
-          name: 'New Crew',
-          description: 'A brand new crew',
-          created_by: 'user-123',
-          member_count: 1,
-          total_xp: 0,
-        },
-      ]);
-      expect(result.error).toBeNull();
+      expect(supabase.rpc).toHaveBeenCalledWith('create_crew', {
+        p_name: 'New Crew',
+        p_description: 'A brand new crew',
+      });
+      expect(result).toEqual({ data: created, error: null });
     });
 
-    it('should return an error when creation fails due to duplicate name', async () => {
+    it('should return an RPC error when creation fails', async () => {
       const duplicateCrew = {
         name: 'Existing Crew',
         description: 'Duplicate',
         created_by: 'user-123',
       };
-
       const mockError = { message: 'duplicate key value violates unique constraint', code: '23505' };
-      const mockInsert = jest.fn().mockResolvedValue({ data: null, error: mockError });
-      mockFrom.mockReturnValue({ insert: mockInsert });
+      mockRpc.mockResolvedValue({ data: null, error: mockError });
 
       const result = await crewsService.create(duplicateCrew);
 
@@ -113,21 +104,19 @@ describe('crewsService', () => {
       expect(result.data).toBeNull();
     });
 
-    it('should always set member_count to 1 and total_xp to 0 for new crews', async () => {
-      const newCrew = {
+    it('does not trust client-supplied crew counters or creator identity', async () => {
+      mockRpc.mockResolvedValue({ data: { id: 'new-id' }, error: null });
+
+      await crewsService.create({
         name: 'Test Crew',
-        description: 'Testing defaults',
+        description: 'Testing server defaults',
         created_by: 'user-456',
-      };
+      });
 
-      const mockInsert = jest.fn().mockResolvedValue({ data: null, error: null });
-      mockFrom.mockReturnValue({ insert: mockInsert });
-
-      await crewsService.create(newCrew);
-
-      const insertedData = mockInsert.mock.calls[0][0][0];
-      expect(insertedData.member_count).toBe(1);
-      expect(insertedData.total_xp).toBe(0);
+      expect(mockRpc.mock.calls[0][1]).toEqual({
+        p_name: 'Test Crew',
+        p_description: 'Testing server defaults',
+      });
     });
   });
 
