@@ -1,14 +1,20 @@
-name: Build Android AAB (No EAS)
+name: Build Android Release (No EAS)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-android-apk.yml'
+      - '.android-trigger/release'
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build Android AAB
+    name: Build Android APK + AAB
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -16,10 +22,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22.22.1'
           cache: 'npm'
 
       - name: Setup Java 21
@@ -32,7 +38,7 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --clean
@@ -45,15 +51,15 @@ jobs:
 
       - name: Decode Keystore
         run: |
+          test -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/skatequest.keystore
-          echo "Keystore decoded to android/app/skatequest.keystore"
-          ls -la android/app/skatequest.keystore
+          test -s android/app/skatequest.keystore
 
-      - name: Build Release AAB
+      - name: Build Release APK + AAB
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
         env:
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
           RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
@@ -62,6 +68,14 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Upload AAB
         uses: actions/upload-artifact@v7
