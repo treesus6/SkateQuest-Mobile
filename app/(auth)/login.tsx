@@ -8,8 +8,8 @@ export default function LoginRoute() {
 
   const navigation = {
     navigate: (screen: string) => {
-      if (screen === 'Signup') router.push('/(auth)/signup');
-      else if (screen === 'ForgotPassword') router.push('/(auth)/forgot-password');
+      if (screen === 'Signup') router.push('/signup');
+      else if (screen === 'ForgotPassword') router.push('/forgot-password');
     },
     goBack: () => router.back(),
   };
