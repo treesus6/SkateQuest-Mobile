@@ -17,7 +17,7 @@ interface AuthState {
 }
 
 function webAuthRedirect(path: string): string | undefined {
-  if (typeof window === 'undefined') return undefined;
+  if (typeof window === 'undefined' || !window.location) return undefined;
 
   const projectBase = window.location.pathname.startsWith('/SkateQuest-Mobile')
     ? '/SkateQuest-Mobile'
