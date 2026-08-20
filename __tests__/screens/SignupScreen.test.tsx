@@ -25,7 +25,7 @@ describe('SignupScreen', () => {
     );
     expect(getByText('Create Account')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
-    expect(getByPlaceholderText('Password (min 6 characters)')).toBeTruthy();
+    expect(getByPlaceholderText('Password (min 8 characters)')).toBeTruthy();
     expect(getByText('Sign Up')).toBeTruthy();
   });
 
@@ -42,11 +42,11 @@ describe('SignupScreen', () => {
       <SignupScreen navigation={mockNavigation} />
     );
     await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), '12345');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 8 characters)'), '12345');
     await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
-      expect(getByText('Password must be at least 6 characters')).toBeTruthy();
+      expect(getByText('Password must be at least 8 characters')).toBeTruthy();
     });
   });
 
@@ -59,7 +59,7 @@ describe('SignupScreen', () => {
     );
 
     await fireEvent.changeText(getByPlaceholderText('Email'), 'test@example.com');
-    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 8 characters)'), 'password123');
     await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
@@ -78,7 +78,7 @@ describe('SignupScreen', () => {
     );
 
     await fireEvent.changeText(getByPlaceholderText('Email'), 'taken@example.com');
-    await fireEvent.changeText(getByPlaceholderText('Password (min 6 characters)'), 'password123');
+    await fireEvent.changeText(getByPlaceholderText('Password (min 8 characters)'), 'password123');
     await fireEvent.press(getByText('Sign Up'));
 
     await waitFor(() => {
