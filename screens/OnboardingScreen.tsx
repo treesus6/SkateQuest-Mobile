@@ -1,63 +1,106 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Dimensions, TouchableOpacity,
-  FlatList, StatusBar
+  FlatList,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ArrowRight, Camera, Crosshair, MapPinned, ShieldCheck, Users, Zap } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
 
-const SLIDES = [
+type Slide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  sub: string;
+  surface: string;
+  ink: string;
+  accent: string;
+  icon: 'map' | 'quest' | 'crew' | 'clip';
+  stamp: string;
+};
+
+const SLIDES: Slide[] = [
   {
     id: '1',
-    emoji: '🗺',
-    title: 'THE WORLD\nIS YOUR PARK',
-    sub: '27,000+ skateparks mapped worldwide. Find spots near you, discover hidden gems, and never skate the same place twice.',
-    bg: '#05070B',
-    accent: '#d2673d',
+    eyebrow: 'THE MAP IS THE GAME',
+    title: 'FIND THE\nREAL SCENE.',
+    sub: 'Open the map, use your location, find real skate spots, check conditions, and add the places skaters are missing.',
+    surface: PAPER,
+    ink: INK,
+    accent: ORANGE,
+    icon: 'map',
+    stamp: 'SPOTS',
   },
   {
     id: '2',
-    emoji: '⚡',
-    title: 'EARN XP.\nLEVEL UP.',
-    sub: 'Every session counts. Complete daily quests, land tricks, join crew battles. Submit proof. Claim your XP.',
-    bg: '#0a0514',
-    accent: '#8b5cf6',
+    eyebrow: 'NO FREE XP BUTTONS',
+    title: 'DO IT.\nPROVE IT.',
+    sub: 'Daily quests, bounties, check-ins, and trick challenges use real proof and server-verified rewards.',
+    surface: ORANGE,
+    ink: INK,
+    accent: ACID,
+    icon: 'quest',
+    stamp: 'PROOF',
   },
   {
     id: '3',
-    emoji: '👥',
-    title: 'BUILD YOUR\nCREW',
-    sub: 'Form a crew with your local homies. Battle other crews for territory. Dominate your city\'s skate scene.',
-    bg: '#05100a',
-    accent: '#4ade80',
+    eyebrow: 'ROLL WITH HOMIES',
+    title: 'BUILD A\nCREW.',
+    sub: 'Link up, invite skaters, battle other crews, and claim territory through real location and trick verification.',
+    surface: BLUE,
+    ink: INK,
+    accent: PAPER,
+    icon: 'crew',
+    stamp: 'CREW',
   },
   {
     id: '4',
-    emoji: '🛹',
-    title: 'BORN TO LURK.\nFORCED TO WORK.',
-    sub: 'No ads. No corporate BS. Built by skaters for skaters. 10% of profits go to kids who can\'t afford boards.',
-    bg: '#1a0805',
-    accent: '#d2673d',
+    eyebrow: 'YOUR CLIPS. YOUR SPOTS.',
+    title: 'MAKE THE\nSCENE MOVE.',
+    sub: 'Drop skate clips, call out other skaters, start sessions, judge verified proof, and keep the local scene active.',
+    surface: ACID,
+    ink: INK,
+    accent: ORANGE,
+    icon: 'clip',
+    stamp: 'LIVE',
   },
 ];
 
+function SlideIcon({ name, color }: { name: Slide['icon']; color: string }) {
+  if (name === 'map') return <MapPinned color={color} size={54} strokeWidth={2.4} />;
+  if (name === 'quest') return <ShieldCheck color={color} size={55} strokeWidth={2.4} />;
+  if (name === 'crew') return <Users color={color} size={55} strokeWidth={2.4} />;
+  return <Camera color={color} size={55} strokeWidth={2.4} />;
+}
+
 export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatRef = useRef<FlatList>(null);
-
-  const goNext = () => {
-    if (activeIndex < SLIDES.length - 1) {
-      flatRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
-      setActiveIndex(prev => prev + 1);
-    } else {
-      finish();
-    }
-  };
+  const flatRef = useRef<FlatList<Slide>>(null);
 
   const finish = async () => {
     await AsyncStorage.setItem('onboarding_done', 'true');
     onDone();
+  };
+
+  const goNext = () => {
+    if (activeIndex < SLIDES.length - 1) {
+      const next = activeIndex + 1;
+      flatRef.current?.scrollToIndex({ index: next, animated: true });
+      setActiveIndex(next);
+      return;
+    }
+    void finish();
   };
 
   const current = SLIDES[activeIndex];
@@ -73,61 +116,72 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         scrollEnabled={false}
-        keyExtractor={i => i.id}
-        renderItem={({ item }) => (
-          <View style={[s.slide, { backgroundColor: item.bg }]}>
-            {/* Background pattern */}
-            <View style={[s.bgPattern, { borderColor: item.accent + '15' }]} />
-            <View style={[s.bgPattern2, { borderColor: item.accent + '10' }]} />
+        keyExtractor={item => item.id}
+        renderItem={({ item, index }) => (
+          <View style={[s.slide, { backgroundColor: item.surface }]}>
+            <View style={[s.bigCircle, { borderColor: item.ink, opacity: 0.08 }]} />
+            <View style={[s.slash, { backgroundColor: item.accent }]} />
+            <View style={[s.slashSmall, { backgroundColor: item.ink, opacity: 0.12 }]} />
 
-            {/* Big emoji */}
-            <Text style={s.slideEmoji}>{item.emoji}</Text>
+            <View style={s.slideTop}>
+              <View style={[s.stepStamp, { backgroundColor: item.ink }]}>
+                <Text style={[s.stepText, { color: item.surface }]}>{String(index + 1).padStart(2, '0')}</Text>
+              </View>
+              <View style={[s.liveChip, { borderColor: item.ink }]}>
+                <View style={[s.liveDot, { backgroundColor: item.accent }]} />
+                <Text style={[s.liveText, { color: item.ink }]}>{item.stamp}</Text>
+              </View>
+            </View>
 
-            {/* Title */}
-            <Text style={[s.slideTitle, { color: item.accent }]}>{item.title}</Text>
+            <View style={[s.iconCard, { backgroundColor: item.ink, borderColor: item.ink }]}>
+              <SlideIcon name={item.icon} color={item.accent} />
+              <View style={[s.iconCorner, { backgroundColor: item.accent }]} />
+            </View>
 
-            {/* Sub */}
-            <Text style={s.slideSub}>{item.sub}</Text>
-
-            {/* Bottom gradient area */}
-            <View style={s.slideBottom} />
+            <View style={s.copyWrap}>
+              <Text style={[s.eyebrow, { color: item.ink }]}>{item.eyebrow}</Text>
+              <Text style={[s.title, { color: item.ink }]}>{item.title}</Text>
+              <Text style={[s.sub, { color: item.ink }]}>{item.sub}</Text>
+            </View>
           </View>
         )}
-        onMomentumScrollEnd={e => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+        onMomentumScrollEnd={event => {
+          const idx = Math.round(event.nativeEvent.contentOffset.x / width);
           setActiveIndex(idx);
         }}
         scrollEventThrottle={16}
       />
 
-      {/* Bottom UI */}
-      <View style={[s.bottomUI, { backgroundColor: current.bg }]}>
-        {/* Dots */}
-        <View style={s.dots}>
-          {SLIDES.map((_, i) => (
-            <View key={i} style={[
-              s.dot,
-              i === activeIndex && [s.dotActive, { backgroundColor: current.accent }]
-            ]} />
-          ))}
+      <View style={s.bottomUI}>
+        <View style={s.bottomTop}>
+          <View style={s.dots}>
+            {SLIDES.map((slide, index) => (
+              <View
+                key={slide.id}
+                style={[
+                  s.dot,
+                  index === activeIndex && [s.dotActive, { backgroundColor: current.accent }],
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={s.progressText}>{activeIndex + 1} / {SLIDES.length}</Text>
         </View>
 
-        {/* Button */}
-        <TouchableOpacity
-          style={[s.btn, { backgroundColor: current.accent }]}
-          onPress={goNext}
-          activeOpacity={0.85}
-        >
-          <Text style={s.btnTxt}>
-            {activeIndex === SLIDES.length - 1 ? "LET'S SKATE 🛹" : 'NEXT →'}
-          </Text>
-        </TouchableOpacity>
+        <Pressable style={[s.nextButton, { backgroundColor: current.accent }]} onPress={goNext}>
+          <View style={s.nextButtonCopy}>
+            {activeIndex === SLIDES.length - 1 ? <Crosshair color={INK} size={19} strokeWidth={3} /> : <Zap color={INK} size={18} fill={INK} />}
+            <Text style={s.nextText}>{activeIndex === SLIDES.length - 1 ? "LET'S SKATE" : 'NEXT SCENE'}</Text>
+          </View>
+          <View style={s.nextArrow}><ArrowRight color={INK} size={20} strokeWidth={3} /></View>
+        </Pressable>
 
-        {/* Skip */}
-        {activeIndex < SLIDES.length - 1 && (
-          <TouchableOpacity onPress={finish}>
-            <Text style={s.skip}>Skip</Text>
-          </TouchableOpacity>
+        {activeIndex < SLIDES.length - 1 ? (
+          <Pressable onPress={() => void finish()}>
+            <Text style={s.skip}>SKIP INTRO</Text>
+          </Pressable>
+        ) : (
+          <View style={s.skipSpacer} />
         )}
       </View>
     </View>
@@ -135,19 +189,34 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#05070B' },
-  slide: { width, height, justifyContent: 'center', alignItems: 'center', padding: 40, paddingTop: 100, paddingBottom: 240 },
-  bgPattern: { position: 'absolute', width: 500, height: 500, borderRadius: 250, borderWidth: 60, top: -100, right: -150 },
-  bgPattern2: { position: 'absolute', width: 300, height: 300, borderRadius: 150, borderWidth: 40, bottom: 100, left: -80 },
-  slideEmoji: { fontSize: 100, marginBottom: 32, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 },
-  slideTitle: { fontSize: 42, fontWeight: '900', letterSpacing: 2, textAlign: 'center', marginBottom: 20, lineHeight: 50 },
-  slideSub: { color: '#9CA3AF', fontSize: 16, textAlign: 'center', lineHeight: 26, maxWidth: 300 },
-  slideBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 240 },
-  bottomUI: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 32, paddingBottom: 48, alignItems: 'center', gap: 16 },
-  dots: { flexDirection: 'row', gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1F2937' },
-  dotActive: { width: 28, height: 8, borderRadius: 4 },
-  btn: { width: '100%', padding: 18, borderRadius: 14, alignItems: 'center' },
-  btnTxt: { color: 'white', fontWeight: '900', fontSize: 16, letterSpacing: 2 },
-  skip: { color: '#4B5563', fontSize: 14 },
+  container: { flex: 1, backgroundColor: INK },
+  slide: { width, height, paddingHorizontal: 22, paddingTop: 38, paddingBottom: 205, overflow: 'hidden' },
+  bigCircle: { position: 'absolute', width: 380, height: 380, borderRadius: 190, borderWidth: 70, right: -160, top: -90 },
+  slash: { position: 'absolute', width: width * 0.95, height: 42, left: -width * 0.28, bottom: 235, transform: [{ rotate: '-11deg' }] },
+  slashSmall: { position: 'absolute', width: width * 0.8, height: 14, right: -width * 0.3, top: 186, transform: [{ rotate: '20deg' }] },
+  slideTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  stepStamp: { width: 47, height: 47, borderRadius: 14, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  stepText: { fontSize: 15, fontWeight: '900' },
+  liveChip: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 2 },
+  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  liveText: { fontSize: 8.5, fontWeight: '900', letterSpacing: 1.2 },
+  iconCard: { width: 112, height: 112, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: 48, borderWidth: 3, transform: [{ rotate: '-5deg' }], overflow: 'hidden' },
+  iconCorner: { position: 'absolute', width: 52, height: 52, right: -23, bottom: -22, transform: [{ rotate: '35deg' }] },
+  copyWrap: { marginTop: 34, maxWidth: width - 44 },
+  eyebrow: { fontSize: 9, fontWeight: '900', letterSpacing: 1.7, opacity: 0.72 },
+  title: { fontSize: 45, lineHeight: 41, fontWeight: '900', letterSpacing: -2.5, marginTop: 6 },
+  sub: { fontSize: 14, lineHeight: 21, fontWeight: '700', opacity: 0.72, marginTop: 16, maxWidth: 340 },
+
+  bottomUI: { position: 'absolute', bottom: 0, left: 0, right: 0, minHeight: 190, backgroundColor: INK, paddingHorizontal: 18, paddingTop: 18, paddingBottom: 24, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderTopWidth: 1, borderColor: '#2B3039' },
+  bottomTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  dots: { flexDirection: 'row', gap: 7 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#343943' },
+  dotActive: { width: 29 },
+  progressText: { color: '#7F8793', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  nextButton: { minHeight: 59, borderRadius: 17, borderWidth: 2, borderColor: INK, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', transform: [{ rotate: '-0.5deg' }] },
+  nextButtonCopy: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nextText: { color: INK, fontWeight: '900', fontSize: 13, letterSpacing: 1 },
+  nextArrow: { width: 36, height: 36, borderRadius: 12, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
+  skip: { color: '#6D7580', fontSize: 9, fontWeight: '900', letterSpacing: 1.4, textAlign: 'center', marginTop: 14 },
+  skipSpacer: { height: 25 },
 });
