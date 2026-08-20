@@ -24,7 +24,7 @@ describe('LoginScreen', () => {
     const { getByPlaceholderText, getByText } = await render(
       <LoginScreen navigation={mockNavigation} />
     );
-    expect(getByText('SKATEQUEST')).toBeTruthy();
+    expect(getByText(/SKATE\s+QUEST/)).toBeTruthy();
     expect(getByText('Sign in with your email and password')).toBeTruthy();
     expect(getByPlaceholderText('Email')).toBeTruthy();
     expect(getByPlaceholderText('Password')).toBeTruthy();
