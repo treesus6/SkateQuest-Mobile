@@ -19,10 +19,12 @@ interface AuthState {
 function webAuthRedirect(path: string): string | undefined {
   if (typeof window === 'undefined' || !window.location) return undefined;
 
-  const projectBase = window.location.pathname.startsWith('/SkateQuest-Mobile')
-    ? '/SkateQuest-Mobile'
-    : '';
-  return `${window.location.origin}${projectBase}${path}`;
+  const pathname = window.location.pathname || '';
+  const origin = window.location.origin;
+  if (!origin) return undefined;
+
+  const projectBase = pathname.startsWith('/SkateQuest-Mobile') ? '/SkateQuest-Mobile' : '';
+  return `${origin}${projectBase}${path}`;
 }
 
 function passwordRecoveryRedirect(): string | undefined {
