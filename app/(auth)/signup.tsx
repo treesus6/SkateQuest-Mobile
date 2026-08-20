@@ -6,7 +6,7 @@ export default function SignupRoute() {
 
   const navigation = {
     navigate: (screen: string) => {
-      if (screen === 'Login') router.push('/(auth)/login');
+      if (screen === 'Login') router.push('/login');
     },
     goBack: () => router.back(),
   };
