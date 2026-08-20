@@ -278,7 +278,7 @@ export default function SkateTVSceneScreen() {
             <View style={s.card}>
               <Pressable style={s.media} onPress={() => void watchClip(item)}>
                 {item.thumbnail_url ? (
-                  <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                  <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
                 ) : (
                   <View style={s.noThumb}><Camera color={ORANGE} size={42} /><Text style={s.noThumbText}>VIDEO READY</Text></View>
                 )}
@@ -395,7 +395,7 @@ const s = StyleSheet.create({
   media: { height: 330, backgroundColor: '#171B22', overflow: 'hidden' },
   noThumb: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 9 },
   noThumbText: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
+  scrim: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' },
   indexSticker: { position: 'absolute', top: 13, left: 13, minWidth: 40, height: 31, borderRadius: 10, paddingHorizontal: 9, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
   indexText: { color: INK, fontSize: 11, fontWeight: '900' },
   featured: { position: 'absolute', top: 13, right: 13, minHeight: 31, borderRadius: 10, paddingHorizontal: 9, backgroundColor: ACID, flexDirection: 'row', alignItems: 'center', gap: 5 },
