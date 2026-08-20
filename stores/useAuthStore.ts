@@ -138,10 +138,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   resetPassword: async (email: string) => {
     const redirectTo = passwordRecoveryRedirect();
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email,
-      redirectTo ? { redirectTo } : undefined
-    );
+    const { error } = redirectTo
+      ? await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      : await supabase.auth.resetPasswordForEmail(email);
     return { error };
   },
 }));
