@@ -1,4 +1,4 @@
-name: Build Android Release (No EAS)
+name: Build Android Installable APK
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK + AAB
+    name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -49,13 +49,47 @@ jobs:
           EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
 
-      - name: Decode Keystore
+      - name: Build installable debug APK
         run: |
-          test -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}"
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/skatequest.keystore
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-android-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Detect release signing credentials
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "HAS_RELEASE_KEYSTORE=true" >> "$GITHUB_ENV"
+          else
+            echo "HAS_RELEASE_KEYSTORE=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Decode release keystore
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/skatequest.keystore
           test -s android/app/skatequest.keystore
 
-      - name: Build Release APK + AAB
+      - name: Build signed release APK + AAB
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         run: |
           cd android
           chmod +x gradlew
@@ -69,7 +103,8 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      - name: Upload APK
+      - name: Upload signed release APK
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: skatequest-release-apk
@@ -77,18 +112,11 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Upload AAB
+      - name: Upload signed release AAB
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: skatequest-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
           if-no-files-found: error
-
-      - name: Upload Mapping File
-        uses: actions/upload-artifact@v7
-        with:
-          name: skatequest-mapping
-          path: android/app/build/outputs/mapping/release/mapping.txt
-          retention-days: 14
-          if-no-files-found: warn
