@@ -87,14 +87,14 @@ describe('ProfileScreen - Integration', () => {
 
   it('does not show profile content while loading', async () => {
     mockGetById.mockReturnValue(new Promise(() => {}));
-    const { queryByText } = render(<ProfileScreen />);
+    const { queryByText } = await render(<ProfileScreen />);
     expect(queryByText('@SkaterPro')).toBeNull();
     expect(queryByText('Sign Out')).toBeNull();
   });
 
   it('renders the current skater card and live stats', async () => {
     setupProfileQuery();
-    const { getByText } = render(<ProfileScreen />);
+    const { getByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('@SkaterPro')).toBeTruthy());
     expect(getByText('skater@test.com')).toBeTruthy();
@@ -121,7 +121,7 @@ describe('ProfileScreen - Integration', () => {
         created_at: '2025-01-01T00:00:00Z',
       },
     });
-    const { getByText, getAllByText } = render(<ProfileScreen />);
+    const { getByText, getAllByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('@Skater')).toBeTruthy());
     expect(getByText('LVL 1')).toBeTruthy();
@@ -140,7 +140,7 @@ describe('ProfileScreen - Integration', () => {
         progress_percentage: 25,
       },
     });
-    const { getByText } = render(<ProfileScreen />);
+    const { getByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('LEVEL 6')).toBeTruthy());
     expect(getByText('250 XP THIS LEVEL')).toBeTruthy();
@@ -150,7 +150,7 @@ describe('ProfileScreen - Integration', () => {
 
   it('hides level progress if the RPC fails', async () => {
     setupProfileQuery({ rpcError: { message: 'RPC function not found' } });
-    const { queryByText } = render(<ProfileScreen />);
+    const { queryByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(mockGetLevelProgress).toHaveBeenCalledWith(1250));
     expect(queryByText('NEXT UNLOCK')).toBeNull();
@@ -163,7 +163,7 @@ describe('ProfileScreen - Integration', () => {
         badges: { 'First Kickflip': true, 'Secret Badge': false },
       },
     });
-    const { getByText, queryByText } = render(<ProfileScreen />);
+    const { getByText, queryByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('7 DAY STREAK')).toBeTruthy());
     expect(getByText('BADGE WALL')).toBeTruthy();
@@ -173,7 +173,7 @@ describe('ProfileScreen - Integration', () => {
 
   it('hides the streak when it is zero', async () => {
     setupProfileQuery({ profileData: { ...mockProfile, streak: 0 } });
-    const { queryByText } = render(<ProfileScreen />);
+    const { queryByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(mockGetById).toHaveBeenCalled());
     expect(queryByText(/DAY STREAK/)).toBeNull();
@@ -181,10 +181,10 @@ describe('ProfileScreen - Integration', () => {
 
   it('shows confirmation before signing out', async () => {
     setupProfileQuery();
-    const { getByText } = render(<ProfileScreen />);
+    const { getByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
-    fireEvent.press(getByText('Sign Out'));
+    await fireEvent.press(getByText('Sign Out'));
     expect(Alert.alert).toHaveBeenCalledWith(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -203,10 +203,10 @@ describe('ProfileScreen - Integration', () => {
         buttons?.find(button => button.style === 'destructive')?.onPress?.();
       }
     );
-    const { getByText } = render(<ProfileScreen />);
+    const { getByText } = await render(<ProfileScreen />);
 
     await waitFor(() => expect(getByText('Sign Out')).toBeTruthy());
-    fireEvent.press(getByText('Sign Out'));
+    await fireEvent.press(getByText('Sign Out'));
     await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
   });
 
@@ -215,7 +215,7 @@ describe('ProfileScreen - Integration', () => {
       data: null,
       error: { code: 'PGRST116', message: 'No rows found' },
     });
-    render(<ProfileScreen />);
+    await render(<ProfileScreen />);
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -233,7 +233,7 @@ describe('ProfileScreen - Integration', () => {
       signOut: mockSignOut,
       deleteAccount: mockDeleteAccount,
     });
-    render(<ProfileScreen />);
+    await render(<ProfileScreen />);
     expect(mockGetById).not.toHaveBeenCalled();
   });
 });
