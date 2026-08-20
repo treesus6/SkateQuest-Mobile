@@ -67,9 +67,9 @@ function AuthGuard() {
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
     if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login');
+      router.replace('/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {
-      router.replace('/(tabs)/');
+      router.replace('/');
     }
   }, [user, loading, segments]);
 
