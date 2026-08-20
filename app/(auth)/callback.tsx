@@ -6,12 +6,26 @@ import { supabase } from '../../lib/supabase';
 export default function AuthCallback() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      if (sessionError) setError(sessionError.message);
-      else router.replace(data.session ? '/(tabs)/' : '/(auth)/login');
-    });
+    let active = true;
+
+    const finish = async () => {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (!active) return;
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
+      router.replace(data.session ? '/' : '/login');
+    };
+
+    void finish();
+    return () => {
+      active = false;
+    };
   }, [router]);
+
   return (
     <View
       style={{
