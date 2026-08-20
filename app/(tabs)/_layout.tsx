@@ -9,8 +9,11 @@ import { profilesService } from '../../lib/profilesService';
 import { supabase } from '../../lib/supabase';
 import { Home, Map as MapIcon, Zap, Users, UserRound, Video, MapPin, Bot, Footprints } from 'lucide-react-native';
 
-// ─── Custom Tab Bar ───────────────────────────────────────────────────────────
-// Rebuilt for Expo Router's tab bar props shape
+const INK = '#07080B';
+const PAPER = '#F5F0E7';
+const ORANGE = '#E36D3F';
+const ACID = '#D8F04B';
+
 function SkateQuestTabBar({ state, navigation }: any) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -26,124 +29,112 @@ function SkateQuestTabBar({ state, navigation }: any) {
     ]).start();
   };
 
+  const closePost = () => {
+    setPostOpen(false);
+    Animated.timing(postRotate, { toValue: 0, duration: 180, useNativeDriver: true }).start();
+  };
+
   const handlePostPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     bounce(postScale);
     Animated.timing(postRotate, {
       toValue: postOpen ? 0 : 1,
-      duration: 200,
+      duration: 190,
       useNativeDriver: true,
     }).start();
-    setPostOpen(o => !o);
+    setPostOpen(open => !open);
   };
 
-  const spin = postRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg'],
-  });
+  const spin = postRotate.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '37deg'] });
 
   const TAB_CONFIG = [
-    { icon: Home, label: 'Home', name: 'index' },
-    { icon: MapIcon, label: 'Map', name: 'map' },
+    { icon: Home, label: 'HOME', name: 'index' },
+    { icon: MapIcon, label: 'MAP', name: 'map' },
     { icon: null, label: '', name: 'POST', isPost: true },
-    { icon: Zap, label: 'Quests', name: 'quests' },
-    { icon: Users, label: 'Crew', name: 'crew' },
-    { icon: UserRound, label: 'Me', name: 'profile' },
+    { icon: Zap, label: 'QUESTS', name: 'quests' },
+    { icon: Users, label: 'CREW', name: 'crew' },
+    { icon: UserRound, label: 'ME', name: 'profile' },
   ];
 
   const POST_ACTIONS = [
-    { icon: Video, label: 'Post Clip', screen: '/(screens)/upload-media', color: '#d2673d' },
-    { icon: MapPin, label: 'Check In', screen: '/(screens)/live-check-in', color: '#4ade80' },
-    { icon: Footprints, label: 'Log Trick', screen: '/(screens)/trick-tracker', color: '#a855f7' },
-    { icon: Bot, label: 'AI Coach', screen: '/(screens)/ai-coach', color: '#3b82f6' },
+    { icon: Video, label: 'POST CLIP', screen: '/(screens)/upload-media', color: ORANGE },
+    { icon: MapPin, label: 'CHECK IN', screen: '/(screens)/live-check-in', color: ACID },
+    { icon: Footprints, label: 'LOG TRICK', screen: '/(screens)/trick-tracker', color: '#A878FF' },
+    { icon: Bot, label: 'AI COACH', screen: '/(screens)/ai-coach', color: '#63A7FF' },
   ];
 
   return (
     <>
-      {postOpen && (
+      {postOpen ? (
         <TouchableOpacity
           style={s.overlay}
           activeOpacity={1}
-          onPress={() => {
-            setPostOpen(false);
-            Animated.timing(postRotate, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }).start();
-          }}
+          onPress={closePost}
           accessibilityRole="button"
-          accessibilityLabel="Close post menu"
+          accessibilityLabel="Close action menu"
         >
-          <View style={[s.postMenu, { bottom: 80 + insets.bottom }]}>
+          <View style={[s.postMenu, { bottom: 82 + insets.bottom }]}>
+            <Text style={s.postMenuKicker}>DROP SOMETHING</Text>
             {POST_ACTIONS.map((action, i) => (
-              <Animated.View
-                key={action.screen}
-                style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}
-              >
+              <Animated.View key={action.screen} style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}>
                 <TouchableOpacity
-                  style={[s.postAction, { borderColor: action.color + '60' }]}
+                  style={[s.postAction, { borderLeftColor: action.color }]}
                   onPress={() => {
-                    setPostOpen(false);
-                    Animated.timing(postRotate, {
-                      toValue: 0,
-                      duration: 200,
-                      useNativeDriver: true,
-                    }).start();
+                    closePost();
                     router.push(action.screen as any);
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={action.label}
                 >
-                  <action.icon color={action.color} size={20} />
-                  <Text style={[s.postActionLabel, { color: action.color }]}>{action.label}</Text>
+                  <View style={[s.postActionIcon, { backgroundColor: action.color }]}>
+                    <action.icon color={INK} size={19} strokeWidth={2.6} />
+                  </View>
+                  <Text style={s.postActionLabel}>{action.label}</Text>
+                  <Text style={[s.postActionArrow, { color: action.color }]}>↗</Text>
                 </TouchableOpacity>
               </Animated.View>
             ))}
           </View>
         </TouchableOpacity>
-      )}
+      ) : null}
 
-      <View style={[s.container, { paddingBottom: Math.max(insets.bottom - 4, 4) }]}>
-        <View style={s.border} />
-        <View style={s.row}>
+      <View style={[s.shell, { paddingBottom: Math.max(insets.bottom, 7) }]}>
+        <View style={s.rail}>
           {TAB_CONFIG.map(tab => {
             if (tab.isPost) {
               return (
                 <View key="post" style={s.postWrap}>
-                  <Animated.View style={{ transform: [{ scale: postScale }] }}>
+                  <Animated.View style={{ transform: [{ scale: postScale }, { rotate: spin }] }}>
                     <TouchableOpacity
                       onPress={handlePostPress}
                       style={s.postBtn}
-                      activeOpacity={0.9}
+                      activeOpacity={0.88}
                       accessibilityRole="button"
-                      accessibilityLabel={postOpen ? 'Close post menu' : 'Open post menu'}
+                      accessibilityLabel={postOpen ? 'Close action menu' : 'Open action menu'}
                       accessibilityState={{ expanded: postOpen }}
                     >
-                      <Animated.Text style={[s.postPlus, { transform: [{ rotate: spin }] }]}>+</Animated.Text>
+                      <Text style={s.postPlus}>+</Text>
                     </TouchableOpacity>
                   </Animated.View>
+                  <Text style={s.postCaption}>DROP</Text>
                 </View>
               );
             }
 
-            const routeIdx = state.routes.findIndex((r: any) => r.name === tab.name);
+            const routeIdx = state.routes.findIndex((route: any) => route.name === tab.name);
             if (routeIdx < 0 || !scaleRefs[routeIdx]) return null;
-
             const scale = scaleRefs[routeIdx];
             const isFocused = state.index === routeIdx;
 
             const onPress = () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               bounce(scale);
               const event = navigation.emit({
                 type: 'tabPress',
                 target: state.routes[routeIdx]?.key,
                 canPreventDefault: true,
               });
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(tab.name);
-              }
+              if (!isFocused && !event.defaultPrevented) navigation.navigate(tab.name);
             };
 
             return (
@@ -151,13 +142,19 @@ function SkateQuestTabBar({ state, navigation }: any) {
                 <TouchableOpacity
                   onPress={onPress}
                   style={s.tabInner}
-                  activeOpacity={0.7}
+                  activeOpacity={0.72}
                   accessibilityRole="button"
                   accessibilityLabel={tab.label}
                   accessibilityState={{ selected: isFocused }}
                 >
                   <View style={[s.iconWrap, isFocused && s.iconWrapActive]}>
-                    {tab.icon ? <tab.icon color={isFocused ? '#D2673D' : '#6B7280'} size={21} strokeWidth={isFocused ? 2.5 : 2} /> : null}
+                    {tab.icon ? (
+                      <tab.icon
+                        color={isFocused ? INK : '#7C8491'}
+                        size={20}
+                        strokeWidth={isFocused ? 2.8 : 2.15}
+                      />
+                    ) : null}
                   </View>
                   <Text style={[s.tabLabel, isFocused && s.tabLabelActive]}>{tab.label}</Text>
                 </TouchableOpacity>
@@ -177,9 +174,6 @@ function readLevelFromProgress(progress: unknown): number | null {
   return Number.isFinite(value) && value >= 1 ? value : null;
 }
 
-// ─── Level Up Wrapper ─────────────────────────────────────────────────────────
-// Uses the server-managed profile XP and get_level_progress RPC. It deliberately
-// does not restore the old local ChallengeContext, which used hard-coded XP.
 function LevelUpWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
   const [level, setLevel] = useState(1);
@@ -198,9 +192,7 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
 
     const previousLevel = lastLevelRef.current;
     setLevel(nextLevel);
-    if (announceIncrease && previousLevel !== null && nextLevel > previousLevel) {
-      setShowLevelUp(true);
-    }
+    if (announceIncrease && previousLevel !== null && nextLevel > previousLevel) setShowLevelUp(true);
     lastLevelRef.current = nextLevel;
   }, []);
 
@@ -228,12 +220,7 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
       .channel(`profile-progression-${user.id}`)
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
         payload => {
           if (!active) return;
           void applyXp((payload.new as { xp?: unknown })?.xp, true);
@@ -255,7 +242,6 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Tab Layout ───────────────────────────────────────────────────────────────
 export default function TabsLayout() {
   return (
     <LevelUpWrapper>
@@ -271,74 +257,67 @@ export default function TabsLayout() {
 }
 
 const s = StyleSheet.create({
-  container: {
-    backgroundColor: '#080B14',
-    borderTopWidth: 0,
-    paddingTop: 8,
-    position: 'relative',
+  shell: { backgroundColor: INK, paddingHorizontal: 9, paddingTop: 7 },
+  rail: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    backgroundColor: '#101319',
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: '#2B3039',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.34,
+    shadowRadius: 16,
+    elevation: 18,
   },
-  border: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'transparent',
-    borderTopWidth: 1,
-    borderColor: 'rgba(210,103,61,0.15)',
-  },
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 },
   tab: { flex: 1 },
-  tabInner: { alignItems: 'center', paddingVertical: 4, gap: 3 },
-  iconWrap: {
-    width: 36,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  iconWrapActive: { backgroundColor: 'rgba(210,103,61,0.15)' },
-  tabLabel: { fontSize: 10, color: '#4B5563', fontWeight: '600', letterSpacing: 0.3 },
-  tabLabelActive: { color: '#d2673d' },
-  postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -22 },
+  tabInner: { alignItems: 'center', justifyContent: 'center', minHeight: 58, gap: 3 },
+  iconWrap: { width: 35, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  iconWrapActive: { backgroundColor: PAPER, transform: [{ rotate: '-3deg' }] },
+  tabLabel: { fontSize: 8, color: '#606875', fontWeight: '900', letterSpacing: 0.8 },
+  tabLabelActive: { color: PAPER },
+  postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -23 },
   postBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#d2673d',
+    width: 57,
+    height: 57,
+    borderRadius: 17,
+    backgroundColor: ACID,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#d2673d',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 12,
-    borderWidth: 3,
-    borderColor: '#080B14',
+    borderWidth: 4,
+    borderColor: INK,
+    shadowColor: ACID,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 13,
   },
-  postPlus: { color: 'white', fontSize: 32, fontWeight: '200', marginTop: -2, lineHeight: 36 },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
-  postMenu: {
-    position: 'absolute',
-    right: 16,
-    flexDirection: 'column',
-    gap: 10,
-    alignItems: 'flex-end',
-  },
+  postPlus: { color: INK, fontSize: 34, fontWeight: '400', lineHeight: 37, marginTop: -3 },
+  postCaption: { color: ACID, fontSize: 7, fontWeight: '900', letterSpacing: 1.2, marginTop: 2 },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, backgroundColor: 'rgba(3,4,6,0.54)' },
+  postMenu: { position: 'absolute', right: 12, left: 12, gap: 8, alignItems: 'stretch' },
+  postMenuKicker: { color: PAPER, fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'right', marginBottom: 2, marginRight: 6 },
   postAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#111827',
-    borderRadius: 28,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
+    gap: 11,
+    minHeight: 58,
+    backgroundColor: '#11151B',
+    borderRadius: 17,
+    paddingHorizontal: 10,
     borderWidth: 1,
+    borderColor: '#303641',
+    borderLeftWidth: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  postActionLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  postActionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-3deg' }] },
+  postActionLabel: { flex: 1, color: PAPER, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
+  postActionArrow: { fontSize: 22, fontWeight: '900' },
 });
