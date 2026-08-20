@@ -5,9 +5,7 @@ describe('web/native platform selection', () => {
   it.each(['MapScreen', 'AddSpotScreen'] as const)(
     'provides native and web %s implementations',
     screen => {
-      expect(fs.existsSync(path.join(__dirname, '..', 'screens', `${screen}.native.tsx`))).toBe(
-        true
-      );
+      expect(fs.existsSync(path.join(__dirname, '..', 'screens', `${screen}.native.tsx`))).toBe(true);
       expect(fs.existsSync(path.join(__dirname, '..', 'screens', `${screen}.web.tsx`))).toBe(true);
     }
   );
@@ -31,7 +29,7 @@ describe('web/native platform selection', () => {
     expect(native).toContain('detectSessionInUrl = false');
   });
 
-  it('keeps PWA assets compatible with GitHub Pages subpath hosting', () => {
+  it('keeps PWA assets compatible with the SkateQuest.me apex domain', () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(__dirname, '..', 'public', 'manifest.webmanifest'), 'utf8')
     );
@@ -48,7 +46,8 @@ describe('web/native platform selection', () => {
     expect(manifest.scope).toBe('.');
     expect(manifest.icons.every((icon: { src: string }) => !icon.src.startsWith('/'))).toBe(true);
     expect(serviceWorker).toContain('self.registration.scope');
-    expect(workflow).toContain('EXPO_PUBLIC_BASE_URL: /SkateQuest-Mobile');
+    expect(workflow).toContain("EXPO_PUBLIC_BASE_URL: ''");
+    expect(workflow).toContain('https://skatequest.me/');
     expect(workflow).toContain('actions/deploy-pages@v4');
   });
 });
