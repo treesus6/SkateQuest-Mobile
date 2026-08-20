@@ -3,6 +3,15 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { crewsService } from '../../lib/crewsService';
 import { supabase } from '../../lib/supabase';
 
+jest.mock('../../lib/logger', () => ({
+  Logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
 const mockRpc = supabase.rpc as unknown as jest.Mock;
 
