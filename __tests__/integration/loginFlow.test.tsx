@@ -3,11 +3,9 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import LoginScreen from '../../screens/LoginScreen';
 import { useAuthStore } from '../../stores/useAuthStore';
 
-// Mock the useAuthStore
 jest.mock('../../stores/useAuthStore');
 const mockUseAuthStore = useAuthStore as unknown as jest.Mock;
 
-// Mock navigation
 const mockNavigate = jest.fn();
 const mockNavigation = {
   navigate: mockNavigate,
@@ -20,7 +18,6 @@ describe('LoginScreen - Integration Flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
     mockUseAuthStore.mockReturnValue({
       signIn: mockSignIn,
       loading: false,
@@ -28,11 +25,14 @@ describe('LoginScreen - Integration Flow', () => {
   });
 
   describe('rendering', () => {
-    it('should render the welcome text and subtitle', async () => {
+    it('should render the SkateQuest scene identity', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
-      expect(getByText('SKATEQUEST')).toBeTruthy();
-      expect(getByText('Find Your Spot')).toBeTruthy();
+      expect(getByText('THE SCENE IS OUT THERE')).toBeTruthy();
+      expect(getByText('FIND IT. SKATE IT. PROVE IT.')).toBeTruthy();
+      expect(getByText('REAL SPOTS')).toBeTruthy();
+      expect(getByText('REAL QUESTS')).toBeTruthy();
+      expect(getByText('REAL CLIPS')).toBeTruthy();
     });
 
     it('should render email and password input fields', async () => {
@@ -44,13 +44,11 @@ describe('LoginScreen - Integration Flow', () => {
 
     it('should render the Sign In button', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       expect(getByText('Sign In')).toBeTruthy();
     });
 
     it('should render the sign up navigation link', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       expect(getByText("Don't have an account? ")).toBeTruthy();
       expect(getByText('Sign Up')).toBeTruthy();
     });
@@ -59,44 +57,33 @@ describe('LoginScreen - Integration Flow', () => {
   describe('input handling', () => {
     it('should update email field when typing', async () => {
       const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       const emailInput = getByPlaceholderText('Email');
       await fireEvent.changeText(emailInput, 'skater@test.com');
-
       expect(emailInput.props.value).toBe('skater@test.com');
     });
 
     it('should update password field when typing', async () => {
       const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       const passwordInput = getByPlaceholderText('Password');
       await fireEvent.changeText(passwordInput, 'mypassword123');
-
       expect(passwordInput.props.value).toBe('mypassword123');
     });
 
     it('should have the password field set as secure text entry', async () => {
       const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
-
-      const passwordInput = getByPlaceholderText('Password');
-      expect(passwordInput.props.secureTextEntry).toBe(true);
+      expect(getByPlaceholderText('Password').props.secureTextEntry).toBe(true);
     });
 
     it('should have autoCapitalize set to none on email field', async () => {
       const { getByPlaceholderText } = await render(<LoginScreen navigation={mockNavigation} />);
-
-      const emailInput = getByPlaceholderText('Email');
-      expect(emailInput.props.autoCapitalize).toBe('none');
+      expect(getByPlaceholderText('Email').props.autoCapitalize).toBe('none');
     });
   });
 
   describe('login flow', () => {
     it('should call signIn with trimmed email and password on button press', async () => {
       mockSignIn.mockResolvedValue({ error: null });
-
-      const { getByPlaceholderText, getByText } = await render(
-        <LoginScreen navigation={mockNavigation} />
-      );
+      const { getByPlaceholderText, getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       await fireEvent.changeText(getByPlaceholderText('Email'), '  skater@test.com  ');
       await fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
@@ -109,23 +96,17 @@ describe('LoginScreen - Integration Flow', () => {
 
     it('should show validation error when fields are empty', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       await fireEvent.press(getByText('Sign In'));
 
       await waitFor(() => {
         expect(getByText('Please enter both email and password')).toBeTruthy();
       });
-
-      // signIn should NOT be called when fields are empty
       expect(mockSignIn).not.toHaveBeenCalled();
     });
 
     it('should call signIn only once per button press', async () => {
       mockSignIn.mockResolvedValue({ error: null });
-
-      const { getByPlaceholderText, getByText } = await render(
-        <LoginScreen navigation={mockNavigation} />
-      );
+      const { getByPlaceholderText, getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       await fireEvent.changeText(getByPlaceholderText('Email'), 'test@test.com');
       await fireEvent.changeText(getByPlaceholderText('Password'), 'pass');
@@ -139,35 +120,20 @@ describe('LoginScreen - Integration Flow', () => {
 
   describe('loading state', () => {
     it('should hide the Sign In text when loading is true', async () => {
-      mockUseAuthStore.mockReturnValue({
-        signIn: mockSignIn,
-        loading: true,
-      });
-
+      mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: true });
       const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       expect(queryByText('Sign In')).toBeNull();
     });
 
     it('should display Sign In text when loading is false', async () => {
-      mockUseAuthStore.mockReturnValue({
-        signIn: mockSignIn,
-        loading: false,
-      });
-
+      mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: false });
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       expect(getByText('Sign In')).toBeTruthy();
     });
 
     it('should not show Sign In text when loading is true', async () => {
-      mockUseAuthStore.mockReturnValue({
-        signIn: mockSignIn,
-        loading: true,
-      });
-
+      mockUseAuthStore.mockReturnValue({ signIn: mockSignIn, loading: true });
       const { queryByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       expect(queryByText('Sign In')).toBeNull();
     });
   });
@@ -175,19 +141,14 @@ describe('LoginScreen - Integration Flow', () => {
   describe('navigation', () => {
     it('should navigate to Signup screen when sign up link is pressed', async () => {
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       await fireEvent.press(getByText('Sign Up'));
-
       expect(mockNavigate).toHaveBeenCalledWith('Signup');
     });
 
     it('should not navigate to Signup when sign in button is pressed', async () => {
       mockSignIn.mockResolvedValue({ error: null });
-
       const { getByText } = await render(<LoginScreen navigation={mockNavigation} />);
-
       await fireEvent.press(getByText('Sign In'));
-
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
@@ -195,10 +156,7 @@ describe('LoginScreen - Integration Flow', () => {
   describe('complete login flow', () => {
     it('should handle a full successful login flow', async () => {
       mockSignIn.mockResolvedValue({ error: null });
-
-      const { getByPlaceholderText, getByText } = await render(
-        <LoginScreen navigation={mockNavigation} />
-      );
+      const { getByPlaceholderText, getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       await fireEvent.changeText(getByPlaceholderText('Email'), 'pro.skater@test.com');
       await fireEvent.changeText(getByPlaceholderText('Password'), 'kickflip2026');
@@ -212,10 +170,7 @@ describe('LoginScreen - Integration Flow', () => {
     it('should handle a failed login attempt gracefully', async () => {
       const mockError = { message: 'Invalid login credentials' };
       mockSignIn.mockResolvedValue({ error: mockError });
-
-      const { getByPlaceholderText, getByText } = await render(
-        <LoginScreen navigation={mockNavigation} />
-      );
+      const { getByPlaceholderText, getByText } = await render(<LoginScreen navigation={mockNavigation} />);
 
       await fireEvent.changeText(getByPlaceholderText('Email'), 'wrong@test.com');
       await fireEvent.changeText(getByPlaceholderText('Password'), 'wrongpass');
@@ -224,7 +179,6 @@ describe('LoginScreen - Integration Flow', () => {
       await waitFor(() => {
         expect(mockSignIn).toHaveBeenCalledWith('wrong@test.com', 'wrongpass');
       });
-
       expect(getByText('Sign In')).toBeTruthy();
     });
   });
