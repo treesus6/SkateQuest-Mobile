@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  ArrowUpRight,
+  Check,
   CheckCircle2,
   Flame,
   MapPin,
   RefreshCw,
   ShieldCheck,
+  Sparkles,
   Star,
   Target,
   Trophy,
@@ -23,6 +26,14 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
+
+const INK = '#07080B';
+const PAPER = '#F5F0E7';
+const ORANGE = '#E36D3F';
+const ACID = '#D8F04B';
+const BLUE = '#63A7FF';
+const PURPLE = '#A878FF';
+const MUTED = '#929AA7';
 
 type DailyQuest = {
   id: string;
@@ -34,28 +45,22 @@ type DailyQuest = {
   requirement_value: number | null;
 };
 
-type Completion = {
-  quest_id: string;
-  status: string;
-};
-
-type ClaimResult = {
-  success?: boolean;
-  error?: string;
-  xp_awarded?: number;
-  progress?: number;
-  required?: number;
-};
-
-const ACCENT = '#D2673D';
-const BG = '#05070B';
-const CARD = '#101722';
+type Completion = { quest_id: string; status: string };
+type ClaimResult = { success?: boolean; error?: string; xp_awarded?: number; progress?: number; required?: number };
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function iconFor(type?: string | null) {
+function questColor(type?: string | null) {
+  if (type === 'location' || type === 'exploration') return BLUE;
+  if (type === 'challenge') return ORANGE;
+  if (type === 'social') return PURPLE;
+  if (type === 'tricks') return ACID;
+  return ORANGE;
+}
+
+function questIcon(type?: string | null) {
   if (type === 'location' || type === 'exploration') return MapPin;
   if (type === 'challenge') return Trophy;
   if (type === 'social') return Star;
@@ -63,7 +68,7 @@ function iconFor(type?: string | null) {
   return Target;
 }
 
-function labelFor(type?: string | null) {
+function questLabel(type?: string | null) {
   if (type === 'location' || type === 'exploration') return 'EXPLORE';
   if (type === 'challenge') return 'CHALLENGE';
   if (type === 'social') return 'SOCIAL';
@@ -90,20 +95,19 @@ export default function DailyQuestsVerifiedScreen() {
 
     setError(null);
     try {
-      const [{ data: questRows, error: questError }, { data: completionRows, error: completionError }] =
-        await Promise.all([
-          supabase
-            .from('daily_quests')
-            .select('id,title,description,xp_reward,quest_type,requirement_type,requirement_value')
-            .eq('active', true)
-            .eq('frozen', false)
-            .order('xp_reward', { ascending: false }),
-          supabase
-            .from('daily_quest_completions')
-            .select('quest_id,status')
-            .eq('user_id', user.id)
-            .eq('date', todayIsoDate()),
-        ]);
+      const [{ data: questRows, error: questError }, { data: completionRows, error: completionError }] = await Promise.all([
+        supabase
+          .from('daily_quests')
+          .select('id,title,description,xp_reward,quest_type,requirement_type,requirement_value')
+          .eq('active', true)
+          .eq('frozen', false)
+          .order('xp_reward', { ascending: false }),
+        supabase
+          .from('daily_quest_completions')
+          .select('quest_id,status')
+          .eq('user_id', user.id)
+          .eq('date', todayIsoDate()),
+      ]);
 
       if (questError) throw questError;
       if (completionError) throw completionError;
@@ -113,8 +117,7 @@ export default function DailyQuestsVerifiedScreen() {
       (completionRows ?? []).forEach((row: Completion) => next.set(row.quest_id, row.status));
       setCompletions(next);
     } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : 'Could not load daily quests.';
-      setError(message);
+      setError(loadError instanceof Error ? loadError.message : 'Could not load daily quests.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,45 +132,32 @@ export default function DailyQuestsVerifiedScreen() {
     () => quests.filter(quest => completions.get(quest.id) === 'approved').length,
     [quests, completions]
   );
-
-  const availableXp = useMemo(
-    () => quests.reduce((sum, quest) => sum + (quest.xp_reward || 0), 0),
-    [quests]
-  );
-
+  const availableXp = useMemo(() => quests.reduce((sum, quest) => sum + Number(quest.xp_reward || 0), 0), [quests]);
   const earnedXp = useMemo(
-    () => quests.reduce((sum, quest) => sum + (completions.get(quest.id) === 'approved' ? quest.xp_reward || 0 : 0), 0),
+    () => quests.reduce((sum, quest) => sum + (completions.get(quest.id) === 'approved' ? Number(quest.xp_reward || 0) : 0), 0),
     [quests, completions]
   );
-
-  const completionPercent = quests.length > 0 ? Math.round((completedCount / quests.length) * 100) : 0;
+  const completionPercent = quests.length ? Math.round((completedCount / quests.length) * 100) : 0;
 
   const claim = async (quest: DailyQuest) => {
     if (!user?.id || claiming) return;
     setClaiming(quest.id);
     try {
-      const { data, error: rpcError } = await supabase.rpc('claim_daily_quest', {
-        p_quest_id: quest.id,
-      });
+      const { data, error: rpcError } = await supabase.rpc('claim_daily_quest', { p_quest_id: quest.id });
       if (rpcError) throw rpcError;
-
       const result = (data ?? {}) as ClaimResult;
       if (!result.success) {
         const progressText =
           typeof result.progress === 'number' && typeof result.required === 'number'
             ? `\n\nProgress: ${result.progress}/${result.required}`
             : '';
-        Alert.alert('Not completed yet', `${result.error ?? 'Quest requirement not met yet.'}${progressText}`);
+        Alert.alert('Not there yet', `${result.error ?? 'Quest requirement not met yet.'}${progressText}`);
         return;
       }
-
-      Alert.alert('Quest complete', `+${result.xp_awarded ?? quest.xp_reward} XP earned.`);
+      Alert.alert('Mission cleared', `+${result.xp_awarded ?? quest.xp_reward} XP earned.`);
       await load();
     } catch (claimError) {
-      Alert.alert(
-        'Could not verify quest',
-        claimError instanceof Error ? claimError.message : 'Please try again.'
-      );
+      Alert.alert('Could not verify mission', claimError instanceof Error ? claimError.message : 'Try again.');
     } finally {
       setClaiming(null);
     }
@@ -176,14 +166,15 @@ export default function DailyQuestsVerifiedScreen() {
   if (loading) {
     return (
       <View style={s.loading}>
-        <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={s.loadingText}>Loading today’s real missions…</Text>
+        <View style={s.loadingMark}><Target color={INK} size={31} strokeWidth={2.7} /></View>
+        <ActivityIndicator color={ORANGE} style={{ marginTop: 14 }} />
+        <Text style={s.loadingText}>Building today’s mission stack…</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top']}>
       <FlatList
         data={quests}
         keyExtractor={item => item.id}
@@ -194,122 +185,120 @@ export default function DailyQuestsVerifiedScreen() {
               setRefreshing(true);
               void load();
             }}
-            tintColor={ACCENT}
+            tintColor={ORANGE}
           />
         }
-        contentContainerStyle={s.listContent}
+        contentContainerStyle={s.content}
         ListHeaderComponent={
-          <View style={s.headerWrap}>
-            <View style={s.eyebrowRow}>
-              <Flame color="#FF8C42" size={16} />
-              <Text style={s.eyebrow}>TODAY'S MISSIONS</Text>
+          <View>
+            <View style={s.titleBlock}>
+              <View style={s.titleMeta}>
+                <Flame color={ORANGE} size={16} />
+                <Text style={s.kicker}>TODAY // VERIFIED</Text>
+              </View>
+              <Text style={s.title}>MISSION{`\n`}BOARD.</Text>
+              <Text style={s.subtitle}>Do the real thing first. SkateQuest checks the activity before XP moves.</Text>
             </View>
-            <Text style={s.title}>Daily Quests</Text>
-            <Text style={s.subtitle}>
-              SkateQuest checks real activity before XP is awarded. Complete the session, then verify it here.
-            </Text>
 
-            <View style={s.progressCard}>
-              <View style={s.progressTop}>
-                <View>
-                  <Text style={s.progressLabel}>TODAY'S RUN</Text>
-                  <Text style={s.progressValue}>{completedCount}/{quests.length} complete</Text>
-                </View>
-                <View style={s.percentPill}>
-                  <Text style={s.percentText}>{completionPercent}%</Text>
-                </View>
+            <View style={s.scoreboard}>
+              <View style={s.scoreLeft}>
+                <Text style={s.scoreSmall}>CLEARED</Text>
+                <Text style={s.scoreBig}>{completedCount}<Text style={s.scoreSlash}>/{quests.length}</Text></Text>
               </View>
-              <View style={s.progressTrack}>
-                <View style={[s.progressFill, { width: `${completionPercent}%` }]} />
-              </View>
-              <View style={s.progressStats}>
-                <View style={s.progressStat}>
-                  <Zap color={ACCENT} size={15} />
-                  <Text style={s.progressStatText}>{earnedXp} XP earned</Text>
+              <View style={s.scoreCenter}>
+                <View style={s.progressTrack}>
+                  <View style={[s.progressFill, { width: `${completionPercent}%` }]} />
                 </View>
-                <View style={s.progressStat}>
-                  <Trophy color="#F7B955" size={15} />
-                  <Text style={s.progressStatText}>{availableXp} XP available</Text>
-                </View>
+                <Text style={s.progressCaption}>{completionPercent}% OF TODAY’S BOARD</Text>
               </View>
+              <View style={s.scoreRight}>
+                <Text style={s.scoreSmall}>XP LEFT</Text>
+                <Text style={s.scoreXp}>{Math.max(0, availableXp - earnedXp)}</Text>
+              </View>
+            </View>
+
+            <View style={s.verifiedRail}>
+              <View style={s.verifiedIcon}><ShieldCheck color={INK} size={21} strokeWidth={2.7} /></View>
+              <View style={s.verifiedCopy}>
+                <Text style={s.verifiedTitle}>NO FAKE COMPLETIONS</Text>
+                <Text style={s.verifiedSub}>Progress is checked against real SkateQuest activity before the server pays XP.</Text>
+              </View>
+              <Sparkles color={ACID} size={18} />
             </View>
 
             {quests.length > 0 ? (
-              <View style={s.sectionHeader}>
+              <View style={s.stackHeader}>
                 <View>
-                  <Text style={s.sectionTitle}>Mission stack</Text>
-                  <Text style={s.sectionCaption}>Highest XP first</Text>
+                  <Text style={s.stackEyebrow}>STACK // HIGH XP FIRST</Text>
+                  <Text style={s.stackTitle}>What are you landing?</Text>
                 </View>
-                <View style={s.verifiedPill}>
-                  <ShieldCheck color="#4ADE80" size={14} />
-                  <Text style={s.verifiedText}>VERIFIED</Text>
-                </View>
+                <View style={s.stackCount}><Text style={s.stackCountText}>{quests.length}</Text></View>
               </View>
             ) : null}
           </View>
         }
         ListEmptyComponent={
           <View style={s.empty}>
-            <View style={s.emptyIcon}>
-              <Target color={ACCENT} size={32} />
-            </View>
-            <Text style={s.emptyTitle}>{error ? 'Missions could not load' : 'No verified missions are live right now'}</Text>
-            <Text style={s.emptyText}>{error ?? 'Only missions with real server-side verification are shown here.'}</Text>
-            <Pressable onPress={() => void load()} style={s.retryButton}>
-              <RefreshCw color="#fff" size={17} />
-              <Text style={s.retryText}>Try again</Text>
+            <View style={s.emptyMark}><Target color={INK} size={30} /></View>
+            <Text style={s.emptyTitle}>{error ? 'MISSION BOARD OFFLINE' : 'NO MISSIONS LIVE'}</Text>
+            <Text style={s.emptyText}>{error ?? 'Only real server-verified missions show up here.'}</Text>
+            <Pressable style={s.retryBtn} onPress={() => void load()}>
+              <RefreshCw color={INK} size={17} />
+              <Text style={s.retryText}>REFRESH BOARD</Text>
             </Pressable>
           </View>
         }
         renderItem={({ item, index }) => {
-          const Icon = iconFor(item.quest_type);
-          const status = completions.get(item.id);
-          const done = status === 'approved';
-          const isClaiming = claiming === item.id;
+          const done = completions.get(item.id) === 'approved';
+          const color = done ? '#65D897' : questColor(item.quest_type);
+          const Icon = done ? CheckCircle2 : questIcon(item.quest_type);
+          const busy = claiming === item.id;
 
           return (
-            <View style={[s.questCard, done && s.questCardDone, index === 0 && !done && s.questCardTop]}>
-              <View style={s.questTopRow}>
-                <View style={[s.questIcon, done && s.questIconDone]}>
-                  {done ? <CheckCircle2 color="#4ADE80" size={24} /> : <Icon color={ACCENT} size={24} />}
-                </View>
-                <View style={s.questCopy}>
-                  <View style={s.questTagRow}>
-                    <Text style={[s.questTag, done && s.questTagDone]}>{done ? 'DONE' : labelFor(item.quest_type)}</Text>
-                  </View>
-                  <Text style={s.questTitle}>{item.title}</Text>
-                  {item.description ? <Text style={s.questDescription}>{item.description}</Text> : null}
-                </View>
-                <View style={[s.xpBadge, done && s.xpBadgeDone]}>
-                  <Text style={[s.xpValue, done && s.xpValueDone]}>+{item.xp_reward}</Text>
-                  <Text style={[s.xpLabel, done && s.xpValueDone]}>XP</Text>
-                </View>
+            <Pressable
+              disabled={done || busy}
+              onPress={() => void claim(item)}
+              style={[s.ticket, done && s.ticketDone]}
+            >
+              <View style={[s.ticketRail, { backgroundColor: color }]}>
+                <Text style={s.ticketIndex}>{String(index + 1).padStart(2, '0')}</Text>
+                <View style={s.ticketRailIcon}><Icon color={INK} size={22} strokeWidth={2.7} /></View>
               </View>
 
-              {item.requirement_value ? (
-                <View style={s.requirementRow}>
-                  <Target color="#7D899A" size={14} />
-                  <Text style={s.requirementText}>Goal: {item.requirement_value} {item.requirement_type || 'actions'}</Text>
+              <View style={s.ticketBody}>
+                <View style={s.ticketMetaRow}>
+                  <Text style={[s.ticketTag, { color }]}>{done ? 'CLEARED' : questLabel(item.quest_type)}</Text>
+                  {item.requirement_value ? (
+                    <Text style={s.ticketGoal}>GOAL {item.requirement_value} {String(item.requirement_type || 'ACTIONS').toUpperCase()}</Text>
+                  ) : null}
                 </View>
-              ) : null}
+                <Text style={s.ticketTitle}>{item.title}</Text>
+                {item.description ? <Text style={s.ticketDesc} numberOfLines={2}>{item.description}</Text> : null}
 
-              <Pressable
-                disabled={done || isClaiming}
-                onPress={() => void claim(item)}
-                style={[s.verifyButton, done && s.verifyButtonDone, isClaiming && s.verifyButtonBusy]}
-              >
-                {isClaiming ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    {done ? <CheckCircle2 color="#4ADE80" size={18} /> : <ShieldCheck color="#fff" size={18} />}
-                    <Text style={[s.verifyText, done && s.verifyTextDone]}>
-                      {done ? 'Verified complete' : 'Verify my progress'}
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
+                <View style={s.ticketBottom}>
+                  <View style={s.rewardBlock}>
+                    <Text style={s.rewardNumber}>+{item.xp_reward}</Text>
+                    <Text style={s.rewardLabel}>XP</Text>
+                  </View>
+                  <View style={[s.verifyAction, done && s.verifyActionDone]}>
+                    {busy ? (
+                      <ActivityIndicator color={done ? '#65D897' : PAPER} />
+                    ) : done ? (
+                      <>
+                        <Check color="#65D897" size={16} strokeWidth={3} />
+                        <Text style={s.verifyDoneText}>VERIFIED</Text>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck color={PAPER} size={16} />
+                        <Text style={s.verifyText}>CHECK MY PROGRESS</Text>
+                        <ArrowUpRight color={color} size={16} />
+                      </>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </Pressable>
           );
         }}
       />
@@ -318,59 +307,60 @@ export default function DailyQuestsVerifiedScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  loading: { flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { color: '#9CA3AF', marginTop: 12 },
-  listContent: { paddingBottom: 44 },
-  headerWrap: { paddingTop: 8 },
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20 },
-  eyebrow: { color: '#FF8C42', fontSize: 11, fontWeight: '900', letterSpacing: 1.7 },
-  title: { color: '#F7F4EF', fontSize: 34, fontWeight: '900', letterSpacing: -1, paddingHorizontal: 20, marginTop: 6 },
-  subtitle: { color: '#8B95A5', fontSize: 14, lineHeight: 20, paddingHorizontal: 20, marginTop: 6 },
-  progressCard: { margin: 16, marginTop: 18, backgroundColor: '#0D131D', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#1F2937' },
-  progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-  progressValue: { color: '#F7F4EF', fontSize: 20, fontWeight: '900', marginTop: 4 },
-  percentPill: { backgroundColor: 'rgba(210,103,61,0.14)', borderWidth: 1, borderColor: 'rgba(210,103,61,0.35)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
-  percentText: { color: ACCENT, fontSize: 13, fontWeight: '900' },
-  progressTrack: { height: 10, backgroundColor: '#202938', borderRadius: 999, overflow: 'hidden', marginTop: 14 },
-  progressFill: { height: '100%', backgroundColor: ACCENT, borderRadius: 999 },
-  progressStats: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 12, flexWrap: 'wrap' },
-  progressStat: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  progressStatText: { color: '#8E99A9', fontSize: 11, fontWeight: '700' },
-  sectionHeader: { paddingHorizontal: 20, marginTop: 4, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { color: '#F7F4EF', fontSize: 19, fontWeight: '900' },
-  sectionCaption: { color: '#667085', fontSize: 11, marginTop: 2 },
-  verifiedPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#10261C', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
-  verifiedText: { color: '#4ADE80', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
-  questCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: CARD, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#1F2937' },
-  questCardTop: { borderColor: 'rgba(210,103,61,0.48)', backgroundColor: '#13151B' },
-  questCardDone: { borderColor: '#245C42', backgroundColor: '#0D1814' },
-  questTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
-  questIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(210,103,61,0.12)', borderWidth: 1, borderColor: 'rgba(210,103,61,0.25)' },
-  questIconDone: { backgroundColor: '#123C2A', borderColor: '#245C42' },
-  questCopy: { flex: 1 },
-  questTagRow: { flexDirection: 'row', marginBottom: 4 },
-  questTag: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-  questTagDone: { color: '#4ADE80' },
-  questTitle: { color: '#F7F4EF', fontSize: 17, fontWeight: '900', lineHeight: 21 },
-  questDescription: { color: '#8B95A5', marginTop: 5, lineHeight: 19, fontSize: 13 },
-  xpBadge: { backgroundColor: 'rgba(210,103,61,0.14)', borderRadius: 11, paddingHorizontal: 9, paddingVertical: 6, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(210,103,61,0.32)' },
-  xpBadgeDone: { backgroundColor: '#153624', borderColor: '#245C42' },
-  xpValue: { color: ACCENT, fontWeight: '900', fontSize: 14 },
-  xpValueDone: { color: '#4ADE80' },
-  xpLabel: { color: ACCENT, fontWeight: '800', fontSize: 8 },
-  requirementRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 13, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#1C2635' },
-  requirementText: { color: '#7D899A', fontSize: 11, fontWeight: '600' },
-  verifyButton: { minHeight: 46, marginTop: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, backgroundColor: ACCENT },
-  verifyButtonDone: { backgroundColor: '#153624', borderWidth: 1, borderColor: '#245C42' },
-  verifyButtonBusy: { opacity: 0.65 },
-  verifyText: { color: '#fff', fontWeight: '900', fontSize: 13 },
-  verifyTextDone: { color: '#4ADE80' },
-  empty: { marginTop: 58, alignItems: 'center', paddingHorizontal: 30 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(210,103,61,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(210,103,61,0.24)' },
-  emptyTitle: { color: '#F7F4EF', fontWeight: '900', fontSize: 18, marginTop: 14, textAlign: 'center' },
-  emptyText: { color: '#9CA3AF', textAlign: 'center', marginTop: 8, lineHeight: 20 },
-  retryButton: { flexDirection: 'row', gap: 7, alignItems: 'center', marginTop: 18, backgroundColor: ACCENT, paddingHorizontal: 15, paddingVertical: 11, borderRadius: 12 },
-  retryText: { color: '#fff', fontWeight: '900' },
+  container: { flex: 1, backgroundColor: INK },
+  content: { paddingBottom: 38 },
+  loading: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center' },
+  loadingMark: { width: 66, height: 66, borderRadius: 18, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  loadingText: { color: MUTED, fontWeight: '700', marginTop: 10 },
+  titleBlock: { paddingHorizontal: 18, paddingTop: 10 },
+  titleMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  kicker: { color: ORANGE, fontSize: 10, fontWeight: '900', letterSpacing: 1.8 },
+  title: { color: PAPER, fontSize: 47, lineHeight: 43, fontWeight: '900', letterSpacing: -2.5, marginTop: 7 },
+  subtitle: { color: MUTED, fontSize: 13, lineHeight: 19, maxWidth: 340, marginTop: 10 },
+  scoreboard: { marginHorizontal: 14, marginTop: 20, minHeight: 102, borderRadius: 21, overflow: 'hidden', flexDirection: 'row', backgroundColor: '#13171D', borderWidth: 1, borderColor: '#2A3039' },
+  scoreLeft: { width: 84, backgroundColor: ORANGE, padding: 12, justifyContent: 'center' },
+  scoreSmall: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1.1 },
+  scoreBig: { color: INK, fontSize: 30, fontWeight: '900', marginTop: 1 },
+  scoreSlash: { fontSize: 15, color: 'rgba(7,8,11,0.6)' },
+  scoreCenter: { flex: 1, justifyContent: 'center', paddingHorizontal: 14 },
+  progressTrack: { height: 9, borderRadius: 999, backgroundColor: '#2A3039', overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: ACID, borderRadius: 999 },
+  progressCaption: { color: '#8E96A3', fontSize: 8, fontWeight: '900', letterSpacing: 0.8, marginTop: 8 },
+  scoreRight: { width: 76, backgroundColor: ACID, padding: 10, justifyContent: 'center', alignItems: 'center' },
+  scoreXp: { color: INK, fontSize: 19, fontWeight: '900', marginTop: 3 },
+  verifiedRail: { marginHorizontal: 14, marginTop: 10, minHeight: 80, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#29303A' },
+  verifiedIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  verifiedCopy: { flex: 1 },
+  verifiedTitle: { color: PAPER, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  verifiedSub: { color: MUTED, fontSize: 9, lineHeight: 14, marginTop: 3 },
+  stackHeader: { paddingHorizontal: 18, marginTop: 28, marginBottom: 11, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  stackEyebrow: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.6 },
+  stackTitle: { color: PAPER, fontSize: 23, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
+  stackCount: { width: 37, height: 37, borderRadius: 12, backgroundColor: '#222832', alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '4deg' }] },
+  stackCountText: { color: PAPER, fontSize: 13, fontWeight: '900' },
+  ticket: { marginHorizontal: 14, marginBottom: 10, minHeight: 174, borderRadius: 20, overflow: 'hidden', flexDirection: 'row', backgroundColor: '#13171D', borderWidth: 1, borderColor: '#2B313B' },
+  ticketDone: { opacity: 0.78, borderColor: '#2F6B4B' },
+  ticketRail: { width: 54, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 },
+  ticketIndex: { color: INK, fontSize: 15, fontWeight: '900', transform: [{ rotate: '-90deg' }] },
+  ticketRailIcon: { width: 35, height: 35, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.32)', alignItems: 'center', justifyContent: 'center' },
+  ticketBody: { flex: 1, padding: 15 },
+  ticketMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  ticketTag: { fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  ticketGoal: { color: '#737C89', fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
+  ticketTitle: { color: PAPER, fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginTop: 7 },
+  ticketDesc: { color: MUTED, fontSize: 11, lineHeight: 16, marginTop: 5 },
+  ticketBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 13 },
+  rewardBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  rewardNumber: { color: PAPER, fontSize: 17, fontWeight: '900' },
+  rewardLabel: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  verifyAction: { minHeight: 38, borderRadius: 12, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#202631', borderWidth: 1, borderColor: '#343B46' },
+  verifyActionDone: { backgroundColor: '#122218', borderColor: '#285C40' },
+  verifyText: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  verifyDoneText: { color: '#65D897', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  empty: { marginHorizontal: 14, marginTop: 24, borderRadius: 24, padding: 22, backgroundColor: '#13171D', borderWidth: 1, borderColor: '#2B313B', alignItems: 'flex-start' },
+  emptyMark: { width: 56, height: 56, borderRadius: 16, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  emptyTitle: { color: PAPER, fontSize: 22, fontWeight: '900', marginTop: 15 },
+  emptyText: { color: MUTED, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  retryBtn: { marginTop: 16, minHeight: 44, borderRadius: 13, backgroundColor: ORANGE, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  retryText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
 });
