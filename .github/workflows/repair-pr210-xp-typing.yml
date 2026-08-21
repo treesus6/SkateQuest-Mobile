@@ -1,0 +1,54 @@
+name: Patch PR 210 XP Rewards typing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-pr210-xp-typing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: chatgpt/visual-pass-continued
+          fetch-depth: 0
+      - name: Repair typed FlatList
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('screens/XPRewardsScreen.tsx')
+          text = p.read_text()
+          old = "        <FlatList\n          data={tab === 'deals' ? deals : redemptions}"
+          new = "        <FlatList<ShopDeal | Redemption>\n          data={tab === 'deals' ? deals : redemptions}"
+          if old not in text:
+              raise SystemExit('Expected XP Rewards FlatList block not found')
+          p.write_text(text.replace(old, new, 1))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add screens/XPRewardsScreen.tsx
+          git commit -m "fix: type XP Rewards tab rows correctly"
+          git push origin HEAD:chatgpt/visual-pass-continued
+
+      - name: Remove branch-only repair file if present
+        run: |
+          git rm -f .github/workflows/fix-xp-rewards-list-typing.yml || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: remove branch XP typing repair workflow"
+            git push origin HEAD:chatgpt/visual-pass-continued
+          fi
+
+      - name: Remove this one-shot workflow from main
+        run: |
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+          git rm .github/workflows/repair-pr210-xp-typing.yml
+          git commit -m "chore: remove PR 210 typing repair workflow"
+          git push origin main
