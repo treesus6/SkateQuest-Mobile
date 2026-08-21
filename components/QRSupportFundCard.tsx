@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
-import { HeartHandshake, RefreshCw } from 'lucide-react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ArrowUpRight, HeartHandshake, RefreshCw, ShieldCheck } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 type Summary = {
@@ -11,6 +11,13 @@ type Summary = {
   disbursed_cents: number;
   tracked_balance_cents: number;
 };
+
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
+const MUTED = '#8F98A6';
 
 const dollars = (cents: number) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
 
@@ -31,52 +38,122 @@ export default function QRSupportFundCard() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
-    <View className="bg-[#121826] border border-[#2A3344] rounded-2xl p-4 mb-5">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <HeartHandshake size={21} color="#FF8A63" />
-          <Text className="text-white font-black text-lg ml-2">Skateboard Support Fund</Text>
+    <View style={s.card}>
+      <View style={s.orangeEdge} />
+      <View style={s.header}>
+        <View style={s.iconStamp}>
+          <HeartHandshake size={22} color={INK} strokeWidth={2.7} />
         </View>
-        <TouchableOpacity onPress={() => void load()} disabled={loading} className="p-2">
-          <RefreshCw size={17} color="#9CA3AF" />
-        </TouchableOpacity>
+        <View style={s.headerCopy}>
+          <Text style={s.kicker}>QR HUNT // COMMUNITY</Text>
+          <Text style={s.title}>Skateboard Support Fund</Text>
+        </View>
+        <Pressable style={s.refresh} onPress={() => void load()} disabled={loading} accessibilityLabel="Refresh support fund totals">
+          {loading ? <ActivityIndicator size="small" color={PAPER} /> : <RefreshCw size={17} color={PAPER} />}
+        </Pressable>
       </View>
 
-      <Text className="text-gray-400 text-xs mt-2">Tracked from real paid QR Hunts. Totals exclude personal payment details.</Text>
+      <Text style={s.body}>Tracked from real paid QR Hunts. Totals exclude personal payment details.</Text>
 
       {loading ? (
-        <View className="py-5 items-center"><ActivityIndicator color="#D2673D" /></View>
+        <View style={s.loadingRail}>
+          <ActivityIndicator color={ORANGE} />
+          <Text style={s.loadingText}>SYNCING FUND TOTALS</Text>
+        </View>
       ) : summary ? (
         <>
-          <View className="flex-row mt-4 gap-3">
-            <View className="flex-1 bg-[#0B0F16] rounded-xl p-3">
-              <Text className="text-gray-500 text-xs font-bold">PAID HUNTS</Text>
-              <Text className="text-white text-2xl font-black mt-1">{Number(summary.paid_qr_count || 0)}</Text>
+          <View style={s.statRow}>
+            <View style={[s.stat, s.statOrange]}>
+              <Text style={s.statLabel}>PAID HUNTS</Text>
+              <Text style={s.statValue}>{Number(summary.paid_qr_count || 0)}</Text>
+              <ArrowUpRight color={INK} size={16} style={s.statArrow} />
             </View>
-            <View className="flex-1 bg-[#0B0F16] rounded-xl p-3">
-              <Text className="text-gray-500 text-xs font-bold">GROSS SUPPORT</Text>
-              <Text className="text-white text-2xl font-black mt-1">{dollars(summary.gross_cents)}</Text>
+            <View style={[s.stat, s.statBlue]}>
+              <Text style={s.statLabel}>GROSS SUPPORT</Text>
+              <Text style={s.statValue}>{dollars(summary.gross_cents)}</Text>
+              <HeartHandshake color={INK} size={16} style={s.statArrow} />
             </View>
           </View>
 
-          <View className="bg-emerald-500/10 border border-emerald-800 rounded-xl p-3 mt-3">
-            <Text className="text-emerald-300 text-xs font-black">TRACKED SUPPORT BALANCE</Text>
-            <Text className="text-emerald-100 text-3xl font-black mt-1">{dollars(summary.tracked_balance_cents)}</Text>
-            <Text className="text-gray-400 text-xs mt-1">After recorded processor fees, refunds, and disbursements.</Text>
+          <View style={s.balanceTicket}>
+            <View style={s.balanceHeader}>
+              <View style={s.balanceBadge}>
+                <ShieldCheck color={INK} size={16} />
+                <Text style={s.balanceBadgeText}>TRACKED</Text>
+              </View>
+              <Text style={s.balanceMeta}>AFTER RECORDED FEES + OUTGOING SUPPORT</Text>
+            </View>
+            <Text style={s.balanceLabel}>SUPPORT BALANCE</Text>
+            <Text style={s.balanceValue}>{dollars(summary.tracked_balance_cents)}</Text>
           </View>
 
-          <View className="flex-row justify-between mt-3">
-            <Text className="text-gray-500 text-xs">Fees {dollars(summary.processing_fee_cents)}</Text>
-            <Text className="text-gray-500 text-xs">Refunds {dollars(summary.refunded_cents)}</Text>
-            <Text className="text-gray-500 text-xs">Given out {dollars(summary.disbursed_cents)}</Text>
+          <View style={s.breakdown}>
+            <Breakdown label="FEES" value={dollars(summary.processing_fee_cents)} />
+            <Breakdown label="REFUNDS" value={dollars(summary.refunded_cents)} />
+            <Breakdown label="GIVEN OUT" value={dollars(summary.disbursed_cents)} />
           </View>
         </>
       ) : (
-        <Text className="text-gray-500 text-sm mt-4">Fund totals are temporarily unavailable.</Text>
+        <View style={s.unavailable}>
+          <Text style={s.unavailableTitle}>FUND TOTALS OFFLINE</Text>
+          <Text style={s.unavailableText}>The public summary could not be loaded right now.</Text>
+          <Pressable style={s.retry} onPress={() => void load()}>
+            <RefreshCw size={15} color={INK} />
+            <Text style={s.retryText}>TRY AGAIN</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
 }
+
+function Breakdown({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.breakdownItem}>
+      <Text style={s.breakdownLabel}>{label}</Text>
+      <Text style={s.breakdownValue}>{value}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  card: { marginBottom: 14, borderRadius: 22, padding: 15, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641', overflow: 'hidden', position: 'relative' },
+  orangeEdge: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: ORANGE },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconStamp: { width: 46, height: 46, borderRadius: 14, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  headerCopy: { flex: 1 },
+  kicker: { color: ORANGE, fontSize: 7.5, fontWeight: '900', letterSpacing: 1.2 },
+  title: { color: PAPER, fontSize: 17, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
+  refresh: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#1A2029', borderWidth: 1, borderColor: '#343C48', alignItems: 'center', justifyContent: 'center' },
+  body: { color: MUTED, fontSize: 10.5, lineHeight: 16, fontWeight: '700', marginTop: 12 },
+  loadingRail: { minHeight: 62, marginTop: 14, borderRadius: 15, backgroundColor: '#0B0E13', borderWidth: 1, borderColor: '#242A33', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  loadingText: { color: MUTED, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  statRow: { flexDirection: 'row', gap: 9, marginTop: 14 },
+  stat: { flex: 1, minHeight: 92, borderRadius: 17, padding: 12, borderWidth: 2, borderColor: INK, position: 'relative' },
+  statOrange: { backgroundColor: ORANGE },
+  statBlue: { backgroundColor: BLUE },
+  statLabel: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.8 },
+  statValue: { color: INK, fontSize: 22, fontWeight: '900', letterSpacing: -0.8, marginTop: 8 },
+  statArrow: { position: 'absolute', right: 10, bottom: 10 },
+  balanceTicket: { marginTop: 9, borderRadius: 17, backgroundColor: ACID, borderWidth: 2, borderColor: INK, padding: 13 },
+  balanceHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  balanceBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 7, minHeight: 27, borderRadius: 9, backgroundColor: 'rgba(7,8,11,0.1)' },
+  balanceBadgeText: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
+  balanceMeta: { flex: 1, textAlign: 'right', color: 'rgba(7,8,11,0.62)', fontSize: 6.5, fontWeight: '900', letterSpacing: 0.5 },
+  balanceLabel: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginTop: 12 },
+  balanceValue: { color: INK, fontSize: 33, fontWeight: '900', letterSpacing: -1.4, marginTop: 1 },
+  breakdown: { flexDirection: 'row', gap: 7, marginTop: 9 },
+  breakdownItem: { flex: 1, minHeight: 54, borderRadius: 13, padding: 9, backgroundColor: '#0B0E13', borderWidth: 1, borderColor: '#262D37' },
+  breakdownLabel: { color: '#6F7886', fontSize: 6.5, fontWeight: '900', letterSpacing: 0.7 },
+  breakdownValue: { color: PAPER, fontSize: 11, fontWeight: '900', marginTop: 6 },
+  unavailable: { marginTop: 14, borderRadius: 16, padding: 13, backgroundColor: '#0B0E13', borderWidth: 1, borderColor: '#2B323D' },
+  unavailableTitle: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  unavailableText: { color: MUTED, fontSize: 10, lineHeight: 15, marginTop: 4 },
+  retry: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 34, borderRadius: 10, paddingHorizontal: 10, backgroundColor: ACID, marginTop: 10 },
+  retryText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+});
