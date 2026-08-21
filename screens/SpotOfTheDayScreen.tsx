@@ -9,19 +9,30 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarDays, Check, MapPin, MessageCircle, Share2, Star, Users } from 'lucide-react-native';
+import {
+  CalendarDays,
+  Check,
+  ChevronRight,
+  MapPin,
+  MessageCircle,
+  Share2,
+  Star,
+  Users,
+} from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigation } from '../lib/useNavigation';
 
-const ACCENT = '#D2673D';
-const BG = '#05070B';
-const CARD = '#101722';
-const BORDER = '#202B3A';
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
 
 interface Spot {
   id: string;
@@ -85,6 +96,7 @@ export default function SpotOfTheDayScreen() {
         .eq('date', todayIso())
         .maybeSingle();
       if (sodError) throw sodError;
+
       if (!sod) {
         setPick(null);
         setComments([]);
@@ -109,10 +121,18 @@ export default function SpotOfTheDayScreen() {
       const userIds = [...new Set((commentRows ?? []).map(row => row.user_id).filter(Boolean))];
       const usernames = new Map<string, string>();
       if (userIds.length) {
-        const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', userIds);
         (profiles ?? []).forEach(profile => usernames.set(profile.id, profile.username || 'Skater'));
       }
-      setComments((commentRows ?? []).map(row => ({ ...row, username: usernames.get(row.user_id) || 'Skater' })) as CommentRow[]);
+      setComments(
+        (commentRows ?? []).map(row => ({
+          ...row,
+          username: usernames.get(row.user_id) || 'Skater',
+        })) as CommentRow[]
+      );
 
       const { count, error: countError } = await supabase
         .from('spot_of_day_rsvps')
@@ -150,6 +170,7 @@ export default function SpotOfTheDayScreen() {
       Alert.alert('Sign in required', 'Sign in to say you’re skating today.');
       return;
     }
+
     try {
       setSavingRsvp(true);
       if (hasRsvp) {
@@ -183,6 +204,7 @@ export default function SpotOfTheDayScreen() {
       Alert.alert('Sign in required', 'Sign in to join the spot discussion.');
       return;
     }
+
     try {
       setSavingComment(true);
       const { data, error: insertError } = await supabase
@@ -191,8 +213,15 @@ export default function SpotOfTheDayScreen() {
         .select('id, spot_id, user_id, content, created_at')
         .single();
       if (insertError) throw insertError;
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
-      setComments(rows => [...rows, { ...(data as CommentRow), username: profile?.username || 'Skater' }]);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle();
+      setComments(rows => [
+        ...rows,
+        { ...(data as CommentRow), username: profile?.username || 'Skater' },
+      ]);
       setComment('');
     } catch (commentError: any) {
       Alert.alert('Comment not posted', commentError?.message ?? 'Try again.');
@@ -207,93 +236,203 @@ export default function SpotOfTheDayScreen() {
   };
 
   if (loading) {
-    return <SafeAreaView style={s.center}><ActivityIndicator size="large" color={ACCENT} /></SafeAreaView>;
+    return (
+      <SafeAreaView style={s.loading} edges={['top']}>
+        <View style={s.loadingStamp}><MapPin color={INK} size={30} strokeWidth={2.8} /></View>
+        <ActivityIndicator size="large" color={ORANGE} />
+        <Text style={s.loadingText}>PULLING TODAY’S REAL SPOT</Text>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top']}>
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} tintColor={ACCENT} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              void load();
+            }}
+            tintColor={ORANGE}
+          />
+        }
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={s.header}>
-          <View style={s.eyebrowRow}><CalendarDays color={ACCENT} size={16} /><Text style={s.eyebrow}>TODAY’S PICK</Text></View>
-          <Text style={s.title}>Spot of the Day</Text>
-          <Text style={s.subtitle}>One real spot. One day. See who’s headed there and talk session plans.</Text>
+        <View style={s.heroIntro}>
+          <View style={s.orangeSlash} />
+          <View style={s.acidSlash} />
+          <View style={s.heroTopRow}>
+            <View style={s.heroStamp}>
+              <MapPin color={INK} size={27} strokeWidth={2.8} />
+            </View>
+            <View style={s.todayChip}>
+              <CalendarDays color={INK} size={12} strokeWidth={3} />
+              <Text style={s.todayChipText}>TODAY ONLY</Text>
+            </View>
+          </View>
+          <Text style={s.eyebrow}>ONE REAL SPOT • ONE DAY • ONE SESSION THREAD</Text>
+          <Text style={s.title}>SPOT OF{`\n`}THE DAY.</Text>
+          <Text style={s.subtitle}>See the pick, mark that you’re going, and use the live session thread to link up.</Text>
         </View>
 
-        {error ? <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View> : null}
+        {error ? (
+          <View style={s.errorBox}>
+            <Text style={s.errorTitle}>TODAY’S PICK COULD NOT LOAD</Text>
+            <Text style={s.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         {!pick ? (
           <View style={s.emptyCard}>
-            <MapPin color="#465365" size={38} />
-            <Text style={s.emptyTitle}>No pick posted today</Text>
-            <Text style={s.emptyText}>Nothing is fabricated here. When a real Spot of the Day is selected, it will appear on this screen.</Text>
+            <View style={s.emptyStamp}><MapPin color={INK} size={30} strokeWidth={2.8} /></View>
+            <Text style={s.emptyTitle}>NO PICK POSTED TODAY</Text>
+            <Text style={s.emptyText}>Nothing is fabricated here. When a real Spot of the Day is selected, it will appear here.</Text>
           </View>
         ) : (
           <>
-            <View style={s.spotCard}>
-              {pick.spot.image_url ? (
-                <Image source={{ uri: pick.spot.image_url }} style={s.spotImage} contentFit="cover" transition={180} />
-              ) : null}
-              <View style={s.spotBody}>
-                <View style={s.spotTopRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.spotName}>{pick.spot.name}</Text>
-                    <Text style={s.spotMeta}>{[pick.spot.spot_type, pick.spot.difficulty].filter(Boolean).join(' • ') || 'Skate spot'}</Text>
+            <View style={s.featureCard}>
+              <View style={s.mediaFrame}>
+                {pick.spot.image_url ? (
+                  <Image
+                    source={{ uri: pick.spot.image_url }}
+                    style={s.spotImage}
+                    contentFit="cover"
+                    transition={180}
+                  />
+                ) : (
+                  <View style={s.noImage}>
+                    <MapPin color={PAPER} size={35} strokeWidth={2.5} />
+                    <Text style={s.noImageText}>NO PHOTO UPLOADED</Text>
                   </View>
-                  {pick.spot.rating != null ? (
-                    <View style={s.ratingPill}><Star color="#F7B955" fill="#F7B955" size={14} /><Text style={s.ratingText}>{Number(pick.spot.rating).toFixed(1)}</Text></View>
-                  ) : null}
+                )}
+
+                <View style={s.featureBadge}>
+                  <Text style={s.featureBadgeText}>TODAY’S PICK</Text>
                 </View>
+                {pick.spot.rating != null ? (
+                  <View style={s.ratingSticker}>
+                    <Star color={INK} fill={INK} size={14} strokeWidth={1.5} />
+                    <Text style={s.ratingText}>{Number(pick.spot.rating).toFixed(1)}</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={s.spotTicket}>
+                <Text style={s.spotKicker}>FEATURED SESSION SPOT</Text>
+                <Text style={s.spotName}>{pick.spot.name}</Text>
+                <Text style={s.spotMeta}>
+                  {[pick.spot.spot_type, pick.spot.difficulty]
+                    .filter(Boolean)
+                    .join(' • ') || 'Skate spot'}
+                </Text>
 
                 {pick.spot.tricks?.length ? (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagsRow}>
-                    {pick.spot.tricks.slice(0, 8).map(trick => <View key={trick} style={s.tag}><Text style={s.tagText}>{trick}</Text></View>)}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.tagsRow}
+                  >
+                    {pick.spot.tricks.slice(0, 8).map(trick => (
+                      <View key={trick} style={s.tag}>
+                        <Text style={s.tagText}>{trick.toUpperCase()}</Text>
+                      </View>
+                    ))}
                   </ScrollView>
                 ) : null}
 
-                <View style={s.sessionStats}>
-                  <View style={s.stat}><Users color="#6FC3FF" size={17} /><Text style={s.statValue}>{rsvpCount}</Text><Text style={s.statLabel}>going</Text></View>
-                  <TouchableOpacity style={[s.rsvpButton, hasRsvp && s.rsvpButtonActive]} disabled={savingRsvp} onPress={() => void toggleRsvp()}>
-                    {savingRsvp ? <ActivityIndicator color="#fff" size="small" /> : hasRsvp ? <Check color="#fff" size={17} /> : <MapPin color="#fff" size={17} />}
+                <View style={s.sessionRow}>
+                  <View style={s.goingBlock}>
+                    <Users color={INK} size={17} strokeWidth={2.8} />
+                    <Text style={s.goingValue}>{rsvpCount}</Text>
+                    <Text style={s.goingLabel}>GOING</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[s.rsvpButton, hasRsvp && s.rsvpButtonActive]}
+                    disabled={savingRsvp}
+                    onPress={() => void toggleRsvp()}
+                  >
+                    {savingRsvp ? (
+                      <ActivityIndicator color={INK} size="small" />
+                    ) : hasRsvp ? (
+                      <Check color={INK} size={17} strokeWidth={3} />
+                    ) : (
+                      <MapPin color={INK} size={17} strokeWidth={2.8} />
+                    )}
                     <Text style={s.rsvpText}>{hasRsvp ? 'I’M GOING' : 'SKATE TODAY'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.shareButton} onPress={() => void share()}><Share2 color="#CAD2DD" size={18} /></TouchableOpacity>
+
+                  <TouchableOpacity style={s.shareButton} onPress={() => void share()}>
+                    <Share2 color={INK} size={18} strokeWidth={2.8} />
+                  </TouchableOpacity>
                 </View>
 
-                <Pressable style={s.openButton} onPress={() => navigation.navigate('SpotDetail', { spotId: pick.spot_id })}>
+                <Pressable
+                  style={s.openButton}
+                  onPress={() => navigation.navigate('SpotDetail', { spotId: pick.spot_id })}
+                >
                   <Text style={s.openText}>OPEN FULL SPOT</Text>
+                  <ChevronRight color={INK} size={17} strokeWidth={3} />
                 </Pressable>
               </View>
             </View>
 
-            <View style={s.commentsHeader}>
-              <View><Text style={s.commentsTitle}>Session talk</Text><Text style={s.commentsSub}>{comments.length} comments</Text></View>
-              <MessageCircle color={ACCENT} size={21} />
+            <View style={s.threadHeader}>
+              <View>
+                <Text style={s.threadKicker}>LIVE SESSION THREAD</Text>
+                <Text style={s.threadTitle}>WHO’S PULLING UP?</Text>
+              </View>
+              <View style={s.commentCount}>
+                <MessageCircle color={INK} size={15} strokeWidth={2.8} />
+                <Text style={s.commentCountText}>{comments.length}</Text>
+              </View>
             </View>
 
             <View style={s.commentComposer}>
               <TextInput
                 value={comment}
                 onChangeText={setComment}
-                placeholder="Who’s pulling up? Conditions? Meet-up time?"
-                placeholderTextColor="#596577"
+                placeholder="Conditions? Meet-up time? Who’s skating?"
+                placeholderTextColor="#777D87"
                 style={s.commentInput}
                 multiline
                 maxLength={500}
               />
-              <TouchableOpacity style={[s.postButton, (!comment.trim() || savingComment) && { opacity: 0.45 }]} disabled={!comment.trim() || savingComment} onPress={() => void postComment()}>
-                {savingComment ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.postText}>POST</Text>}
+              <TouchableOpacity
+                style={[s.postButton, (!comment.trim() || savingComment) && s.disabled]}
+                disabled={!comment.trim() || savingComment}
+                onPress={() => void postComment()}
+              >
+                {savingComment ? (
+                  <ActivityIndicator color={INK} size="small" />
+                ) : (
+                  <Text style={s.postText}>POST</Text>
+                )}
               </TouchableOpacity>
             </View>
 
-            {comments.map(row => (
-              <View key={row.id} style={s.commentCard}>
-                <View style={s.avatar}><Text style={s.avatarText}>{(row.username || 'S').slice(0, 1).toUpperCase()}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <View style={s.commentTop}><Text style={s.username}>{row.username || 'Skater'}</Text><Text style={s.commentTime}>{formatTime(row.created_at)}</Text></View>
+            {comments.length === 0 ? (
+              <View style={s.noComments}>
+                <MessageCircle color={ORANGE} size={24} strokeWidth={2.5} />
+                <Text style={s.noCommentsTitle}>NO SESSION TALK YET</Text>
+                <Text style={s.noCommentsText}>Be the first to say when you’re heading there.</Text>
+              </View>
+            ) : null}
+
+            {comments.map((row, index) => (
+              <View key={row.id} style={[s.commentCard, index % 2 === 1 && s.commentTilt]}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{(row.username || 'S').slice(0, 1).toUpperCase()}</Text>
+                </View>
+                <View style={s.commentCopy}>
+                  <View style={s.commentTop}>
+                    <Text style={s.username}>@{row.username || 'Skater'}</Text>
+                    <Text style={s.commentTime}>{formatTime(row.created_at)}</Text>
+                  </View>
                   <Text style={s.commentText}>{row.content}</Text>
                 </View>
               </View>
@@ -306,52 +445,78 @@ export default function SpotOfTheDayScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  center: { flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 16, paddingBottom: 52 },
-  header: { paddingTop: 4, paddingBottom: 16 },
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  eyebrow: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
-  title: { color: '#F7F4EF', fontSize: 28, fontWeight: '900', marginTop: 5 },
-  subtitle: { color: '#7D8999', fontSize: 12, lineHeight: 18, marginTop: 5, maxWidth: 520 },
-  errorBox: { borderRadius: 13, padding: 12, backgroundColor: '#2A1214', borderWidth: 1, borderColor: '#5C262B', marginBottom: 12 },
-  errorText: { color: '#F4A4AA', fontSize: 12 },
-  emptyCard: { minHeight: 220, borderRadius: 22, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', padding: 26 },
-  emptyTitle: { color: '#E8EDF4', fontSize: 18, fontWeight: '900', marginTop: 12 },
-  emptyText: { color: '#748195', fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: 7 },
-  spotCard: { borderRadius: 22, overflow: 'hidden', backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
-  spotImage: { width: '100%', height: 220, backgroundColor: '#0A111A' },
-  spotBody: { padding: 16 },
-  spotTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  spotName: { color: '#F7F4EF', fontSize: 23, fontWeight: '900' },
-  spotMeta: { color: '#7D8999', fontSize: 11, marginTop: 4, textTransform: 'capitalize' },
-  ratingPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: '#241E10' },
-  ratingText: { color: '#F7B955', fontSize: 11, fontWeight: '900' },
-  tagsRow: { gap: 7, paddingTop: 13 },
-  tag: { backgroundColor: '#16202D', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
-  tagText: { color: '#A8B3C2', fontSize: 10, fontWeight: '700' },
-  sessionStats: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 16 },
-  stat: { minWidth: 72, height: 46, borderRadius: 13, backgroundColor: '#0D151F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  statValue: { color: '#E7EDF4', fontWeight: '900' },
-  statLabel: { color: '#708094', fontSize: 10 },
-  rsvpButton: { flex: 1, minHeight: 46, borderRadius: 13, backgroundColor: ACCENT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  rsvpButtonActive: { backgroundColor: '#2F7D50' },
-  rsvpText: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
-  shareButton: { width: 46, height: 46, borderRadius: 13, backgroundColor: '#172130', alignItems: 'center', justifyContent: 'center' },
-  openButton: { minHeight: 42, marginTop: 10, borderRadius: 12, borderWidth: 1, borderColor: '#2B394B', alignItems: 'center', justifyContent: 'center' },
-  openText: { color: '#C9D2DE', fontSize: 10, fontWeight: '900', letterSpacing: 0.7 },
-  commentsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 10 },
-  commentsTitle: { color: '#F7F4EF', fontSize: 18, fontWeight: '900' },
-  commentsSub: { color: '#697789', fontSize: 10, marginTop: 2 },
-  commentComposer: { borderRadius: 17, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD, padding: 11, marginBottom: 12 },
-  commentInput: { minHeight: 64, color: '#EEF2F7', fontSize: 13, textAlignVertical: 'top' },
-  postButton: { alignSelf: 'flex-end', minWidth: 72, height: 34, borderRadius: 10, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
-  postText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.7 },
-  commentCard: { flexDirection: 'row', gap: 10, borderRadius: 15, backgroundColor: '#0D141E', borderWidth: 1, borderColor: '#1C2938', padding: 12, marginBottom: 8 },
-  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#202A37', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: ACCENT, fontWeight: '900' },
+  container: { flex: 1, backgroundColor: INK },
+  loading: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingStamp: { width: 64, height: 64, borderRadius: 19, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
+  loadingText: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
+  content: { paddingBottom: 118 },
+
+  heroIntro: { minHeight: 288, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 28, overflow: 'hidden', position: 'relative' },
+  orangeSlash: { position: 'absolute', width: 305, height: 94, right: -105, top: 53, backgroundColor: ORANGE, transform: [{ rotate: '31deg' }] },
+  acidSlash: { position: 'absolute', width: 220, height: 27, left: -70, bottom: 33, backgroundColor: ACID, transform: [{ rotate: '-10deg' }] },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroStamp: { width: 60, height: 60, borderRadius: 18, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
+  todayChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: PAPER, borderRadius: 999, borderWidth: 2, borderColor: INK, paddingHorizontal: 10, paddingVertical: 7 },
+  todayChipText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  eyebrow: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.4, marginTop: 27 },
+  title: { color: PAPER, fontSize: 48, lineHeight: 44, fontWeight: '900', letterSpacing: -2.8, marginTop: 3 },
+  subtitle: { color: '#A3AAB5', fontSize: 12, lineHeight: 18, fontWeight: '700', maxWidth: 305, marginTop: 8 },
+
+  errorBox: { marginHorizontal: 14, marginTop: -7, borderRadius: 16, padding: 13, backgroundColor: '#20110E', borderWidth: 1, borderColor: '#63362A' },
+  errorTitle: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  errorText: { color: '#C6A99F', fontSize: 10, lineHeight: 15, marginTop: 3 },
+  emptyCard: { marginHorizontal: 14, marginTop: -8, minHeight: 230, borderRadius: 24, borderWidth: 1.5, borderColor: '#30343D', backgroundColor: '#13161C', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyStamp: { width: 64, height: 64, borderRadius: 19, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  emptyTitle: { color: PAPER, fontSize: 15, fontWeight: '900', letterSpacing: 0.8, marginTop: 14 },
+  emptyText: { color: '#7F8793', fontSize: 11, textAlign: 'center', lineHeight: 17, marginTop: 6, maxWidth: 280 },
+
+  featureCard: { marginHorizontal: 14, marginTop: -8, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: INK, backgroundColor: PAPER, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 7 },
+  mediaFrame: { height: 245, backgroundColor: '#171A20', position: 'relative' },
+  spotImage: { width: '100%', height: '100%' },
+  noImage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  noImageText: { color: '#858D99', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  featureBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: ORANGE, borderRadius: 999, borderWidth: 2, borderColor: INK, paddingHorizontal: 10, paddingVertical: 6 },
+  featureBadgeText: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 0.9 },
+  ratingSticker: { position: 'absolute', right: 12, top: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: ACID, borderRadius: 12, borderWidth: 2, borderColor: INK, paddingHorizontal: 9, paddingVertical: 7, transform: [{ rotate: '4deg' }] },
+  ratingText: { color: INK, fontSize: 9, fontWeight: '900' },
+  spotTicket: { padding: 16 },
+  spotKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
+  spotName: { color: INK, fontSize: 26, lineHeight: 29, fontWeight: '900', letterSpacing: -1, marginTop: 3 },
+  spotMeta: { color: '#6E736E', fontSize: 9, fontWeight: '800', marginTop: 5, textTransform: 'uppercase' },
+  tagsRow: { gap: 6, paddingTop: 13, paddingBottom: 2 },
+  tag: { backgroundColor: '#E9E4DA', borderRadius: 999, borderWidth: 1, borderColor: '#CDC5B8', paddingHorizontal: 8, paddingVertical: 5 },
+  tagText: { color: INK, fontSize: 6.5, fontWeight: '900', letterSpacing: 0.6 },
+  sessionRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14 },
+  goingBlock: { minWidth: 72, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 13, backgroundColor: '#E9E4DA', borderWidth: 1.5, borderColor: INK, paddingHorizontal: 7 },
+  goingValue: { color: INK, fontSize: 14, fontWeight: '900' },
+  goingLabel: { color: '#777A74', fontSize: 6, fontWeight: '900' },
+  rsvpButton: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ORANGE, borderRadius: 13, borderWidth: 2, borderColor: INK },
+  rsvpButtonActive: { backgroundColor: ACID },
+  rsvpText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  shareButton: { width: 48, height: 48, borderRadius: 13, backgroundColor: BLUE, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  openButton: { minHeight: 47, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderTopWidth: 1, borderTopColor: '#D5CEC3', marginTop: 13, paddingTop: 11 },
+  openText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+
+  threadHeader: { marginHorizontal: 14, marginTop: 26, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  threadKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1 },
+  threadTitle: { color: PAPER, fontSize: 18, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
+  commentCount: { minWidth: 47, height: 39, borderRadius: 12, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  commentCountText: { color: INK, fontSize: 10, fontWeight: '900' },
+  commentComposer: { marginHorizontal: 14, backgroundColor: PAPER, borderRadius: 18, borderWidth: 2, borderColor: INK, padding: 10 },
+  commentInput: { minHeight: 72, color: INK, fontSize: 11, lineHeight: 16, fontWeight: '700', textAlignVertical: 'top', padding: 5 },
+  postButton: { alignSelf: 'flex-end', minWidth: 76, minHeight: 39, backgroundColor: ORANGE, borderRadius: 11, borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  postText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  disabled: { opacity: 0.45 },
+  noComments: { marginHorizontal: 14, marginTop: 9, minHeight: 105, borderRadius: 17, borderWidth: 1.5, borderColor: '#30343D', backgroundColor: '#13161C', alignItems: 'center', justifyContent: 'center', padding: 15 },
+  noCommentsTitle: { color: PAPER, fontSize: 10, fontWeight: '900', letterSpacing: 0.7, marginTop: 6 },
+  noCommentsText: { color: '#7F8793', fontSize: 9.5, marginTop: 3 },
+  commentCard: { marginHorizontal: 14, marginTop: 9, minHeight: 82, flexDirection: 'row', gap: 10, backgroundColor: PAPER, borderRadius: 17, borderWidth: 1.5, borderColor: INK, padding: 11 },
+  commentTilt: { transform: [{ rotate: '0.3deg' }] },
+  avatar: { width: 39, height: 39, borderRadius: 12, backgroundColor: ORANGE, borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  avatarText: { color: INK, fontSize: 13, fontWeight: '900' },
+  commentCopy: { flex: 1 },
   commentTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  username: { color: '#E3E9F0', fontSize: 11, fontWeight: '900' },
-  commentTime: { color: '#5F6D80', fontSize: 9 },
-  commentText: { color: '#A8B2C0', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  username: { color: INK, fontSize: 10, fontWeight: '900' },
+  commentTime: { color: '#858780', fontSize: 7.5, fontWeight: '700' },
+  commentText: { color: '#5F645F', fontSize: 10.5, lineHeight: 16, fontWeight: '600', marginTop: 5 },
 });
