@@ -1,177 +1,61 @@
 import { create } from 'zustand';
 import { Logger } from '../lib/logger';
-import { seasonalEventsService } from '../lib/seasonalEventsService';
-
-interface SeasonalEvent {
-  id: string;
-  name: string;
-  season: string;
-  year: number;
-  start_date: string;
-  end_date: string;
-  description?: string;
-  tier_count: number;
-  tier_rewards: any;
-  created_at: string;
-}
-
-interface UserSeasonalProgress {
-  id: string;
-  user_id: string;
-  seasonal_event_id: string;
-  progress_value: number;
-  current_tier: number;
-  max_tier_reached: number;
-  completed_at?: string;
-  created_at: string;
-  updated_at: string;
-  seasonal_event?: SeasonalEvent;
-}
+import {
+  SeasonalClaimResult,
+  SeasonalEvent,
+  SeasonalRewardClaim,
+  seasonalEventsService,
+} from '../lib/seasonalEventsService';
 
 interface SeasonalEventStoreState {
   activeEvent: SeasonalEvent | null;
   allEvents: SeasonalEvent[];
-  userProgress: UserSeasonalProgress | null;
-  allUserProgress: UserSeasonalProgress[];
+  claims: SeasonalRewardClaim[];
   loading: boolean;
+  error: string | null;
   initialize: (userId: string) => () => void;
-  loadActiveEvent: () => Promise<void>;
-  loadAllEvents: () => Promise<void>;
-  loadUserProgress: (userId: string, eventId: string) => Promise<void>;
-  loadAllUserProgress: (userId: string) => Promise<void>;
-  updateProgress: (userId: string, eventId: string, increment: number) => Promise<void>;
-  refreshUserProgress: (userId: string) => Promise<void>;
-  setLoading: (loading: boolean) => void;
+  refresh: (userId: string) => Promise<void>;
+  claimReward: (userId: string, eventId: string) => Promise<SeasonalClaimResult>;
 }
 
 export const useSeasonalEventStore = create<SeasonalEventStoreState>((set, get) => ({
   activeEvent: null,
   allEvents: [],
-  userProgress: null,
-  allUserProgress: [],
+  claims: [],
   loading: false,
+  error: null,
 
   initialize: (userId: string) => {
-    set({ loading: true });
-
-    let channel: { unsubscribe: () => void } | null = null;
-
-    const runInit = async () => {
-      try {
-        // Load events first
-        await Promise.all([
-          get().loadActiveEvent(),
-          get().loadAllEvents(),
-          get().loadAllUserProgress(userId)
-        ]);
-
-        // Now that activeEvent is loaded, load its progress
-        const activeEvent = get().activeEvent;
-        if (activeEvent) {
-          await get().loadUserProgress(userId, activeEvent.id);
-
-          // Subscribe to progress updates for this specific event
-          const sub = await seasonalEventsService.subscribeToUserProgress(
-            userId,
-            activeEvent.id,
-            (newProgress: UserSeasonalProgress) => {
-              Logger.info('Seasonal progress updated in real-time', { userId });
-              set({ userProgress: newProgress });
-            }
-          );
-          channel = sub;
-        }
-      } catch (error) {
-        Logger.error('Seasonal initialization failed', error);
-      } finally {
-        set({ loading: false });
-      }
-    };
-
-    runInit();
-
-    // Return cleanup
-    return () => {
-      if (channel) {
-        channel.unsubscribe();
-      }
-    };
+    void get().refresh(userId);
+    return seasonalEventsService.subscribe(userId, () => {
+      void get().refresh(userId);
+    });
   },
 
-  loadActiveEvent: async () => {
+  refresh: async (userId: string) => {
+    set({ loading: true, error: null });
     try {
-      const data = await seasonalEventsService.getActiveSeasonalEvent();
-      set({ activeEvent: data || null });
-      Logger.info('Active seasonal event loaded', { event: data?.name });
+      const [activeEvent, allEvents] = await Promise.all([
+        seasonalEventsService.getActiveSeasonalEvent(),
+        seasonalEventsService.getAllSeasonalEvents(),
+      ]);
+      const claims = activeEvent
+        ? await seasonalEventsService.getClaimsForEvent(userId, activeEvent.id)
+        : [];
+      set({ activeEvent, allEvents, claims });
     } catch (error) {
-      Logger.error('Failed to load active event', error);
-      throw error;
-    }
-  },
-
-  loadAllEvents: async () => {
-    try {
-      const data = await seasonalEventsService.getAllSeasonalEvents();
-      set({ allEvents: data || [] });
-      Logger.info('All seasonal events loaded', { count: data?.length || 0 });
-    } catch (error) {
-      Logger.error('Failed to load all events', error);
-      throw error;
-    }
-  },
-
-  loadUserProgress: async (userId: string, eventId: string) => {
-    try {
-      const data = await seasonalEventsService.getUserProgress(userId, eventId);
-      set({ userProgress: data || null });
-      Logger.info('User seasonal progress loaded', { userId, eventId });
-    } catch (error) {
-      Logger.error('Failed to load user progress', error);
-      throw error;
-    }
-  },
-
-  loadAllUserProgress: async (userId: string) => {
-    try {
-      const data = await seasonalEventsService.getAllUserProgress(userId);
-      set({ allUserProgress: data || [] });
-      Logger.info('All user seasonal progress loaded', { userId, count: data?.length || 0 });
-    } catch (error) {
-      Logger.error('Failed to load all user progress', error);
-      throw error;
-    }
-  },
-
-  updateProgress: async (userId: string, eventId: string, increment: number) => {
-    try {
-      await seasonalEventsService.updateUserProgress(userId, eventId, increment);
-      // Reload progress after update
-      await get().loadUserProgress(userId, eventId);
-      Logger.info('User progress updated', { userId, increment });
-    } catch (error) {
-      Logger.error('Failed to update progress', error);
-      throw error;
-    }
-  },
-
-  refreshUserProgress: async (userId: string) => {
-    try {
-      set({ loading: true });
-      const activeEvent = get().activeEvent;
-      if (activeEvent) {
-        await get().loadUserProgress(userId, activeEvent.id);
-      }
-      await get().loadAllUserProgress(userId);
+      Logger.error('Seasonal live data refresh failed', error);
+      set({
+        error: error instanceof Error ? error.message : 'Seasonal data could not be loaded.',
+      });
+    } finally {
       set({ loading: false });
-      Logger.info('User progress refreshed', { userId });
-    } catch (error) {
-      Logger.error('Failed to refresh user progress', error);
-      set({ loading: false });
-      throw error;
     }
   },
 
-  setLoading: (loading: boolean) => {
-    set({ loading });
+  claimReward: async (userId: string, eventId: string) => {
+    const result = await seasonalEventsService.claimReward(eventId);
+    await get().refresh(userId);
+    return result;
   },
 }));
