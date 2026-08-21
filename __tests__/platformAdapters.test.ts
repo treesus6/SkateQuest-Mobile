@@ -73,8 +73,9 @@ describe('web/native platform selection', () => {
     expect(web).toContain('mailto:');
     expect(native).toContain('mailto:');
     expect(appConfig).toContain(
-      "supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'treevanderveer@gmail.com'"
+      "supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@skatequest.me'"
     );
+    expect(appConfig).not.toContain('treevanderveer@gmail.com');
     expect(appConfig).not.toContain('support@sk8.quest');
   });
 });
