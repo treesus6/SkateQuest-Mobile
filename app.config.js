@@ -11,7 +11,7 @@ module.exports = {
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     description:
-      'The ultimate skateboarding companion app. Find skate spots with an interactive map, track your trick progression, compete in SKATE games, complete challenges for XP, and level up your skating journey. Features AI trick analysis, social feed, crew system, and a comprehensive database of 27,000+ skateparks worldwide.',
+      'The skateboarding companion app for finding real skate spots, tracking trick progression, competing in SKATE games, completing challenges for XP, joining crews, sharing clips, and exploring the skate scene.',
     icon: './assets/icon.png',
     splash: {
       image: './assets/splash.png',
@@ -67,6 +67,7 @@ module.exports = {
 
     plugins: [
       'expo-router',
+      'expo-build-properties',
       [
         './plugins/withMapboxRepo',
         {
@@ -74,7 +75,6 @@ module.exports = {
           RNMapboxMapsDownloadToken: process.env.MAPBOX_DOWNLOADS_TOKEN,
         },
       ],
-
       'expo-system-ui',
       [
         'expo-camera',
