@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
 import Constants from 'expo-constants';
@@ -32,6 +32,8 @@ const INITIAL_COORDINATES: [number, number] = [0, 20];
 const SEARCH_RADIUS_KM = 50;
 const SAVED_SPOTS_KEY = 'saved_spot_ids';
 const LOCATION_TIMEOUT_MS = 6000;
+const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
+const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
 
 const CONDITION_OPTIONS: Array<{ key: string; emoji: string; label: string }> = [
   { key: 'dry', emoji: '🌞', label: 'Dry' },
@@ -57,6 +59,7 @@ export default function MapScreen() {
   const { user } = useAuthStore();
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapRef = useRef<Mapbox.MapView>(null);
+  const portalMarkerRef = useRef<any>(null);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -266,6 +269,14 @@ export default function MapScreen() {
     }
   };
 
+  const openPortalDimension = async () => {
+    try {
+      await Linking.openURL(PORTAL_DIMENSION_URL);
+    } catch {
+      Alert.alert('Could not open Portal Dimension', 'The website could not be opened right now.');
+    }
+  };
+
   const filteredSpots = useMemo(
     () =>
       spots.filter(spot => {
@@ -411,6 +422,41 @@ export default function MapScreen() {
             />
           </Mapbox.ShapeSource>
         )}
+
+        <Mapbox.PointAnnotation
+          ref={portalMarkerRef}
+          id="portal-dimension-newport"
+          coordinate={PORTAL_DIMENSION_COORDINATES}
+          anchor={{ x: 0.5, y: 1 }}
+          onSelected={() => void openPortalDimension()}
+        >
+          <View
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 14,
+              borderWidth: 2,
+              borderColor: '#D2673D',
+              backgroundColor: '#FFFFFF',
+              padding: 3,
+              shadowColor: '#000000',
+              shadowOpacity: 0.35,
+              shadowRadius: 7,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 7,
+              overflow: 'hidden',
+            }}
+          >
+            <Image
+              source={require('../assets/supporters/portal-dimension.png')}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="contain"
+              accessibilityLabel="Portal Dimension"
+              onLoad={() => portalMarkerRef.current?.refresh?.()}
+            />
+          </View>
+          <Mapbox.Callout title="Portal Dimension · Newport, Oregon skatepark partner" />
+        </Mapbox.PointAnnotation>
 
         {showDirections && userLocation && (selectedSpot || selectedShop) && (
           <MapDirections
