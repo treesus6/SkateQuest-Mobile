@@ -1,5 +1,6 @@
 name: SkateQuest Full Quality Gate
 
+# Keep this gate strict: every main push must pass type, lint, tests, Expo Doctor, and web export.
 on:
   push:
     branches: [main]
