@@ -1,759 +1,236 @@
-# SkateQuest-Mobile Code Style Guide
-
-**Last Updated:** January 21, 2026
-**Version:** 1.0.0
-
-This document establishes mandatory coding standards for all AI coding agents and human contributors working on SkateQuest-Mobile. All code must be fully optimized before submission.
-
----
-
-## Core Principle: Fully Optimized Code
-
-**"Fully optimized"** means:
-- ✅ Algorithmic efficiency (proper data structures, memoization where needed)
-- ✅ React Native performance (FlatList instead of ScrollView, proper re-render prevention)
-- ✅ Proper TypeScript types (no `any`, comprehensive interfaces)
-- ✅ Following established conventions and best practices
-- ✅ Zero technical debt, no commented-out code
-- ✅ Comprehensive error handling
-- ✅ Security best practices enforced
-
-**Penalty:** Submitting non-optimized code results in immediate rejection and requires full rework.
-
----
-
-## Package Management & Tooling
-
-### Package Manager
-- **Use npm** for all dependency management (aligned with Expo SDK 54)
-- Always commit `package-lock.json`
-- Never use `^` for Expo packages (use `~` for minor version locking)
-- Run `npm audit` regularly and address high/critical vulnerabilities
-
-### Required Tools
-```json
-{
-  "typescript": "^5.1.3",
-  "eslint": "^9.39.2",
-  "prettier": "^3.0.0",
-  "jest": "~29.7.0"
-}
-```
-
-### Expo SDK Alignment
-- **Always** use Expo SDK-compatible versions
-- Prefer Expo-managed packages over bare React Native packages
-- Example: Use `expo-video` instead of `react-native-video`
-- Check compatibility: https://docs.expo.dev/versions/latest/
-
-### Modern Libraries (Preferred)
-- **State Management:** Use React Context API + hooks, or Zustand for complex state
-- **Data Fetching:** Use `@tanstack/react-query` for async state management
-- **Forms:** Use `react-hook-form` with Yup validation (already installed)
-- **Navigation:** React Navigation v6 (already installed)
-- **Maps:** `@rnmapbox/maps` (already installed)
-- **Analytics:** `posthog-js` (already installed)
-
----
-
-## TypeScript Standards
-
-### Type Safety
-```typescript
-// ✅ GOOD: Explicit types, no any
-interface User {
-  id: string;
-  email: string;
-  profile: UserProfile | null;
-}
-
-function getUser(id: string): Promise<User> {
-  return supabase.from('users').select('*').eq('id', id).single();
-}
-
-// ❌ BAD: Using any
-function getUser(id: any): Promise<any> {
-  return supabase.from('users').select('*').eq('id', id).single();
-}
-```
-
-### Enums vs Union Types
-```typescript
-// ✅ GOOD: Use const objects with 'as const'
-export const MediaType = {
-  PHOTO: 'photo',
-  VIDEO: 'video',
-} as const;
-export type MediaType = (typeof MediaType)[keyof typeof MediaType];
-
-// ❌ AVOID: Traditional enums (they add runtime code)
-enum MediaType {
-  PHOTO = 'photo',
-  VIDEO = 'video',
-}
-```
-
-### Interface vs Type
-```typescript
-// ✅ Use interface for object shapes (can be extended)
-interface SkateparkDetails {
-  id: string;
-  name: string;
-  location: Location;
-}
-
-// ✅ Use type for unions, intersections, or primitives
-type SkateparkStatus = 'active' | 'closed' | 'under_construction';
-type SkateparkWithStatus = SkateparkDetails & { status: SkateparkStatus };
-```
-
-### Strict Mode
-- Enable all strict TypeScript options in `tsconfig.json`
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
-  }
-}
-```
-
----
-
-## React Native Performance
-
-### List Rendering
-```typescript
-// ✅ GOOD: FlatList with proper optimization
-<FlatList
-  data={skateparks}
-  keyExtractor={(item) => item.id}
-  renderItem={({ item }) => <SkateparkCard skatepark={item} />}
-  initialNumToRender={10}
-  maxToRenderPerBatch={10}
-  windowSize={5}
-  removeClippedSubviews={true}
-  getItemLayout={(data, index) => ({
-    length: ITEM_HEIGHT,
-    offset: ITEM_HEIGHT * index,
-    index,
-  })}
-/>
-
-// ❌ BAD: ScrollView with map (re-renders everything)
-<ScrollView>
-  {skateparks.map((park) => (
-    <SkateparkCard key={park.id} skatepark={park} />
-  ))}
-</ScrollView>
-```
-
-### Memoization
-```typescript
-// ✅ GOOD: Memoize expensive components
-import React, { memo, useMemo, useCallback } from 'react';
-
-const SkateparkCard = memo(({ skatepark, onPress }: Props) => {
-  const formattedDistance = useMemo(
-    () => formatDistance(skatepark.distance),
-    [skatepark.distance]
-  );
-
-  return (
-    <TouchableOpacity onPress={onPress}>
-      <Text>{skatepark.name}</Text>
-      <Text>{formattedDistance}</Text>
-    </TouchableOpacity>
-  );
-});
-
-// ❌ BAD: No memoization, recalculates on every render
-const SkateparkCard = ({ skatepark, onPress }: Props) => {
-  const formattedDistance = formatDistance(skatepark.distance); // Recalculated every render!
-  return <TouchableOpacity onPress={onPress}>...</TouchableOpacity>;
-};
-```
-
-### Image Optimization
-```typescript
-// ✅ GOOD: Use Expo Image with proper sizing
-import { Image } from 'expo-image';
-
-<Image
-  source={{ uri: imageUrl }}
-  style={{ width: 300, height: 200 }}
-  contentFit="cover"
-  cachePolicy="memory-disk"
-  placeholder={blurhash}
-  transition={200}
-/>
-
-// ❌ BAD: React Native Image without optimization
-import { Image } from 'react-native';
-
-<Image source={{ uri: imageUrl }} style={{ width: 300, height: 200 }} />
-```
-
----
-
-## Code Formatting & Linting
-
-### Prettier Configuration
-```json
-{
-  "printWidth": 100,
-  "tabWidth": 2,
-  "useTabs": false,
-  "semi": true,
-  "singleQuote": true,
-  "trailingComma": "es5",
-  "bracketSpacing": true,
-  "arrowParens": "always"
-}
-```
-
-### ESLint Rules
-- Use `eslint-config-expo` as base
-- Extend with TypeScript-specific rules
-- **Never** disable rules without documented justification
-- Run `npm run lint` before every commit
-
-### Naming Conventions
-```typescript
-// ✅ GOOD
-// Components: PascalCase
-export const SkateparkDetailScreen = () => {...}
-
-// Hooks: camelCase starting with 'use'
-export const useAuth = () => {...}
-
-// Functions: camelCase
-export function calculateDistance(lat1: number, lon1: number): number {...}
-
-// Constants: UPPER_SNAKE_CASE
-export const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
-
-// Types/Interfaces: PascalCase
-interface UserProfile {...}
-type AuthState = {...}
-
-// Files:
-// - Components: PascalCase (SkateparkCard.tsx)
-// - Hooks: camelCase (useAuth.ts)
-// - Utils: camelCase (formatDistance.ts)
-// - Types: camelCase (types.ts or skatepark.types.ts)
-```
-
----
-
-## Component Structure
-
-### Component Organization
-```typescript
-// 1. Imports (grouped)
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { SkateparkCard } from '@/components';
-import { useAuth } from '@/hooks';
-import { formatDistance } from '@/utils';
-
-// 2. Types/Interfaces
-interface Props {
-  skateparkId: string;
-  onPress?: () => void;
-}
-
-// 3. Constants (if any)
-const MAX_DESCRIPTION_LENGTH = 200;
-
-// 4. Component
-export const SkateparkDetail: React.FC<Props> = ({ skateparkId, onPress }) => {
-  // 4a. Hooks
-  const navigation = useNavigation();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-
-  // 4b. Callbacks
-  const handlePress = useCallback(() => {
-    onPress?.();
-  }, [onPress]);
-
-  // 4c. Effects
-  useEffect(() => {
-    // Effect logic
-  }, []);
-
-  // 4d. Render helpers (if needed)
-  const renderDescription = () => {...};
-
-  // 4e. Return JSX
-  return <View>...</View>;
-};
-
-// 5. Styles (if not using styled-components)
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-```
-
-### Props Best Practices
-```typescript
-// ✅ GOOD: Destructured props with types
-interface ButtonProps {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-  variant?: 'primary' | 'secondary';
-}
-
-export const Button: React.FC<ButtonProps> = ({
-  title,
-  onPress,
-  disabled = false,
-  variant = 'primary',
-}) => {...}
-
-// ❌ BAD: Untyped props object
-export const Button = (props: any) => {
-  return <TouchableOpacity onPress={props.onPress}>...</TouchableOpacity>;
-};
-```
-
----
-
-## Error Handling
-
-### Async Operations
-```typescript
-// ✅ GOOD: Comprehensive error handling
-async function uploadMedia(file: File): Promise<MediaResult> {
-  try {
-    // Validate input
-    if (!file || file.size === 0) {
-      throw new Error('Invalid file');
-    }
-
-    if (file.size > MAX_UPLOAD_SIZE) {
-      throw new Error('File too large');
-    }
-
-    // Perform operation
-    const { data, error } = await supabase.storage
-      .from('media')
-      .upload(`uploads/${file.name}`, file);
-
-    if (error) {
-      throw new Error(`Upload failed: ${error.message}`);
-    }
-
-    return { success: true, url: data.path };
-  } catch (error) {
-    // Log error (with analytics in production)
-    if (__DEV__) {
-      console.error('Upload error:', error);
-    } else {
-      Analytics.errorOccurred('media_upload_failed', error.message);
-    }
-
-    // Return user-friendly error
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Upload failed',
-    };
-  }
-}
-
-// ❌ BAD: Bare catch with no handling
-async function uploadMedia(file: any) {
-  try {
-    const data = await supabase.storage.from('media').upload(file.name, file);
-    return data;
-  } catch (e) {
-    console.log(e); // Bare console.log, no error handling
-  }
-}
-```
-
-### Never Use Bare Catch
-```typescript
-// ❌ NEVER DO THIS
-try {
-  something();
-} catch {} // Silent failure
-
-// ❌ NEVER DO THIS
-try {
-  something();
-} catch (e) {
-  // Empty catch
-}
-
-// ✅ ALWAYS HANDLE ERRORS
-try {
-  something();
-} catch (error) {
-  if (__DEV__) {
-    console.error('Error:', error);
-  }
-  // Handle or rethrow
-  throw new Error(`Operation failed: ${error.message}`);
-}
-```
-
----
-
-## Testing Standards
-
-### Unit Tests
-```typescript
-// Every public function/component should have tests
-import { render, fireEvent } from '@testing-library/react-native';
-import { Button } from './Button';
-
-describe('Button', () => {
-  it('renders title correctly', () => {
-    const { getByText } = render(<Button title="Click me" onPress={() => {}} />);
-    expect(getByText('Click me')).toBeTruthy();
-  });
-
-  it('calls onPress when pressed', () => {
-    const onPress = jest.fn();
-    const { getByText } = render(<Button title="Click" onPress={onPress} />);
-    fireEvent.press(getByText('Click'));
-    expect(onPress).toHaveBeenCalledTimes(1);
-  });
-
-  it('is disabled when disabled prop is true', () => {
-    const { getByText } = render(
-      <Button title="Click" onPress={() => {}} disabled />
-    );
-    const button = getByText('Click').parent;
-    expect(button?.props.accessibilityState?.disabled).toBe(true);
-  });
-});
-```
-
-### Test Coverage Requirements
-- **Minimum 70% coverage** for utils and hooks
-- **All critical paths** must be tested
-- **Mock external dependencies** (Supabase, navigation, etc.)
-- Run tests: `npm test`
-- Run with coverage: `npm run test:coverage`
-
----
-
-## Security Best Practices
-
-### Environment Variables
-```typescript
-// ✅ GOOD: Use EXPO_PUBLIC_ prefix for client-safe variables
-const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-
-// ❌ NEVER commit .env files
-// Add to .gitignore:
-.env
-.env.local
-.env.production
-```
-
-### API Keys & Secrets
-- **NEVER** hardcode API keys, tokens, or secrets
-- Use `expo-constants` to access app config
-- Store sensitive data in Expo Secrets (for EAS builds)
-- Use Supabase Row Level Security (RLS) for data access control
-
-### Input Validation
-```typescript
-// ✅ GOOD: Validate all user input
-import * as yup from 'yup';
-
-const skateparkSchema = yup.object({
-  name: yup.string().required().min(3).max(100),
-  description: yup.string().max(500),
-  latitude: yup.number().required().min(-90).max(90),
-  longitude: yup.number().required().min(-180).max(180),
-});
-
-// ❌ BAD: No validation
-function addSkatepark(data: any) {
-  supabase.from('skateparks').insert(data); // Vulnerable to injection
-}
-```
-
-### Prevent XSS
-```typescript
-// ✅ GOOD: Sanitize user-generated content
-import DOMPurify from 'isomorphic-dompurify';
-
-const sanitizedContent = DOMPurify.sanitize(userContent);
-
-// ❌ BAD: Rendering raw HTML
-<WebView source={{ html: userContent }} />
-```
-
----
-
-## Version Control Standards
-
-### Commit Messages
-Follow Conventional Commits format:
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `refactor`: Code change that neither fixes a bug nor adds a feature
-- `perf`: Performance improvement
-- `style`: Code style changes (formatting, etc.)
-- `test`: Adding or updating tests
-- `docs`: Documentation changes
-- `chore`: Maintenance tasks (dependencies, config, etc.)
-
-**Examples:**
-```
-feat(auth): add biometric authentication support
-
-Implement Face ID and Touch ID support for iOS and Android using
-expo-local-authentication. Includes fallback to password authentication.
-
-Closes #123
-```
-
-```
-fix(map): prevent crash when location permission denied
-
-Handle location permission denial gracefully by showing static map
-centered on user's last known location or default coordinates.
-
-Fixes #456
-```
-
-### Branch Naming
-```
-feature/ticket-number-short-description
-fix/ticket-number-short-description
-refactor/component-name
-hotfix/critical-issue
-```
-
-Examples:
-- `feature/sk-123-add-video-upload`
-- `fix/sk-456-map-crash`
-- `refactor/analytics-module`
-
-### Pre-Commit Checks
-```json
-// .husky/pre-commit (already configured)
-{
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"],
-    "*.{json,md}": ["prettier --write"]
-  }
-}
-```
-
-**Required before commit:**
-- ✅ Code formatted with Prettier
-- ✅ No ESLint errors
-- ✅ TypeScript type checking passes
-- ✅ Tests pass
-- ✅ No console.log statements in production code
-
----
-
-## Code Review Checklist
-
-Before submitting a PR, verify:
-
-- [ ] All code is properly typed (no `any` unless absolutely necessary)
-- [ ] Components are memoized where appropriate
-- [ ] FlatList used instead of ScrollView for lists
-- [ ] Images have proper dimensions and caching
-- [ ] Error handling is comprehensive
-- [ ] No hardcoded values (use constants or config)
-- [ ] No commented-out code
-- [ ] No console.log in production code (use `if (__DEV__)` guard)
-- [ ] Meaningful variable and function names
-- [ ] Tests written and passing
-- [ ] No new ESLint warnings
-- [ ] TypeScript compiles without errors
-- [ ] No security vulnerabilities introduced
-- [ ] Performance impact considered and documented
-
----
-
-## Performance Monitoring
-
-### React Native Performance
-```typescript
-// Use Profiler for performance critical components
-import { Profiler } from 'react';
-
-<Profiler
-  id="SkateparkList"
-  onRender={(id, phase, actualDuration) => {
-    if (__DEV__ && actualDuration > 16) {
-      console.warn(`${id} took ${actualDuration}ms to render`);
-    }
-  }}
->
-  <SkateparkList />
-</Profiler>
-```
-
-### Bundle Size Analysis
+# SkateQuest Mobile Engineering Rules
+
+**Last updated:** August 21, 2026
+
+This file is the engineering guardrail for SkateQuest-Mobile. It applies to human contributors and coding agents.
+
+## Non-negotiable product rules
+
+### 1. No fake features
+
+Do not add placeholder counts, fabricated users, fake spots, mock rewards, fake videos, fake events, seeded production-looking content, or buttons that pretend an action succeeded.
+
+If a feature is not connected to its real data/device/backend behavior, it is not finished.
+
+### 2. No shortcut replacements
+
+When a real feature is broken, fix the real feature. Do not replace it with a weaker local-only version, a static card, a fake fallback, or a different flow just because the original path is harder to repair.
+
+A failure is not permission to silently change the product requirement.
+
+### 3. Do not delete working product behavior to make CI pass
+
+Tests, types, and CI must describe the product—not force the product to regress.
+
+When a test is stale, update the test. When production code is wrong, fix production code. Determine which one is wrong before changing either.
+
+### 4. Newer verified work wins
+
+`main` moves quickly. Before transplanting a branch or old PR, compare it with current `main` and preserve newer implementations.
+
+Do not revive a stale branch wholesale when its useful changes can be carried forward cleanly.
+
+### 5. Global product, not a Vancouver-only app
+
+SkateQuest is designed for skaters anywhere. Local seed data or one-city shortcuts must never become the product architecture.
+
+Location features should work globally when the underlying data source supports it.
+
+## Current stack
+
+Use the versions in `package.json` as source of truth. The current release line is built around:
+
+- Node 22.22.1+
+- React 19
+- React Native 0.86
+- Expo SDK 57 / Expo Router
+- TypeScript 6
+- Zustand
+- NativeWind
+- Supabase / PostgreSQL / PostGIS / Auth / Storage / Edge Functions / RPCs
+- Mapbox
+- Sentry
+- EAS Build / EAS Update
+- Jest / ESLint / Expo Doctor / CodeQL
+
+Do not follow old instructions that refer to Firebase, Leaflet, Netlify, Expo SDK 54, or a previous SkateQuest architecture.
+
+## Data and backend rules
+
+### Supabase is a real backend, not a JSON store
+
+Before changing a data flow:
+
+1. Inspect the current migration history and live RPC/table contract when available.
+2. Prefer existing server-owned behavior over duplicating logic in the client.
+3. Add source-controlled migrations for database changes.
+4. Do not make destructive production writes merely to test a theory.
+5. Verify failure behavior as well as the happy path.
+
+### Competitive and XP-sensitive state must be server controlled
+
+Do not trust the phone to decide:
+
+- XP awards or spend
+- SKATE letters, turn order, set/match state, completion, or winner
+- reward redemption pricing/codes
+- capacity-limited RSVP state
+- privileged moderation/review results
+- paid QR support state
+- verified check-in awards
+
+Use authenticated RPCs / server validation already provided by the product architecture.
+
+### `SECURITY DEFINER` functions require deliberate grants
+
+For privileged internal functions, revoke unnecessary `anon` / `authenticated` execution and grant only the role that must execute them.
+
+For intentional authenticated RPC APIs, do not mass-revoke them just to silence an advisor. Review each function by purpose.
+
+### RLS changes must preserve access semantics
+
+Do not weaken RLS to make a query pass. Fix the policy or caller with the intended product permissions intact.
+
+## Secrets and environment rules
+
+Public Expo values may be embedded in client builds when they are designed to be public, such as:
+
+- Supabase project URL
+- Supabase anon/publishable key
+- Mapbox public access token
+- public Sentry DSN
+
+Privileged values must never be committed or shipped in client code, including:
+
+- Supabase service-role keys
+- Stripe secret/webhook secrets
+- Mapbox downloads token
+- Play signing credentials / service-account JSON
+- private API keys
+
+Edge Functions must read privileged credentials from environment variables.
+
+## Platform rules
+
+### Web and native are both supported surfaces
+
+When native packages cannot run on web, use explicit platform adapters such as:
+
+- `Screen.native.tsx`
+- `Screen.web.tsx`
+- `module.native.ts`
+- `module.web.ts`
+
+Do not import native Mapbox code into a web-only source.
+
+### Native capabilities require real-device QA
+
+CI cannot prove camera, microphone, GPS, notifications, deep links, native Mapbox rendering, media picking/recording, or store signing.
+
+Never mark those release checks complete because Jest or web export passed.
+
+## UI rules
+
+SkateQuest should feel like an active skate product, not a generic black admin app.
+
+Prefer:
+
+- strong hierarchy and recognizable scene identity
+- useful status/state feedback
+- real interaction and live data
+- intentional cards/posters/tickets/stickers/HUD treatments where appropriate
+- clear empty/error/loading states
+- touch targets that make sense on phones
+
+Avoid:
+
+- fake activity for visual density
+- endless plain black screens with identical cards
+- decorative controls that do nothing
+- UI that hides whether data is real or unavailable
+- rewriting a polished screen just to make it different
+
+## React / React Native rules
+
+- Use functional components and hooks.
+- Keep effects scoped and cleaned up.
+- Use `useMemo` / `useCallback` when they solve a real render or dependency problem, not by habit.
+- Prefer `FlatList` for large/unknown-length lists; `ScrollView` is fine for bounded content.
+- Keep touch actions disabled while their mutation is in flight when duplicate submission is unsafe.
+- Handle loading, error, empty, offline, and permission-denied states explicitly.
+- Preserve accessibility labels for meaningful controls/images.
+- Avoid unsupported style values. Use explicit absolute positioning when React Native typing does not support a shorthand used in older versions.
+
+## TypeScript rules
+
+- Keep `npm run type-check` green.
+- Prefer domain interfaces/types over broad `any` casts.
+- Do not invent table/RPC fields that are not in the real contract.
+- Treat casts at Supabase relation boundaries as narrow normalization points rather than spreading `any` through UI code.
+- When an RPC changes shape, update its callers and tests together.
+
+## Error handling
+
+- Surface actionable user errors without pretending success.
+- Log unexpected technical failures through the project logger / Sentry path where appropriate.
+- Never swallow a failed server mutation and update local UI as if it succeeded.
+- For destructive/paid/privileged actions, verify the server result before presenting success.
+
+## Testing rules
+
+At minimum, release PRs must clear the existing quality gate:
+
 ```bash
-npm run analyze:bundle
+npm ci
+npm run type-check
+npm run lint
+npm test -- --runInBand
+npx expo-doctor
+npm run export:web
 ```
 
-Monitor bundle size and lazy load heavy dependencies when possible.
+The GitHub full quality workflow also verifies key static web routes, and CodeQL runs separately.
 
----
+Tests should cover important failure conditions, especially:
 
-## Accessibility
+- missing auth
+- server/RPC errors
+- permission/location failures
+- malformed or missing browser origin for web auth
+- duplicate/invalid submissions
+- server-managed contract shape changes
 
-### Always Include Accessibility Props
-```typescript
-// ✅ GOOD: Proper accessibility
-<TouchableOpacity
-  accessible={true}
-  accessibilityLabel="Add skatepark to favorites"
-  accessibilityRole="button"
-  accessibilityState={{ disabled: loading }}
-  onPress={handlePress}
->
-  <Text>Favorite</Text>
-</TouchableOpacity>
+## Dependency rules
 
-// ❌ BAD: No accessibility
-<TouchableOpacity onPress={handlePress}>
-  <Text>Favorite</Text>
-</TouchableOpacity>
-```
+- Use npm and commit `package-lock.json` whenever dependency resolution changes.
+- Use Expo-compatible package versions.
+- Do not run `npm audit fix --force` as a blanket repair.
+- Do not introduce a major framework/package upgrade merely to silence a transitive warning during release cleanup.
+- Remove project-owned deprecated setup when it can be done safely; schedule transitive dependency upgrades as controlled changes with a regenerated lockfile and full gate.
 
-### Test with Screen Readers
-- Test on iOS VoiceOver
-- Test on Android TalkBack
-- Ensure all interactive elements are reachable
+## Git / PR rules
 
----
+Before merging:
 
-## Documentation Standards
+1. Compare the branch with current `main`.
+2. Drop already-landed or superseded changes.
+3. Rebase/carry forward only unique work when `main` moved significantly.
+4. Require CI, CodeQL, and the full quality gate for release changes.
+5. Prefer the repository-supported squash/rebase merge method.
+6. Close disposable verification PRs and stale superseded PRs so they cannot be merged later by mistake.
 
-### Function Documentation
-```typescript
-/**
- * Calculates the distance between two geographic coordinates using the Haversine formula.
- *
- * @param lat1 - Latitude of the first point in decimal degrees
- * @param lon1 - Longitude of the first point in decimal degrees
- * @param lat2 - Latitude of the second point in decimal degrees
- * @param lon2 - Longitude of the second point in decimal degrees
- * @returns Distance in kilometers
- *
- * @example
- * ```typescript
- * const distance = calculateDistance(37.7749, -122.4194, 34.0522, -118.2437);
- * console.log(`Distance: ${distance.toFixed(2)} km`);
- * ```
- */
-export function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  // Implementation
-}
-```
+## Definition of done
 
-### Component Documentation
-```typescript
-/**
- * SkateparkCard displays a skatepark's basic information in a card format.
- *
- * @component
- * @example
- * ```tsx
- * <SkateparkCard
- *   skatepark={skateparkData}
- *   onPress={() => navigation.navigate('SkateparkDetail', { id: skateparkData.id })}
- * />
- * ```
- */
-interface SkateparkCardProps {
-  /** Skatepark data object */
-  skatepark: Skatepark;
-  /** Callback fired when card is pressed */
-  onPress?: () => void;
-}
-```
+A change is done when:
 
----
+- the real product path works by design
+- backend/data behavior is consistent with the live contract
+- errors are handled honestly
+- tests/types/lint pass
+- Expo Doctor passes
+- web export passes when applicable
+- no newer `main` work is overwritten
+- native-only behavior is clearly left for real-device QA when CI cannot validate it
+- the repo docs/checklist are updated if release truth changed
 
-## Prohibited Practices
-
-### ❌ NEVER
-- Use `any` type without explicit justification
-- Commit commented-out code
-- Leave `console.log` in production code (use `if (__DEV__)` guard)
-- Hardcode API keys or secrets
-- Use bare `catch` blocks
-- Use wildcard imports (`import * as`)
-- Disable ESLint rules without justification
-- Commit merge conflicts
-- Push to `main` branch directly
-- Skip tests for critical functionality
-- Use `var` (use `const` or `let`)
-- Mutate props
-- Use inline styles for complex styling
-- Ignore TypeScript errors
-- Use deprecated APIs
-
----
-
-## Recommended VS Code Extensions
-
-```json
-{
-  "recommendations": [
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-    "ms-vscode.vscode-typescript-next",
-    "expo.vscode-expo-tools",
-    "bradlc.vscode-tailwindcss",
-    "streetsidesoftware.code-spell-checker"
-  ]
-}
-```
-
----
-
-## Resources
-
-- [Expo Documentation](https://docs.expo.dev/)
-- [React Native Performance](https://reactnative.dev/docs/performance)
-- [TypeScript Deep Dive](https://basarat.gitbook.io/typescript/)
-- [React Navigation](https://reactnavigation.org/docs/getting-started)
-- [Supabase Docs](https://supabase.com/docs)
-
----
-
-**This guide is a living document. Suggestions for improvements should be submitted via PR with detailed justification.**
-
-**Last Updated:** January 21, 2026 by Claude Code Agent
+**Do not settle for “good enough” by hiding a broken feature. Fix it correctly or leave the remaining blocker explicitly documented.**

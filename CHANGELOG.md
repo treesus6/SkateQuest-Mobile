@@ -1,62 +1,70 @@
 # Changelog
 
-All notable changes to SkateQuest will be documented in this file.
+All notable SkateQuest Mobile changes are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-11-17
+## [Unreleased]
 
-### 🎉 Initial Production Release
+### Release status
 
-This is the first official production release of SkateQuest - a Progressive Web App helping skateboarders discover, share, and track local skating spots.
+SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and automated quality gates are active, while final real-device Android QA, the production Android App Bundle, store submission work, and optional iOS launch validation remain release gates.
 
-#### Features
+### Added
 
-- **Interactive Map**: Discover skate spots worldwide with Leaflet.js mapping
-- **Click to Add Spots**: Simply click anywhere on the map to add a new skate spot at that location
-- **Challenges System**: Complete skate challenges to earn XP and unlock achievements
-- **Video Recording**: Record trick videos directly in the app
-- **Community Driven**: Users can add and share their favorite spots
-- **PWA Support**: Install as an app on mobile devices with offline functionality
-- **User Profiles**: Track your XP, badges, and contributions
-- **Leaderboard**: Compete with other skaters in the community
+- Global Mapbox-powered skate map with real user spots, parks, shops, filters, directions, conditions, check-ins, and community spot creation.
+- Web Add Spot flow with explicit real-coordinate selection and read-back verification after save.
+- Portal Dimension partner marker in Newport, Oregon with map-only website routing.
+- Crew creation, membership, territory, battles, and community flows backed by Supabase RPCs.
+- Real SKATE games with server-controlled turn order, set/match state, letters, completion, winner state, and optional media proof.
+- Challenges, proof submissions, voting, achievements, XP progression, shop rewards, sessions, Skate Passport, seasonal progression, streaks, trick tracking, and spot discovery features.
+- QR Hunt with paid hide flow, GPS-backed placement/claims, trick proof, proof review, support-fund reporting, and generated QR presentation.
+- SkateTV/feed playback for real user content, upload flows, comments/social actions, and clip/spot discovery surfaces.
+- Web and Android beta/support notice using `support@skatequest.me`.
+- Password recovery, confirmation redirects, and GitHub Pages/custom-domain auth routing coverage.
+- PWA manifest, service worker, GitHub Pages deployment, HTTPS route smoke checks, and `skatequest.me` production hosting.
 
-#### Technical Stack
+### Changed
 
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Backend**: Firebase (Firestore, Authentication, Storage, Functions)
-- **Hosting**: Netlify primary, Firebase Hosting supplementary
-- **PWA**: Service Worker v9 with offline caching
-- **Mapping**: Leaflet.js for interactive maps
+- Reworked major screens into the current SkateQuest visual system, including Home-adjacent gameplay surfaces, Challenges, Achievements, AI Coach, Demo Day, Spot of the Day, XP Rewards, QR Hunt, and web Add Spot.
+- Upgraded to Expo SDK 57 / React Native 0.86 with Node 22.22.1 CI and EAS alignment.
+- Replaced client-controlled SKATE state mutation with secure server-managed RPC behavior.
+- Standardized public support/legal contact surfaces on `support@skatequest.me`.
+- Updated Husky setup to its current prepare command.
 
-#### Security
+### Fixed
 
-- Firebase Authentication with anonymous sign-in
-- Firestore security rules to protect user data
-- Storage rules with file size and type validation
-- Secure API endpoints via Netlify Functions
+- Expo SDK patch-package alignment so Expo Doctor passes the configured project checks.
+- Auth redirect handling for `skatequest.me`, GitHub Pages project paths, missing browser origins, and opaque origins.
+- Crew RPC test expectations to match the live server-managed UUID return contract.
+- Native map partner marker placement without restoring partner branding to login/front-door screens.
+- XP Rewards list typing and other TypeScript blockers found by the full quality gate.
+- Web/native platform separation for Mapbox-dependent screens and static web export.
+- SKATE Game Detail compatibility with the server-controlled game state machine.
+- SKATE game foreign-key relationships to profile records.
 
-#### Deployment
+### Security
 
-- Automated CI/CD via GitHub Actions
-- Deploy to both Netlify and Firebase Hosting
-- Automated health checks after deployment
-- Firebase rules deployment included
+- Supabase production migration revokes direct anonymous/authenticated execution of the internal Passport stamp trigger function and keeps execution on the service role.
+- RLS policies flagged for per-row auth evaluation were rewritten to preserve permissions while avoiding repeated auth-function evaluation.
+- Removed a duplicate SkateTV likes read policy already covered by the existing owner policy.
+- Supabase performance advisor has no remaining WARN-level findings after the verified cleanup; remaining advisor items are informational or require deliberate product/security decisions rather than blanket changes.
+- Privileged Supabase Edge Functions obtain service-role credentials from environment variables; browser code uses the public Supabase anon key.
 
-### Production URLs
+### Verification completed
 
-- **Primary**: https://sk8.quest
-- **Netlify**: https://skatequest.netlify.app
+- GitHub CI runs TypeScript, ESLint, Jest, Expo Doctor, static web export, and key-route checks.
+- CodeQL runs on release work.
+- Production PWA deployment has automated HTTPS checks for home, map, login, manifest, and service worker routes.
+- Live Supabase schema/RPC behavior was verified for the security cleanup and server-controlled SKATE flow.
 
-### Notes
+### Still required before public v1.0 release
 
-- Cleaned up development and test files
-- Updated SEO metadata and sitemap
-- Production-ready Firebase configuration
-- Service worker cache optimized (v9)
-- All navigation and core features functional
+- Install the current preview APK on a real Android device and complete end-to-end device QA.
+- Build the production Android AAB only after real-device QA passes.
+- Validate Android signing / Play Console setup and complete store disclosures, screenshots, feature graphics, and internal-track submission.
+- Enable Supabase leaked-password protection in the Auth dashboard.
+- Verify production Sentry events and final production environment secrets.
+- Run iOS production build/device QA if iOS is included in the initial public launch.
 
----
-
-[1.0.0]: https://github.com/treesus6/SkateQuest-App/releases/tag/v1.0.0
+[Unreleased]: https://github.com/treesus6/SkateQuest-Mobile/commits/main
