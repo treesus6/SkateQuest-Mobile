@@ -46,50 +46,38 @@ export const skateGameService = {
     }
   },
 
-  async create(challengerId: string, opponentId: string) {
+  async create(_challengerId: string, opponentId: string) {
     try {
-      return await supabase
-        .from('skate_games')
-        .insert([
-          {
-            challenger_id: challengerId,
-            opponent_id: opponentId,
-            status: 'active',
-            current_turn: challengerId,
-            challenger_letters: '',
-            opponent_letters: '',
-          },
-        ])
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_skate_game', {
+        p_opponent_id: opponentId,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('Game was not created');
+      return { data: { id: data as string }, error: null };
     } catch (error) {
       Logger.error('skateGameService.create failed', error);
       throw new ServiceError('Failed to create game', 'SKATE_GAME_CREATE_FAILED', error);
     }
   },
 
-  async submitTurn(turn: {
-    game_id: string;
-    player_id: string;
-    trick_name: string;
-    media_id?: string;
-    turn_number: number;
-    matched?: boolean;
+  async submitTurn(input: {
+    gameId: string;
+    trickName: string;
+    landed: boolean;
+    mediaId?: string | null;
   }) {
     try {
-      return await supabase.from('skate_game_turns').insert([turn]).select().single();
+      const { data, error } = await supabase.rpc('submit_skate_game_turn', {
+        p_game_id: input.gameId,
+        p_trick_name: input.trickName,
+        p_landed: input.landed,
+        p_media_id: input.mediaId ?? null,
+      });
+      if (error) throw error;
+      return data;
     } catch (error) {
       Logger.error('skateGameService.submitTurn failed', error);
       throw new ServiceError('Failed to submit turn', 'SKATE_GAME_SUBMIT_TURN_FAILED', error);
-    }
-  },
-
-  async updateGame(gameId: string, updates: Record<string, any>) {
-    try {
-      return await supabase.from('skate_games').update(updates).eq('id', gameId).select().single();
-    } catch (error) {
-      Logger.error('skateGameService.updateGame failed', error);
-      throw new ServiceError('Failed to update game', 'SKATE_GAME_UPDATE_FAILED', error);
     }
   },
 };
