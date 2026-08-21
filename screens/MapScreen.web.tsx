@@ -6,6 +6,10 @@ import { useRouter } from 'expo-router';
 import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
 import { Logger } from '../lib/logger';
+import {
+  getMapboxAvailabilityError,
+  getMapInitializationError,
+} from '../lib/mapboxWebSupport';
 import { SkateSpot } from '../types';
 
 const INK = '#07080B';
@@ -34,6 +38,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
 
   const token =
     (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
@@ -93,20 +98,34 @@ export default function MapScreen() {
   }, [locateUser]);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current || !token) return;
-    if (!window.mapboxgl) {
-      setError('The map library could not be loaded. Check your connection and try again.');
+    if (!containerRef.current || mapRef.current) return;
+    const mapbox = window.mapboxgl;
+    const availabilityError = getMapboxAvailabilityError(mapbox, token);
+    if (availabilityError || !mapbox || !token) {
+      const message = availabilityError ?? 'The interactive map is unavailable.';
+      setMapUnavailable(message);
+      Logger.warn('Web scene map unavailable', { message });
       return;
     }
 
-    window.mapboxgl.accessToken = token;
-    const map = new window.mapboxgl.Map({
-      container: containerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center,
-      zoom: hasRealCenter ? 12 : 2,
-      attributionControl: true,
-    });
+    let map: MapboxGLMap;
+    try {
+      mapbox.accessToken = token;
+      map = new mapbox.Map({
+        container: containerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: hasRealCenter ? 12 : 2,
+        attributionControl: true,
+      });
+      setMapUnavailable(null);
+    } catch (initializationError) {
+      const message = getMapInitializationError(initializationError);
+      setMapUnavailable(message);
+      mapRef.current = null;
+      Logger.warn('Web scene map initialization failed', { message });
+      return;
+    }
 
     map.on('load', () => setError(current => (current?.includes('map library') ? null : current)));
     map.on('error', () => setError('Map tiles could not be loaded. Check the Mapbox token and network.'));
@@ -213,7 +232,21 @@ export default function MapScreen() {
   }, [spots, selectedSpot?.id]);
 
   if (!token) {
-    return <MapError message="Mapbox is not configured. Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN." />;
+    return (
+      <MapError
+        message="Mapbox is not configured. Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN."
+        onAddSpot={() => router.push('/add-spot' as any)}
+      />
+    );
+  }
+
+  if (mapUnavailable) {
+    return (
+      <MapError
+        message={`${mapUnavailable} You can still add a real spot using GPS or exact coordinates.`}
+        onAddSpot={() => router.push('/add-spot' as any)}
+      />
+    );
   }
 
   return (
@@ -335,13 +368,17 @@ function MapButton({ label, onPress, icon, accent }: { label: string; onPress: (
   );
 }
 
-function MapError({ message }: { message: string }) {
+function MapError({ message, onAddSpot }: { message: string; onAddSpot: () => void }) {
   return (
     <View style={s.errorScreen}>
       <View style={s.errorStamp}><MapPin color={INK} size={34} /></View>
       <Text style={s.errorScreenKicker}>MAP OFFLINE</Text>
       <Text selectable style={s.errorScreenText}>{message}</Text>
-      <RotateCcw color={MUTED} />
+      <Pressable accessibilityRole="button" onPress={onAddSpot} style={s.errorAddButton}>
+        <Plus color={INK} size={19} strokeWidth={3} />
+        <Text style={s.errorAddButtonText}>ADD A SPOT WITHOUT THE MAP</Text>
+      </Pressable>
+      <RotateCcw color={MUTED} size={19} />
     </View>
   );
 }
@@ -391,4 +428,6 @@ const s = StyleSheet.create({
   errorStamp: { width: 68, height: 68, borderRadius: 19, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
   errorScreenKicker: { color: ORANGE, fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginTop: 4 },
   errorScreenText: { color: PAPER, textAlign: 'center', fontSize: 15, lineHeight: 21, maxWidth: 330 },
+  errorAddButton: { minHeight: 46, marginTop: 5, borderRadius: 13, paddingHorizontal: 13, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  errorAddButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
 });
