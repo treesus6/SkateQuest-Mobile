@@ -1,0 +1,39 @@
+name: Repair XP Rewards list typing
+
+on:
+  push:
+    branches: [chatgpt/visual-pass-continued]
+    paths:
+      - '.github/workflows/fix-xp-rewards-list-typing.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chatgpt/visual-pass-continued
+          fetch-depth: 0
+      - name: Type the tabbed list as both row variants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('screens/XPRewardsScreen.tsx')
+          text = p.read_text()
+          old = '        <FlatList\n          data={tab === \'deals\' ? deals : redemptions}'
+          new = '        <FlatList<ShopDeal | Redemption>\n          data={tab === \'deals\' ? deals : redemptions}'
+          if old not in text:
+              raise SystemExit('Expected FlatList block not found')
+          p.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit repair and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add screens/XPRewardsScreen.tsx
+          git rm .github/workflows/fix-xp-rewards-list-typing.yml
+          git commit -m "fix: type XP Rewards tab rows correctly"
+          git push origin HEAD:chatgpt/visual-pass-continued
