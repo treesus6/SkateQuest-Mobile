@@ -17,9 +17,11 @@ import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { crewsService, Crew } from '../lib/crewsService';
 import { useNavigation } from '../lib/useNavigation';
 
-const ACCENT = '#D2673D';
-const BG = '#05070B';
-const CARD = '#101722';
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
 
 export default function CrewsScreen() {
   const navigation = useNavigation();
@@ -86,114 +88,130 @@ export default function CrewsScreen() {
     ]);
   };
 
-  const renderCrew = ({ item, index }: { item: Crew; index: number }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      style={[s.crewCard, index === 0 && s.topCrewCard]}
-      onPress={() => navigation.navigate('CrewDetails', { crewId: item.id })}
-    >
-      <View style={s.cardTopRow}>
-        <View style={s.crewIdentity}>
-          <View style={[s.crewAvatar, index === 0 && s.topCrewAvatar]}>
-            <Text style={s.crewInitial}>{item.name?.slice(0, 2).toUpperCase() || 'SQ'}</Text>
+  const renderCrew = ({ item, index }: { item: Crew; index: number }) => {
+    const isTopCrew = index === 0;
+    const accent = isTopCrew ? ACID : index % 3 === 1 ? BLUE : ORANGE;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={[s.crewCard, isTopCrew && s.topCrewCard, index % 2 === 1 && s.cardTilt]}
+        onPress={() => navigation.navigate('CrewDetails', { crewId: item.id })}
+      >
+        <View style={[s.cardStripe, { backgroundColor: accent }]} />
+        <View style={s.cardTopRow}>
+          <View style={[s.rankBlock, { backgroundColor: accent }]}>
+            <Text style={s.rankNumber}>{String(index + 1).padStart(2, '0')}</Text>
+            <Text style={s.rankLabel}>{isTopCrew ? 'TOP' : 'CREW'}</Text>
           </View>
-          <View style={{ flex: 1 }}>
+
+          <View style={s.crewMain}>
             <View style={s.nameRow}>
               <Text style={s.crewName} numberOfLines={1}>{item.name}</Text>
-              {index === 0 ? (
-                <View style={s.rankPill}>
-                  <Flame color="#FFD37A" size={12} />
-                  <Text style={s.rankText}>HOT</Text>
+              {isTopCrew ? (
+                <View style={s.hotPill}>
+                  <Flame color={INK} size={11} strokeWidth={3} />
+                  <Text style={s.hotText}>HOT</Text>
                 </View>
               ) : null}
             </View>
-            <View style={s.miniMetaRow}>
-              <Users color="#8B95A5" size={13} />
-              <Text style={s.miniMeta}>{item.member_count || 0} skaters</Text>
+            <View style={s.metaRow}>
+              <Users color={ORANGE} size={13} strokeWidth={2.6} />
+              <Text style={s.metaText}>{item.member_count || 0} SKATERS</Text>
+              <View style={s.metaDot} />
+              <Zap color={ORANGE} size={12} strokeWidth={2.8} />
+              <Text style={s.metaText}>{(item.total_xp || 0).toLocaleString()} XP</Text>
             </View>
           </View>
         </View>
-        <View style={s.xpBlock}>
-          <Text style={s.xpValue}>{(item.total_xp || 0).toLocaleString()}</Text>
-          <Text style={s.xpLabel}>CREW XP</Text>
-        </View>
-      </View>
 
-      {item.description ? (
-        <Text style={s.description} numberOfLines={3}>{item.description}</Text>
-      ) : (
-        <Text style={s.descriptionMuted}>No bio yet — this crew is keeping it low-key.</Text>
-      )}
+        {item.description ? (
+          <Text style={s.description} numberOfLines={3}>{item.description}</Text>
+        ) : (
+          <Text style={s.descriptionMuted}>No bio yet — this crew is keeping it low-key.</Text>
+        )}
 
-      <View style={s.cardBottomRow}>
-        <View style={s.repRow}>
-          <Zap color={ACCENT} size={15} />
-          <Text style={s.repText}>Build rep together</Text>
+        <View style={s.cardBottomRow}>
+          <Pressable
+            style={s.detailsButton}
+            onPress={() => navigation.navigate('CrewDetails', { crewId: item.id })}
+          >
+            <Text style={s.detailsText}>VIEW CREW</Text>
+            <ChevronRight color={INK} size={16} strokeWidth={3} />
+          </Pressable>
+
+          <Pressable
+            style={[s.joinButton, { backgroundColor: accent }]}
+            onPress={event => {
+              event.stopPropagation();
+              void joinCrew(item.id, item.name);
+            }}
+          >
+            <Plus color={INK} size={15} strokeWidth={3} />
+            <Text style={s.joinText}>JOIN</Text>
+          </Pressable>
         </View>
-        <Pressable
-          style={s.joinButton}
-          onPress={event => {
-            event.stopPropagation();
-            void joinCrew(item.id, item.name);
-          }}
-        >
-          <Text style={s.joinText}>JOIN</Text>
-          <ChevronRight color="#fff" size={16} strokeWidth={3} />
-        </Pressable>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top']}>
       <FlatList
         data={crewList}
         renderItem={renderCrew}
         keyExtractor={item => item.id}
         refreshing={loading}
         onRefresh={refetch}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={s.listContent}
         ListHeaderComponent={
           <>
-            <View style={s.header}>
-              <View style={s.eyebrowRow}>
-                <Users color={ACCENT} size={16} strokeWidth={2.5} />
-                <Text style={s.eyebrow}>SKATE TOGETHER</Text>
-              </View>
-              <View style={s.titleRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.title}>Crews</Text>
-                  <Text style={s.subtitle}>Find your people, stack clips, earn crew XP, and rep your scene.</Text>
+            <View style={s.hero}>
+              <View style={s.heroOrangeSlash} />
+              <View style={s.heroAcidSlash} />
+              <View style={s.heroBlueOrb} />
+
+              <View style={s.heroTopRow}>
+                <View style={s.heroStamp}>
+                  <Users color={INK} size={29} strokeWidth={2.8} />
                 </View>
                 <TouchableOpacity style={s.createButton} onPress={() => setShowCreateModal(true)}>
-                  <Plus color="#fff" size={20} strokeWidth={3} />
+                  <Plus color={INK} size={19} strokeWidth={3} />
+                  <Text style={s.createButtonText}>START A CREW</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={s.statsRow}>
-                <View style={s.statTile}>
-                  <Users color="#6FC3FF" size={18} />
-                  <Text style={s.statValue}>{totalMembers}</Text>
-                  <Text style={s.statLabel}>Skaters</Text>
-                </View>
-                <View style={s.statTile}>
-                  <Trophy color="#F7B955" size={18} />
-                  <Text style={s.statValue}>{crewList.length}</Text>
-                  <Text style={s.statLabel}>Crews</Text>
-                </View>
-                <View style={s.statTile}>
-                  <Zap color={ACCENT} size={18} />
-                  <Text style={s.statValue}>{totalXp.toLocaleString()}</Text>
-                  <Text style={s.statLabel}>Total XP</Text>
-                </View>
+              <Text style={s.eyebrow}>FIND YOUR PEOPLE • REP YOUR SCENE</Text>
+              <Text style={s.title}>CREWS.</Text>
+              <Text style={s.subtitle}>Stack clips, earn crew XP, fight for territory, and build something local.</Text>
+            </View>
+
+            <View style={s.statsTicket}>
+              <View style={s.statCell}>
+                <Users color={INK} size={18} strokeWidth={2.8} />
+                <Text style={s.statValue}>{totalMembers}</Text>
+                <Text style={s.statLabel}>SKATERS</Text>
+              </View>
+              <View style={s.statDivider} />
+              <View style={s.statCell}>
+                <Trophy color={INK} size={18} strokeWidth={2.8} />
+                <Text style={s.statValue}>{crewList.length}</Text>
+                <Text style={s.statLabel}>CREWS</Text>
+              </View>
+              <View style={s.statDivider} />
+              <View style={s.statCell}>
+                <Zap color={INK} size={18} strokeWidth={2.8} />
+                <Text style={s.statValue}>{totalXp.toLocaleString()}</Text>
+                <Text style={s.statLabel}>TOTAL XP</Text>
               </View>
             </View>
 
             {crewList.length > 0 ? (
               <View style={s.sectionHeader}>
                 <View>
-                  <Text style={s.sectionTitle}>Active crews</Text>
-                  <Text style={s.sectionSub}>Tap a crew for details or join right away</Text>
+                  <Text style={s.sectionTitle}>SCENE ROSTER</Text>
+                  <Text style={s.sectionSub}>RANKED BY LIVE CREW DATA</Text>
                 </View>
                 <View style={s.livePill}>
                   <View style={s.liveDot} />
@@ -207,13 +225,13 @@ export default function CrewsScreen() {
           !loading ? (
             <View style={s.emptyState}>
               <View style={s.emptyIcon}>
-                <Users color={ACCENT} size={32} />
+                <Users color={INK} size={31} strokeWidth={2.8} />
               </View>
-              <Text style={s.emptyTitle}>No crews yet</Text>
+              <Text style={s.emptyTitle}>NO CREWS YET</Text>
               <Text style={s.emptyText}>Start the first crew and give local skaters somewhere to rally.</Text>
               <TouchableOpacity style={s.emptyCreate} onPress={() => setShowCreateModal(true)}>
-                <Plus color="#fff" size={17} />
-                <Text style={s.emptyCreateText}>Create a crew</Text>
+                <Plus color={INK} size={17} strokeWidth={3} />
+                <Text style={s.emptyCreateText}>CREATE A CREW</Text>
               </TouchableOpacity>
             </View>
           ) : null
@@ -228,31 +246,37 @@ export default function CrewsScreen() {
       >
         <View style={s.modalBackdrop}>
           <View style={s.modalCard}>
+            <View style={s.modalHandle} />
             <View style={s.modalHeader}>
-              <View>
-                <Text style={s.modalEyebrow}>START SOMETHING</Text>
-                <Text style={s.modalTitle}>Create a crew</Text>
+              <View style={s.modalHeadingRow}>
+                <View style={s.modalStamp}>
+                  <Users color={INK} size={24} strokeWidth={2.8} />
+                </View>
+                <View>
+                  <Text style={s.modalEyebrow}>START SOMETHING</Text>
+                  <Text style={s.modalTitle}>Create a crew</Text>
+                </View>
               </View>
               <TouchableOpacity style={s.closeButton} onPress={() => setShowCreateModal(false)}>
-                <X color="#D8DEE8" size={20} />
+                <X color={INK} size={20} strokeWidth={2.8} />
               </TouchableOpacity>
             </View>
 
-            <Text style={s.inputLabel}>Crew name</Text>
+            <Text style={s.inputLabel}>CREW NAME</Text>
             <TextInput
               style={s.input}
               placeholder="e.g. Burnside Lurkers"
-              placeholderTextColor="#596577"
+              placeholderTextColor="#777D87"
               value={newCrewName}
               onChangeText={setNewCrewName}
               maxLength={30}
             />
 
-            <Text style={s.inputLabel}>What are you about?</Text>
+            <Text style={s.inputLabel}>WHAT ARE YOU ABOUT?</Text>
             <TextInput
               style={[s.input, s.textarea]}
               placeholder="DIY spots, night sessions, filming, street, parks..."
-              placeholderTextColor="#596577"
+              placeholderTextColor="#777D87"
               value={newCrewDescription}
               onChangeText={setNewCrewDescription}
               multiline
@@ -261,9 +285,14 @@ export default function CrewsScreen() {
               textAlignVertical="top"
             />
 
+            <View style={s.modalNote}>
+              <Zap color={INK} size={15} strokeWidth={2.8} />
+              <Text style={s.modalNoteText}>Crew XP and territory are earned through real SkateQuest activity.</Text>
+            </View>
+
             <TouchableOpacity style={s.modalCreateButton} onPress={() => void createCrew()}>
-              <Users color="#fff" size={18} />
-              <Text style={s.modalCreateText}>Create crew</Text>
+              <Plus color={INK} size={18} strokeWidth={3} />
+              <Text style={s.modalCreateText}>CREATE CREW</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -273,63 +302,79 @@ export default function CrewsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  listContent: { paddingBottom: 42 },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 18 },
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  eyebrow: { color: ACCENT, fontSize: 11, fontWeight: '900', letterSpacing: 1.7 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 6, gap: 14 },
-  title: { color: '#F7F4EF', fontSize: 34, fontWeight: '900', letterSpacing: -1 },
-  subtitle: { color: '#8B95A5', fontSize: 14, lineHeight: 20, marginTop: 6 },
-  createButton: { width: 46, height: 46, borderRadius: 15, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  statsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  statTile: { flex: 1, backgroundColor: '#0D131D', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#1C2635' },
-  statValue: { color: '#F7F4EF', fontSize: 17, fontWeight: '900', marginTop: 8 },
-  statLabel: { color: '#697587', fontSize: 10, fontWeight: '700', marginTop: 2, textTransform: 'uppercase' },
-  sectionHeader: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { color: '#F7F4EF', fontSize: 19, fontWeight: '900' },
-  sectionSub: { color: '#667085', fontSize: 11, marginTop: 2 },
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#10261C', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#4ADE80' },
-  liveText: { color: '#4ADE80', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
-  crewCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: CARD, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#1F2937' },
-  topCrewCard: { borderColor: 'rgba(210,103,61,0.48)', backgroundColor: '#13151B' },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
-  crewIdentity: { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1 },
-  crewAvatar: { width: 48, height: 48, borderRadius: 16, backgroundColor: '#192332', borderWidth: 1, borderColor: '#2A3748', alignItems: 'center', justifyContent: 'center' },
-  topCrewAvatar: { backgroundColor: 'rgba(210,103,61,0.16)', borderColor: 'rgba(210,103,61,0.5)' },
-  crewInitial: { color: '#F7F4EF', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
+  container: { flex: 1, backgroundColor: INK },
+  listContent: { paddingBottom: 118 },
+
+  hero: { minHeight: 285, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 28, overflow: 'hidden', position: 'relative' },
+  heroOrangeSlash: { position: 'absolute', width: 300, height: 92, right: -105, top: 52, backgroundColor: ORANGE, transform: [{ rotate: '31deg' }] },
+  heroAcidSlash: { position: 'absolute', width: 220, height: 27, left: -70, bottom: 32, backgroundColor: ACID, transform: [{ rotate: '-10deg' }] },
+  heroBlueOrb: { position: 'absolute', width: 160, height: 160, borderRadius: 80, right: 12, bottom: -58, backgroundColor: BLUE, opacity: 0.12 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroStamp: { width: 60, height: 60, borderRadius: 18, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
+  createButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, backgroundColor: PAPER, borderRadius: 999, borderWidth: 2, borderColor: INK, paddingHorizontal: 12 },
+  createButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
+  eyebrow: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginTop: 27 },
+  title: { color: PAPER, fontSize: 57, lineHeight: 55, fontWeight: '900', letterSpacing: -3.2, marginTop: 2 },
+  subtitle: { color: '#A3AAB5', fontSize: 12, lineHeight: 18, fontWeight: '700', maxWidth: 285, marginTop: 8 },
+
+  statsTicket: { marginHorizontal: 14, marginTop: -10, minHeight: 100, backgroundColor: PAPER, borderRadius: 24, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'stretch', paddingVertical: 14, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 7, transform: [{ rotate: '-0.5deg' }] },
+  statCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  statDivider: { width: 1, backgroundColor: '#D4CEC2' },
+  statValue: { color: INK, fontSize: 20, lineHeight: 23, fontWeight: '900', marginTop: 5 },
+  statLabel: { color: '#75766F', fontSize: 7, fontWeight: '900', letterSpacing: 0.75, marginTop: 1 },
+
+  sectionHeader: { paddingHorizontal: 18, paddingTop: 28, paddingBottom: 11, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { color: PAPER, fontSize: 18, fontWeight: '900', letterSpacing: -0.4 },
+  sectionSub: { color: '#727A87', fontSize: 7, fontWeight: '900', letterSpacing: 0.9, marginTop: 3 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#172317', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACID },
+  liveText: { color: ACID, fontSize: 7, fontWeight: '900', letterSpacing: 0.8 },
+
+  crewCard: { marginHorizontal: 14, marginBottom: 12, backgroundColor: PAPER, borderRadius: 22, padding: 15, borderWidth: 2, borderColor: INK, overflow: 'hidden', position: 'relative' },
+  topCrewCard: { borderColor: ACID, borderWidth: 3 },
+  cardTilt: { transform: [{ rotate: '0.4deg' }] },
+  cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 7 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 2 },
+  rankBlock: { width: 48, height: 48, borderRadius: 14, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-3deg' }] },
+  rankNumber: { color: INK, fontSize: 15, lineHeight: 17, fontWeight: '900' },
+  rankLabel: { color: INK, fontSize: 6, fontWeight: '900', letterSpacing: 0.7 },
+  crewMain: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  crewName: { color: '#F7F4EF', fontSize: 18, fontWeight: '900', flexShrink: 1 },
-  rankPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#3B2912', paddingHorizontal: 7, paddingVertical: 4, borderRadius: 999 },
-  rankText: { color: '#FFD37A', fontSize: 9, fontWeight: '900' },
-  miniMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  miniMeta: { color: '#8B95A5', fontSize: 11, fontWeight: '600' },
-  xpBlock: { alignItems: 'flex-end' },
-  xpValue: { color: ACCENT, fontSize: 17, fontWeight: '900' },
-  xpLabel: { color: '#596577', fontSize: 8, fontWeight: '800', letterSpacing: 0.7, marginTop: 1 },
-  description: { color: '#A7B0BE', fontSize: 13, lineHeight: 19, marginTop: 14 },
-  descriptionMuted: { color: '#5F6A7A', fontSize: 13, fontStyle: 'italic', marginTop: 14 },
-  cardBottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#1D2734', marginTop: 15, paddingTop: 14 },
-  repRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  repText: { color: '#D2D8E1', fontSize: 12, fontWeight: '700' },
-  joinButton: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: ACCENT, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
-  joinText: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 0.8 },
-  emptyState: { alignItems: 'center', paddingHorizontal: 30, paddingTop: 66 },
-  emptyIcon: { width: 66, height: 66, borderRadius: 21, backgroundColor: 'rgba(210,103,61,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(210,103,61,0.25)' },
-  emptyTitle: { color: '#F7F4EF', fontSize: 19, fontWeight: '900', marginTop: 16 },
-  emptyText: { color: '#8B95A5', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 7 },
-  emptyCreate: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACCENT, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginTop: 18 },
-  emptyCreateText: { color: '#fff', fontWeight: '900', fontSize: 13 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.74)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0D131D', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 34, borderWidth: 1, borderColor: '#202B39' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalEyebrow: { color: ACCENT, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-  modalTitle: { color: '#F7F4EF', fontSize: 26, fontWeight: '900', marginTop: 4 },
-  closeButton: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#151E2B', alignItems: 'center', justifyContent: 'center' },
-  inputLabel: { color: '#B8C1CE', fontSize: 12, fontWeight: '800', marginBottom: 7, marginTop: 2 },
-  input: { backgroundColor: '#111A27', borderWidth: 1, borderColor: '#263246', borderRadius: 13, paddingHorizontal: 14, paddingVertical: 13, color: '#F7F4EF', fontSize: 15, marginBottom: 16 },
+  crewName: { color: INK, fontSize: 20, fontWeight: '900', flexShrink: 1, letterSpacing: -0.7 },
+  hotPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: ACID, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 4 },
+  hotText: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 0.65 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  metaText: { color: '#777A74', fontSize: 7.5, fontWeight: '900', letterSpacing: 0.55 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#B6B1A7', marginHorizontal: 2 },
+  description: { color: '#5F645E', fontSize: 11, lineHeight: 17, fontWeight: '650', marginTop: 14 },
+  descriptionMuted: { color: '#898B84', fontSize: 11, fontStyle: 'italic', marginTop: 14 },
+  cardBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: '#D7D0C5', marginTop: 15, paddingTop: 12 },
+  detailsButton: { flex: 1, minHeight: 45, borderRadius: 13, borderWidth: 1.5, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
+  detailsText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  joinButton: { minWidth: 96, minHeight: 45, borderRadius: 13, borderWidth: 1.5, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 12 },
+  joinText: { color: INK, fontWeight: '900', fontSize: 8, letterSpacing: 0.8 },
+
+  emptyState: { marginHorizontal: 14, marginTop: 28, minHeight: 230, borderRadius: 24, borderWidth: 1.5, borderColor: '#30343D', backgroundColor: '#13161C', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 19, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  emptyTitle: { color: PAPER, fontSize: 16, fontWeight: '900', letterSpacing: 0.8, marginTop: 15 },
+  emptyText: { color: '#7F8793', fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 6, maxWidth: 275 },
+  emptyCreate: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 47, backgroundColor: ORANGE, borderRadius: 13, borderWidth: 2, borderColor: INK, paddingHorizontal: 16, marginTop: 17 },
+  emptyCreateText: { color: INK, fontWeight: '900', fontSize: 9, letterSpacing: 0.7 },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.76)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: PAPER, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 18, paddingBottom: 30, borderWidth: 2, borderBottomWidth: 0, borderColor: INK },
+  modalHandle: { width: 48, height: 5, borderRadius: 999, backgroundColor: '#C6C0B6', alignSelf: 'center', marginBottom: 15 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  modalHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  modalStamp: { width: 52, height: 52, borderRadius: 15, backgroundColor: ACID, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  modalEyebrow: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.2 },
+  modalTitle: { color: INK, fontSize: 24, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
+  closeButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#DDD7CD', borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  inputLabel: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 1.05, marginBottom: 6, marginTop: 2 },
+  input: { backgroundColor: '#EAE5DB', borderWidth: 1.5, borderColor: '#CCC4B8', borderRadius: 13, paddingHorizontal: 14, paddingVertical: 13, color: INK, fontSize: 14, fontWeight: '700', marginBottom: 15 },
   textarea: { minHeight: 100 },
-  modalCreateButton: { minHeight: 50, backgroundColor: ACCENT, borderRadius: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 2 },
-  modalCreateText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  modalNote: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: ACID, borderRadius: 12, borderWidth: 1.5, borderColor: INK, padding: 10, marginBottom: 13 },
+  modalNoteText: { color: INK, fontSize: 9, fontWeight: '800', flex: 1 },
+  modalCreateButton: { minHeight: 50, backgroundColor: ORANGE, borderRadius: 13, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  modalCreateText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
 });
