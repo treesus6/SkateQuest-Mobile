@@ -81,11 +81,11 @@ export interface CallOut {
   id: string;
   challenger_id: string;
   challenged_id: string;
-  challenged_user_id?: string; // Alias for challenged_id used in some places
-  target_id?: string; // Also used as alias in database
+  challenged_user_id?: string;
+  target_id?: string;
   spot_id?: string;
   trick_name: string;
-  trick?: string; // Database uses 'trick' column
+  trick?: string;
   message?: string;
   xp_reward: number;
   status: 'pending' | 'accepted' | 'completed' | 'declined' | 'failed';
@@ -190,12 +190,15 @@ export interface SkateGame {
   challenger_id: string;
   opponent_id: string;
   status: 'pending' | 'active' | 'completed';
-  current_turn?: string;
+  current_turn?: string | null;
   challenger_letters: string;
   opponent_letters: string;
-  winner_id?: string;
+  winner_id?: string | null;
   created_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
+  turn_phase?: 'set' | 'match' | 'complete';
+  setter_id?: string | null;
+  current_trick_name?: string | null;
   challenger?: UserProfile;
   opponent?: UserProfile;
 }
@@ -258,40 +261,24 @@ export interface QRCode {
   id: string;
   code: string;
   purchased_by: string;
-  purchaser_name: string;
-  purchase_price: number;
-  status: 'active' | 'found' | 'expired' | 'hidden';
-  hidden_at?: string;
-  hidden_location_lat?: number;
-  hidden_location_lng?: number;
-  hidden_location_description?: string;
+  hidden_by?: string;
   found_by?: string;
-  found_by_name?: string;
+  challenge?: string;
+  xp_reward?: number;
+  is_hidden: boolean;
+  is_found: boolean;
+  latitude?: number;
+  longitude?: number;
+  hidden_at?: string;
   found_at?: string;
-  xp_reward: number;
-  bonus_reward?: string;
-  trick_challenge?: string;
-  challenge_message?: string;
-  proof_required: boolean;
+  expires_at?: string;
   created_at: string;
-  expires_at: string;
-}
-
-export interface SpotComment {
-  id: string;
-  spot_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-  author?: { id: string; username: string };
 }
 
 export interface CharityStats {
-  id: number;
-  total_raised: number;
-  total_qr_codes_sold: number;
-  total_qr_codes_found: number;
-  total_skateboards_donated: number;
-  total_kids_helped: number;
-  last_updated: string;
+  total_codes_sold: number;
+  total_codes_hidden: number;
+  total_codes_found: number;
+  total_xp_distributed: number;
+  total_donated: number;
 }
