@@ -1,6 +1,6 @@
 # Terms of Service for SkateQuest
 
-**Last Updated: December 15, 2024**
+**Last Updated: August 21, 2026**
 
 ## 1. Acceptance of Terms
 
@@ -149,8 +149,8 @@ Disputes will be resolved through binding arbitration, not courts (except small 
 
 Questions about these Terms? Contact us:
 
-- **Email**: legal@skatequest.app
-- **GitHub**: https://github.com/treesus6/SkateQuest-App/issues
+- **Email**: support@skatequest.me
+- **GitHub**: https://github.com/treesus6/SkateQuest-Mobile/issues
 
 ---
 

@@ -21,6 +21,7 @@ input:focus { border-color:#d2673d; }
 button { width:100%; background:#d2673d; color:white; border:none; padding:16px; border-radius:10px; font-size:1rem; font-weight:700; cursor:pointer; letter-spacing:1px; }
 button:disabled { opacity:.6; cursor:not-allowed; }
 .note { color:#4B5563; font-size:0.8rem; margin-top:12px; }
+.note a { color:#d2673d; font-weight:700; }
 .error { display:none; color:#f87171; font-size:.9rem; margin-top:12px; }
 .success { display:none; text-align:center; padding:20px; }
 .success-icon { font-size:48px; margin-bottom:12px; }
@@ -49,12 +50,14 @@ button:disabled { opacity:.6; cursor:not-allowed; }
       <input type="email" id="email" placeholder="Email address" autocomplete="email" />
       <button id="submit-button" onclick="submitSignup()">JOIN BETA 🛹</button>
       <p class="note">We use this email only for SkateQuest beta access and testing updates.</p>
+      <p class="note">Found a bug? Email <a href="mailto:support@skatequest.me?subject=SkateQuest%20beta%20issue">support@skatequest.me</a>.</p>
       <p class="error" id="error-message"></p>
     </div>
     <div class="success" id="success">
       <div class="success-icon">🤙</div>
       <h3>Signup received</h3>
       <p>Your beta signup was submitted successfully.</p>
+      <p class="note">Need help? Email <a href="mailto:support@skatequest.me">support@skatequest.me</a>.</p>
     </div>
   </div>
 </div>

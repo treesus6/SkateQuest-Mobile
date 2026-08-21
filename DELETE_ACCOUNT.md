@@ -11,7 +11,7 @@ This removes the authentication account and account-linked SkateQuest data. Some
 
 ## If you cannot access the app
 
-You can request account and associated-data deletion without reinstalling SkateQuest. Use the **Developer contact** email shown on the SkateQuest Google Play listing and include:
+You can request account and associated-data deletion without reinstalling SkateQuest. Email **support@skatequest.me** and include:
 
 - Subject: `SkateQuest account deletion request`
 - The email address used for your SkateQuest account

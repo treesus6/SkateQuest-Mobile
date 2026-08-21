@@ -1,6 +1,6 @@
 # SkateQuest Privacy Policy
 
-**Effective date:** August 9, 2026
+**Effective date:** August 21, 2026
 
 SkateQuest is a skateboarding community application that helps users discover skate spots, participate in challenges and sessions, track skating progress, upload skate media, communicate with other users, and use location-based features.
 
@@ -32,7 +32,7 @@ Content you intentionally post to public or community areas of SkateQuest may be
 
 Account-linked data is retained while needed to provide SkateQuest and for legitimate security, abuse-prevention, troubleshooting, or legal purposes. SkateQuest provides an in-app **Delete Account Permanently** control on the user's own Profile screen. Using that control requests permanent deletion of the account and associated account-linked data.
 
-Users who cannot access the app can use the instructions in [DELETE_ACCOUNT.md](./DELETE_ACCOUNT.md) to request deletion through the developer-contact channel listed on the SkateQuest Google Play listing.
+Users who cannot access the app can use the instructions in [DELETE_ACCOUNT.md](./DELETE_ACCOUNT.md) to request deletion through **support@skatequest.me**.
 
 Some information may be retained when reasonably necessary for security, fraud prevention, legal compliance, dispute resolution, or protection of other users. Where community records must be preserved for integrity, the deleted user's identifying association may be removed instead.
 
@@ -54,4 +54,4 @@ This policy may be updated as SkateQuest changes. Material updates should be ref
 
 ## Contact
 
-For privacy, account-deletion, or data questions, use the developer contact information published on SkateQuest's Google Play listing.
+For privacy, account-deletion, support, or data questions, email **support@skatequest.me**.
