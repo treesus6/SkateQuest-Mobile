@@ -15,6 +15,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineIndicator from '../components/OfflineIndicator';
 import Toast from '../components/Toast';
 import PwaInstallGuide from '../components/PwaInstallGuide';
+import BetaNotice from '../components/BetaNotice';
 
 import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
 import { validateEnvironment } from '../lib/envValidation';
@@ -156,6 +157,7 @@ function RootLayout() {
           <StatusBar style="light" />
           <OfflineIndicator />
           <Toast />
+          <BetaNotice />
           <PwaInstallGuide />
           <AuthGuard />
         </ErrorBoundary>
