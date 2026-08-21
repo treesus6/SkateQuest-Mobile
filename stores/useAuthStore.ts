@@ -16,21 +16,27 @@ interface AuthState {
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
-function webAuthRedirect(path: string): string | undefined {
-  if (typeof window === 'undefined' || !window.location) return undefined;
+type WebAuthLocation = { origin?: string; pathname?: string };
 
-  const projectBase = window.location.pathname.startsWith('/SkateQuest-Mobile')
-    ? '/SkateQuest-Mobile'
-    : '';
-  return `${window.location.origin}${projectBase}${path}`;
+export function buildWebAuthRedirect(
+  path: string,
+  location: WebAuthLocation | undefined = typeof window !== 'undefined'
+    ? window.location
+    : undefined
+): string | undefined {
+  if (!location?.origin) return undefined;
+
+  const pathname = location.pathname ?? '';
+  const projectBase = pathname.startsWith('/SkateQuest-Mobile') ? '/SkateQuest-Mobile' : '';
+  return `${location.origin}${projectBase}${path}`;
 }
 
 function passwordRecoveryRedirect(): string | undefined {
-  return webAuthRedirect('/reset-password');
+  return buildWebAuthRedirect('/reset-password');
 }
 
 function signupConfirmationRedirect(): string | undefined {
-  return webAuthRedirect('/callback');
+  return buildWebAuthRedirect('/callback');
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
