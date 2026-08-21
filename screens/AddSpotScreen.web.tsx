@@ -205,7 +205,13 @@ export default function AddSpotScreen() {
             </View>
             {hasCoordinates ? <Check color={INK} size={17} strokeWidth={3} /> : null}
           </View>
-          <Pressable style={s.locateButton} onPress={() => void locate()}>
+          <Pressable
+            style={s.locateButton}
+            onPress={() => void locate()}
+            accessibilityRole="button"
+            accessibilityLabel="Use my location"
+            accessibilityHint="Uses your browser location to place the spot pin"
+          >
             <Crosshair color={INK} size={20} strokeWidth={2.8} />
           </Pressable>
         </View>
@@ -280,7 +286,7 @@ export default function AddSpotScreen() {
           <View style={[s.sectionNumber, s.sectionNumberBlue]}><Text style={s.sectionNumberText}>02</Text></View>
           <View style={s.sectionCopy}>
             <Text style={s.sectionKicker}>WHAT'S SKATEABLE</Text>
-            <Text style={s.sectionTitle}>Obstacles</Text>
+            <Text style={[s.sectionTitle, s.sectionTitleLight]}>Obstacles</Text>
           </View>
           <Text style={s.countSticker}>{obstacles.length}</Text>
         </View>
@@ -443,6 +449,7 @@ const s = StyleSheet.create({
   sectionCopy: { flex: 1 },
   sectionKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
   sectionTitle: { color: INK, fontSize: 17, fontWeight: '900', letterSpacing: -0.4, marginTop: 1 },
+  sectionTitleLight: { color: PAPER },
   sectionBody: { color: MUTED, fontSize: 10.5, lineHeight: 16, fontWeight: '700', marginTop: 11 },
   countSticker: { minWidth: 34, height: 34, borderRadius: 11, backgroundColor: ACID, color: INK, textAlign: 'center', lineHeight: 34, fontSize: 11, fontWeight: '900', transform: [{ rotate: '4deg' }] },
 
