@@ -1,7 +1,7 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from '@testing-library/react-native';
-import { useAuthStore } from '../../stores/useAuthStore';
+import { buildWebAuthRedirect, useAuthStore } from '../../stores/useAuthStore';
 import { supabase } from '../../lib/supabase';
 
 type MockFn = { mockReturnValue: (...args: any[]) => any; mockResolvedValue: (...args: any[]) => any; mockRejectedValue: (...args: any[]) => any; mockImplementation: (...args: any[]) => any; mock: { calls: any[][] } };
@@ -262,5 +262,30 @@ describe('useAuthStore', () => {
 
       expect(result.error).toEqual(mockError);
     });
+  });
+});
+
+describe('buildWebAuthRedirect', () => {
+  it('builds redirects for the SkateQuest custom domain', () => {
+    expect(
+      buildWebAuthRedirect('/callback', {
+        origin: 'https://skatequest.me',
+        pathname: '/login',
+      })
+    ).toBe('https://skatequest.me/callback');
+  });
+
+  it('preserves the GitHub Pages project base when present', () => {
+    expect(
+      buildWebAuthRedirect('/reset-password', {
+        origin: 'https://treesus6.github.io',
+        pathname: '/SkateQuest-Mobile/login',
+      })
+    ).toBe('https://treesus6.github.io/SkateQuest-Mobile/reset-password');
+  });
+
+  it('returns undefined outside a usable browser location', () => {
+    expect(buildWebAuthRedirect('/callback', undefined)).toBeUndefined();
+    expect(buildWebAuthRedirect('/callback', { pathname: '/login' })).toBeUndefined();
   });
 });
