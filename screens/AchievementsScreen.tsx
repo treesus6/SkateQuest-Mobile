@@ -16,8 +16,11 @@ import AchievementCard from '../components/AchievementCard';
 import AchievementUnlockModal from '../components/AchievementUnlockModal';
 import { Logger } from '../lib/logger';
 
-const ACCENT = '#D2673D';
-const BG = '#05070B';
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
 
 export default function AchievementsScreen() {
   const { user } = useAuthStore();
@@ -75,9 +78,10 @@ export default function AchievementsScreen() {
     userAchievements.filter(ua => ua.unlocked_at).map(ua => ua.achievement_id)
   );
 
-  const completionPercent = achievements.length > 0 ? Math.round((unlockedCount / achievements.length) * 100) : 0;
+  const completionPercent = achievements.length > 0
+    ? Math.round((unlockedCount / achievements.length) * 100)
+    : 0;
   const remaining = Math.max(achievements.length - unlockedCount, 0);
-
   const tierCount = useMemo(() => Object.keys(achievementsByTier).length, [achievementsByTier]);
 
   const TIER_NAMES = {
@@ -89,59 +93,79 @@ export default function AchievementsScreen() {
   };
 
   const TIER_COLORS = {
-    1: { bg: '#2A1812', icon: '#D2673D' },
-    2: { bg: '#201A35', icon: '#8B7CF6' },
-    3: { bg: '#352A13', icon: '#F7B955' },
-    4: { bg: '#102B38', icon: '#5CC8FF' },
-    5: { bg: '#2B1836', icon: '#C084FC' },
+    1: ORANGE,
+    2: '#8B7CF6',
+    3: '#F7B955',
+    4: '#5CC8FF',
+    5: '#C084FC',
   };
 
   if (loading && achievements.length === 0) {
     return (
-      <SafeAreaView style={s.loading}>
-        <ActivityIndicator size="large" color={ACCENT} />
+      <SafeAreaView style={s.loading} edges={['top']}>
+        <View style={s.loadingStamp}><Trophy color={INK} size={30} strokeWidth={2.7} /></View>
+        <ActivityIndicator size="large" color={ORANGE} />
+        <Text style={s.loadingText}>OPENING YOUR TROPHY WALL</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ACCENT} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ORANGE} />
+        }
         contentContainerStyle={s.content}
       >
-        <View style={s.header}>
-          <View style={s.eyebrowRow}>
-            <Sparkles color="#FF8C42" size={16} />
-            <Text style={s.eyebrow}>YOUR PROGRESSION</Text>
-          </View>
-          <Text style={s.title}>Achievements</Text>
-          <Text style={s.subtitle}>Unlock proof that you have been out skating, exploring, landing tricks, and showing up.</Text>
+        <View style={s.hero}>
+          <View style={s.orangeSlash} />
+          <View style={s.acidSlash} />
+          <View style={s.blueOrb} />
 
-          <View style={s.progressCard}>
-            <View style={s.progressTop}>
-              <View>
-                <Text style={s.progressLabel}>UNLOCKED</Text>
-                <Text style={s.progressValue}>{unlockedCount} / {achievements.length}</Text>
-              </View>
-              <View style={s.percentPill}>
-                <Text style={s.percentText}>{completionPercent}%</Text>
-              </View>
+          <View style={s.heroTopRow}>
+            <View style={s.heroStamp}>
+              <Trophy color={INK} size={29} fill={INK} strokeWidth={1.5} />
             </View>
-            <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${completionPercent}%` }]} />
+            <View style={s.progressChip}>
+              <Sparkles color={INK} size={12} strokeWidth={3} />
+              <Text style={s.progressChipText}>PROGRESSION</Text>
             </View>
-            <View style={s.summaryRow}>
-              <View style={s.summaryItem}>
-                <Trophy color="#F7B955" size={16} />
-                <Text style={s.summaryText}>{tierCount} tiers</Text>
-              </View>
-              <View style={s.summaryItem}>
-                <Zap color={ACCENT} size={16} />
-                <Text style={s.summaryText}>{remaining} left to chase</Text>
-              </View>
+          </View>
+
+          <Text style={s.eyebrow}>WHAT YOU ACTUALLY EARNED</Text>
+          <Text style={s.title}>ACHIEVE{`\n`}MENTS.</Text>
+          <Text style={s.subtitle}>
+            Proof that you have been skating, exploring, landing tricks, and showing up.
+          </Text>
+        </View>
+
+        <View style={s.progressTicket}>
+          <View style={s.progressTop}>
+            <View>
+              <Text style={s.progressLabel}>TROPHY WALL COMPLETE</Text>
+              <Text style={s.progressValue}>{completionPercent}%</Text>
+            </View>
+            <View style={s.countStamp}>
+              <Text style={s.countBig}>{unlockedCount}</Text>
+              <Text style={s.countSmall}>OF {achievements.length}</Text>
+            </View>
+          </View>
+
+          <View style={s.progressTrack}>
+            <View style={[s.progressFill, { width: `${completionPercent}%` }]} />
+          </View>
+
+          <View style={s.summaryRow}>
+            <View style={s.summaryItem}>
+              <Trophy color={INK} size={16} strokeWidth={2.8} />
+              <Text style={s.summaryText}>{tierCount} TIERS</Text>
+            </View>
+            <View style={s.summaryItem}>
+              <Zap color={INK} size={16} strokeWidth={2.8} />
+              <Text style={s.summaryText}>{remaining} LEFT TO CHASE</Text>
             </View>
           </View>
         </View>
@@ -150,23 +174,30 @@ export default function AchievementsScreen() {
           .map(Number)
           .sort((a, b) => a - b)
           .map(tier => {
-            const tierColor = TIER_COLORS[tier as keyof typeof TIER_COLORS] || TIER_COLORS[1];
+            const tierColor = TIER_COLORS[tier as keyof typeof TIER_COLORS] || ORANGE;
             const tierAchievements = achievementsByTier[tier] || [];
             const tierUnlocked = tierAchievements.filter(a => unlockedIds.has(a.id)).length;
+            const tierPercent = tierAchievements.length
+              ? Math.round((tierUnlocked / tierAchievements.length) * 100)
+              : 0;
 
             return (
               <View key={tier} style={s.tierSection}>
                 <View style={s.tierHeader}>
-                  <View style={[s.tierIcon, { backgroundColor: tierColor.bg }]}>
-                    <Trophy size={17} color={tierColor.icon} fill={tierColor.icon} strokeWidth={1.5} />
+                  <View style={[s.tierBand, { backgroundColor: tierColor }]}>
+                    <Trophy size={17} color={INK} fill={INK} strokeWidth={1.5} />
+                    <Text style={s.tierBandText}>
+                      {TIER_NAMES[tier as keyof typeof TIER_NAMES]?.toUpperCase() || `TIER ${tier}`}
+                    </Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.tierTitle}>{TIER_NAMES[tier as keyof typeof TIER_NAMES]}</Text>
-                    <Text style={s.tierMeta}>{tierUnlocked}/{tierAchievements.length} unlocked</Text>
+                  <View style={s.tierMetaWrap}>
+                    <Text style={s.tierMeta}>{tierUnlocked}/{tierAchievements.length} UNLOCKED</Text>
+                    <Text style={s.tierPercent}>{tierPercent}%</Text>
                   </View>
-                  <View style={s.tierCountPill}>
-                    <Text style={s.tierCountText}>{tierUnlocked}</Text>
-                  </View>
+                </View>
+
+                <View style={s.tierProgressTrack}>
+                  <View style={[s.tierProgressFill, { width: `${tierPercent}%`, backgroundColor: tierColor }]} />
                 </View>
 
                 <View style={s.tierCards}>
@@ -185,10 +216,12 @@ export default function AchievementsScreen() {
         {achievements.length === 0 ? (
           <View style={s.empty}>
             <View style={s.emptyIcon}>
-              <Lock size={34} color={ACCENT} />
+              <Lock size={30} color={INK} strokeWidth={2.7} />
             </View>
-            <Text style={s.emptyTitle}>No achievements yet</Text>
-            <Text style={s.emptyText}>Once achievement definitions are live, your unlocks will show up here automatically.</Text>
+            <Text style={s.emptyTitle}>NO TROPHIES DEFINED YET</Text>
+            <Text style={s.emptyText}>
+              Once real achievement definitions are live, your unlocks will show up here automatically.
+            </Text>
           </View>
         ) : null}
       </ScrollView>
@@ -203,35 +236,50 @@ export default function AchievementsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
-  loading: { flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-  content: { paddingBottom: 44 },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10 },
-  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  eyebrow: { color: '#FF8C42', fontSize: 11, fontWeight: '900', letterSpacing: 1.7 },
-  title: { color: '#F7F4EF', fontSize: 34, fontWeight: '900', letterSpacing: -1, marginTop: 6 },
-  subtitle: { color: '#8B95A5', fontSize: 14, lineHeight: 20, marginTop: 6 },
-  progressCard: { marginTop: 18, backgroundColor: '#0D131D', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#1F2937' },
+  container: { flex: 1, backgroundColor: INK },
+  loading: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingStamp: { width: 64, height: 64, borderRadius: 19, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
+  loadingText: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1.35 },
+  content: { paddingBottom: 118 },
+
+  hero: { minHeight: 295, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 28, overflow: 'hidden', position: 'relative' },
+  orangeSlash: { position: 'absolute', width: 305, height: 94, right: -105, top: 55, backgroundColor: ORANGE, transform: [{ rotate: '31deg' }] },
+  acidSlash: { position: 'absolute', width: 220, height: 27, left: -70, bottom: 34, backgroundColor: ACID, transform: [{ rotate: '-10deg' }] },
+  blueOrb: { position: 'absolute', width: 165, height: 165, borderRadius: 83, right: 8, bottom: -58, backgroundColor: BLUE, opacity: 0.12 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroStamp: { width: 60, height: 60, borderRadius: 18, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
+  progressChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: PAPER, borderRadius: 999, borderWidth: 2, borderColor: INK, paddingHorizontal: 10, paddingVertical: 7 },
+  progressChipText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  eyebrow: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginTop: 27 },
+  title: { color: PAPER, fontSize: 50, lineHeight: 46, fontWeight: '900', letterSpacing: -2.9, marginTop: 3 },
+  subtitle: { color: '#A3AAB5', fontSize: 12, lineHeight: 18, fontWeight: '700', maxWidth: 300, marginTop: 8 },
+
+  progressTicket: { marginHorizontal: 14, marginTop: -10, backgroundColor: PAPER, borderRadius: 24, borderWidth: 2, borderColor: INK, padding: 16, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 7, transform: [{ rotate: '-0.5deg' }] },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-  progressValue: { color: '#F7F4EF', fontSize: 22, fontWeight: '900', marginTop: 3 },
-  percentPill: { backgroundColor: 'rgba(210,103,61,0.14)', borderWidth: 1, borderColor: 'rgba(210,103,61,0.34)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 7 },
-  percentText: { color: ACCENT, fontWeight: '900', fontSize: 13 },
-  progressTrack: { height: 10, backgroundColor: '#202938', borderRadius: 999, overflow: 'hidden', marginTop: 14 },
-  progressFill: { height: '100%', backgroundColor: ACCENT, borderRadius: 999 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 12, flexWrap: 'wrap' },
-  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  summaryText: { color: '#8E99A9', fontSize: 11, fontWeight: '700' },
-  tierSection: { marginTop: 16, paddingHorizontal: 16 },
-  tierHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  tierIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  tierTitle: { color: '#F7F4EF', fontSize: 18, fontWeight: '900' },
-  tierMeta: { color: '#687587', fontSize: 11, marginTop: 2 },
-  tierCountPill: { backgroundColor: '#141C28', borderWidth: 1, borderColor: '#263246', borderRadius: 999, minWidth: 34, height: 28, alignItems: 'center', justifyContent: 'center' },
-  tierCountText: { color: '#C8D0DB', fontSize: 11, fontWeight: '900' },
-  tierCards: { gap: 8 },
-  empty: { alignItems: 'center', paddingHorizontal: 30, paddingTop: 60 },
-  emptyIcon: { width: 66, height: 66, borderRadius: 21, backgroundColor: 'rgba(210,103,61,0.12)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(210,103,61,0.25)' },
-  emptyTitle: { color: '#F7F4EF', fontSize: 19, fontWeight: '900', marginTop: 16 },
-  emptyText: { color: '#8B95A5', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 7 },
+  progressLabel: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.2 },
+  progressValue: { color: INK, fontSize: 34, lineHeight: 37, fontWeight: '900', letterSpacing: -1.4, marginTop: 3 },
+  countStamp: { width: 64, height: 64, borderRadius: 18, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '5deg' }] },
+  countBig: { color: INK, fontSize: 22, lineHeight: 24, fontWeight: '900' },
+  countSmall: { color: INK, fontSize: 6.5, fontWeight: '900', letterSpacing: 0.75 },
+  progressTrack: { height: 11, backgroundColor: '#D8D2C6', borderRadius: 999, overflow: 'hidden', marginTop: 14, borderWidth: 1, borderColor: '#C7BFB1' },
+  progressFill: { height: '100%', backgroundColor: ACID, borderRightWidth: 2, borderColor: INK },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 12, flexWrap: 'wrap' },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  summaryText: { color: '#666A66', fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
+
+  tierSection: { marginTop: 26, paddingHorizontal: 14 },
+  tierHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 7 },
+  tierBand: { minHeight: 39, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 2, borderColor: INK, transform: [{ rotate: '-1deg' }] },
+  tierBandText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.9 },
+  tierMetaWrap: { alignItems: 'flex-end' },
+  tierMeta: { color: '#858D99', fontSize: 7, fontWeight: '900', letterSpacing: 0.65 },
+  tierPercent: { color: PAPER, fontSize: 15, fontWeight: '900', marginTop: 1 },
+  tierProgressTrack: { height: 5, backgroundColor: '#252A32', borderRadius: 999, overflow: 'hidden', marginBottom: 10 },
+  tierProgressFill: { height: '100%' },
+  tierCards: { gap: 9 },
+
+  empty: { marginHorizontal: 14, marginTop: 30, minHeight: 210, borderRadius: 24, borderWidth: 1.5, borderColor: '#30343D', backgroundColor: '#13161C', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyIcon: { width: 62, height: 62, borderRadius: 18, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  emptyTitle: { color: PAPER, fontSize: 14, fontWeight: '900', letterSpacing: 0.8, marginTop: 14, textAlign: 'center' },
+  emptyText: { color: '#7F8793', fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 6, maxWidth: 280 },
 });
