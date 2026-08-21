@@ -1,0 +1,1 @@
+Disposable verification marker for the repaired secure SKATE backend/service/Game Detail batch.
