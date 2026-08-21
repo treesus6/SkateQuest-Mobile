@@ -2,176 +2,181 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
+export interface SeasonalEvent {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  rewards: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface SeasonalRewardClaim {
+  id: string;
+  user_id: string;
+  event_id: string;
+  claim_date: string;
+  day_number: number;
+  xp_awarded: number;
+  created_at: string;
+}
+
+export interface SeasonalClaimResult {
+  claimed?: boolean;
+  day_number?: number;
+  xp_awarded?: number;
+  error?: string;
+}
+
+const DAY_MS = 86_400_000;
+
+function rewardsObject(event: SeasonalEvent | null | undefined) {
+  return event?.rewards && typeof event.rewards === 'object' ? event.rewards : {};
+}
+
 export const seasonalEventsService = {
-  async getActiveSeasonalEvent() {
+  async getActiveSeasonalEvent(): Promise<SeasonalEvent | null> {
     try {
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('seasonal_events')
-        .select('*')
+        .select('id,name,description,start_date,end_date,rewards,created_at')
         .lte('start_date', now)
-        .gt('end_date', now)
-        .single();
+        .gte('end_date', now)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;  // PGRST116 = no rows
-      return data;
+      if (error) throw error;
+      return (data as SeasonalEvent | null) ?? null;
     } catch (error) {
       Logger.error('seasonalEventsService.getActiveSeasonalEvent failed', error);
-      throw new ServiceError('Failed to fetch active seasonal event', 'SEASONAL_GET_ACTIVE_FAILED', error);
+      throw new ServiceError(
+        'Failed to fetch active seasonal event',
+        'SEASONAL_GET_ACTIVE_FAILED',
+        error
+      );
     }
   },
 
-  async getAllSeasonalEvents() {
+  async getAllSeasonalEvents(): Promise<SeasonalEvent[]> {
     try {
       const { data, error } = await supabase
         .from('seasonal_events')
-        .select('*')
+        .select('id,name,description,start_date,end_date,rewards,created_at')
         .order('start_date', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return (data ?? []) as SeasonalEvent[];
     } catch (error) {
       Logger.error('seasonalEventsService.getAllSeasonalEvents failed', error);
-      throw new ServiceError('Failed to fetch seasonal events', 'SEASONAL_GET_ALL_FAILED', error);
+      throw new ServiceError(
+        'Failed to fetch seasonal events',
+        'SEASONAL_GET_ALL_FAILED',
+        error
+      );
     }
   },
 
-  async getSeasonalEventBySeason(season: string) {
+  async getClaimsForEvent(
+    userId: string,
+    eventId: string
+  ): Promise<SeasonalRewardClaim[]> {
     try {
       const { data, error } = await supabase
-        .from('seasonal_events')
-        .select('*')
-        .eq('season', season)
-        .order('year', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    } catch (error) {
-      Logger.error('seasonalEventsService.getSeasonalEventBySeason failed', error);
-      throw new ServiceError(`Failed to fetch ${season} event`, 'SEASONAL_GET_SEASON_FAILED', error);
-    }
-  },
-
-  async getUserProgress(userId: string, seasonalEventId: string) {
-    try {
-      const { data, error } = await supabase
-        .from('seasonal_user_progress')
-        .select('*')
+        .from('seasonal_reward_claims')
+        .select('id,user_id,event_id,claim_date,day_number,xp_awarded,created_at')
         .eq('user_id', userId)
-        .eq('seasonal_event_id', seasonalEventId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    } catch (error) {
-      Logger.error('seasonalEventsService.getUserProgress failed', error);
-      throw new ServiceError('Failed to fetch user progress', 'SEASONAL_GET_USER_PROGRESS_FAILED', error);
-    }
-  },
-
-  async getAllUserProgress(userId: string) {
-    try {
-      const { data, error } = await supabase
-        .from('seasonal_user_progress')
-        .select(`
-          *,
-          seasonal_event:seasonal_events(*)
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('event_id', eventId)
+        .order('day_number', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return (data ?? []) as SeasonalRewardClaim[];
     } catch (error) {
-      Logger.error('seasonalEventsService.getAllUserProgress failed', error);
-      throw new ServiceError('Failed to fetch all user progress', 'SEASONAL_GET_ALL_USER_PROGRESS_FAILED', error);
+      Logger.error('seasonalEventsService.getClaimsForEvent failed', error);
+      throw new ServiceError(
+        'Failed to fetch seasonal reward claims',
+        'SEASONAL_GET_CLAIMS_FAILED',
+        error
+      );
     }
   },
 
-  async updateUserProgress(userId: string, seasonalEventId: string, progressIncrement: number) {
+  async claimReward(eventId: string): Promise<SeasonalClaimResult> {
     try {
-      const { data, error } = await supabase.rpc('update_seasonal_progress', {
-        p_user_id: userId,
-        p_seasonal_event_id: seasonalEventId,
-        p_progress_increment: progressIncrement,
+      const { data, error } = await supabase.rpc('claim_seasonal_reward', {
+        p_event_id: eventId,
       });
-
       if (error) throw error;
-      return data;
+      return (data ?? {}) as SeasonalClaimResult;
     } catch (error) {
-      Logger.error('seasonalEventsService.updateUserProgress failed', error);
-      throw new ServiceError('Failed to update seasonal progress', 'SEASONAL_UPDATE_PROGRESS_FAILED', error);
+      Logger.error('seasonalEventsService.claimReward failed', error);
+      throw new ServiceError(
+        'Failed to claim seasonal reward',
+        'SEASONAL_CLAIM_FAILED',
+        error
+      );
     }
   },
 
-  async getLeaderboardForEvent(seasonalEventId: string, limit: number = 25) {
-    try {
-      const { data, error } = await supabase
-        .from('seasonal_user_progress')
-        .select(`
-          user_id,
-          current_tier,
-          progress_value,
-          profile:profiles(username, level)
-        `)
-        .eq('seasonal_event_id', seasonalEventId)
-        .order('current_tier', { ascending: false })
-        .order('progress_value', { ascending: false })
-        .limit(limit);
+  subscribe(userId: string, onChange: () => void) {
+    const channel = supabase
+      .channel(`seasonal-live:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'seasonal_events' },
+        onChange
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'seasonal_reward_claims',
+          filter: `user_id=eq.${userId}`,
+        },
+        onChange
+      )
+      .subscribe();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      Logger.error('seasonalEventsService.getLeaderboardForEvent failed', error);
-      throw new ServiceError('Failed to fetch leaderboard', 'SEASONAL_GET_LEADERBOARD_FAILED', error);
-    }
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   },
 
-  async subscribeToUserProgress(userId: string, seasonalEventId: string, callback: (data: any) => void) {
-    try {
-      const subscription = supabase
-        .channel(`seasonal_progress:${userId}:${seasonalEventId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'seasonal_user_progress',
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            Logger.info('Seasonal progress updated', { userId });
-            callback(payload.new);
-          }
-        )
-        .subscribe();
-
-      return subscription;
-    } catch (error) {
-      Logger.error('seasonalEventsService.subscribeToUserProgress failed', error);
-      throw new ServiceError('Failed to subscribe to progress', 'SEASONAL_SUBSCRIBE_PROGRESS_FAILED', error);
-    }
+  getTotalDays(event: SeasonalEvent): number {
+    if (!event.start_date || !event.end_date) return 0;
+    const start = new Date(event.start_date).getTime();
+    const end = new Date(event.end_date).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
+    return Math.max(1, Math.ceil((end - start) / DAY_MS));
   },
 
-  // Helper: Get current season
-  getCurrentSeasonName(): string {
-    const month = new Date().getMonth();
-    if (month >= 2 && month <= 4) return 'spring';
-    if (month >= 5 && month <= 7) return 'summer';
-    if (month >= 8 && month <= 10) return 'fall';
-    return 'winter';
+  getCurrentDay(event: SeasonalEvent, now = Date.now()): number {
+    if (!event.start_date) return 0;
+    const start = new Date(event.start_date).getTime();
+    if (!Number.isFinite(start) || now < start) return 0;
+    const total = this.getTotalDays(event);
+    const day = Math.floor((now - start) / DAY_MS) + 1;
+    return total > 0 ? Math.min(day, total) : day;
   },
 
-  // Helper: Get progress percentage
-  getProgressPercentage(currentTier: number, maxTier: number = 5): number {
-    return (currentTier / maxTier) * 100;
+  getDaysRemaining(event: SeasonalEvent, now = Date.now()): number {
+    if (!event.end_date) return 0;
+    const end = new Date(event.end_date).getTime();
+    if (!Number.isFinite(end)) return 0;
+    return Math.max(0, Math.ceil((end - now) / DAY_MS));
   },
 
-  // Helper: Get tier name
-  getTierName(tier: number): string {
-    const tierNames = ['Not Started', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Ultimate'];
-    return tierNames[Math.min(tier, 5)] || 'Unknown';
+  getXpMultiplier(event: SeasonalEvent): number {
+    const raw = rewardsObject(event).xp_multiplier;
+    const value = typeof raw === 'number' ? raw : Number(raw ?? 1);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  },
+
+  getExpectedXp(event: SeasonalEvent, day: number): number {
+    if (day < 1) return 0;
+    return Math.max(0, Math.round(day * 25 * this.getXpMultiplier(event)));
   },
 };
