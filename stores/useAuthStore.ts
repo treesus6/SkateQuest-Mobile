@@ -16,13 +16,18 @@ interface AuthState {
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
-function webAuthRedirect(path: string): string | undefined {
+export function webAuthRedirect(path: string): string | undefined {
   if (typeof window === 'undefined' || !window.location) return undefined;
 
-  const projectBase = window.location.pathname.startsWith('/SkateQuest-Mobile')
-    ? '/SkateQuest-Mobile'
-    : '';
-  return `${window.location.origin}${projectBase}${path}`;
+  const origin = window.location.origin;
+  const pathname = window.location.pathname || '';
+  if (!origin || origin === 'null') return undefined;
+
+  const isProjectPath =
+    pathname === '/SkateQuest-Mobile' || pathname.startsWith('/SkateQuest-Mobile/');
+  const projectBase = isProjectPath ? '/SkateQuest-Mobile' : '';
+  const redirectPath = path.startsWith('/') ? path : `/${path}`;
+  return `${origin}${projectBase}${redirectPath}`;
 }
 
 function passwordRecoveryRedirect(): string | undefined {
