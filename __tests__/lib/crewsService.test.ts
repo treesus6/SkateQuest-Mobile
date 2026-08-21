@@ -3,9 +3,17 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { crewsService } from '../../lib/crewsService';
 import { supabase } from '../../lib/supabase';
 
-// The supabase mock is set up globally in jest.setup.js
+jest.mock('../../lib/logger', () => ({
+  Logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 const mockFrom = supabase.from as unknown as { mockReturnValue: (...args: any[]) => any };
-const mockRpc = supabase.rpc as unknown as { mockResolvedValue: (value: any) => void; mock: { calls: any[][] } };
+const mockRpc = supabase.rpc as unknown as jest.Mock;
 
 describe('crewsService', () => {
   beforeEach(() => {
@@ -71,52 +79,48 @@ describe('crewsService', () => {
   });
 
   describe('create', () => {
-    it('should create a crew through the server RPC', async () => {
-      const newCrew = {
+    it('should call create_crew and return the UUID scalar produced by the RPC', async () => {
+      const crewId = '11111111-1111-4111-8111-111111111111';
+      mockRpc.mockResolvedValue({ data: crewId, error: null });
+
+      const result = await crewsService.create({
         name: 'New Crew',
         description: 'A brand new crew',
         created_by: 'user-123',
-      };
-      const created = { id: 'new-id', ...newCrew, member_count: 1, total_xp: 0 };
-      mockRpc.mockResolvedValue({ data: created, error: null });
+      });
 
-      const result = await crewsService.create(newCrew);
-
-      expect(supabase.rpc).toHaveBeenCalledWith('create_crew', {
+      expect(mockRpc).toHaveBeenCalledWith('create_crew', {
         p_name: 'New Crew',
         p_description: 'A brand new crew',
       });
-      expect(result).toEqual({ data: created, error: null });
+      expect(result).toEqual({ data: crewId, error: null });
     });
 
-    it('should return an RPC error when creation fails', async () => {
-      const duplicateCrew = {
+    it('should return the server validation error when a crew name is already taken', async () => {
+      const mockError = {
+        message: 'That crew name is already taken',
+        code: 'P0001',
+      };
+      mockRpc.mockResolvedValue({ data: null, error: mockError });
+
+      const result = await crewsService.create({
         name: 'Existing Crew',
         description: 'Duplicate',
         created_by: 'user-123',
-      };
-      const mockError = { message: 'duplicate key value violates unique constraint', code: '23505' };
-      mockRpc.mockResolvedValue({ data: null, error: mockError });
+      });
 
-      const result = await crewsService.create(duplicateCrew);
-
-      expect(result.error).toEqual(mockError);
-      expect(result.data).toBeNull();
+      expect(result).toEqual({ data: null, error: mockError });
     });
 
-    it('does not trust client-supplied crew counters or creator identity', async () => {
-      mockRpc.mockResolvedValue({ data: { id: 'new-id' }, error: null });
-
-      await crewsService.create({
-        name: 'Test Crew',
-        description: 'Testing server defaults',
-        created_by: 'user-456',
-      });
-
-      expect(mockRpc.mock.calls[0][1]).toEqual({
-        p_name: 'Test Crew',
-        p_description: 'Testing server defaults',
-      });
+    it('should reject a missing creator before calling the RPC', async () => {
+      await expect(
+        crewsService.create({
+          name: 'Test Crew',
+          description: 'Authentication check',
+          created_by: '',
+        })
+      ).rejects.toMatchObject({ code: 'CREWS_CREATE_FAILED' });
+      expect(mockRpc).not.toHaveBeenCalled();
     });
   });
 

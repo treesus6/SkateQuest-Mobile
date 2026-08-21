@@ -1,7 +1,7 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from '@testing-library/react-native';
-import { useAuthStore } from '../../stores/useAuthStore';
+import { useAuthStore, webAuthRedirect } from '../../stores/useAuthStore';
 import { supabase } from '../../lib/supabase';
 
 type MockFn = { mockReturnValue: (...args: any[]) => any; mockResolvedValue: (...args: any[]) => any; mockRejectedValue: (...args: any[]) => any; mockImplementation: (...args: any[]) => any; mock: { calls: any[][] } };
@@ -12,11 +12,28 @@ const mockSignInWithPassword = supabase.auth.signInWithPassword as unknown as Mo
 const mockSignOut = supabase.auth.signOut as unknown as MockFn;
 const mockGetSession = supabase.auth.getSession as unknown as MockFn;
 const mockOnAuthStateChange = supabase.auth.onAuthStateChange as unknown as MockFn;
+const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+
+function setMockWindowLocation(location?: { origin?: string; pathname?: string }) {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: location ? { location } : undefined,
+  });
+}
+
+function restoreWindow() {
+  if (originalWindowDescriptor) {
+    Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
+  } else {
+    Reflect.deleteProperty(globalThis, 'window');
+  }
+}
 
 describe('useAuthStore', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    setMockWindowLocation();
 
     // Reset the store state before each test
     useAuthStore.setState({
@@ -32,7 +49,47 @@ describe('useAuthStore', () => {
   });
 
   afterEach(() => {
+    restoreWindow();
     jest.useRealTimers();
+  });
+
+  describe('web auth redirects', () => {
+    it('returns no redirect outside a browser context', () => {
+      expect(webAuthRedirect('/callback')).toBeUndefined();
+    });
+
+    it('builds confirmation and recovery routes on the SkateQuest apex domain', () => {
+      setMockWindowLocation({
+        origin: 'https://skatequest.me',
+        pathname: '/signup',
+      });
+
+      expect(webAuthRedirect('/callback')).toBe('https://skatequest.me/callback');
+      expect(webAuthRedirect('reset-password')).toBe(
+        'https://skatequest.me/reset-password'
+      );
+    });
+
+    it('preserves the GitHub Pages project base without matching lookalike paths', () => {
+      setMockWindowLocation({
+        origin: 'https://treesus6.github.io',
+        pathname: '/SkateQuest-Mobile/signup',
+      });
+      expect(webAuthRedirect('/callback')).toBe(
+        'https://treesus6.github.io/SkateQuest-Mobile/callback'
+      );
+
+      setMockWindowLocation({
+        origin: 'https://treesus6.github.io',
+        pathname: '/SkateQuest-Mobile-old/signup',
+      });
+      expect(webAuthRedirect('/callback')).toBe('https://treesus6.github.io/callback');
+    });
+
+    it('rejects an opaque browser origin', () => {
+      setMockWindowLocation({ origin: 'null', pathname: '/signup' });
+      expect(webAuthRedirect('/callback')).toBeUndefined();
+    });
   });
 
   describe('initial state', () => {
@@ -197,6 +254,22 @@ describe('useAuthStore', () => {
       expect(result.error).toBeNull();
     });
 
+    it('should send the SkateQuest web confirmation redirect when a browser origin exists', async () => {
+      setMockWindowLocation({
+        origin: 'https://skatequest.me',
+        pathname: '/signup',
+      });
+      mockSignUp.mockResolvedValue({ error: null });
+
+      await useAuthStore.getState().signUp('web@test.com', 'password123');
+
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: 'web@test.com',
+        password: 'password123',
+        options: { emailRedirectTo: 'https://skatequest.me/callback' },
+      });
+    });
+
     it('should return the error when signUp fails', async () => {
       const mockError = { message: 'Email already registered' };
       mockSignUp.mockResolvedValue({ error: mockError });
@@ -250,6 +323,22 @@ describe('useAuthStore', () => {
 
       expect((supabase.auth as unknown as { resetPasswordForEmail: jest.Mock }).resetPasswordForEmail).toHaveBeenCalledWith('forgot@test.com');
       expect(result.error).toBeNull();
+    });
+
+    it('should send the SkateQuest web recovery redirect when a browser origin exists', async () => {
+      setMockWindowLocation({
+        origin: 'https://skatequest.me',
+        pathname: '/forgot-password',
+      });
+      const mockResetPassword = jest.fn().mockResolvedValue({ error: null });
+      (supabase.auth as unknown as { resetPasswordForEmail: jest.Mock }).resetPasswordForEmail =
+        mockResetPassword;
+
+      await useAuthStore.getState().resetPassword('forgot@test.com');
+
+      expect(mockResetPassword).toHaveBeenCalledWith('forgot@test.com', {
+        redirectTo: 'https://skatequest.me/reset-password',
+      });
     });
 
     it('should return the error when resetPassword fails', async () => {
