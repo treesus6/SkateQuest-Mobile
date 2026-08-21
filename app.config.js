@@ -129,6 +129,7 @@ module.exports = {
       mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'treevanderveer@gmail.com',
       eas: {
         projectId: '09a104b9-9e22-4ae0-9836-2701e366d8e5',
       },
