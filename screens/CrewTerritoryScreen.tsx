@@ -457,7 +457,7 @@ const s = StyleSheet.create({
   modalHeaderCopy: { flex: 1 },
   modalEyebrow: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.25 },
   modalTitle: { color: INK, fontSize: 23, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
-  modalBody: { color: '#676B65', fontSize: 11, lineHeight: 17, fontWeight: '650', marginTop: 14 },
+  modalBody: { color: '#676B65', fontSize: 11, lineHeight: 17, fontWeight: '600', marginTop: 14 },
   inputLabel: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 1.1, marginTop: 17, marginBottom: 6 },
   input: { backgroundColor: '#EAE5DB', color: INK, borderRadius: 13, padding: 14, borderWidth: 1.5, borderColor: '#CCC4B8', fontWeight: '700' },
   verifyNote: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: ACID, borderRadius: 12, borderWidth: 1.5, borderColor: INK, padding: 10, marginTop: 11 },

@@ -346,7 +346,7 @@ const s = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   metaText: { color: '#777A74', fontSize: 7.5, fontWeight: '900', letterSpacing: 0.55 },
   metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#B6B1A7', marginHorizontal: 2 },
-  description: { color: '#5F645E', fontSize: 11, lineHeight: 17, fontWeight: '650', marginTop: 14 },
+  description: { color: '#5F645E', fontSize: 11, lineHeight: 17, fontWeight: '600', marginTop: 14 },
   descriptionMuted: { color: '#898B84', fontSize: 11, fontStyle: 'italic', marginTop: 14 },
   cardBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: '#D7D0C5', marginTop: 15, paddingTop: 12 },
   detailsButton: { flex: 1, minHeight: 45, borderRadius: 13, borderWidth: 1.5, borderColor: INK, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
