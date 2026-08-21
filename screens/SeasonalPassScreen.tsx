@@ -1,394 +1,188 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
-  FlatList,
-  Animated,
   Alert,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Star, Gift, Zap, Lock, CheckCircle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { CalendarDays, CheckCircle2, Flame, Gift, Lock, ShieldCheck, Zap } from 'lucide-react-native';
+import { seasonalEventsService } from '../lib/seasonalEventsService';
+import { useAuthStore } from '../stores/useAuthStore';
+import { useSeasonalEventStore } from '../stores/useSeasonalEventStore';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const INK = '#07080B';
+const PAPER = '#F6F0E5';
+const ORANGE = '#E36D3F';
+const ACID = '#D9F34A';
+const BLUE = '#72A9FF';
 
-interface Milestone {
-  day: number;
-  reward: string; // e.g. "200 XP" or "Shadow Rider Badge"
-  xp?: number;
+function isoToday() {
+  return new Date().toISOString().slice(0, 10);
 }
-
-interface SeasonalPass {
-  id: string;
-  name: string;
-  start_date: string;
-  end_date: string;
-  milestones: Milestone[];
-}
-
-interface PassProgress {
-  id?: string;
-  user_id: string;
-  pass_id: string;
-  current_day: number;
-  completed_milestones: number[]; // array of day numbers
-}
-
-interface DailyChallenge {
-  title: string;
-  description: string;
-  xp: number;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function daysRemaining(endDate: string): number {
-  return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000));
-}
-
-function daysElapsed(startDate: string): number {
-  return Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / 86400000));
-}
-
-/** Derive today's challenge from the current day index (deterministic). */
-const DAILY_CHALLENGES: DailyChallenge[] = [
-  { title: 'Land 3 Tricks in a Row', description: 'No bails allowed.', xp: 75 },
-  { title: 'Film a Line', description: 'Record at least 3 tricks in one run.', xp: 100 },
-  {
-    title: 'Visit a New Spot',
-    description: "Check in at a skatepark you've never logged.",
-    xp: 125,
-  },
-  { title: 'Challenge a Crew Member', description: 'Send a callout and get a response.', xp: 80 },
-  { title: 'Land Your Hardest Trick', description: 'Log a trick rated Hard or above.', xp: 150 },
-  { title: 'Post a Session Clip', description: "Upload video from today's session.", xp: 90 },
-  { title: 'Vote on 5 Clips', description: "Judge other skaters' submissions.", xp: 50 },
-];
-
-function getDailyChallenge(dayIndex: number): DailyChallenge {
-  return DAILY_CHALLENGES[dayIndex % DAILY_CHALLENGES.length];
-}
-
-// ─── Pulsing circle for "current" milestone ───────────────────────────────────
-
-function PulsingCircle({ size = 40 }: { size?: number }) {
-  const anim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1.25, duration: 700, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [anim]);
-  return (
-    <Animated.View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: '#FF6B35',
-        transform: [{ scale: anim }],
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Star size={size * 0.4} color="#fff" fill="#fff" />
-    </Animated.View>
-  );
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function SeasonalPassScreen() {
-  const [pass, setPass] = useState<SeasonalPass | null>(null);
-  const [progress, setProgress] = useState<PassProgress | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user = useAuthStore(state => state.user);
+  const { activeEvent, claims, loading, error, initialize, refresh, claimReward } = useSeasonalEventStore();
+  const [refreshing, setRefreshing] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  const [claimedToday, setClaimedToday] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  const trackRef = useRef<FlatList>(null);
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user?.id ?? null);
-    });
-  }, []);
-
-  // ── Fetch pass + progress ─────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: passData } = await supabase
-        .from('seasonal_events')
-        .select('*')
-        .lte('start_date', new Date().toISOString())
-        .gte('end_date', new Date().toISOString())
-        .limit(1)
-        .single();
-
-      if (!passData) return;
-      setPass(passData as SeasonalPass);
-
-      // pass_progress table does not exist — derive progress from elapsed days
-      if (userId) {
-        const elapsed = daysElapsed(passData.start_date);
-        const { data: claims, error: claimsError } = await supabase
-          .from('seasonal_reward_claims')
-          .select('claim_date, day_number')
-          .eq('user_id', userId)
-          .eq('event_id', passData.id);
-        if (claimsError) throw claimsError;
-
-        const todayStr = new Date().toISOString().slice(0, 10);
-        setProgress({
-          user_id: userId,
-          pass_id: passData.id,
-          current_day: Math.min(elapsed + 1, 30),
-          completed_milestones: (claims ?? []).map(claim => claim.day_number),
-        });
-        setClaimedToday((claims ?? []).some(claim => claim.claim_date === todayStr));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!user?.id) return;
+    return initialize(user.id);
+  }, [initialize, user?.id]);
 
-  // Scroll to current node once data loads
-  useEffect(() => {
-    if (pass && progress && trackRef.current) {
-      const currentIndex = (progress.current_day ?? 1) - 1;
-      setTimeout(() => {
-        trackRef.current?.scrollToIndex({ index: Math.max(0, currentIndex - 1), animated: true });
-      }, 400);
-    }
-  }, [pass, progress]);
+  const handleRefresh = useCallback(async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    await refresh(user.id);
+    setRefreshing(false);
+  }, [refresh, user?.id]);
 
-  // ── Claim daily reward ────────────────────────────────────────────────────
-  const handleClaimReward = async () => {
-    if (!pass || !progress || !userId || claimedToday) return;
+  const currentDay = activeEvent ? seasonalEventsService.getCurrentDay(activeEvent) : 0;
+  const totalDays = activeEvent ? seasonalEventsService.getTotalDays(activeEvent) : 0;
+  const daysRemaining = activeEvent ? seasonalEventsService.getDaysRemaining(activeEvent) : 0;
+  const todayXp = activeEvent ? seasonalEventsService.getExpectedXp(activeEvent, currentDay) : 0;
+  const multiplier = activeEvent ? seasonalEventsService.getXpMultiplier(activeEvent) : 1;
+  const claimedToday = claims.some(claim => claim.claim_date === isoToday());
+  const claimedDays = useMemo(() => new Set(claims.map(claim => claim.day_number)), [claims]);
+  const actualXpByDay = useMemo(() => new Map(claims.map(claim => [claim.day_number, claim.xp_awarded])), [claims]);
+  const totalClaimedXp = useMemo(() => claims.reduce((sum, claim) => sum + Number(claim.xp_awarded || 0), 0), [claims]);
+  const dayTrack = useMemo(
+    () => Array.from({ length: totalDays }, (_, index) => ({ day: index + 1 })),
+    [totalDays]
+  );
+
+  const claimToday = async () => {
+    if (!user?.id || !activeEvent || claimedToday) return;
     setClaiming(true);
-
-    const currentDay = progress.current_day;
-    const newCompleted = [...new Set([...progress.completed_milestones, currentDay])];
-
     try {
-      const { data, error } = await supabase.rpc('claim_seasonal_reward', {
-        p_event_id: pass.id,
-      });
-      if (error) throw error;
-
-      const result = data as { claimed?: boolean; day_number?: number; error?: string } | null;
-      if (result?.error) throw new Error(result.error);
-
-      setProgress({
-        ...progress,
-        completed_milestones: result?.claimed ? newCompleted : progress.completed_milestones,
-      });
-      setClaimedToday(true);
-    } catch (error) {
-      Alert.alert('Reward not claimed', error instanceof Error ? error.message : 'Please try again.');
+      const result = await claimReward(user.id, activeEvent.id);
+      if (result.error) throw new Error(result.error);
+      if (!result.claimed) {
+        Alert.alert('Already claimed', 'The server has already recorded today’s seasonal reward.');
+        return;
+      }
+      Alert.alert('Season reward claimed', `Day ${result.day_number ?? currentDay}: +${result.xp_awarded ?? todayXp} XP`);
+    } catch (claimError) {
+      Alert.alert('Reward not claimed', claimError instanceof Error ? claimError.message : 'Please try again.');
     } finally {
       setClaiming(false);
     }
   };
 
-  // ─── Render helpers ───────────────────────────────────────────────────────
-
-  const renderMilestoneNode = ({ item, index }: { item: Milestone; index: number }) => {
-    if (!progress) return null;
-    const completed = progress.completed_milestones.includes(item.day);
-    const isCurrent = item.day === progress.current_day;
-    const isLocked = item.day > (progress.current_day ?? 0);
-
+  if (loading && !activeEvent) {
     return (
-      <View className="items-center" style={{ width: 88 }}>
-        {/* Connector line (left) */}
-        <View className="flex-row items-center w-full">
-          {index > 0 && (
-            <View
-              className="h-1 flex-1"
-              style={{ backgroundColor: completed ? '#FF6B35' : '#333' }}
-            />
-          )}
-          <View className="items-center">
-            {isCurrent ? (
-              <PulsingCircle size={44} />
-            ) : completed ? (
-              <View className="w-11 h-11 rounded-full bg-[#FF6B35] items-center justify-center">
-                <CheckCircle size={22} color="#fff" />
-              </View>
-            ) : (
-              <View className="w-11 h-11 rounded-full bg-[#222] border border-[#444] items-center justify-center">
-                {isLocked ? <Lock size={18} color="#555" /> : <Gift size={18} color="#555" />}
-              </View>
-            )}
-          </View>
-          {index < 29 && (
-            <View
-              className="h-1 flex-1"
-              style={{ backgroundColor: completed ? '#FF6B35' : '#333' }}
-            />
-          )}
-        </View>
-
-        {/* Day label */}
-        <Text
-          className="font-bold text-xs mt-1"
-          style={{ color: completed ? '#FF6B35' : isCurrent ? '#fff' : '#555' }}
-        >
-          Day {item.day}
-        </Text>
-
-        {/* Reward label */}
-        <Text
-          className="text-center text-xs mt-0.5 px-1"
-          style={{ color: isLocked ? '#444' : '#999', fontSize: 10 }}
-          numberOfLines={2}
-        >
-          {item.reward}
-        </Text>
-      </View>
-    );
-  };
-
-  // ─── Main render ──────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <View className="flex-1 bg-[#0a0a0a] items-center justify-center">
-        <ActivityIndicator color="#FF6B35" size="large" />
-      </View>
+      <SafeAreaView style={s.loading}>
+        <View style={s.loadingStamp}><Gift color={INK} size={30} strokeWidth={2.8} /></View>
+        <ActivityIndicator size="large" color={ORANGE} />
+        <Text style={s.loadingText}>CHECKING THE LIVE SEASON PASS</Text>
+      </SafeAreaView>
     );
   }
-
-  if (!pass) {
-    return (
-      <View className="flex-1 bg-[#0a0a0a] items-center justify-center px-8">
-        <Text className="text-white text-lg text-center">
-          No active season right now. Check back soon!
-        </Text>
-      </View>
-    );
-  }
-
-  const remaining = daysRemaining(pass.end_date);
-  const currentDay = progress?.current_day ?? 1;
-  const dailyChallenge = getDailyChallenge(currentDay - 1);
-  const milestones: Milestone[] =
-    pass.milestones ??
-    Array.from({ length: 30 }, (_, i) => ({
-      day: i + 1,
-      reward: i === 29 ? 'Season Badge' : `${(i + 1) * 25} XP`,
-    }));
-
-  // Final badge milestone
-  const finalMilestone = milestones[milestones.length - 1];
 
   return (
-    <ScrollView className="flex-1 bg-[#0a0a0a]" contentContainerStyle={{ paddingBottom: 50 }}>
-      {/* Hero header */}
-      <View className="px-5 pt-10 pb-6 bg-[#1a1a1a]">
-        <View className="flex-row items-center mb-1">
-          <Zap size={20} color="#FF6B35" fill="#FF6B35" />
-          <Text className="text-[#FF6B35] font-extrabold text-sm ml-1 tracking-widest uppercase">
-            Battle Pass
-          </Text>
-        </View>
-        <Text className="text-white text-3xl font-extrabold">{pass.name}</Text>
-        <View className="flex-row items-center mt-2 gap-x-4">
-          <View className="bg-[#FF6B35]/20 rounded-lg px-3 py-1">
-            <Text className="text-[#FF6B35] font-bold text-sm">{remaining}d remaining</Text>
+    <SafeAreaView style={s.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ORANGE} />}
+      >
+        <View style={s.hero}>
+          <View style={s.orangeSlash} />
+          <View style={s.acidSlash} />
+          <View style={s.blueOrb} />
+          <View style={s.heroTop}>
+            <View style={s.heroStamp}><Gift color={INK} size={29} strokeWidth={2.8} /></View>
+            <View style={s.serverChip}><ShieldCheck color={INK} size={12} strokeWidth={3} /><Text style={s.serverChipText}>SERVER CLAIMS</Text></View>
           </View>
-          <Text className="text-[#666] text-sm">
-            Day <Text className="text-white font-bold">{currentDay}</Text> / 30
-          </Text>
+          <Text style={s.eyebrow}>ONE REAL SEASON REWARD PER DAY</Text>
+          <Text style={s.title}>SEASON{`\n`}PASS.</Text>
+          <Text style={s.subtitle}>This screen now shows only rewards the live backend actually supports. No hardcoded trick challenges or fabricated milestone prizes.</Text>
         </View>
 
-        {/* Overall progress bar */}
-        <View className="mt-4">
-          <View className="h-3 bg-[#0a0a0a] rounded-full overflow-hidden">
-            <View
-              className="h-3 bg-[#FF6B35] rounded-full"
-              style={{ width: `${(currentDay / 30) * 100}%` }}
+        {error ? <View style={s.errorCard}><Text style={s.errorTitle}>PASS DATA ISSUE</Text><Text style={s.errorText}>{error}</Text></View> : null}
+
+        {!activeEvent ? (
+          <View style={s.empty}>
+            <View style={s.emptyStamp}><CalendarDays color={INK} size={31} strokeWidth={2.8} /></View>
+            <Text style={s.emptyKicker}>PASS CLOSED</Text>
+            <Text style={s.emptyTitle}>NO REAL SEASON IS ACTIVE</Text>
+            <Text style={s.emptyText}>There are currently no rows in the production seasonal-events table. Nothing is being mocked to fill this screen.</Text>
+          </View>
+        ) : (
+          <>
+            <View style={s.passCard}>
+              <View style={s.dayTape}><Text style={s.dayTapeText}>DAY {currentDay}</Text></View>
+              <Text style={s.passKicker}>ACTIVE SEASON PASS</Text>
+              <Text style={s.passName}>{activeEvent.name}</Text>
+              {activeEvent.description ? <Text style={s.passDescription}>{activeEvent.description}</Text> : null}
+
+              <View style={s.passStats}>
+                <View style={s.passStat}><CalendarDays color={INK} size={17} strokeWidth={2.8} /><Text style={s.passStatValue}>{currentDay}/{totalDays || '?'}</Text><Text style={s.passStatLabel}>EVENT DAY</Text></View>
+                <View style={s.passStat}><Flame color={INK} size={17} strokeWidth={2.8} /><Text style={s.passStatValue}>{daysRemaining}</Text><Text style={s.passStatLabel}>DAYS LEFT</Text></View>
+                <View style={s.passStat}><Zap color={INK} size={17} strokeWidth={2.8} /><Text style={s.passStatValue}>×{multiplier}</Text><Text style={s.passStatLabel}>XP MULTIPLIER</Text></View>
+              </View>
+            </View>
+
+            <View style={s.todayCard}>
+              <View style={s.todayTop}>
+                <View style={s.todayIcon}>{claimedToday ? <CheckCircle2 color={INK} size={25} strokeWidth={2.8} /> : <Zap color={INK} size={25} strokeWidth={2.8} />}</View>
+                <View style={s.todayCopy}><Text style={s.todayKicker}>TODAY’S SERVER REWARD</Text><Text style={s.todayTitle}>+{todayXp} XP</Text><Text style={s.todayText}>The claim RPC calculates this from event day × 25 × the event XP multiplier.</Text></View>
+              </View>
+              <TouchableOpacity
+                style={[s.claimButton, claimedToday && s.claimedButton, (claiming || claimedToday) && s.disabled]}
+                disabled={claiming || claimedToday}
+                onPress={() => void claimToday()}
+              >
+                {claiming ? <ActivityIndicator color={INK} /> : claimedToday ? <CheckCircle2 color={INK} size={18} strokeWidth={3} /> : <Gift color={INK} size={18} strokeWidth={2.8} />}
+                <Text style={s.claimButtonText}>{claiming ? 'CLAIMING...' : claimedToday ? 'CLAIMED TODAY' : 'CLAIM TODAY’S REWARD'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={s.receiptRail}><ShieldCheck color={INK} size={18} strokeWidth={2.8} /><View style={{ flex: 1 }}><Text style={s.receiptTitle}>REWARD RECEIPTS</Text><Text style={s.receiptText}>{claims.length} real claim{claims.length === 1 ? '' : 's'} • {totalClaimedXp.toLocaleString()} XP awarded by the server in this event.</Text></View></View>
+
+            <View style={s.trackHeader}><View><Text style={s.trackKicker}>EVENT CALENDAR</Text><Text style={s.trackTitle}>DAILY CLAIM TRACK</Text></View><Text style={s.trackCount}>{claims.length}/{totalDays || 0}</Text></View>
+            <FlatList
+              horizontal
+              data={dayTrack}
+              keyExtractor={item => String(item.day)}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.trackContent}
+              renderItem={({ item }) => {
+                const claimed = claimedDays.has(item.day);
+                const current = item.day === currentDay;
+                const future = item.day > currentDay;
+                const xp = claimed ? actualXpByDay.get(item.day) ?? seasonalEventsService.getExpectedXp(activeEvent, item.day) : seasonalEventsService.getExpectedXp(activeEvent, item.day);
+                return (
+                  <View style={[s.dayCard, current && s.dayCardCurrent, claimed && s.dayCardClaimed]}>
+                    <View style={[s.dayIcon, claimed && s.dayIconClaimed, current && !claimed && s.dayIconCurrent]}>
+                      {claimed ? <CheckCircle2 color={INK} size={17} strokeWidth={2.8} /> : future ? <Lock color="#6F7681" size={16} strokeWidth={2.5} /> : <Gift color={INK} size={16} strokeWidth={2.6} />}
+                    </View>
+                    <Text style={s.dayLabel}>DAY {item.day}</Text>
+                    <Text style={[s.dayXp, future && s.dayXpFuture]}>+{xp} XP</Text>
+                    <Text style={s.dayState}>{claimed ? 'CLAIMED' : current ? 'TODAY' : future ? 'LOCKED' : 'MISSED'}</Text>
+                  </View>
+                );
+              }}
             />
-          </View>
-        </View>
-      </View>
-
-      {/* Today's Challenge */}
-      <View className="mx-5 mt-5 bg-[#1a1a1a] rounded-2xl p-4">
-        <View className="flex-row items-center mb-2">
-          <Star size={16} color="#FFD700" fill="#FFD700" />
-          <Text className="text-[#FFD700] font-extrabold text-sm ml-2 tracking-wide">
-            TODAY'S CHALLENGE
-          </Text>
-        </View>
-        <Text className="text-white font-extrabold text-lg">{dailyChallenge.title}</Text>
-        <Text className="text-[#666] text-sm mt-1">{dailyChallenge.description}</Text>
-        <View className="flex-row items-center justify-between mt-4">
-          <View className="flex-row items-center">
-            <Zap size={14} color="#FFD700" />
-            <Text className="text-[#FFD700] font-bold ml-1">+{dailyChallenge.xp} XP</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleClaimReward}
-            disabled={claimedToday || claiming}
-            className={`rounded-xl px-5 py-2 ${claimedToday ? 'bg-[#333]' : 'bg-[#FF6B35]'}`}
-          >
-            {claiming ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text className="text-white font-bold text-sm">
-                {claimedToday ? 'Claimed Today' : 'Claim Reward'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Milestone track */}
-      <Text className="text-white font-extrabold text-base px-5 mt-6 mb-3">
-        30-Day Progress Track
-      </Text>
-      <FlatList
-        ref={trackRef}
-        data={milestones}
-        keyExtractor={item => String(item.day)}
-        renderItem={renderMilestoneNode}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}
-        onScrollToIndexFailed={() => {}}
-        style={{ backgroundColor: '#111' }}
-      />
-
-      {/* Season badge preview */}
-      <View className="mx-5 mt-5 bg-[#1a1a1a] rounded-2xl p-5 items-center">
-        <View className="w-20 h-20 rounded-full bg-[#FFD700]/20 border-2 border-[#FFD700] items-center justify-center mb-3">
-          <Star size={36} color="#FFD700" fill="#FFD700" />
-        </View>
-        <Text className="text-[#FFD700] font-extrabold text-lg">Season Finale Badge</Text>
-        <Text className="text-[#666] text-sm text-center mt-1">
-          Complete all 30 days to unlock:{' '}
-          <Text className="text-white font-semibold">
-            {finalMilestone?.reward ?? 'Exclusive Badge'}
-          </Text>
-        </Text>
-        <View className="mt-3 bg-[#0a0a0a] rounded-xl px-4 py-2">
-          <Text className="text-[#666] text-xs text-center">
-            {currentDay < 30 ? `${30 - currentDay} days to go` : 'You completed the season!'}
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  container:{flex:1,backgroundColor:INK},content:{paddingBottom:118},loading:{flex:1,backgroundColor:INK,alignItems:'center',justifyContent:'center',gap:12},loadingStamp:{width:64,height:64,borderRadius:19,backgroundColor:ACID,alignItems:'center',justifyContent:'center',transform:[{rotate:'-6deg'}]},loadingText:{color:PAPER,fontSize:9,fontWeight:'900',letterSpacing:1.15},
+  hero:{minHeight:300,paddingHorizontal:18,paddingTop:20,paddingBottom:28,overflow:'hidden',position:'relative'},orangeSlash:{position:'absolute',width:310,height:94,right:-105,top:55,backgroundColor:ORANGE,transform:[{rotate:'31deg'}]},acidSlash:{position:'absolute',width:220,height:27,left:-70,bottom:35,backgroundColor:ACID,transform:[{rotate:'-10deg'}]},blueOrb:{position:'absolute',width:165,height:165,borderRadius:83,right:8,bottom:-58,backgroundColor:BLUE,opacity:.12},heroTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},heroStamp:{width:60,height:60,borderRadius:18,backgroundColor:ACID,borderWidth:3,borderColor:INK,alignItems:'center',justifyContent:'center',transform:[{rotate:'-6deg'}]},serverChip:{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:PAPER,borderRadius:999,borderWidth:2,borderColor:INK,paddingHorizontal:10,paddingVertical:7},serverChipText:{color:INK,fontSize:7,fontWeight:'900',letterSpacing:.9},eyebrow:{color:ORANGE,fontSize:8,fontWeight:'900',letterSpacing:1.45,marginTop:27},title:{color:PAPER,fontSize:50,lineHeight:46,fontWeight:'900',letterSpacing:-2.9,marginTop:3},subtitle:{color:'#A3AAB5',fontSize:12,lineHeight:18,fontWeight:'700',maxWidth:310,marginTop:8},
+  errorCard:{marginHorizontal:14,marginTop:-5,padding:13,borderRadius:16,backgroundColor:'#20110E',borderWidth:1,borderColor:'#63362A'},errorTitle:{color:ORANGE,fontSize:8,fontWeight:'900',letterSpacing:.9},errorText:{color:'#C6A99F',fontSize:10,lineHeight:15,marginTop:3},empty:{marginHorizontal:14,marginTop:-8,minHeight:245,borderRadius:24,borderWidth:1.5,borderColor:'#30343D',backgroundColor:'#13161C',alignItems:'center',justifyContent:'center',padding:24},emptyStamp:{width:64,height:64,borderRadius:19,backgroundColor:ACID,alignItems:'center',justifyContent:'center',transform:[{rotate:'-5deg'}]},emptyKicker:{color:ORANGE,fontSize:7,fontWeight:'900',letterSpacing:1,marginTop:14},emptyTitle:{color:PAPER,fontSize:15,fontWeight:'900',letterSpacing:.65,marginTop:3},emptyText:{color:'#7F8793',fontSize:11,lineHeight:17,textAlign:'center',marginTop:6,maxWidth:285},
+  passCard:{marginHorizontal:14,marginTop:-9,backgroundColor:ORANGE,borderRadius:24,borderWidth:2,borderColor:INK,padding:16,position:'relative',overflow:'hidden',transform:[{rotate:'-.4deg'}]},dayTape:{position:'absolute',right:-18,top:16,minWidth:82,height:27,backgroundColor:ACID,borderWidth:1.5,borderColor:INK,alignItems:'center',justifyContent:'center',transform:[{rotate:'10deg'}]},dayTapeText:{color:INK,fontSize:7,fontWeight:'900',letterSpacing:.75},passKicker:{color:'#773A24',fontSize:7,fontWeight:'900',letterSpacing:1},passName:{color:INK,fontSize:29,lineHeight:32,fontWeight:'900',letterSpacing:-1,marginTop:3,paddingRight:50},passDescription:{color:'#543022',fontSize:11,lineHeight:17,fontWeight:'700',marginTop:10},passStats:{flexDirection:'row',gap:7,marginTop:14},passStat:{flex:1,minHeight:68,borderRadius:14,borderWidth:1.5,borderColor:INK,backgroundColor:'#F18B61',alignItems:'center',justifyContent:'center',padding:6},passStatValue:{color:INK,fontSize:15,fontWeight:'900',marginTop:3,textAlign:'center'},passStatLabel:{color:'#6E3A27',fontSize:5.6,fontWeight:'900',letterSpacing:.45,textAlign:'center'},
+  todayCard:{marginHorizontal:14,marginTop:13,backgroundColor:PAPER,borderRadius:22,borderWidth:2,borderColor:INK,padding:14},todayTop:{flexDirection:'row',alignItems:'center',gap:10},todayIcon:{width:50,height:50,borderRadius:15,backgroundColor:ACID,borderWidth:1.5,borderColor:INK,alignItems:'center',justifyContent:'center',transform:[{rotate:'-4deg'}]},todayCopy:{flex:1},todayKicker:{color:ORANGE,fontSize:6.5,fontWeight:'900',letterSpacing:.85},todayTitle:{color:INK,fontSize:24,fontWeight:'900',letterSpacing:-.7,marginTop:2},todayText:{color:'#666A65',fontSize:8.5,lineHeight:13,fontWeight:'700',marginTop:3},claimButton:{minHeight:49,marginTop:13,backgroundColor:ORANGE,borderRadius:14,borderWidth:2,borderColor:INK,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7},claimedButton:{backgroundColor:ACID},claimButtonText:{color:INK,fontSize:8.5,fontWeight:'900',letterSpacing:.7},disabled:{opacity:.65},
+  receiptRail:{marginHorizontal:14,marginTop:11,minHeight:67,flexDirection:'row',alignItems:'center',gap:9,backgroundColor:ACID,borderRadius:16,borderWidth:2,borderColor:INK,paddingHorizontal:12},receiptTitle:{color:INK,fontSize:8,fontWeight:'900',letterSpacing:.75},receiptText:{color:'#59611E',fontSize:8.5,lineHeight:13,fontWeight:'700',marginTop:2},trackHeader:{marginHorizontal:18,marginTop:25,marginBottom:9,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},trackKicker:{color:ORANGE,fontSize:7,fontWeight:'900',letterSpacing:1},trackTitle:{color:PAPER,fontSize:19,fontWeight:'900',letterSpacing:-.4,marginTop:2},trackCount:{color:ACID,fontSize:13,fontWeight:'900'},trackContent:{paddingHorizontal:14,paddingBottom:6,gap:8},dayCard:{width:100,minHeight:125,backgroundColor:PAPER,borderRadius:18,borderWidth:1.5,borderColor:INK,padding:10,alignItems:'center'},dayCardCurrent:{borderWidth:3,borderColor:BLUE},dayCardClaimed:{backgroundColor:ACID},dayIcon:{width:37,height:37,borderRadius:11,backgroundColor:'#E7E1D7',borderWidth:1,borderColor:'#CFC7BB',alignItems:'center',justifyContent:'center'},dayIconCurrent:{backgroundColor:BLUE,borderColor:INK},dayIconClaimed:{backgroundColor:PAPER,borderColor:INK},dayLabel:{color:INK,fontSize:7,fontWeight:'900',letterSpacing:.65,marginTop:7},dayXp:{color:INK,fontSize:12,fontWeight:'900',marginTop:3},dayXpFuture:{color:'#777D87'},dayState:{color:'#747871',fontSize:6,fontWeight:'900',letterSpacing:.6,marginTop:3}
+});
