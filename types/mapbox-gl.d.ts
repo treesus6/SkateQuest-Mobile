@@ -25,6 +25,7 @@ declare global {
 
   interface MapboxGLGlobal {
     accessToken: string;
+    supported?: (options?: { failIfMajorPerformanceCaveat?: boolean }) => boolean;
     Map: new (options: {
       container: HTMLElement;
       style: string;

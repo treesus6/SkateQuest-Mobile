@@ -26,6 +26,10 @@ import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Logger } from '../lib/logger';
+import {
+  getMapboxAvailabilityError,
+  getMapInitializationError,
+} from '../lib/mapboxWebSupport';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -66,40 +70,76 @@ export default function AddSpotScreen() {
   const [obstacles, setObstacles] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
+  const [manualLatitude, setManualLatitude] = useState(
+    routedCoordinates ? String(route.params.latitude) : ''
+  );
+  const [manualLongitude, setManualLongitude] = useState(
+    routedCoordinates ? String(route.params.longitude) : ''
+  );
 
   useEffect(() => {
     const mapbox = window.mapboxgl;
     const token =
       (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
       process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
-    if (!container.current || !mapbox || !token) return;
-    mapbox.accessToken = token;
-    const instance = new mapbox.Map({
-      container: container.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: coordinates,
-      zoom: hasCoordinates ? 14 : 2,
-      attributionControl: true,
-    });
-    const pin = hasCoordinates
-      ? new mapbox.Marker({ color: ORANGE }).setLngLat(coordinates).addTo(instance)
-      : null;
-    instance.on('click', event => {
-      const next: [number, number] = [event.lngLat.lng, event.lngLat.lat];
-      setCoordinates(next);
-      setHasCoordinates(true);
-      if (marker.current) {
-        marker.current.setLngLat(next);
-      } else {
-        marker.current = new mapbox.Marker({ color: ORANGE }).setLngLat(next).addTo(instance);
-      }
-    });
-    map.current = instance;
-    marker.current = pin;
+    const availabilityError = getMapboxAvailabilityError(mapbox, token);
+    if (availabilityError || !mapbox || !token) {
+      setMapUnavailable(availabilityError ?? 'The interactive map is unavailable.');
+      Logger.warn('Add spot web map unavailable', {
+        message: availabilityError ?? 'Unknown map availability failure',
+      });
+      return;
+    }
+    if (!container.current) return;
+
+    let instance: MapboxGLMap | null = null;
+    try {
+      mapbox.accessToken = token;
+      const createdMap = new mapbox.Map({
+        container: container.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: coordinates,
+        zoom: hasCoordinates ? 14 : 2,
+        attributionControl: true,
+      });
+      instance = createdMap;
+      const pin = hasCoordinates
+        ? new mapbox.Marker({ color: ORANGE }).setLngLat(coordinates).addTo(createdMap)
+        : null;
+      createdMap.on('click', event => {
+        const next: [number, number] = [event.lngLat.lng, event.lngLat.lat];
+        setCoordinates(next);
+        setManualLatitude(String(next[1]));
+        setManualLongitude(String(next[0]));
+        setHasCoordinates(true);
+        if (marker.current) {
+          marker.current.setLngLat(next);
+        } else {
+          marker.current = new mapbox.Marker({ color: ORANGE })
+            .setLngLat(next)
+            .addTo(createdMap);
+        }
+      });
+      map.current = createdMap;
+      marker.current = pin;
+      setMapUnavailable(null);
+    } catch (error) {
+      const message = getMapInitializationError(error);
+      marker.current?.remove();
+      instance?.remove();
+      marker.current = null;
+      map.current = null;
+      setMapUnavailable(message);
+      Logger.warn('Add spot web map initialization failed', { message });
+      return;
+    }
+
     return () => {
       marker.current?.remove();
-      instance.remove();
+      instance?.remove();
       marker.current = null;
+      map.current = null;
     };
   }, []);
 
@@ -109,6 +149,8 @@ export default function AddSpotScreen() {
       const position = await getBrowserLocation();
       const next: [number, number] = [position.longitude, position.latitude];
       setCoordinates(next);
+      setManualLatitude(String(next[1]));
+      setManualLongitude(String(next[0]));
       setHasCoordinates(true);
       if (marker.current) {
         marker.current.setLngLat(next);
@@ -123,6 +165,35 @@ export default function AddSpotScreen() {
       setLocationError(message);
       Logger.warn('Add spot browser location failed', { message });
     }
+  };
+
+  const applyManualCoordinates = () => {
+    const latitude = Number(manualLatitude.trim());
+    const longitude = Number(manualLongitude.trim());
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      setLocationError('Enter a latitude from -90 to 90 and a longitude from -180 to 180.');
+      return;
+    }
+
+    const next: [number, number] = [longitude, latitude];
+    setCoordinates(next);
+    setHasCoordinates(true);
+    setLocationError(null);
+    if (marker.current) {
+      marker.current.setLngLat(next);
+    } else if (map.current && window.mapboxgl) {
+      marker.current = new window.mapboxgl.Marker({ color: ORANGE })
+        .setLngLat(next)
+        .addTo(map.current);
+    }
+    map.current?.flyTo({ center: next, zoom: 16 });
   };
 
   const submit = async () => {
@@ -193,29 +264,72 @@ export default function AddSpotScreen() {
       </View>
 
       <View style={s.mapShell}>
-        <View ref={container} style={s.map} />
-        <View style={s.mapTopHud} pointerEvents="box-none">
-          <View style={[s.locationBadge, hasCoordinates && s.locationBadgeReady]}>
-            <MapPin color={hasCoordinates ? INK : PAPER} size={16} />
-            <View style={s.locationBadgeCopy}>
-              <Text style={[s.locationBadgeLabel, hasCoordinates && s.locationBadgeLabelReady]}>PIN STATUS</Text>
-              <Text style={[s.locationBadgeValue, hasCoordinates && s.locationBadgeValueReady]}>
-                {hasCoordinates ? 'REAL LOCATION LOCKED' : 'CHOOSE A LOCATION'}
-              </Text>
+        {mapUnavailable ? (
+          <View style={s.mapFallback}>
+            <View style={s.mapFallbackMark}>
+              <MapPin color={INK} size={27} strokeWidth={2.8} />
             </View>
-            {hasCoordinates ? <Check color={INK} size={17} strokeWidth={3} /> : null}
+            <Text style={s.mapFallbackKicker}>INTERACTIVE MAP UNAVAILABLE</Text>
+            <Text style={s.mapFallbackText}>{mapUnavailable}</Text>
+            <Text style={s.mapFallbackHelp}>
+              Your spot form still works. Use your real GPS location or enter exact coordinates.
+            </Text>
+            <Pressable style={s.fallbackLocateButton} onPress={() => void locate()}>
+              <Crosshair color={INK} size={18} strokeWidth={2.8} />
+              <Text style={s.fallbackLocateText}>USE MY REAL LOCATION</Text>
+            </Pressable>
+            <View style={s.manualCoordinateRow}>
+              <TextInput
+                accessibilityLabel="Latitude"
+                inputMode="decimal"
+                value={manualLatitude}
+                onChangeText={setManualLatitude}
+                placeholder="Latitude"
+                placeholderTextColor="#777D87"
+                style={s.coordinateInput}
+              />
+              <TextInput
+                accessibilityLabel="Longitude"
+                inputMode="decimal"
+                value={manualLongitude}
+                onChangeText={setManualLongitude}
+                placeholder="Longitude"
+                placeholderTextColor="#777D87"
+                style={s.coordinateInput}
+              />
+            </View>
+            <Pressable style={s.lockCoordinatesButton} onPress={applyManualCoordinates}>
+              <Check color={INK} size={16} strokeWidth={3} />
+              <Text style={s.lockCoordinatesText}>LOCK THESE COORDINATES</Text>
+            </Pressable>
           </View>
-          <Pressable style={s.locateButton} onPress={() => void locate()}>
-            <Crosshair color={INK} size={20} strokeWidth={2.8} />
-          </Pressable>
-        </View>
+        ) : (
+          <>
+            <View ref={container} style={s.map} />
+            <View style={s.mapTopHud} pointerEvents="box-none">
+              <View style={[s.locationBadge, hasCoordinates && s.locationBadgeReady]}>
+                <MapPin color={hasCoordinates ? INK : PAPER} size={16} />
+                <View style={s.locationBadgeCopy}>
+                  <Text style={[s.locationBadgeLabel, hasCoordinates && s.locationBadgeLabelReady]}>PIN STATUS</Text>
+                  <Text style={[s.locationBadgeValue, hasCoordinates && s.locationBadgeValueReady]}>
+                    {hasCoordinates ? 'REAL LOCATION LOCKED' : 'CHOOSE A LOCATION'}
+                  </Text>
+                </View>
+                {hasCoordinates ? <Check color={INK} size={17} strokeWidth={3} /> : null}
+              </View>
+              <Pressable style={s.locateButton} onPress={() => void locate()}>
+                <Crosshair color={INK} size={20} strokeWidth={2.8} />
+              </Pressable>
+            </View>
 
-        <View style={s.mapBottomHud} pointerEvents="none">
-          <View style={s.mapHint}>
-            <Crosshair color={ORANGE} size={16} />
-            <Text style={s.mapHintText}>TAP THE EXACT SPOT ON THE MAP</Text>
-          </View>
-        </View>
+            <View style={s.mapBottomHud} pointerEvents="none">
+              <View style={s.mapHint}>
+                <Crosshair color={ORANGE} size={16} />
+                <Text style={s.mapHintText}>TAP THE EXACT SPOT ON THE MAP</Text>
+              </View>
+            </View>
+          </>
+        )}
       </View>
 
       {locationError ? (
@@ -408,6 +522,17 @@ const s = StyleSheet.create({
 
   mapShell: { height: 390, marginTop: 10, borderRadius: 26, overflow: 'hidden', backgroundColor: '#111827', borderWidth: 2, borderColor: INK, position: 'relative' },
   map: { flex: 1 },
+  mapFallback: { flex: 1, padding: 18, alignItems: 'center', justifyContent: 'center' },
+  mapFallbackMark: { width: 58, height: 58, borderRadius: 17, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  mapFallbackKicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.2, marginTop: 12 },
+  mapFallbackText: { color: PAPER, maxWidth: 430, textAlign: 'center', fontSize: 12, lineHeight: 17, fontWeight: '800', marginTop: 5 },
+  mapFallbackHelp: { color: MUTED, maxWidth: 430, textAlign: 'center', fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 5 },
+  fallbackLocateButton: { minHeight: 42, marginTop: 12, borderRadius: 12, paddingHorizontal: 12, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  fallbackLocateText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  manualCoordinateRow: { width: '100%', maxWidth: 430, flexDirection: 'row', gap: 8, marginTop: 11 },
+  coordinateInput: { flex: 1, minHeight: 43, borderRadius: 11, paddingHorizontal: 11, backgroundColor: '#E9E4DA', borderWidth: 1.5, borderColor: '#CFC8BB', color: INK, fontSize: 12, fontWeight: '700' },
+  lockCoordinatesButton: { minHeight: 38, marginTop: 8, borderRadius: 11, paddingHorizontal: 11, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  lockCoordinatesText: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.7 },
   mapTopHud: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
   locationBadge: { flex: 1, minHeight: 52, borderRadius: 16, paddingHorizontal: 11, backgroundColor: 'rgba(7,8,11,0.86)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', flexDirection: 'row', alignItems: 'center', gap: 8 },
   locationBadgeReady: { backgroundColor: ACID, borderWidth: 2, borderColor: INK },
