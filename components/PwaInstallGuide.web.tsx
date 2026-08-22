@@ -4,13 +4,24 @@ import { Pressable, Text, View } from 'react-native';
 const DISMISSED_KEY = 'skatequest:pwa-install-dismissed';
 const configuredBaseUrl = (process.env.EXPO_PUBLIC_BASE_URL ?? '').replace(/\/$/, '');
 
+export function isGitHubPagesHostname(hostname: string): boolean {
+  const labels = hostname.toLowerCase().replace(/\.$/, '').split('.');
+
+  return (
+    labels.length === 3 &&
+    Boolean(labels[0]) &&
+    labels[1] === 'github' &&
+    labels[2] === 'io'
+  );
+}
+
 function getRuntimeBaseUrl(): string {
   if (configuredBaseUrl) return configuredBaseUrl;
   if (typeof window === 'undefined') return '';
 
   // GitHub project Pages serves SkateQuest below /SkateQuest-Mobile.
   // The custom SkateQuest.me domain serves from /. Support both automatically.
-  if (window.location.hostname.endsWith('github.io')) {
+  if (isGitHubPagesHostname(window.location.hostname)) {
     const firstSegment = window.location.pathname.split('/').filter(Boolean)[0];
     return firstSegment ? `/${firstSegment}` : '';
   }
