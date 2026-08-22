@@ -1,8 +1,8 @@
 import {
   getSpotPersistenceError,
   parseSpotCoordinates,
-  PersistedSpotExpectation,
 } from '../../lib/spotSubmission';
+import type { PersistedSpotExpectation } from '../../lib/spotSubmission';
 
 describe('parseSpotCoordinates', () => {
   it('returns Mapbox longitude/latitude order for valid inputs', () => {
