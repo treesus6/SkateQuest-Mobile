@@ -30,6 +30,7 @@ import {
   getMapboxAvailabilityError,
   getMapInitializationError,
 } from '../lib/mapboxWebSupport';
+import { getSpotPersistenceError, parseSpotCoordinates } from '../lib/spotSubmission';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -58,11 +59,14 @@ export default function AddSpotScreen() {
   const container = useRef<any>(null);
   const map = useRef<MapboxGLMap | null>(null);
   const marker = useRef<MapboxGLMarker | null>(null);
-  const routedCoordinates = Number.isFinite(Number(route.params?.longitude)) && Number.isFinite(Number(route.params?.latitude));
-  const [coordinates, setCoordinates] = useState<[number, number]>(
-    routedCoordinates ? [Number(route.params.longitude), Number(route.params.latitude)] : NEUTRAL_CENTER
+  const routedCoordinates = parseSpotCoordinates(
+    route.params?.latitude,
+    route.params?.longitude
   );
-  const [hasCoordinates, setHasCoordinates] = useState(routedCoordinates);
+  const [coordinates, setCoordinates] = useState<[number, number]>(
+    routedCoordinates ?? NEUTRAL_CENTER
+  );
+  const [hasCoordinates, setHasCoordinates] = useState(routedCoordinates !== null);
   const [name, setName] = useState('');
   const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
   const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
@@ -72,10 +76,10 @@ export default function AddSpotScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
   const [manualLatitude, setManualLatitude] = useState(
-    routedCoordinates ? String(route.params.latitude) : ''
+    routedCoordinates ? String(routedCoordinates[1]) : ''
   );
   const [manualLongitude, setManualLongitude] = useState(
-    routedCoordinates ? String(route.params.longitude) : ''
+    routedCoordinates ? String(routedCoordinates[0]) : ''
   );
 
   useEffect(() => {
@@ -168,21 +172,12 @@ export default function AddSpotScreen() {
   };
 
   const applyManualCoordinates = () => {
-    const latitude = Number(manualLatitude.trim());
-    const longitude = Number(manualLongitude.trim());
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
+    const next = parseSpotCoordinates(manualLatitude, manualLongitude);
+    if (!next) {
       setLocationError('Enter a latitude from -90 to 90 and a longitude from -180 to 180.');
       return;
     }
 
-    const next: [number, number] = [longitude, latitude];
     setCoordinates(next);
     setHasCoordinates(true);
     setLocationError(null);
@@ -219,13 +214,23 @@ export default function AddSpotScreen() {
         bust_risk: bustRisk,
       });
       if (error) throw error;
-      const createdId = (data as any)?.id;
-      if (createdId) {
-        const { data: saved, error: readError } = await spotsService.getById(createdId);
-        if (readError || !saved || (saved as any).added_by !== user.id) {
-          throw readError ?? new Error('The saved spot could not be verified.');
-        }
+      const createdId =
+        typeof (data as any)?.id === 'string' ? (data as any).id.trim() : '';
+      if (!createdId) {
+        throw new Error('The saved spot did not return an ID.');
       }
+
+      const { data: saved, error: readError } = await spotsService.getById(createdId);
+      if (readError) throw readError;
+
+      const persistenceError = getSpotPersistenceError(saved, {
+        id: createdId,
+        name: name.trim(),
+        latitude: coordinates[1],
+        longitude: coordinates[0],
+        addedBy: user.id,
+      });
+      if (persistenceError) throw new Error(persistenceError);
       Alert.alert('Spot added', 'Your spot was saved to SkateQuest.', [
         { text: 'Done', onPress: () => navigation.goBack() },
       ]);
