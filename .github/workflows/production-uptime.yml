@@ -1,0 +1,159 @@
+name: Monitor production PWA uptime
+
+on:
+  schedule:
+    # Offset from the top of the hour to reduce GitHub Actions schedule delays.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: skatequest-production-uptime
+  cancel-in-progress: false
+
+jobs:
+  uptime:
+    name: Check production routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Check production HTTPS routes
+        id: health
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          healthy=true
+          summary=''
+
+          mark_failure() {
+            local label="$1"
+            healthy=false
+            if [ -n "$summary" ]; then
+              summary="$summary, $label"
+            else
+              summary="$label"
+            fi
+          }
+
+          check_html() {
+            local label="$1"
+            local url="$2"
+            local output
+            output="$(mktemp)"
+
+            if ! curl --fail --silent --show-error --location --max-time 20                 --retry 2 --retry-delay 3 --retry-all-errors "$url" -o "$output"               || ! grep -qi '<html' "$output"; then
+              mark_failure "$label"
+            fi
+
+            rm -f "$output"
+          }
+
+          check_contains() {
+            local label="$1"
+            local url="$2"
+            local pattern="$3"
+            local output
+            output="$(mktemp)"
+
+            if ! curl --fail --silent --show-error --location --max-time 20                 --retry 2 --retry-delay 3 --retry-all-errors "$url" -o "$output"               || ! grep -Fq "$pattern" "$output"; then
+              mark_failure "$label"
+            fi
+
+            rm -f "$output"
+          }
+
+          check_html 'home' 'https://skatequest.me/'
+          check_html 'login' 'https://skatequest.me/login'
+          check_html 'map' 'https://skatequest.me/map'
+          check_contains 'manifest' 'https://skatequest.me/manifest.webmanifest' '"name": "SkateQuest"'
+          check_contains 'service worker' 'https://skatequest.me/service-worker.js' 'skatequest-shell-'
+
+          if [ "$healthy" = true ]; then
+            summary='all production checks passed'
+          fi
+
+          echo "healthy=$healthy" >> "$GITHUB_OUTPUT"
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+
+      - name: Publish uptime result and manage outage issue
+        uses: actions/github-script@v9
+        env:
+          HEALTHY: ${{ steps.health.outputs.healthy }}
+          SUMMARY: ${{ steps.health.outputs.summary }}
+        with:
+          script: |
+            const healthy = process.env.HEALTHY === 'true';
+            const summary = process.env.SUMMARY || 'unknown check result';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = '[uptime] SkateQuest production PWA unavailable';
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const checkedAt = new Date().toISOString();
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = openIssues.find(
+              issue => !issue.pull_request && issue.title === title
+            );
+
+            if (!healthy) {
+              const body = [
+                'The scheduled SkateQuest production uptime check failed.',
+                '',
+                `- Failed checks: **${summary}**`,
+                `- Checked at: ${checkedAt}`,
+                `- Workflow run: ${runUrl}`,
+                '',
+                'The monitor checks HTTPS home, login, map, manifest, and service-worker responses every 30 minutes.',
+              ].join('\n');
+
+              if (existing) {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body,
+                  assignees: [owner],
+                });
+              } else {
+                await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body,
+                  assignees: [owner],
+                });
+              }
+              return;
+            }
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: `Recovered at ${checkedAt}. All scheduled production checks passed. Run: ${runUrl}`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+            }
+
+      - name: Fail the run when production is unhealthy
+        if: ${{ steps.health.outputs.healthy != 'true' }}
+        run: |
+          echo "Production uptime check failed: ${{ steps.health.outputs.summary }}" >&2
+          exit 1
