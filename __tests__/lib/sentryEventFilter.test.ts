@@ -1,27 +1,22 @@
-import type * as Sentry from '@sentry/react-native';
 import { describe, expect, it } from '@jest/globals';
 import {
   isBrowserAutomationMetroProbe,
   shouldDropSentryEvent,
 } from '../../lib/sentryEventFilter';
 
-const eventWith = (
-  value: string,
-  frameFunction: string
-): Sentry.ErrorEvent =>
-  ({
-    exception: {
-      values: [
-        {
-          type: 'Error',
-          value,
-          stacktrace: {
-            frames: [{ function: frameFunction }],
-          },
+const eventWith = (value: string, frameFunction: string) => ({
+  exception: {
+    values: [
+      {
+        type: 'Error',
+        value,
+        stacktrace: {
+          frames: [{ function: frameFunction }],
         },
-      ],
-    },
-  }) as Sentry.ErrorEvent;
+      },
+    ],
+  },
+});
 
 describe('sentryEventFilter', () => {
   it('drops the synthetic Metro error emitted by browser automation', () => {
