@@ -1,6 +1,14 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { setupGlobalErrorHandler } from '../../lib/globalErrorHandler';
+
+jest.mock('../../lib/logger', () => ({
+  Logger: {
+    error: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+  },
+}));
 
 describe('setupGlobalErrorHandler', () => {
   it('does not replace Promise.prototype.catch', () => {
