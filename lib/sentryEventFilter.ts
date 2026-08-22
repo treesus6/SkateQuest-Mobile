@@ -1,7 +1,10 @@
-import type * as Sentry from '@sentry/react-native';
-
 const UNKNOWN_OPTIONAL_IMPORT =
   'Requiring unknown module "[unknown optional import]"';
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null;
 
 /**
  * Browser automation can call Metro's internal module loader without a module
@@ -11,18 +14,44 @@ const UNKNOWN_OPTIONAL_IMPORT =
  * Keep real unknown-module failures. Drop only the exact synthetic signature
  * when a browser-automation frame is present.
  */
-export function isBrowserAutomationMetroProbe(event: Sentry.ErrorEvent): boolean {
-  return (event.exception?.values ?? []).some(exception => {
-    if (!exception.value?.includes(UNKNOWN_OPTIONAL_IMPORT)) {
+export function isBrowserAutomationMetroProbe(event: unknown): boolean {
+  if (!isRecord(event) || !isRecord(event.exception)) {
+    return false;
+  }
+
+  const values = event.exception.values;
+  if (!Array.isArray(values)) {
+    return false;
+  }
+
+  return values.some(exception => {
+    if (
+      !isRecord(exception) ||
+      typeof exception.value !== 'string' ||
+      !exception.value.includes(UNKNOWN_OPTIONAL_IMPORT) ||
+      !isRecord(exception.stacktrace)
+    ) {
       return false;
     }
 
-    return (exception.stacktrace?.frames ?? []).some(frame =>
-      frame.function?.startsWith('UtilityScript.')
-    );
+    const frames = exception.stacktrace.frames;
+    if (!Array.isArray(frames)) {
+      return false;
+    }
+
+    return frames.some(frame => {
+      if (!isRecord(frame)) {
+        return false;
+      }
+
+      return (
+        typeof frame.function === 'string' &&
+        frame.function.startsWith('UtilityScript.')
+      );
+    });
   });
 }
 
-export function shouldDropSentryEvent(event: Sentry.ErrorEvent): boolean {
+export function shouldDropSentryEvent(event: unknown): boolean {
   return isBrowserAutomationMetroProbe(event);
 }
