@@ -1,9 +1,13 @@
 import * as Sentry from '@sentry/react-native';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { Logger } from './logger';
 
 /**
- * Global error handler for unhandled promise rejections and native errors
+ * Global error handler for native fatal errors.
+ *
+ * Sentry already installs unhandled-rejection instrumentation. Never patch
+ * Promise.prototype.catch here: doing so reports every handled rejection as
+ * unhandled and changes Promise behavior for the entire app.
  */
 
 let isSetup = false;
@@ -13,21 +17,9 @@ export function setupGlobalErrorHandler() {
     return;
   }
 
-  // Handle unhandled promise rejections
-  const originalPromiseRejection = global.Promise.prototype.catch;
-  global.Promise.prototype.catch = function (onRejected) {
-    return originalPromiseRejection.call(this, (error: Error) => {
-      Logger.error('Unhandled promise rejection:', error);
-      Sentry.captureException(error, {
-        tags: { error_type: 'unhandled_promise_rejection' },
-      });
-
-      if (onRejected) {
-        return onRejected(error);
-      }
-      throw error;
-    });
-  };
+  // Keep the platform's Promise implementation untouched. The Sentry SDK owns
+  // unhandled-rejection capture and only reports promises that are truly
+  // unhandled.
 
   // Handle global errors
   if (typeof ErrorUtils !== 'undefined') {
@@ -43,7 +35,7 @@ export function setupGlobalErrorHandler() {
         },
       });
 
-      if (isFatal && !__DEV__) {
+      if (isFatal && !__DEV__ && Platform.OS !== 'web') {
         Alert.alert(
           'Unexpected Error',
           'The app encountered an unexpected error. Please restart the app.',
