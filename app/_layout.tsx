@@ -18,6 +18,7 @@ import PwaInstallGuide from '../components/PwaInstallGuide';
 import BetaNotice from '../components/BetaNotice';
 
 import { setupGlobalErrorHandler } from '../lib/globalErrorHandler';
+import { shouldDropSentryEvent } from '../lib/sentryEventFilter';
 import { validateEnvironment } from '../lib/envValidation';
 import { Logger } from '../lib/logger';
 import { analytics } from '../lib/analytics';
@@ -47,7 +48,7 @@ Sentry.init({
     'AbortError',
   ],
   beforeSend(event: Sentry.ErrorEvent) {
-    if (__DEV__) return null;
+    if (__DEV__ || shouldDropSentryEvent(event)) return null;
     return event;
   },
 });
