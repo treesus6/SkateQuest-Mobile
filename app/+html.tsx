@@ -21,19 +21,18 @@ const runtimePwaPathFix = `
 
 const webMapTileFallback = `
 (function () {
-  if (!window.mapboxgl || window.__skatequestMapFallbackInstalled) return;
+  var maplibre = window.maplibregl;
+  if (!maplibre || window.__skatequestMapFallbackInstalled) return;
   window.__skatequestMapFallbackInstalled = true;
 
-  var OriginalMap = window.mapboxgl.Map;
+  var OriginalMap = maplibre.Map;
   var fallbackStyle = {
     version: 8,
     sources: {
       'openstreetmap': {
         type: 'raster',
         tiles: [
-          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
         ],
         tileSize: 256,
         attribution: '© OpenStreetMap contributors'
@@ -52,7 +51,7 @@ const webMapTileFallback = `
 
   function SkateQuestMap(options) {
     var nextOptions = options || {};
-    if (typeof nextOptions.style === 'string' && nextOptions.style.indexOf('mapbox://') === 0) {
+    if (!nextOptions.style || (typeof nextOptions.style === 'string' && nextOptions.style.indexOf('mapbox://') === 0)) {
       nextOptions = Object.assign({}, nextOptions, { style: fallbackStyle });
     }
     return new OriginalMap(nextOptions);
@@ -60,7 +59,10 @@ const webMapTileFallback = `
 
   SkateQuestMap.prototype = OriginalMap.prototype;
   Object.setPrototypeOf(SkateQuestMap, OriginalMap);
-  window.mapboxgl.Map = SkateQuestMap;
+  maplibre.Map = SkateQuestMap;
+
+  // Keep the existing web map code working without a Mapbox runtime dependency.
+  window.mapboxgl = maplibre;
 })();
 `;
 
@@ -90,13 +92,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
           href={withConfiguredBase('/icon-192.svg')}
         />
         <script dangerouslySetInnerHTML={{ __html: runtimePwaPathFix }} />
-        <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" />
-        <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js" />
+        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css" />
+        <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js" />
         <script dangerouslySetInnerHTML={{ __html: webMapTileFallback }} />
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
-            __html: `html,body,#root{height:100%;background:#05070B}body{margin:0;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}#root{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}@media(min-width:900px){#root{max-width:900px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.55)}}.mapboxgl-map{font:12px/20px -apple-system,BlinkMacSystemFont,sans-serif}.mapboxgl-canvas{outline:none}`,
+            __html: `html,body,#root{height:100%;background:#05070B}body{margin:0;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}#root{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}@media(min-width:900px){#root{max-width:900px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.55)}}.maplibregl-map,.mapboxgl-map{font:12px/20px -apple-system,BlinkMacSystemFont,sans-serif}.maplibregl-canvas,.mapboxgl-canvas{outline:none}`,
           }}
         />
       </head>
