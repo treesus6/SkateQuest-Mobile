@@ -19,6 +19,51 @@ const runtimePwaPathFix = `
 })();
 `;
 
+const webMapTileFallback = `
+(function () {
+  if (!window.mapboxgl || window.__skatequestMapFallbackInstalled) return;
+  window.__skatequestMapFallbackInstalled = true;
+
+  var OriginalMap = window.mapboxgl.Map;
+  var fallbackStyle = {
+    version: 8,
+    sources: {
+      'openstreetmap': {
+        type: 'raster',
+        tiles: [
+          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors'
+      }
+    },
+    layers: [
+      {
+        id: 'openstreetmap',
+        type: 'raster',
+        source: 'openstreetmap',
+        minzoom: 0,
+        maxzoom: 19
+      }
+    ]
+  };
+
+  function SkateQuestMap(options) {
+    var nextOptions = options || {};
+    if (typeof nextOptions.style === 'string' && nextOptions.style.indexOf('mapbox://') === 0) {
+      nextOptions = Object.assign({}, nextOptions, { style: fallbackStyle });
+    }
+    return new OriginalMap(nextOptions);
+  }
+
+  SkateQuestMap.prototype = OriginalMap.prototype;
+  Object.setPrototypeOf(SkateQuestMap, OriginalMap);
+  window.mapboxgl.Map = SkateQuestMap;
+})();
+`;
+
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -46,7 +91,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         />
         <script dangerouslySetInnerHTML={{ __html: runtimePwaPathFix }} />
         <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css" />
-        <script defer src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js" />
+        <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js" />
+        <script dangerouslySetInnerHTML={{ __html: webMapTileFallback }} />
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
