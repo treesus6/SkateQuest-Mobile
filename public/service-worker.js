@@ -1,4 +1,4 @@
-const CACHE = 'skatequest-shell-v5';
+const CACHE = 'skatequest-shell-v6';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const scopedPath = path => `${SCOPE_PATH.replace(/\/$/, '')}${path}`;
 const SHELL = [
