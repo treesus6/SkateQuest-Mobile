@@ -1,0 +1,44 @@
+name: Align Expo SDK patches
+
+on:
+  push:
+    branches: [fix/add-spot-quality-main]
+    paths:
+      - '.github/workflows/align-expo-patches.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/add-spot-quality-main
+          fetch-depth: 0
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Install current dependencies
+        run: npm ci
+
+      - name: Align Expo SDK patch versions
+        run: npx expo install --fix --npm
+
+      - name: Verify Expo compatibility
+        run: npx expo-doctor
+
+      - name: Commit aligned dependencies and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/align-expo-patches.yml
+          git add package.json package-lock.json
+          git commit -m "Align Expo SDK 57 patch versions"
+          git push origin HEAD:fix/add-spot-quality-main
