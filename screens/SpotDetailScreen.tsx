@@ -33,7 +33,9 @@ import { supabase } from '../lib/supabase';
 import { spotsService } from '../lib/spotsService';
 import { challengesService } from '../lib/challengesService';
 import { SkateSpot, SpotPhoto, SpotCondition, Challenge, SpotComment } from '../types';
-import { pickImage, uploadImage, saveMediaToDatabase } from '../lib/mediaUpload';
+import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
+import { getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
+import { Logger } from '../lib/logger';
 import KingOfTheHill from '../components/KingOfTheHill';
 import TerritoryControl from '../components/TerritoryControl';
 import GhostClipViewer from '../components/GhostClipViewer';
@@ -234,20 +236,39 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
 
   const uploadSpotPhoto = async () => {
     if (!user) return;
+    let uploadedUrl: string | null = null;
+    let attached = false;
+    let safeToCleanupUploadedPhoto = false;
     try {
       setUploading(true);
       const result = await pickImage();
       if (!result) return;
       const photoResult = await uploadImage(result.uri, 'spot_photos', user.id);
-      const media = await saveMediaToDatabase(user.id, photoResult, {
-        caption: `Photo of ${spot?.name}`,
+      uploadedUrl = photoResult.url;
+      const { data, error } = await spotsService.addPhoto(
         spotId,
-      });
-      await spotsService.uploadPhoto(spotId, media.id, user.id, photos.length === 0);
-      Alert.alert('Success', 'Photo uploaded!');
+        photoResult.url,
+        photoResult.fileSize,
+        `Photo of ${spot?.name ?? 'skate spot'}`
+      );
+      if (error) {
+        safeToCleanupUploadedPhoto = true;
+        throw error;
+      }
+      if (!data) throw new Error('The spot photo did not return a saved record.');
+      attached = true;
       await loadSpotData();
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Photo saved', 'The photo is attached to this spot for every skater.');
+    } catch (error) {
+      Logger.error('Spot photo upload failed', error);
+      if (uploadedUrl && !attached && safeToCleanupUploadedPhoto) {
+        try {
+          await deleteFromStorage(uploadedUrl, 'spot-photos');
+        } catch (cleanupError) {
+          Logger.warn('Orphan spot photo cleanup failed', cleanupError);
+        }
+      }
+      Alert.alert('Photo not saved', getSpotSubmissionErrorMessage(error));
     } finally {
       setUploading(false);
     }
@@ -364,6 +385,17 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
             <Text className="text-[#D2673D] text-[10px] font-black">REVIEWS</Text>
           </TouchableOpacity>
         </View>
+
+        <View className="flex-row gap-2 mt-4">
+          <SpotMetric label="POTENTIAL" value={spot.potential_rating} color="#D9F34A" />
+          <SpotMetric label="HOW HARD" value={spot.difficulty_rating} color="#72A9FF" />
+          <SpotMetric label="HOW GOOD" value={spot.rating} color="#E36D3F" />
+        </View>
+        <Text className="text-[#697383] text-[11px] mt-2">
+          {spot.rating_count
+            ? `${spot.rating_count} skater${spot.rating_count === 1 ? '' : 's'} rated this spot`
+            : 'Not rated yet'}
+        </Text>
 
         {spot.tricks && spot.tricks.length > 0 ? (
           <View className="mt-4">
@@ -563,6 +595,16 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     </ScrollView>
   );
 });
+
+function SpotMetric({ label, value, color }: { label: string; value?: number; color: string }) {
+  return (
+    <View className="flex-1 bg-[#10151D] border border-[#252D39] rounded-xl px-3 py-3">
+      <Text className="text-[9px] font-black tracking-[0.8px]" style={{ color }}>{label}</Text>
+      <Text className="text-white text-xl font-black mt-1">{typeof value === 'number' ? value.toFixed(1) : '—'}</Text>
+      <Text className="text-[#596271] text-[9px]">OUT OF 5</Text>
+    </View>
+  );
+}
 
 function getTimeAgo(dateString: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
