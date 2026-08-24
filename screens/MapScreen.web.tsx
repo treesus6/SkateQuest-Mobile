@@ -51,6 +51,13 @@ export default function MapScreen() {
     [router]
   );
 
+  const openAddSpot = useCallback(() => {
+    router.push({
+      pathname: '/add-spot' as any,
+      params: hasRealCenter ? { latitude: String(center[1]), longitude: String(center[0]) } : {},
+    });
+  }, [center, hasRealCenter, router]);
+
   const loadSpots = useCallback(async (coordinates: [number, number]) => {
     const requestId = ++spotsRequestRef.current;
     const { data, error: queryError } = await spotsService.getNearby(
@@ -235,7 +242,7 @@ export default function MapScreen() {
     return (
       <MapError
         message="Mapbox is not configured. Set EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN."
-        onAddSpot={() => router.push('/add-spot' as any)}
+        onAddSpot={openAddSpot}
       />
     );
   }
@@ -244,7 +251,7 @@ export default function MapScreen() {
     return (
       <MapError
         message={`${mapUnavailable} You can still add a real spot using GPS or exact coordinates.`}
-        onAddSpot={() => router.push('/add-spot' as any)}
+        onAddSpot={openAddSpot}
       />
     );
   }
@@ -285,7 +292,7 @@ export default function MapScreen() {
         />
         <MapButton
           label="Add a spot"
-          onPress={() => router.push('/add-spot' as any)}
+          onPress={openAddSpot}
           accent={ORANGE}
           icon={<Plus color={INK} size={23} strokeWidth={3} />}
         />
@@ -346,8 +353,8 @@ export default function MapScreen() {
         {spots.length === 0 && !loading ? (
           <View style={s.emptyCard}>
             <Flame color={ORANGE} size={24} />
-            <Text style={s.emptyTitle}>NO SPOTS IN RANGE</Text>
-            <Text style={s.emptyText}>Move the map, use GPS, or add the spot everyone is missing.</Text>
+            <Text style={s.emptyTitle}>NO SAVED SPOTS HERE YET</Text>
+            <Text style={s.emptyText}>GPS only finds nearby pins—it never limits where you can add one. Move the map and drop a real spot anywhere.</Text>
           </View>
         ) : null}
       </ScrollView>

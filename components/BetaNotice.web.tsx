@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 
 const configuredSupportEmail =
@@ -8,7 +8,7 @@ const configuredSupportEmail =
   '';
 
 const supportEmail = configuredSupportEmail.trim();
-const issueSubject = encodeURIComponent('SkateQuest beta issue');
+const issueSubject = encodeURIComponent('SkateQuest web beta issue');
 const mailtoUrl = supportEmail ? `mailto:${supportEmail}?subject=${issueSubject}` : '';
 const SESSION_KEY = 'skatequest-beta-notice-dismissed';
 
@@ -32,12 +32,21 @@ export default function BetaNotice() {
     setVisible(false);
   };
 
+  const openSupportEmail = async () => {
+    try {
+      await Linking.openURL(mailtoUrl);
+    } catch {
+      Alert.alert('Could not open email', `Email ${supportEmail} directly to report the issue.`);
+    }
+  };
+
   if (!visible) return null;
 
   return (
     <View
       accessibilityRole="alert"
       accessibilityLabel="SkateQuest beta notice"
+      accessibilityLiveRegion="polite"
       style={{
         position: 'fixed' as any,
         top: 'calc(8px + env(safe-area-inset-top))' as any,
@@ -66,13 +75,10 @@ export default function BetaNotice() {
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={`Email SkateQuest support at ${supportEmail}`}
-          onPress={() => Linking.openURL(mailtoUrl)}
+          onPress={() => void openSupportEmail()}
           style={{ flex: 1, minHeight: 32, justifyContent: 'center' }}
         >
-          <Text
-            numberOfLines={1}
-            style={{ color: '#FDBA74', fontWeight: '900', fontSize: 12 }}
-          >
+          <Text numberOfLines={1} style={{ color: '#FDBA74', fontWeight: '900', fontSize: 12 }}>
             Report a bug
           </Text>
         </Pressable>

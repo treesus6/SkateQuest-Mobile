@@ -360,8 +360,10 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
           </View>
           <TouchableOpacity className="flex-row items-center gap-1.5 bg-[#10151D] border border-[#252D39] px-3 py-1.5 rounded-full" onPress={() => navigation.navigate('SpotReviews', { spotId, spotName: spot.name })}>
             <Star color="#FFD166" size={14} fill="#FFD166" />
-            <Text className="text-white text-xs font-black">{spot.rating ? spot.rating.toFixed(1) : '—'}</Text>
-            <Text className="text-[#D2673D] text-[10px] font-black">REVIEWS</Text>
+            <Text className="text-white text-[10px] font-black">P {spot.potential_rating?.toFixed(1) ?? '—'}</Text>
+            <Text className="text-white text-[10px] font-black">D {spot.difficulty_rating?.toFixed(1) ?? '—'}</Text>
+            <Text className="text-white text-[10px] font-black">Q {spot.rating?.toFixed(1) ?? '—'}</Text>
+            <Text className="text-[#D2673D] text-[9px] font-black">{spot.rating_count ?? 0} RATINGS</Text>
           </TouchableOpacity>
         </View>
 

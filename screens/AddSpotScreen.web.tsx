@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import Constants from 'expo-constants';
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
   Check,
   Crosshair,
   MapPin,
@@ -24,13 +26,19 @@ import {
 import { useNavigation, useRoute } from '../lib/useNavigation';
 import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
+import type { NearbyDuplicateSpot } from '../lib/spotsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Logger } from '../lib/logger';
+import { getMapboxAvailabilityError, getMapInitializationError } from '../lib/mapboxWebSupport';
 import {
-  getMapboxAvailabilityError,
-  getMapInitializationError,
-} from '../lib/mapboxWebSupport';
-import { getSpotPersistenceError, parseSpotCoordinates } from '../lib/spotSubmission';
+  getSpotCreationErrorMessage,
+  getSpotPersistenceError,
+  parseSpotCoordinates,
+} from '../lib/spotSubmission';
+import SpotRatingFields, { hasCompleteSpotRating } from '../components/SpotRatingFields';
+import type { SpotRatingValues } from '../components/SpotRatingFields';
+import { chooseSpotPhoto, persistPrimarySpotPhoto } from '../lib/spotPhotoSubmission';
+import type { SelectedSpotPhoto } from '../lib/spotPhotoSubmission';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -59,20 +67,28 @@ export default function AddSpotScreen() {
   const container = useRef<any>(null);
   const map = useRef<MapboxGLMap | null>(null);
   const marker = useRef<MapboxGLMarker | null>(null);
-  const routedCoordinates = parseSpotCoordinates(
-    route.params?.latitude,
-    route.params?.longitude
-  );
+  const routedCoordinates = parseSpotCoordinates(route.params?.latitude, route.params?.longitude);
   const [coordinates, setCoordinates] = useState<[number, number]>(
     routedCoordinates ?? NEUTRAL_CENTER
   );
   const [hasCoordinates, setHasCoordinates] = useState(routedCoordinates !== null);
   const [name, setName] = useState('');
-  const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
+  const [difficulty, setDifficulty] = useState<'Beginner' | 'Intermediate' | 'Advanced'>(
+    'Beginner'
+  );
   const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
   const [bustRisk, setBustRisk] = useState<'low' | 'medium' | 'high'>('low');
   const [obstacles, setObstacles] = useState<string[]>([]);
+  const [ratings, setRatings] = useState<SpotRatingValues>({
+    potential: 0,
+    difficulty: 0,
+    quality: 0,
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [duplicateSpot, setDuplicateSpot] = useState<NearbyDuplicateSpot | null>(null);
+  const [photo, setPhoto] = useState<SelectedSpotPhoto | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
   const [manualLatitude, setManualLatitude] = useState(
@@ -81,6 +97,38 @@ export default function AddSpotScreen() {
   const [manualLongitude, setManualLongitude] = useState(
     routedCoordinates ? String(routedCoordinates[0]) : ''
   );
+
+  useEffect(() => {
+    if (!hasCoordinates) {
+      setDuplicateSpot(null);
+      setCheckingDuplicate(false);
+      return;
+    }
+
+    let active = true;
+    setCheckingDuplicate(true);
+    const timer = setTimeout(() => {
+      void spotsService
+        .findNearbyDuplicate(coordinates[1], coordinates[0])
+        .then(({ data, error }) => {
+          if (!active) return;
+          if (error) {
+            Logger.warn('Duplicate spot pre-check failed', { error });
+            setDuplicateSpot(null);
+            return;
+          }
+          setDuplicateSpot(data);
+        })
+        .finally(() => {
+          if (active) setCheckingDuplicate(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [coordinates, hasCoordinates]);
 
   useEffect(() => {
     const mapbox = window.mapboxgl;
@@ -120,9 +168,7 @@ export default function AddSpotScreen() {
         if (marker.current) {
           marker.current.setLngLat(next);
         } else {
-          marker.current = new mapbox.Marker({ color: ORANGE })
-            .setLngLat(next)
-            .addTo(createdMap);
+          marker.current = new mapbox.Marker({ color: ORANGE }).setLngLat(next).addTo(createdMap);
         }
       });
       map.current = createdMap;
@@ -191,6 +237,20 @@ export default function AddSpotScreen() {
     map.current?.flyTo({ center: next, zoom: 16 });
   };
 
+  const selectPhoto = async () => {
+    setPickingPhoto(true);
+    try {
+      const selected = await chooseSpotPhoto();
+      if (selected) setPhoto(selected);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not choose that photo.';
+      Logger.warn('Web spot photo selection failed', { message });
+      Alert.alert('Photo not selected', message);
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
   const submit = async () => {
     if (!user) return;
     if (!name.trim()) {
@@ -198,7 +258,24 @@ export default function AddSpotScreen() {
       return;
     }
     if (!hasCoordinates) {
-      Alert.alert('Location required', 'Tap the map or use your current location before saving this spot.');
+      Alert.alert(
+        'Location required',
+        'Tap the map or use your current location before saving this spot.'
+      );
+      return;
+    }
+    if (duplicateSpot) {
+      Alert.alert(
+        'Spot already exists',
+        `${duplicateSpot.name} is already pinned here. Open that spot instead of adding a duplicate.`
+      );
+      return;
+    }
+    if (!hasCompleteSpotRating(ratings)) {
+      Alert.alert(
+        'Ratings required',
+        "Rate the spot's potential, difficulty, and overall quality."
+      );
       return;
     }
     setSubmitting(true);
@@ -212,10 +289,10 @@ export default function AddSpotScreen() {
         added_by: user.id,
         spot_type: spotType,
         bust_risk: bustRisk,
+        ratings,
       });
       if (error) throw error;
-      const createdId =
-        typeof (data as any)?.id === 'string' ? (data as any).id.trim() : '';
+      const createdId = typeof (data as any)?.id === 'string' ? (data as any).id.trim() : '';
       if (!createdId) {
         throw new Error('The saved spot did not return an ID.');
       }
@@ -229,25 +306,67 @@ export default function AddSpotScreen() {
         latitude: coordinates[1],
         longitude: coordinates[0],
         addedBy: user.id,
+        ratings,
       });
       if (persistenceError) throw new Error(persistenceError);
+
+      if (photo) {
+        try {
+          await persistPrimarySpotPhoto({
+            photo,
+            spotId: createdId,
+            spotName: name.trim(),
+            userId: user.id,
+          });
+        } catch (photoError) {
+          Logger.error('Web spot photo persistence failed after spot save', photoError);
+          Alert.alert(
+            'Spot saved—photo not uploaded',
+            'The spot is on the live map. Open it to try adding the photo again.',
+            [
+              {
+                text: 'Open spot',
+                onPress: () => navigation.navigate('SpotDetail', { spotId: createdId }),
+              },
+            ]
+          );
+          return;
+        }
+      }
       Alert.alert('Spot added', 'Your spot was saved to SkateQuest.', [
-        { text: 'Done', onPress: () => navigation.goBack() },
+        {
+          text: 'Open spot',
+          onPress: () => navigation.navigate('SpotDetail', { spotId: createdId }),
+        },
       ]);
     } catch (error) {
       Logger.error('Web spot creation failed', error);
-      Alert.alert('Spot not saved', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Spot not saved', getSpotCreationErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const readyToSave = !!name.trim() && hasCoordinates && !submitting;
+  const readyToSave =
+    !!name.trim() &&
+    hasCoordinates &&
+    hasCompleteSpotRating(ratings) &&
+    !checkingDuplicate &&
+    !duplicateSpot &&
+    !submitting;
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={s.container}
+      contentContainerStyle={s.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={s.topBar}>
-        <Pressable style={s.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Go back">
+        <Pressable
+          style={s.backButton}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Go back"
+        >
           <ArrowLeft color={PAPER} size={20} strokeWidth={2.8} />
         </Pressable>
         <View style={s.modePill}>
@@ -265,7 +384,10 @@ export default function AddSpotScreen() {
         </View>
         <Text style={s.heroKicker}>REAL-WORLD MAP // COMMUNITY</Text>
         <Text style={s.heroTitle}>DROP A{`\n`}REAL SPOT.</Text>
-        <Text style={s.heroSub}>Pin the actual place, tell skaters what is there, and put it on the SkateQuest map.</Text>
+        <Text style={s.heroSub}>
+          Drop the pin on the actual place—even when you are not there. GPS is only a shortcut for
+          placing it.
+        </Text>
       </View>
 
       <View style={s.mapShell}>
@@ -315,7 +437,9 @@ export default function AddSpotScreen() {
               <View style={[s.locationBadge, hasCoordinates && s.locationBadgeReady]}>
                 <MapPin color={hasCoordinates ? INK : PAPER} size={16} />
                 <View style={s.locationBadgeCopy}>
-                  <Text style={[s.locationBadgeLabel, hasCoordinates && s.locationBadgeLabelReady]}>PIN STATUS</Text>
+                  <Text style={[s.locationBadgeLabel, hasCoordinates && s.locationBadgeLabelReady]}>
+                    PIN STATUS
+                  </Text>
                   <Text style={[s.locationBadgeValue, hasCoordinates && s.locationBadgeValueReady]}>
                     {hasCoordinates ? 'REAL LOCATION LOCKED' : 'CHOOSE A LOCATION'}
                   </Text>
@@ -343,10 +467,29 @@ export default function AddSpotScreen() {
         )}
       </View>
 
+      {duplicateSpot ? (
+        <View style={s.duplicateCard}>
+          <MapPin color={INK} size={20} strokeWidth={2.8} />
+          <View style={s.duplicateCopy}>
+            <Text style={s.duplicateKicker}>SPOT ALREADY PINNED</Text>
+            <Text style={s.duplicateText}>{duplicateSpot.name} is already at this location.</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('SpotDetail', { spotId: duplicateSpot.id })}
+            style={s.duplicateButton}
+          >
+            <Text style={s.duplicateButtonText}>OPEN</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {locationError ? (
         <View style={s.errorCard}>
           <Text style={s.errorKicker}>LOCATION DIDN'T LOCK</Text>
-          <Text selectable style={s.errorText}>{locationError}</Text>
+          <Text selectable style={s.errorText}>
+            {locationError}
+          </Text>
           <Pressable style={s.errorRetry} onPress={() => void locate()}>
             <Crosshair color={INK} size={15} />
             <Text style={s.errorRetryText}>TRY MY LOCATION AGAIN</Text>
@@ -356,7 +499,11 @@ export default function AddSpotScreen() {
 
       <View style={s.coordinateRail}>
         <View style={[s.coordinateMark, hasCoordinates && s.coordinateMarkReady]}>
-          {hasCoordinates ? <Check color={INK} size={18} strokeWidth={3} /> : <Crosshair color={PAPER} size={18} />}
+          {hasCoordinates ? (
+            <Check color={INK} size={18} strokeWidth={3} />
+          ) : (
+            <Crosshair color={PAPER} size={18} />
+          )}
         </View>
         <View style={s.coordinateCopy}>
           <Text style={s.coordinateLabel}>MAP COORDINATES</Text>
@@ -370,7 +517,9 @@ export default function AddSpotScreen() {
 
       <View style={s.formCard}>
         <View style={s.sectionHead}>
-          <View style={s.sectionNumber}><Text style={s.sectionNumberText}>01</Text></View>
+          <View style={s.sectionNumber}>
+            <Text style={s.sectionNumberText}>01</Text>
+          </View>
           <View style={s.sectionCopy}>
             <Text style={s.sectionKicker}>NAME + IDENTITY</Text>
             <Text style={s.sectionTitle}>What spot is this?</Text>
@@ -378,7 +527,12 @@ export default function AddSpotScreen() {
           <Sparkles color={ORANGE} size={20} />
         </View>
 
-        <Field label="SPOT NAME *" value={name} onChangeText={setName} placeholder="Downtown ledges" />
+        <Field
+          label="SPOT NAME *"
+          value={name}
+          onChangeText={setName}
+          placeholder="Downtown ledges"
+        />
 
         <Choice
           label="SPOT TYPE"
@@ -400,16 +554,37 @@ export default function AddSpotScreen() {
         />
       </View>
 
+      <View style={s.ratingCard}>
+        <View style={s.sectionHead}>
+          <View style={[s.sectionNumber, s.sectionNumberAcid]}>
+            <Text style={s.sectionNumberText}>02</Text>
+          </View>
+          <View style={s.sectionCopy}>
+            <Text style={s.sectionKicker}>YOUR FIRST READ</Text>
+            <Text style={s.sectionTitle}>Rate the spot</Text>
+          </View>
+        </View>
+        <Text style={s.sectionBodyDark}>
+          Your rating starts the community score. Other skaters can update the averages later.
+        </Text>
+        <SpotRatingFields value={ratings} onChange={setRatings} theme="light" />
+      </View>
+
       <View style={s.obstacleCard}>
         <View style={s.sectionHead}>
-          <View style={[s.sectionNumber, s.sectionNumberBlue]}><Text style={s.sectionNumberText}>02</Text></View>
+          <View style={[s.sectionNumber, s.sectionNumberBlue]}>
+            <Text style={s.sectionNumberText}>03</Text>
+          </View>
           <View style={s.sectionCopy}>
             <Text style={s.sectionKicker}>WHAT'S SKATEABLE</Text>
             <Text style={[s.sectionTitle, s.sectionTitleLight]}>Obstacles</Text>
           </View>
           <Text style={s.countSticker}>{obstacles.length}</Text>
         </View>
-        <Text style={s.sectionBody}>Tag only what is actually there. Skaters use this to know whether a spot is worth the trip.</Text>
+        <Text style={s.sectionBody}>
+          Tag only what is actually there. Skaters use this to know whether a spot is worth the
+          trip.
+        </Text>
         <View style={s.chipWrap}>
           {OBSTACLES.map(item => {
             const active = obstacles.includes(item);
@@ -426,11 +601,53 @@ export default function AddSpotScreen() {
                 style={[s.obstacleChip, active && s.obstacleChipActive]}
               >
                 {active ? <Check color={INK} size={13} strokeWidth={3} /> : null}
-                <Text style={[s.obstacleChipText, active && s.obstacleChipTextActive]}>{item.toUpperCase()}</Text>
+                <Text style={[s.obstacleChipText, active && s.obstacleChipTextActive]}>
+                  {item.toUpperCase()}
+                </Text>
               </Pressable>
             );
           })}
         </View>
+      </View>
+
+      <View style={s.photoCard}>
+        <View style={s.sectionHead}>
+          <View style={[s.sectionNumber, s.sectionNumberOrange]}>
+            <Camera color={INK} size={20} strokeWidth={2.8} />
+          </View>
+          <View style={s.sectionCopy}>
+            <Text style={s.sectionKicker}>SHOW THE REAL PLACE</Text>
+            <Text style={s.sectionTitle}>Spot photo</Text>
+          </View>
+        </View>
+        <Text style={s.sectionBodyDark}>
+          Optional, but useful. The photo becomes the spot's primary image after its database link
+          is verified.
+        </Text>
+        {photo ? (
+          <View style={s.photoPreviewWrap}>
+            <Image source={{ uri: photo.uri }} style={s.photoPreview} resizeMode="cover" />
+            <View style={s.photoPreviewCopy}>
+              <Text numberOfLines={1} style={s.photoSelectedText}>
+                {photo.fileName || 'Spot photo selected'}
+              </Text>
+              <Pressable onPress={() => setPhoto(null)} style={s.photoRemoveButton}>
+                <Text style={s.photoRemoveText}>REMOVE</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose a spot photo"
+            disabled={pickingPhoto || submitting}
+            onPress={() => void selectPhoto()}
+            style={s.photoChooseButton}
+          >
+            {pickingPhoto ? <ActivityIndicator color={INK} /> : <Camera color={INK} size={19} />}
+            <Text style={s.photoChooseText}>CHOOSE PHOTO</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={s.integrityCard}>
@@ -439,7 +656,10 @@ export default function AddSpotScreen() {
         </View>
         <View style={s.integrityCopy}>
           <Text style={s.integrityTitle}>REAL SPOT RULE</Text>
-          <Text style={s.integrityText}>SkateQuest will not invent a location for a submission. The pin you choose is the location saved.</Text>
+          <Text style={s.integrityText}>
+            The pin you choose becomes the shared map location. A spot already pinned within 25
+            meters cannot be added again.
+          </Text>
         </View>
       </View>
 
@@ -452,10 +672,14 @@ export default function AddSpotScreen() {
           <ActivityIndicator color={INK} />
         ) : (
           <>
-            <View style={s.saveIcon}><Plus color={INK} size={21} strokeWidth={3} /></View>
+            <View style={s.saveIcon}>
+              <Plus color={INK} size={21} strokeWidth={3} />
+            </View>
             <View style={s.saveCopy}>
-              <Text style={s.saveTitle}>Save spot</Text>
-              <Text style={s.saveSub}>{readyToSave ? 'ADD IT TO THE LIVE MAP' : 'NAME + REAL LOCATION REQUIRED'}</Text>
+              <Text style={s.saveTitle}>{photo ? 'Save spot + photo' : 'Save spot'}</Text>
+              <Text style={s.saveSub}>
+                {readyToSave ? 'ADD IT TO THE LIVE MAP' : 'NAME + PIN + RATINGS REQUIRED'}
+              </Text>
             </View>
             <ArrowRight color={INK} size={20} strokeWidth={3} />
           </>
@@ -503,9 +727,15 @@ function Choice({
         {values.map(item => {
           const active = value === item;
           return (
-            <Pressable key={item} onPress={() => onChange(item)} style={[s.choiceChip, active && s.choiceChipActive]}>
+            <Pressable
+              key={item}
+              onPress={() => onChange(item)}
+              style={[s.choiceChip, active && s.choiceChipActive]}
+            >
               {active ? <Check color={INK} size={12} strokeWidth={3} /> : null}
-              <Text style={[s.choiceChipText, active && s.choiceChipTextActive]}>{item.toUpperCase()}</Text>
+              <Text style={[s.choiceChipText, active && s.choiceChipTextActive]}>
+                {item.toUpperCase()}
+              </Text>
             </Pressable>
           );
         })}
@@ -516,97 +746,554 @@ function Choice({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
-  content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 54 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  backButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641', alignItems: 'center', justifyContent: 'center' },
-  modePill: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 35, paddingHorizontal: 10, borderRadius: 999, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641' },
+  content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 54,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#11151B',
+    borderWidth: 1,
+    borderColor: '#303641',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 35,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#11151B',
+    borderWidth: 1,
+    borderColor: '#303641',
+  },
   modePillText: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 1 },
 
-  hero: { minHeight: 245, borderRadius: 30, padding: 19, backgroundColor: '#11141A', borderWidth: 1, borderColor: '#2A2E36', overflow: 'hidden', position: 'relative', justifyContent: 'flex-end' },
-  heroOrange: { position: 'absolute', width: 280, height: 88, right: -92, top: 30, backgroundColor: ORANGE, transform: [{ rotate: '29deg' }] },
-  heroAcid: { position: 'absolute', width: 260, height: 27, left: -90, bottom: 44, backgroundColor: ACID, transform: [{ rotate: '-11deg' }] },
-  heroBlue: { position: 'absolute', width: 150, height: 150, borderRadius: 75, right: 22, bottom: -42, backgroundColor: BLUE, opacity: 0.15 },
-  heroStamp: { position: 'absolute', top: 18, left: 18, width: 62, height: 62, borderRadius: 18, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  hero: {
+    minHeight: 245,
+    borderRadius: 30,
+    padding: 19,
+    backgroundColor: '#11141A',
+    borderWidth: 1,
+    borderColor: '#2A2E36',
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'flex-end',
+  },
+  heroOrange: {
+    position: 'absolute',
+    width: 280,
+    height: 88,
+    right: -92,
+    top: 30,
+    backgroundColor: ORANGE,
+    transform: [{ rotate: '29deg' }],
+  },
+  heroAcid: {
+    position: 'absolute',
+    width: 260,
+    height: 27,
+    left: -90,
+    bottom: 44,
+    backgroundColor: ACID,
+    transform: [{ rotate: '-11deg' }],
+  },
+  heroBlue: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    right: 22,
+    bottom: -42,
+    backgroundColor: BLUE,
+    opacity: 0.15,
+  },
+  heroStamp: {
+    position: 'absolute',
+    top: 18,
+    left: 18,
+    width: 62,
+    height: 62,
+    borderRadius: 18,
+    backgroundColor: ACID,
+    borderWidth: 3,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-5deg' }],
+  },
   heroKicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.7 },
-  heroTitle: { color: PAPER, fontSize: 44, lineHeight: 39, fontWeight: '900', letterSpacing: -2.5, marginTop: 5 },
-  heroSub: { color: '#B4BBC5', fontSize: 11.5, lineHeight: 17, fontWeight: '700', maxWidth: 390, marginTop: 8 },
+  heroTitle: {
+    color: PAPER,
+    fontSize: 44,
+    lineHeight: 39,
+    fontWeight: '900',
+    letterSpacing: -2.5,
+    marginTop: 5,
+  },
+  heroSub: {
+    color: '#B4BBC5',
+    fontSize: 11.5,
+    lineHeight: 17,
+    fontWeight: '700',
+    maxWidth: 390,
+    marginTop: 8,
+  },
 
-  mapShell: { height: 390, marginTop: 10, borderRadius: 26, overflow: 'hidden', backgroundColor: '#111827', borderWidth: 2, borderColor: INK, position: 'relative' },
+  mapShell: {
+    height: 390,
+    marginTop: 10,
+    borderRadius: 26,
+    overflow: 'hidden',
+    backgroundColor: '#111827',
+    borderWidth: 2,
+    borderColor: INK,
+    position: 'relative',
+  },
   map: { flex: 1 },
   mapFallback: { flex: 1, padding: 18, alignItems: 'center', justifyContent: 'center' },
-  mapFallbackMark: { width: 58, height: 58, borderRadius: 17, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
-  mapFallbackKicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.2, marginTop: 12 },
-  mapFallbackText: { color: PAPER, maxWidth: 430, textAlign: 'center', fontSize: 12, lineHeight: 17, fontWeight: '800', marginTop: 5 },
-  mapFallbackHelp: { color: MUTED, maxWidth: 430, textAlign: 'center', fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 5 },
-  fallbackLocateButton: { minHeight: 42, marginTop: 12, borderRadius: 12, paddingHorizontal: 12, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  mapFallbackMark: {
+    width: 58,
+    height: 58,
+    borderRadius: 17,
+    backgroundColor: ORANGE,
+    borderWidth: 2,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-4deg' }],
+  },
+  mapFallbackKicker: {
+    color: ORANGE,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    marginTop: 12,
+  },
+  mapFallbackText: {
+    color: PAPER,
+    maxWidth: 430,
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  mapFallbackHelp: {
+    color: MUTED,
+    maxWidth: 430,
+    textAlign: 'center',
+    fontSize: 10,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+  fallbackLocateButton: {
+    minHeight: 42,
+    marginTop: 12,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: ORANGE,
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   fallbackLocateText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
-  manualCoordinateRow: { width: '100%', maxWidth: 430, flexDirection: 'row', gap: 8, marginTop: 11 },
-  coordinateInput: { flex: 1, minHeight: 43, borderRadius: 11, paddingHorizontal: 11, backgroundColor: '#E9E4DA', borderWidth: 1.5, borderColor: '#CFC8BB', color: INK, fontSize: 12, fontWeight: '700' },
-  lockCoordinatesButton: { minHeight: 38, marginTop: 8, borderRadius: 11, paddingHorizontal: 11, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  manualCoordinateRow: {
+    width: '100%',
+    maxWidth: 430,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 11,
+  },
+  coordinateInput: {
+    flex: 1,
+    minHeight: 43,
+    borderRadius: 11,
+    paddingHorizontal: 11,
+    backgroundColor: '#E9E4DA',
+    borderWidth: 1.5,
+    borderColor: '#CFC8BB',
+    color: INK,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  lockCoordinatesButton: {
+    minHeight: 38,
+    marginTop: 8,
+    borderRadius: 11,
+    paddingHorizontal: 11,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   lockCoordinatesText: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.7 },
-  mapTopHud: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  locationBadge: { flex: 1, minHeight: 52, borderRadius: 16, paddingHorizontal: 11, backgroundColor: 'rgba(7,8,11,0.86)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  mapTopHud: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  locationBadge: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    backgroundColor: 'rgba(7,8,11,0.86)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   locationBadgeReady: { backgroundColor: ACID, borderWidth: 2, borderColor: INK },
   locationBadgeCopy: { flex: 1 },
   locationBadgeLabel: { color: '#7D8795', fontSize: 6.5, fontWeight: '900', letterSpacing: 0.8 },
   locationBadgeLabelReady: { color: 'rgba(7,8,11,0.52)' },
-  locationBadgeValue: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 0.7, marginTop: 1 },
+  locationBadgeValue: {
+    color: PAPER,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    marginTop: 1,
+  },
   locationBadgeValueReady: { color: INK },
-  locateButton: { width: 52, height: 52, borderRadius: 16, backgroundColor: ORANGE, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  locateButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: ORANGE,
+    borderWidth: 2,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mapBottomHud: { position: 'absolute', left: 12, right: 12, bottom: 12, alignItems: 'flex-start' },
-  mapHint: { minHeight: 38, borderRadius: 12, paddingHorizontal: 10, backgroundColor: 'rgba(7,8,11,0.88)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', flexDirection: 'row', alignItems: 'center', gap: 7 },
+  mapHint: {
+    minHeight: 38,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(7,8,11,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   mapHintText: { color: PAPER, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.8 },
 
-  errorCard: { marginTop: 9, borderRadius: 16, padding: 12, backgroundColor: '#3A201D', borderWidth: 1, borderColor: '#754237' },
+  errorCard: {
+    marginTop: 9,
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#3A201D',
+    borderWidth: 1,
+    borderColor: '#754237',
+  },
   errorKicker: { color: '#FFB19E', fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
   errorText: { color: '#F5CEC5', fontSize: 10.5, lineHeight: 16, marginTop: 4 },
-  errorRetry: { alignSelf: 'flex-start', minHeight: 35, borderRadius: 10, paddingHorizontal: 9, backgroundColor: ORANGE, borderWidth: 1, borderColor: INK, marginTop: 9, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  errorRetry: {
+    alignSelf: 'flex-start',
+    minHeight: 35,
+    borderRadius: 10,
+    paddingHorizontal: 9,
+    backgroundColor: ORANGE,
+    borderWidth: 1,
+    borderColor: INK,
+    marginTop: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   errorRetryText: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
+  duplicateCard: {
+    minHeight: 70,
+    marginTop: 9,
+    borderRadius: 16,
+    padding: 11,
+    backgroundColor: '#F4B84A',
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  duplicateCopy: { flex: 1 },
+  duplicateKicker: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.8 },
+  duplicateText: {
+    color: 'rgba(7,8,11,0.72)',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  duplicateButton: {
+    minHeight: 36,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  duplicateButtonText: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 0.6 },
 
-  coordinateRail: { minHeight: 67, marginTop: 10, borderRadius: 18, padding: 11, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  coordinateMark: { width: 42, height: 42, borderRadius: 13, backgroundColor: '#1B222D', alignItems: 'center', justifyContent: 'center' },
+  coordinateRail: {
+    minHeight: 67,
+    marginTop: 10,
+    borderRadius: 18,
+    padding: 11,
+    backgroundColor: '#11151B',
+    borderWidth: 1,
+    borderColor: '#303641',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  coordinateMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: '#1B222D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   coordinateMarkReady: { backgroundColor: ACID },
   coordinateCopy: { flex: 1 },
   coordinateLabel: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1 },
   coordinateValue: { color: PAPER, fontSize: 10.5, fontWeight: '800', marginTop: 3 },
 
-  formCard: { marginTop: 10, borderRadius: 23, padding: 15, backgroundColor: PAPER, borderWidth: 2, borderColor: INK },
-  obstacleCard: { marginTop: 10, borderRadius: 23, padding: 15, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641' },
+  formCard: {
+    marginTop: 10,
+    borderRadius: 23,
+    padding: 15,
+    backgroundColor: PAPER,
+    borderWidth: 2,
+    borderColor: INK,
+  },
+  ratingCard: {
+    marginTop: 10,
+    borderRadius: 23,
+    padding: 15,
+    backgroundColor: PAPER,
+    borderWidth: 2,
+    borderColor: INK,
+    gap: 14,
+  },
+  obstacleCard: {
+    marginTop: 10,
+    borderRadius: 23,
+    padding: 15,
+    backgroundColor: '#11151B',
+    borderWidth: 1,
+    borderColor: '#303641',
+  },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sectionNumber: { width: 39, height: 39, borderRadius: 12, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  sectionNumber: {
+    width: 39,
+    height: 39,
+    borderRadius: 12,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-4deg' }],
+  },
+  sectionNumberAcid: { backgroundColor: ACID },
   sectionNumberBlue: { backgroundColor: BLUE },
+  sectionNumberOrange: { backgroundColor: ORANGE },
   sectionNumberText: { color: INK, fontSize: 10, fontWeight: '900' },
   sectionCopy: { flex: 1 },
   sectionKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
   sectionTitle: { color: INK, fontSize: 17, fontWeight: '900', letterSpacing: -0.4, marginTop: 1 },
   sectionTitleLight: { color: PAPER },
   sectionBody: { color: MUTED, fontSize: 10.5, lineHeight: 16, fontWeight: '700', marginTop: 11 },
-  countSticker: { minWidth: 34, height: 34, borderRadius: 11, backgroundColor: ACID, color: INK, textAlign: 'center', lineHeight: 34, fontSize: 11, fontWeight: '900', transform: [{ rotate: '4deg' }] },
+  sectionBodyDark: { color: '#59616D', fontSize: 10.5, lineHeight: 16, fontWeight: '700' },
+  countSticker: {
+    minWidth: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: ACID,
+    color: INK,
+    textAlign: 'center',
+    lineHeight: 34,
+    fontSize: 11,
+    fontWeight: '900',
+    transform: [{ rotate: '4deg' }],
+  },
 
   field: { marginTop: 14 },
   fieldLabel: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
-  input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 13, backgroundColor: '#E9E4DA', borderWidth: 1.5, borderColor: '#CFC8BB', color: INK, fontSize: 14, fontWeight: '700' },
+  input: {
+    minHeight: 52,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    backgroundColor: '#E9E4DA',
+    borderWidth: 1.5,
+    borderColor: '#CFC8BB',
+    color: INK,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   choiceBlock: { marginTop: 14 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  choiceChip: { minHeight: 36, borderRadius: 11, paddingHorizontal: 10, borderWidth: 1, borderColor: '#CFC8BB', backgroundColor: '#E9E4DA', flexDirection: 'row', alignItems: 'center', gap: 5 },
+  choiceChip: {
+    minHeight: 36,
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#CFC8BB',
+    backgroundColor: '#E9E4DA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   choiceChipActive: { backgroundColor: ACID, borderColor: INK, borderWidth: 1.5 },
   choiceChipText: { color: '#6E6A64', fontSize: 7.5, fontWeight: '900', letterSpacing: 0.6 },
   choiceChipTextActive: { color: INK },
-  obstacleChip: { minHeight: 36, borderRadius: 11, paddingHorizontal: 10, borderWidth: 1, borderColor: '#303641', backgroundColor: '#1A2029', flexDirection: 'row', alignItems: 'center', gap: 5 },
+  obstacleChip: {
+    minHeight: 36,
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#303641',
+    backgroundColor: '#1A2029',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   obstacleChipActive: { backgroundColor: ACID, borderColor: INK, borderWidth: 1.5 },
   obstacleChipText: { color: '#96A0AE', fontSize: 7.5, fontWeight: '900', letterSpacing: 0.6 },
   obstacleChipTextActive: { color: INK },
 
-  integrityCard: { minHeight: 78, marginTop: 10, borderRadius: 18, padding: 11, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  integrityMark: { width: 44, height: 44, borderRadius: 13, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  photoCard: {
+    marginTop: 10,
+    borderRadius: 23,
+    padding: 15,
+    backgroundColor: PAPER,
+    borderWidth: 2,
+    borderColor: INK,
+    gap: 12,
+  },
+  photoChooseButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    paddingHorizontal: 13,
+    backgroundColor: BLUE,
+    borderWidth: 1.5,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  photoChooseText: { color: INK, fontSize: 8.5, fontWeight: '900', letterSpacing: 0.8 },
+  photoPreviewWrap: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: INK,
+    backgroundColor: '#E9E4DA',
+  },
+  photoPreview: { width: '100%', height: 180, backgroundColor: '#D4CEC2' },
+  photoPreviewCopy: {
+    minHeight: 48,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  photoSelectedText: { flex: 1, color: INK, fontSize: 10, fontWeight: '800' },
+  photoRemoveButton: {
+    minHeight: 32,
+    borderRadius: 9,
+    paddingHorizontal: 9,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveText: { color: PAPER, fontSize: 7, fontWeight: '900', letterSpacing: 0.6 },
+
+  integrityCard: {
+    minHeight: 78,
+    marginTop: 10,
+    borderRadius: 18,
+    padding: 11,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  integrityMark: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-4deg' }],
+  },
   integrityCopy: { flex: 1 },
   integrityTitle: { color: INK, fontSize: 8.5, fontWeight: '900', letterSpacing: 0.8 },
-  integrityText: { color: 'rgba(7,8,11,0.68)', fontSize: 9.5, lineHeight: 14, fontWeight: '700', marginTop: 3 },
+  integrityText: {
+    color: 'rgba(7,8,11,0.68)',
+    fontSize: 9.5,
+    lineHeight: 14,
+    fontWeight: '700',
+    marginTop: 3,
+  },
 
-  saveButton: { minHeight: 66, marginTop: 10, borderRadius: 18, backgroundColor: ACID, borderWidth: 2, borderColor: INK, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  saveButton: {
+    minHeight: 66,
+    marginTop: 10,
+    borderRadius: 18,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   saveButtonDisabled: { opacity: 0.42 },
-  saveIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  saveIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-4deg' }],
+  },
   saveCopy: { flex: 1 },
   saveTitle: { color: INK, fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
-  saveSub: { color: 'rgba(7,8,11,0.58)', fontSize: 6.5, fontWeight: '900', letterSpacing: 0.6, marginTop: 2 },
+  saveSub: {
+    color: 'rgba(7,8,11,0.58)',
+    fontSize: 6.5,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginTop: 2,
+  },
 });

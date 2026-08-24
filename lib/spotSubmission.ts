@@ -37,6 +37,16 @@ export interface PersistedSpotExpectation {
   latitude: number;
   longitude: number;
   addedBy: string;
+  ratings?: {
+    potential: number;
+    difficulty: number;
+    quality: number;
+  };
+}
+
+function matchesRating(value: unknown, expected: number): boolean {
+  const rating = parseFiniteCoordinate(value);
+  return rating !== null && Math.abs(rating - expected) <= COORDINATE_EPSILON;
 }
 
 export function getSpotPersistenceError(
@@ -69,5 +79,34 @@ export function getSpotPersistenceError(
     return 'The saved spot coordinates could not be verified.';
   }
 
+  if (expected.ratings) {
+    if (!matchesRating(row.potential_rating, expected.ratings.potential)) {
+      return 'The saved spot potential rating could not be verified.';
+    }
+    if (!matchesRating(row.difficulty_rating, expected.ratings.difficulty)) {
+      return 'The saved spot difficulty rating could not be verified.';
+    }
+    if (!matchesRating(row.rating, expected.ratings.quality)) {
+      return 'The saved spot quality rating could not be verified.';
+    }
+    const ratingCount = parseFiniteCoordinate(row.rating_count);
+    if (ratingCount === null || ratingCount < 1) {
+      return 'The saved spot rating count could not be verified.';
+    }
+  }
+
   return null;
+}
+
+export function getSpotCreationErrorMessage(error: unknown): string {
+  if (!error || typeof error !== 'object') return 'Please try again.';
+
+  const record = error as Record<string, unknown>;
+  const code = typeof record.code === 'string' ? record.code : '';
+  const message = typeof record.message === 'string' ? record.message : '';
+  if (code === '23505' || message.toLowerCase().includes('already exists here')) {
+    return message || 'A skate spot already exists at this pin. Open the existing spot instead.';
+  }
+
+  return message || 'Please try again.';
 }

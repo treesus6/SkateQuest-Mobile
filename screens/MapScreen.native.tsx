@@ -245,6 +245,19 @@ export default function MapScreen() {
     }
   };
 
+  const openAddSpot = async () => {
+    let mapCenter: [number, number] | null = null;
+    try {
+      const currentCenter = await mapRef.current?.getCenter();
+      if (currentCenter && currentCenter.length >= 2) {
+        mapCenter = [currentCenter[0], currentCenter[1]];
+      }
+    } catch {
+      mapCenter = null;
+    }
+    navigation.navigate('AddSpot', mapCenter ? { latitude: mapCenter[1], longitude: mapCenter[0] } : {});
+  };
+
   const toggleSave = async (spot: SkateSpot) => {
     const next = new Set(savedSpotIds);
     if (next.has(spot.id)) next.delete(spot.id);
@@ -715,7 +728,7 @@ export default function MapScreen() {
 
       <TouchableOpacity
         className="absolute bottom-6 right-5 bg-[#D2673D] rounded-full w-14 h-14 justify-center items-center shadow-lg"
-        onPress={() => navigation.navigate('AddSpot', {})}
+        onPress={() => void openAddSpot()}
         accessibilityRole="button"
         accessibilityLabel="Add a skate spot"
       >

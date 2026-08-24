@@ -14,6 +14,10 @@ import {
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
 import { ChevronLeft, MessageSquare, X, PenLine, MapPin, Users, Sparkles } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
+import { spotsService } from '../lib/spotsService'
+import { useAuthStore } from '../stores/useAuthStore'
+import SpotRatingFields, { hasCompleteSpotRating } from '../components/SpotRatingFields'
+import type { SpotRatingValues } from '../components/SpotRatingFields'
 
 type SpotReviewsRouteParams = {
   SpotReviews: { spotId: string; spotName: string }
@@ -47,6 +51,7 @@ export default function SpotReviewsScreen() {
   const navigation = useNavigation()
   const route = useRoute<RouteProp<SpotReviewsRouteParams, 'SpotReviews'>>()
   const { spotId, spotName } = route.params
+  const user = useAuthStore(state => state.user)
 
   const [comments, setComments] = useState<SpotComment[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +60,14 @@ export default function SpotReviewsScreen() {
   const [modalVisible, setModalVisible] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [commentText, setCommentText] = useState('')
+  const [savingRating, setSavingRating] = useState(false)
+  const [rating, setRating] = useState<SpotRatingValues>({ potential: 0, difficulty: 0, quality: 0 })
+  const [ratingSummary, setRatingSummary] = useState({
+    potential: null as number | null,
+    difficulty: null as number | null,
+    quality: null as number | null,
+    count: 0,
+  })
 
   const fetchComments = useCallback(async (silent = false) => {
     try {
@@ -75,15 +88,73 @@ export default function SpotReviewsScreen() {
     }
   }, [spotId])
 
+  const fetchRatingData = useCallback(async () => {
+    const { data: spot, error: spotError } = await supabase
+      .from('skate_spots')
+      .select('potential_rating, difficulty_rating, rating, rating_count')
+      .eq('id', spotId)
+      .single()
+    if (spotError) throw spotError
+
+    setRatingSummary({
+      potential: spot?.potential_rating ?? null,
+      difficulty: spot?.difficulty_rating ?? null,
+      quality: spot?.rating ?? null,
+      count: spot?.rating_count ?? 0,
+    })
+
+    if (!user) {
+      setRating({ potential: 0, difficulty: 0, quality: 0 })
+      return
+    }
+
+    const { data: ownRating, error: ratingError } = await spotsService.getUserRating(spotId, user.id)
+    if (ratingError) throw ratingError
+    setRating(ownRating
+      ? { potential: ownRating.potential, difficulty: ownRating.difficulty, quality: ownRating.quality }
+      : { potential: 0, difficulty: 0, quality: 0 })
+  }, [spotId, user])
+
   useEffect(() => {
-    fetchComments()
-  }, [fetchComments])
+    void fetchComments()
+    void fetchRatingData().catch(err => {
+      setError(err instanceof Error ? err.message : 'Failed to load spot ratings')
+    })
+  }, [fetchComments, fetchRatingData])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await fetchComments(true)
-    setRefreshing(false)
-  }, [fetchComments])
+    try {
+      await Promise.all([fetchComments(true), fetchRatingData()])
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh spot ratings')
+    } finally {
+      setRefreshing(false)
+    }
+  }, [fetchComments, fetchRatingData])
+
+  const handleSaveRating = async () => {
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in before rating a spot.')
+      return
+    }
+    if (!hasCompleteSpotRating(rating)) {
+      Alert.alert('Finish all three ratings', 'Rate potential, difficulty, and overall quality from 1 to 5.')
+      return
+    }
+
+    try {
+      setSavingRating(true)
+      const { error: ratingError } = await spotsService.rate(spotId, rating)
+      if (ratingError) throw ratingError
+      await fetchRatingData()
+      Alert.alert('Rating saved', 'Your rating is now part of the live community score.')
+    } catch (err: unknown) {
+      Alert.alert('Rating not saved', err instanceof Error ? err.message : 'Please try again.')
+    } finally {
+      setSavingRating(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!commentText.trim()) {
@@ -155,6 +226,59 @@ export default function SpotReviewsScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 44 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#D2673D" />}
         >
+          <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#252D39', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+              <Sparkles size={17} color="#D9F34A" />
+              <Text style={{ color: '#F3F4F6', fontSize: 16, fontWeight: '900' }}>Community spot score</Text>
+            </View>
+            <Text style={{ color: '#7B8493', fontSize: 11, lineHeight: 16, marginTop: 5 }}>
+              {ratingSummary.count} {ratingSummary.count === 1 ? 'skater has' : 'skaters have'} rated this spot.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 13 }}>
+              {[
+                ['POTENTIAL', ratingSummary.potential],
+                ['DIFFICULTY', ratingSummary.difficulty],
+                ['QUALITY', ratingSummary.quality],
+              ].map(([label, score]) => (
+                <View key={String(label)} style={{ flex: 1, minHeight: 74, borderRadius: 14, padding: 10, backgroundColor: '#0B1017', borderWidth: 1, borderColor: '#202733' }}>
+                  <Text style={{ color: '#D2673D', fontSize: 8, fontWeight: '900', letterSpacing: 0.6 }}>{label}</Text>
+                  <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 7 }}>
+                    {typeof score === 'number' ? score.toFixed(1) : '—'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={{ height: 1, backgroundColor: '#252D39', marginVertical: 17 }} />
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '900' }}>
+              {ratingSummary.count > 0 && hasCompleteSpotRating(rating) ? 'Update your rating' : 'Rate this spot'}
+            </Text>
+            <Text style={{ color: '#7B8493', fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 13 }}>
+              One rating per skater. You can change yours after skating the spot again.
+            </Text>
+            <SpotRatingFields value={rating} onChange={setRating} />
+            <TouchableOpacity
+              onPress={() => void handleSaveRating()}
+              disabled={savingRating || !user || !hasCompleteSpotRating(rating)}
+              style={{
+                minHeight: 48,
+                marginTop: 16,
+                borderRadius: 14,
+                backgroundColor: savingRating || !user || !hasCompleteSpotRating(rating) ? '#353B45' : '#D9F34A',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {savingRating ? (
+                <ActivityIndicator color="#07080B" />
+              ) : (
+                <Text style={{ color: user ? '#07080B' : '#9CA3AF', fontSize: 13, fontWeight: '900' }}>
+                  {user ? 'SAVE MY RATING' : 'SIGN IN TO RATE'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#252D39', marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <MapPin size={17} color="#D2673D" />

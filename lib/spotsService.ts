@@ -2,6 +2,20 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
+export interface SpotRatingInput {
+  potential: number;
+  difficulty: number;
+  quality: number;
+}
+
+export interface NearbyDuplicateSpot {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  distance_meters: number;
+}
+
 export const spotsService = {
   async getNearby(lat: number, lng: number, radiusMeters: number = 50000) {
     try {
@@ -56,6 +70,7 @@ export const spotsService = {
     added_by: string;
     spot_type?: string;
     bust_risk?: string;
+    ratings: SpotRatingInput;
   }) {
     try {
       const name = spot.name.trim();
@@ -66,21 +81,73 @@ export const spotsService = {
       if (!Number.isFinite(spot.longitude) || spot.longitude < -180 || spot.longitude > 180) {
         throw new Error('Longitude must be between -180 and 180');
       }
-      const payload = {
-        name,
-        latitude: spot.latitude,
-        longitude: spot.longitude,
-        difficulty: spot.difficulty,
-        obstacles: spot.obstacles ?? [],
-        tricks: (spot.tricks ?? []).map(value => value.trim()).filter(Boolean).slice(0, 50),
-        added_by: spot.added_by,
-        spot_type: spot.spot_type,
-        bust_risk: spot.bust_risk,
-      };
-      return await supabase.from('skate_spots').insert([payload]).select().single();
+      for (const rating of Object.values(spot.ratings)) {
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+          throw new Error('Potential, difficulty, and quality ratings must each be from 1 to 5');
+        }
+      }
+      return await supabase
+        .rpc('create_spot_with_rating', {
+          p_name: name,
+          p_latitude: spot.latitude,
+          p_longitude: spot.longitude,
+          p_difficulty: spot.difficulty ?? null,
+          p_obstacles: spot.obstacles ?? [],
+          p_tricks: (spot.tricks ?? []).map(value => value.trim()).filter(Boolean).slice(0, 50),
+          p_spot_type: spot.spot_type ?? null,
+          p_bust_risk: spot.bust_risk ?? null,
+          p_potential_rating: spot.ratings.potential,
+          p_difficulty_rating: spot.ratings.difficulty,
+          p_quality_rating: spot.ratings.quality,
+        })
+        .single();
     } catch (error) {
       Logger.error('spotsService.create failed', error);
       throw new ServiceError('Failed to create spot', 'SPOTS_CREATE_FAILED', error);
+    }
+  },
+
+  async findNearbyDuplicate(
+    lat: number,
+    lng: number,
+    radiusMeters: number = 25
+  ): Promise<{ data: NearbyDuplicateSpot | null; error: unknown | null }> {
+    const { data, error } = await spotsService.getNearby(lat, lng, radiusMeters);
+    if (error) return { data: null, error };
+
+    const duplicate = Array.isArray(data) && data.length > 0
+      ? (data[0] as NearbyDuplicateSpot)
+      : null;
+    return { data: duplicate, error: null };
+  },
+
+  async rate(spotId: string, ratings: SpotRatingInput) {
+    try {
+      return await supabase
+        .rpc('rate_spot', {
+          p_spot_id: spotId,
+          p_potential_rating: ratings.potential,
+          p_difficulty_rating: ratings.difficulty,
+          p_quality_rating: ratings.quality,
+        })
+        .single();
+    } catch (error) {
+      Logger.error('spotsService.rate failed', error);
+      throw new ServiceError('Failed to rate spot', 'SPOTS_RATE_FAILED', error);
+    }
+  },
+
+  async getUserRating(spotId: string, userId: string) {
+    try {
+      return await supabase
+        .from('spot_ratings')
+        .select('potential, difficulty, quality, updated_at')
+        .eq('spot_id', spotId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    } catch (error) {
+      Logger.error('spotsService.getUserRating failed', error);
+      throw new ServiceError('Failed to fetch your spot rating', 'SPOTS_GET_USER_RATING_FAILED', error);
     }
   },
 

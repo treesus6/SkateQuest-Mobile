@@ -1,4 +1,5 @@
 import {
+  getSpotCreationErrorMessage,
   getSpotPersistenceError,
   parseSpotCoordinates,
 } from '../../lib/spotSubmission';
@@ -6,10 +7,7 @@ import type { PersistedSpotExpectation } from '../../lib/spotSubmission';
 
 describe('parseSpotCoordinates', () => {
   it('returns Mapbox longitude/latitude order for valid inputs', () => {
-    expect(parseSpotCoordinates('45.638700', '-122.661500')).toEqual([
-      -122.6615,
-      45.6387,
-    ]);
+    expect(parseSpotCoordinates('45.638700', '-122.661500')).toEqual([-122.6615, 45.6387]);
   });
 
   it('accepts real zero coordinates when zero is explicitly entered', () => {
@@ -81,9 +79,7 @@ describe('getSpotPersistenceError', () => {
   });
 
   it('rejects a missing row', () => {
-    expect(getSpotPersistenceError(null, expected)).toBe(
-      'The saved spot could not be read back.'
-    );
+    expect(getSpotPersistenceError(null, expected)).toBe('The saved spot could not be read back.');
   });
 
   it('rejects mismatched identity fields', () => {
@@ -105,5 +101,49 @@ describe('getSpotPersistenceError', () => {
     expect(
       getSpotPersistenceError({ ...saved, longitude: expected.longitude + 0.01 }, expected)
     ).toBe('The saved spot coordinates could not be verified.');
+  });
+
+  it('verifies the initial potential, difficulty, and quality rating read-back', () => {
+    const ratings = { potential: 5, difficulty: 4, quality: 3 };
+    expect(
+      getSpotPersistenceError(
+        {
+          ...saved,
+          potential_rating: 5,
+          difficulty_rating: 4,
+          rating: 3,
+          rating_count: 1,
+        },
+        { ...expected, ratings }
+      )
+    ).toBeNull();
+
+    expect(
+      getSpotPersistenceError(
+        {
+          ...saved,
+          potential_rating: 5,
+          difficulty_rating: 2,
+          rating: 3,
+          rating_count: 1,
+        },
+        { ...expected, ratings }
+      )
+    ).toBe('The saved spot difficulty rating could not be verified.');
+  });
+});
+
+describe('getSpotCreationErrorMessage', () => {
+  it('keeps the existing spot name from the duplicate-pin database guard', () => {
+    expect(
+      getSpotCreationErrorMessage({
+        code: '23505',
+        message: 'A skate spot already exists here: Burnside Skatepark',
+      })
+    ).toBe('A skate spot already exists here: Burnside Skatepark');
+  });
+
+  it('returns a safe fallback for an unknown thrown value', () => {
+    expect(getSpotCreationErrorMessage('offline')).toBe('Please try again.');
   });
 });

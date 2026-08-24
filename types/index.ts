@@ -54,6 +54,9 @@ export interface SkateSpot {
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
   tricks?: string[];
   rating?: number;
+  potential_rating?: number;
+  difficulty_rating?: number;
+  rating_count?: number;
   image_url?: string;
   added_by?: string;
   created_at?: string;
