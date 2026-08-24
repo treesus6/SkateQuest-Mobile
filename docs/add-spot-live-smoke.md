@@ -1,6 +1,6 @@
 # Add Spot live smoke
 
-Use the deployed web app for these runtime-only checks after CI passes.
+Use the deployed web app for these runtime-only checks after CI passes and the latest commit is deployed.
 
 - Open `/add-spot` and confirm the route renders.
 - Tap the map and confirm the pin and displayed coordinates move to the tapped location.
