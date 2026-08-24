@@ -64,7 +64,10 @@ describe('web/native platform selection', () => {
     );
     const appConfig = fs.readFileSync(path.join(__dirname, '..', 'app.config.js'), 'utf8');
 
-    expect(web).toContain('SkateQuest is still in beta.');
+    expect(web).toContain('SkateQuest Beta');
+    expect(web).toContain('Report a bug');
+    expect(web).toContain('Dismiss beta notice');
+    expect(web).toContain('sessionStorage');
     expect(native).toContain("Platform.OS !== 'android'");
     expect(native).toContain('SkateQuest Android is still in beta.');
     expect(base).toContain("export { default } from './BetaNotice.native'");
