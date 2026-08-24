@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
+import { sessionsService } from './sessionsService';
 
 export interface Event {
   id: string;
@@ -11,14 +12,17 @@ export interface Event {
   time: string;
   created_by: string;
   attendee_count: number;
+  is_attending: boolean;
 }
 
 export const eventsService = {
-  async getUpcoming() {
+  async getUpcoming(userId?: string) {
     try {
       const result = await supabase
         .from('skate_sessions')
-        .select('id, title, description, spot_id, scheduled_time, creator_id, participants')
+        .select(
+          'id, title, description, spot_id, spot_name, scheduled_time, creator_id, participants'
+        )
         .gte('scheduled_time', new Date().toISOString())
         .order('scheduled_time', { ascending: true });
 
@@ -32,11 +36,14 @@ export const eventsService = {
             id: row.id,
             title: row.title,
             description: row.description,
-            location: row.spot_id ?? 'Location TBD',
+            location: row.spot_name ?? row.spot_id ?? 'Location TBD',
             date: scheduled.toISOString().split('T')[0],
             time: scheduled.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
             created_by: row.creator_id,
             attendee_count: (row.participants as string[] | null)?.length ?? 0,
+            is_attending: userId
+              ? ((row.participants as string[] | null) ?? []).includes(userId)
+              : false,
           } satisfies Event;
         }),
       };
@@ -50,12 +57,9 @@ export const eventsService = {
     }
   },
 
-  async rsvp(eventId: string, userId: string) {
+  async setRsvp(eventId: string, attending: boolean) {
     try {
-      return await supabase.rpc('toggle_session_rsvp', {
-        p_session_id: eventId,
-        p_user_id: userId,
-      });
+      return await sessionsService.setRsvp(eventId, attending);
     } catch (error) {
       Logger.error('eventsService.rsvp failed', error);
       throw new ServiceError('Failed to RSVP to event', 'EVENTS_RSVP_FAILED', error);

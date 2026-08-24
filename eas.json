@@ -44,8 +44,5 @@
         "track": "internal"
       }
     }
-  },
-  "deploy": {
-    "production": {}
   }
 }

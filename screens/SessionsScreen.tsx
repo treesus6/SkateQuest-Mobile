@@ -10,6 +10,8 @@ import {
   RefreshControl,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { CalendarDays, MapPin, Users, Plus, X, CheckCircle, Circle } from 'lucide-react-native';
 import { useRoute, RouteProp } from '../lib/useNavigation';
@@ -17,6 +19,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
+import { getSessionStatus, sessionsService, SessionRsvpResult } from '../lib/sessionsService';
 
 interface Session {
   id: string;
@@ -37,6 +40,7 @@ interface RawSession {
   id: string;
   title: string;
   spot_id: string | null;
+  spot_name: string | null;
   scheduled_time: string;
   description: string | null;
   creator_id: string;
@@ -65,15 +69,6 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-function getStatus(scheduledTime: string): 'upcoming' | 'live' | 'ended' {
-  const sessionTime = new Date(scheduledTime);
-  const now = new Date();
-  const diff = sessionTime.getTime() - now.getTime();
-  if (diff > 2 * 60 * 60 * 1000) return 'upcoming';
-  if (diff > -2 * 60 * 60 * 1000) return 'live';
-  return 'ended';
-}
-
 export default function SessionsScreen() {
   const { user } = useAuthStore();
   const route = useRoute<RouteProp<RootStackParamList, 'Sessions'>>();
@@ -85,6 +80,7 @@ export default function SessionsScreen() {
   const [tab, setTab] = useState<'all' | 'mine'>('all');
   const [createVisible, setCreateVisible] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [rsvpingId, setRsvpingId] = useState<string | null>(null);
 
   // Create form state — pre-filled from route params when coming from CheckInScreen
   const [title, setTitle] = useState('');
@@ -114,8 +110,9 @@ export default function SessionsScreen() {
       const { data: rawSessions, error: sessionsError } = await supabase
         .from('skate_sessions')
         .select(
-          'id, title, spot_id, scheduled_time, description, creator_id, max_participants, participants'
+          'id, title, spot_id, spot_name, scheduled_time, description, creator_id, max_participants, participants'
         )
+        .gte('scheduled_time', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString())
         .order('scheduled_time', { ascending: true });
 
       if (sessionsError) throw sessionsError;
@@ -149,14 +146,14 @@ export default function SessionsScreen() {
         id: s.id,
         title: s.title,
         spot_id: s.spot_id,
-        spot_name: s.spot_id ? (spotMap.get(s.spot_id) ?? null) : null,
+        spot_name: (s.spot_id ? spotMap.get(s.spot_id) : null) ?? s.spot_name,
         scheduled_time: s.scheduled_time,
         description: s.description,
         created_by: s.creator_id,
         creator_username: profileMap.get(s.creator_id) ?? null,
         attendee_count: s.participants?.length ?? 0,
         max_attendees: s.max_participants,
-        status: getStatus(s.scheduled_time),
+        status: getSessionStatus(s.scheduled_time),
         is_attending: (s.participants ?? []).includes(user.id),
       }));
 
@@ -179,7 +176,7 @@ export default function SessionsScreen() {
   }, [loadSessions]);
 
   const toggleRSVP = async (session: Session) => {
-    if (!user?.id) return;
+    if (!user?.id || rsvpingId) return;
     if (session.status === 'ended') {
       Alert.alert('Session ended', 'This session has already happened.');
       return;
@@ -193,29 +190,15 @@ export default function SessionsScreen() {
       return;
     }
 
-    const wasAttending = session.is_attending;
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === session.id
-          ? {
-              ...s,
-              is_attending: !wasAttending,
-              attendee_count: Math.max(0, s.attendee_count + (wasAttending ? -1 : 1)),
-            }
-          : s
-      )
-    );
+    const attending = !session.is_attending;
+    setRsvpingId(session.id);
 
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_session_rsvp', {
-        p_session_id: session.id,
-        p_user_id: user.id,
-      });
-      const result = rpcData as {
-        error?: string;
-        is_attending?: boolean;
-        attendee_count?: number;
-      } | null;
+      const { data: rpcData, error: rpcError } = await sessionsService.setRsvp(
+        session.id,
+        attending
+      );
+      const result = rpcData as SessionRsvpResult | null;
       if (rpcError || result?.error) {
         throw new Error(result?.error ?? rpcError?.message ?? 'RSVP failed');
       }
@@ -225,7 +208,7 @@ export default function SessionsScreen() {
             s.id === session.id
               ? {
                   ...s,
-                  is_attending: !!result.is_attending,
+                  is_attending: result.is_attending ?? attending,
                   attendee_count: result.attendee_count ?? s.attendee_count,
                 }
               : s
@@ -234,30 +217,23 @@ export default function SessionsScreen() {
       }
     } catch (err) {
       console.error('toggleRSVP error', err);
-      setSessions(prev =>
-        prev.map(s =>
-          s.id === session.id
-            ? {
-                ...s,
-                is_attending: wasAttending,
-                attendee_count: Math.max(0, s.attendee_count + (wasAttending ? 1 : -1)),
-              }
-            : s
-        )
-      );
       const msg = err instanceof Error ? err.message : '';
       if (msg === 'full') {
         Alert.alert('Full', 'This session is now full.');
+      } else if (msg === 'session ended') {
+        Alert.alert('Session ended', 'This session has already happened.');
       } else {
         Alert.alert('RSVP failed', 'Your RSVP was not saved. Please try again.');
       }
+    } finally {
+      setRsvpingId(null);
     }
   };
 
   const createSession = async () => {
     if (!user?.id) return;
-    if (!title.trim()) {
-      Alert.alert('Required', 'Enter a session title.');
+    if (title.trim().length < 2 || title.trim().length > 120) {
+      Alert.alert('Invalid title', 'Enter a session title between 2 and 120 characters.');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
@@ -272,12 +248,27 @@ export default function SessionsScreen() {
     const parsedMaxAttendees = maxAttendees.trim() ? Number(maxAttendees) : null;
     if (
       parsedMaxAttendees !== null &&
-      (!Number.isInteger(parsedMaxAttendees) || parsedMaxAttendees < 1)
+      (!Number.isInteger(parsedMaxAttendees) || parsedMaxAttendees < 1 || parsedMaxAttendees > 500)
     ) {
       Alert.alert(
         'Invalid max attendees',
-        'Enter a whole number greater than 0, or leave it blank.'
+        'Enter a whole number from 1 to 500, or leave it blank.'
       );
+      return;
+    }
+
+    if (description.length > 1000) {
+      Alert.alert('Description too long', 'Keep the session description to 1000 characters.');
+      return;
+    }
+    if (spotName.length > 160) {
+      Alert.alert('Location too long', 'Keep the location to 160 characters.');
+      return;
+    }
+
+    const scheduledTime = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(scheduledTime.getTime()) || scheduledTime.getTime() <= Date.now()) {
+      Alert.alert('Choose a future time', 'Session time must be later than right now.');
       return;
     }
 
@@ -292,25 +283,22 @@ export default function SessionsScreen() {
           .limit(1)
           .maybeSingle();
         if (spotError) throw spotError;
-        if (!matchedSpot) throw new Error(`No skate spot found named "${spotName.trim()}".`);
-        resolvedSpotId = matchedSpot.id;
+        resolvedSpotId = matchedSpot?.id ?? null;
       }
 
-      const { error } = await supabase
-        .from('skate_sessions')
-        .insert({
-          title: title.trim(),
-          spot_id: resolvedSpotId,
-          scheduled_time: new Date(`${date}T${time}:00`).toISOString(),
-          description: description.trim() || null,
-          creator_id: user.id,
-          max_participants: parsedMaxAttendees,
-          participants: [user.id],
-        })
-        .select()
-        .single();
+      const { data, error } = await sessionsService.create({
+        title: title.trim(),
+        spotId: resolvedSpotId,
+        spotName: spotName.trim() || null,
+        scheduledTime: scheduledTime.toISOString(),
+        description: description.trim() || null,
+        maxParticipants: parsedMaxAttendees,
+      });
 
       if (error) throw error;
+      const result = data as { error?: string; id?: string } | null;
+      if (result?.error) throw new Error(result.error);
+      if (!result?.id) throw new Error('The session did not return a saved record.');
 
       setCreateVisible(false);
       setTitle('');
@@ -394,6 +382,7 @@ export default function SessionsScreen() {
             {item.status !== 'ended' && (
               <TouchableOpacity
                 onPress={() => toggleRSVP(item)}
+                disabled={rsvpingId !== null || (isFull && !item.is_attending)}
                 className="flex-row items-center justify-center gap-2 rounded-xl py-2.5"
                 style={{
                   backgroundColor: item.is_attending
@@ -403,7 +392,9 @@ export default function SessionsScreen() {
                       : '#6B4CE620',
                 }}
               >
-                {item.is_attending ? (
+                {rsvpingId === item.id ? (
+                  <ActivityIndicator size="small" color="#6B4CE6" />
+                ) : item.is_attending ? (
                   <CheckCircle size={16} color="#10B981" />
                 ) : (
                   <Circle size={16} color={isFull ? '#9CA3AF' : '#6B4CE6'} />
@@ -504,8 +495,11 @@ export default function SessionsScreen() {
         transparent
         onRequestClose={() => setCreateVisible(false)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white dark:bg-gray-900 rounded-t-3xl">
+        <KeyboardAvoidingView
+          className="flex-1 justify-end bg-black/50"
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View className="bg-white dark:bg-gray-900 rounded-t-3xl max-h-[92%]">
             <View className="items-center pt-3 pb-1">
               <View className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
             </View>
@@ -610,7 +604,7 @@ export default function SessionsScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenFadeIn>
   );
