@@ -68,6 +68,7 @@ jobs:
         run: |
           test -f dist-quality/index.html
           test -f dist-quality/map.html
+          test -f dist-quality/add-spot.html
           test -f dist-quality/login.html
           test -f dist-quality/quests.html
           test -f dist-quality/crew.html
