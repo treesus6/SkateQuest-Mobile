@@ -58,4 +58,5 @@ jobs:
         run: npm test -- --runInBand
 
       - name: Expo Doctor
-        run: npx expo-doctor
+        # Pin the doctor so CI does not silently change validation rules between runs.
+        run: npx expo-doctor@1.20.2
