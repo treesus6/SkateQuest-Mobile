@@ -51,7 +51,8 @@ jobs:
         run: npm test -- --runInBand
 
       - name: Expo Doctor
-        run: npx expo-doctor
+        # Pin the doctor so validation does not change unexpectedly between CI runs.
+        run: npx expo-doctor@1.20.2
 
       - name: Prepare native Mapbox web stub
         run: |
