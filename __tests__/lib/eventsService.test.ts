@@ -19,6 +19,7 @@ describe('eventsService', () => {
           title: 'Park Jam',
           description: 'Skate jam at the park',
           spot_id: 'spot-1',
+          spot_name: 'Riverside Park',
           scheduled_time: '2026-09-01T21:00:00.000Z',
           creator_id: 'user-1',
           participants: ['user-3', 'user-4'],
@@ -28,6 +29,7 @@ describe('eventsService', () => {
           title: 'Street Session',
           description: 'Street skating meetup',
           spot_id: null,
+          spot_name: 'Downtown Plaza',
           scheduled_time: '2026-09-02T17:00:00.000Z',
           creator_id: 'user-2',
           participants: [],
@@ -39,11 +41,11 @@ describe('eventsService', () => {
       const mockSelect = jest.fn().mockReturnValue({ gte: mockGte });
       mockFrom.mockReturnValue({ select: mockSelect });
 
-      const result = await eventsService.getUpcoming();
+      const result = await eventsService.getUpcoming('user-3');
 
       expect(mockFrom).toHaveBeenCalledWith('skate_sessions');
       expect(mockSelect).toHaveBeenCalledWith(
-        'id, title, description, spot_id, scheduled_time, creator_id, participants'
+        'id, title, description, spot_id, spot_name, scheduled_time, creator_id, participants'
       );
       expect(mockGte).toHaveBeenCalledWith('scheduled_time', expect.any(String));
       expect(mockOrder).toHaveBeenCalledWith('scheduled_time', { ascending: true });
@@ -53,6 +55,8 @@ describe('eventsService', () => {
           id: 'evt-1',
           created_by: 'user-1',
           attendee_count: 2,
+          is_attending: true,
+          location: 'Riverside Park',
         })
       );
     });
@@ -95,21 +99,20 @@ describe('eventsService', () => {
     });
   });
 
-  describe('rsvp', () => {
-    it('should call toggle_session_rsvp RPC with correct session_id and user_id', async () => {
+  describe('setRsvp', () => {
+    it('should call the idempotent set_session_rsvp RPC', async () => {
       const eventId = 'evt-100';
-      const userId = 'user-200';
 
       mockRpc.mockResolvedValue({
         data: { is_attending: true, attendee_count: 1 },
         error: null,
       });
 
-      const result = await eventsService.rsvp(eventId, userId);
+      const result = await eventsService.setRsvp(eventId, true);
 
-      expect(mockRpc).toHaveBeenCalledWith('toggle_session_rsvp', {
+      expect(mockRpc).toHaveBeenCalledWith('set_session_rsvp', {
         p_session_id: eventId,
-        p_user_id: userId,
+        p_attending: true,
       });
       expect(result.error).toBeNull();
     });
@@ -118,7 +121,7 @@ describe('eventsService', () => {
       const mockError = { message: 'unauthorized', code: '42501' };
       mockRpc.mockResolvedValue({ data: null, error: mockError });
 
-      const result = await eventsService.rsvp('evt-100', 'user-200');
+      const result = await eventsService.setRsvp('evt-100', true);
 
       expect(result.error).toEqual(mockError);
     });
@@ -126,7 +129,7 @@ describe('eventsService', () => {
     it('should return session-full error from RPC', async () => {
       mockRpc.mockResolvedValue({ data: { error: 'full' }, error: null });
 
-      const result = await eventsService.rsvp('evt-100', 'user-200');
+      const result = await eventsService.setRsvp('evt-100', true);
 
       expect((result.data as any)?.error).toBe('full');
     });
