@@ -21,6 +21,25 @@ describe('web/native platform selection', () => {
     expect(source).toContain('window.mapboxgl');
   });
 
+  it('keeps web Add Spot accessible and included in the exported route gate', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'screens', 'AddSpotScreen.web.tsx'),
+      'utf8'
+    );
+    const route = path.join(__dirname, '..', 'app', '(screens)', 'add-spot.tsx');
+    const workflow = fs.readFileSync(
+      path.join(__dirname, '..', '.github', 'workflows', 'full-quality-gate.yml'),
+      'utf8'
+    );
+
+    expect(fs.existsSync(route)).toBe(true);
+    expect(source).toContain('accessibilityLabel="Use my location"');
+    expect(source).toContain('accessibilityHint="Uses your browser location to place the spot pin"');
+    expect(source).toContain('style={[s.sectionTitle, s.sectionTitleLight]}');
+    expect(source).toContain('sectionTitleLight: { color: PAPER }');
+    expect(workflow).toContain('test -f dist-quality/add-spot.html');
+  });
+
   it('uses URL session detection only in the web auth adapter', () => {
     const web = fs.readFileSync(path.join(__dirname, '..', 'lib', 'authStorage.web.ts'), 'utf8');
     const native = fs.readFileSync(
