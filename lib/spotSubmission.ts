@@ -37,6 +37,28 @@ export interface PersistedSpotExpectation {
   latitude: number;
   longitude: number;
   addedBy: string;
+  potentialRating?: number;
+  difficultyRating?: number;
+  qualityRating?: number;
+  ratingCount?: number;
+  photoUrl?: string | null;
+}
+
+function readNumber(row: Record<string, unknown>, key: string): number | null {
+  return parseFiniteCoordinate(row[key]);
+}
+
+function hasPersistedPhoto(row: Record<string, unknown>, expectedUrl: string): boolean {
+  if (row.image_url === expectedUrl) return true;
+  if (!Array.isArray(row.spot_photos)) return false;
+
+  return row.spot_photos.some(photo => {
+    if (!photo || typeof photo !== 'object') return false;
+    const media = (photo as Record<string, unknown>).media;
+    return (
+      !!media && typeof media === 'object' && (media as Record<string, unknown>).url === expectedUrl
+    );
+  });
 }
 
 export function getSpotPersistenceError(
@@ -69,5 +91,46 @@ export function getSpotPersistenceError(
     return 'The saved spot coordinates could not be verified.';
   }
 
+  const ratingChecks: Array<[keyof PersistedSpotExpectation, string, string]> = [
+    ['potentialRating', 'potential_rating', 'potential'],
+    ['difficultyRating', 'difficulty_rating', 'difficulty'],
+    ['qualityRating', 'rating', 'quality'],
+  ];
+  for (const [expectedKey, persistedKey, label] of ratingChecks) {
+    const expectedRating = expected[expectedKey];
+    if (typeof expectedRating !== 'number') continue;
+    const persistedRating = readNumber(row, persistedKey);
+    if (persistedRating === null || Math.abs(persistedRating - expectedRating) > 0.01) {
+      return `The saved spot ${label} rating could not be verified.`;
+    }
+  }
+
+  if (typeof expected.ratingCount === 'number') {
+    const ratingCount = readNumber(row, 'rating_count');
+    if (ratingCount !== expected.ratingCount) {
+      return 'The saved spot rating count could not be verified.';
+    }
+  }
+
+  if (expected.photoUrl && !hasPersistedPhoto(row, expected.photoUrl)) {
+    return 'The saved spot photo could not be read back.';
+  }
+
   return null;
+}
+
+export function getSpotSubmissionErrorMessage(
+  error: unknown,
+  fallback = 'The spot could not be saved. Please try again.'
+): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    if (typeof record.message === 'string' && record.message.trim()) return record.message;
+    if (record.cause && typeof record.cause === 'object') {
+      const causeMessage = (record.cause as Record<string, unknown>).message;
+      if (typeof causeMessage === 'string' && causeMessage.trim()) return causeMessage;
+    }
+  }
+  return fallback;
 }

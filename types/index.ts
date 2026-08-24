@@ -53,7 +53,12 @@ export interface SkateSpot {
   spot_type?: 'park' | 'street' | 'diy' | 'quest' | 'shop';
   difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
   tricks?: string[];
+  obstacles?: string[];
+  bust_risk?: 'low' | 'medium' | 'high';
   rating?: number;
+  potential_rating?: number;
+  difficulty_rating?: number;
+  rating_count?: number;
   image_url?: string;
   added_by?: string;
   created_at?: string;
@@ -61,6 +66,17 @@ export interface SkateSpot {
   sponsor_url?: string;
   spot_photos?: SpotPhoto[];
   spot_conditions?: SpotCondition[];
+}
+
+export interface SpotRating {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  potential: number;
+  difficulty: number;
+  quality: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Challenge {

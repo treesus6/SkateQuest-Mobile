@@ -12,8 +12,12 @@ import {
   RefreshControl,
 } from 'react-native'
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation'
-import { ChevronLeft, MessageSquare, X, PenLine, MapPin, Users, Sparkles } from 'lucide-react-native'
+import { ChevronLeft, MessageSquare, X, PenLine, MapPin, Users, Sparkles, Star } from 'lucide-react-native'
 import { supabase } from '../lib/supabase'
+import { spotsService } from '../lib/spotsService'
+import { getSpotSubmissionErrorMessage } from '../lib/spotSubmission'
+import { useAuthStore } from '../stores/useAuthStore'
+import { SkateSpot, SpotRating } from '../types'
 
 type SpotReviewsRouteParams = {
   SpotReviews: { spotId: string; spotName: string }
@@ -47,8 +51,15 @@ export default function SpotReviewsScreen() {
   const navigation = useNavigation()
   const route = useRoute<RouteProp<SpotReviewsRouteParams, 'SpotReviews'>>()
   const { spotId, spotName } = route.params
+  const user = useAuthStore(state => state.user)
 
   const [comments, setComments] = useState<SpotComment[]>([])
+  const [spotSummary, setSpotSummary] = useState<SkateSpot | null>(null)
+  const [myRating, setMyRating] = useState<SpotRating | null>(null)
+  const [potential, setPotential] = useState(3)
+  const [difficulty, setDifficulty] = useState(3)
+  const [quality, setQuality] = useState(3)
+  const [savingRating, setSavingRating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,34 +67,48 @@ export default function SpotReviewsScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [commentText, setCommentText] = useState('')
 
-  const fetchComments = useCallback(async (silent = false) => {
+  const fetchPage = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
       setError(null)
-      const { data, error: fetchError } = await supabase
+      const commentsRequest = supabase
         .from('spot_comments')
         .select('*, profiles(username)')
         .eq('spot_id', spotId)
         .order('created_at', { ascending: false })
+      const [commentsResult, spotResult, ratingResult] = await Promise.all([
+        commentsRequest,
+        spotsService.getById(spotId),
+        user ? spotsService.getMyRating(spotId, user.id) : Promise.resolve({ data: null, error: null }),
+      ])
 
-      if (fetchError) throw fetchError
-      setComments((data as SpotComment[]) ?? [])
+      if (commentsResult.error) throw commentsResult.error
+      if (spotResult.error) throw spotResult.error
+      if (ratingResult.error) throw ratingResult.error
+
+      const savedRating = ratingResult.data as SpotRating | null
+      setComments((commentsResult.data as SpotComment[]) ?? [])
+      setSpotSummary(spotResult.data as SkateSpot)
+      setMyRating(savedRating)
+      setPotential(savedRating?.potential ?? 3)
+      setDifficulty(savedRating?.difficulty ?? 3)
+      setQuality(savedRating?.quality ?? 3)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load comments')
+      setError(getSpotSubmissionErrorMessage(err, 'Failed to load this spot.'))
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [spotId])
+  }, [spotId, user])
 
   useEffect(() => {
-    fetchComments()
-  }, [fetchComments])
+    void fetchPage()
+  }, [fetchPage])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
-    await fetchComments(true)
+    await fetchPage(true)
     setRefreshing(false)
-  }, [fetchComments])
+  }, [fetchPage])
 
   const handleSubmit = async () => {
     if (!commentText.trim()) {
@@ -104,11 +129,49 @@ export default function SpotReviewsScreen() {
 
       setModalVisible(false)
       setCommentText('')
-      await fetchComments(true)
+      await fetchPage(true)
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit comment')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleSaveRating = async () => {
+    if (!user) {
+      Alert.alert('Sign in to rate', 'Your rating is tied to your SkateQuest account.')
+      return
+    }
+
+    try {
+      setSavingRating(true)
+      const { data, error: saveError } = await spotsService.rate(spotId, { potential, difficulty, quality })
+      if (saveError) throw saveError
+
+      const saved = data as SpotRating | null
+      if (!saved || saved.user_id !== user.id || saved.spot_id !== spotId || saved.potential !== potential || saved.difficulty !== difficulty || saved.quality !== quality) {
+        throw new Error('Your rating could not be verified after saving.')
+      }
+
+      const [ratingReadback, spotReadback] = await Promise.all([
+        spotsService.getMyRating(spotId, user.id),
+        spotsService.getById(spotId),
+      ])
+      if (ratingReadback.error) throw ratingReadback.error
+      if (spotReadback.error) throw spotReadback.error
+
+      const persisted = ratingReadback.data as SpotRating | null
+      if (!persisted || persisted.potential !== potential || persisted.difficulty !== difficulty || persisted.quality !== quality) {
+        throw new Error('Your saved rating could not be read back.')
+      }
+
+      setMyRating(persisted)
+      setSpotSummary(spotReadback.data as SkateSpot)
+      Alert.alert('Rating saved', 'Your take is now part of the spot score.')
+    } catch (err: unknown) {
+      Alert.alert('Could not save rating', getSpotSubmissionErrorMessage(err, 'Please try again.'))
+    } finally {
+      setSavingRating(false)
     }
   }
 
@@ -146,7 +209,7 @@ export default function SpotReviewsScreen() {
       ) : error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <Text style={{ color: '#F87171', fontSize: 15, textAlign: 'center' }}>{error}</Text>
-          <TouchableOpacity onPress={() => fetchComments()} style={{ marginTop: 16, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 18, paddingVertical: 11 }}>
+          <TouchableOpacity onPress={() => fetchPage()} style={{ marginTop: 16, backgroundColor: '#D2673D', borderRadius: 12, paddingHorizontal: 18, paddingVertical: 11 }}>
             <Text style={{ color: '#fff', fontWeight: '800' }}>Try again</Text>
           </TouchableOpacity>
         </View>
@@ -155,6 +218,36 @@ export default function SpotReviewsScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 44 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#D2673D" />}
         >
+          <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#252D39', marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+              <Star size={18} color="#FFD166" fill="#FFD166" />
+              <Text style={{ color: '#F3F4F6', fontSize: 17, fontWeight: '900' }}>Rate the spot</Text>
+            </View>
+            <Text style={{ color: '#7B8493', fontSize: 12, lineHeight: 18, marginTop: 5 }}>One rating per skater. You can update yours anytime.</Text>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 15 }}>
+              <RatingSummary label="POTENTIAL" value={spotSummary?.potential_rating} color="#D9F34A" />
+              <RatingSummary label="HOW HARD" value={spotSummary?.difficulty_rating} color="#72A9FF" />
+              <RatingSummary label="HOW GOOD" value={spotSummary?.rating} color="#E36D3F" />
+            </View>
+            <Text style={{ color: '#596271', fontSize: 11, marginTop: 8 }}>
+              {spotSummary?.rating_count ? `${spotSummary.rating_count} skater${spotSummary.rating_count === 1 ? '' : 's'} rated this spot` : 'Be the first skater to rate this spot'}
+            </Text>
+
+            {user ? (
+              <View style={{ marginTop: 18 }}>
+                <RatingPicker label="Potential" value={potential} onChange={setPotential} />
+                <RatingPicker label="How hard" value={difficulty} onChange={setDifficulty} />
+                <RatingPicker label="How good" value={quality} onChange={setQuality} />
+                <TouchableOpacity onPress={handleSaveRating} disabled={savingRating} style={{ backgroundColor: savingRating ? '#353B45' : '#D2673D', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4 }}>
+                  {savingRating ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 14, fontWeight: '900' }}>{myRating ? 'Update my rating' : 'Save my rating'}</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={{ color: '#AEB5C0', fontSize: 13, marginTop: 16 }}>Sign in to add your rating.</Text>
+            )}
+          </View>
+
           <View style={{ backgroundColor: '#10151D', borderRadius: 22, padding: 18, borderWidth: 1, borderColor: '#252D39', marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <MapPin size={17} color="#D2673D" />
@@ -244,5 +337,29 @@ export default function SpotReviewsScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  )
+}
+
+function RatingSummary({ label, value, color }: { label: string; value?: number; color: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0B1017', borderRadius: 14, padding: 11, borderWidth: 1, borderColor: '#202733' }}>
+      <Text style={{ color, fontSize: 9, fontWeight: '900', letterSpacing: 0.6 }}>{label}</Text>
+      <Text style={{ color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 4 }}>{typeof value === 'number' ? value.toFixed(1) : '—'}</Text>
+    </View>
+  )
+}
+
+function RatingPicker({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+      <Text style={{ color: '#D4D8DE', fontSize: 13, fontWeight: '800' }}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {[1, 2, 3, 4, 5].map(star => (
+          <TouchableOpacity key={star} onPress={() => onChange(star)} accessibilityLabel={`${label} ${star} out of 5`}>
+            <Star size={25} color={star <= value ? '#FFD166' : '#46505E'} fill={star <= value ? '#FFD166' : 'transparent'} />
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   )
 }

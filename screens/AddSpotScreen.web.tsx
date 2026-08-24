@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,10 +16,12 @@ import {
   ArrowRight,
   Check,
   Crosshair,
+  ImagePlus,
   MapPin,
   Plus,
   ShieldCheck,
   Sparkles,
+  Star,
   Target,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '../lib/useNavigation';
@@ -26,11 +29,12 @@ import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Logger } from '../lib/logger';
+import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import {
   getMapboxAvailabilityError,
   getMapInitializationError,
 } from '../lib/mapboxWebSupport';
-import { getSpotPersistenceError, parseSpotCoordinates } from '../lib/spotSubmission';
+import { getSpotPersistenceError, getSpotSubmissionErrorMessage, parseSpotCoordinates } from '../lib/spotSubmission';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -72,6 +76,11 @@ export default function AddSpotScreen() {
   const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
   const [bustRisk, setBustRisk] = useState<'low' | 'medium' | 'high'>('low');
   const [obstacles, setObstacles] = useState<string[]>([]);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+  const [potentialRating, setPotentialRating] = useState(3);
+  const [difficultyRating, setDifficultyRating] = useState(3);
+  const [qualityRating, setQualityRating] = useState(3);
   const [submitting, setSubmitting] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
@@ -191,8 +200,23 @@ export default function AddSpotScreen() {
     map.current?.flyTo({ center: next, zoom: 16 });
   };
 
+  const choosePhoto = async () => {
+    try {
+      setPickingPhoto(true);
+      const asset = await pickImage(false);
+      if (asset) setPhotoUri(asset.uri);
+    } catch (error) {
+      Alert.alert('Photo not selected', getSpotSubmissionErrorMessage(error));
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
   const submit = async () => {
-    if (!user) return;
+    if (!user) {
+      Alert.alert('Sign in required', 'Sign in before adding a spot.');
+      return;
+    }
     if (!name.trim()) {
       Alert.alert('Spot name required', 'Enter a name for this skate spot.');
       return;
@@ -201,21 +225,52 @@ export default function AddSpotScreen() {
       Alert.alert('Location required', 'Tap the map or use your current location before saving this spot.');
       return;
     }
+    let uploadedPhotoUrl: string | null = null;
+    let createdId = '';
+    let safeToCleanupUploadedPhoto = false;
     setSubmitting(true);
     try {
-      const { data, error } = await spotsService.create({
+      const { data: duplicate, error: duplicateError } = await spotsService.findDuplicate(coordinates[1], coordinates[0], spotType);
+      if (duplicateError) throw duplicateError;
+      if (duplicate) {
+        Alert.alert(
+          'Spot already exists',
+          `${duplicate.name} is already pinned here. Open that spot instead of making a duplicate.`,
+          [
+            { text: 'Move Pin', style: 'cancel' },
+            { text: 'View Existing', onPress: () => navigation.navigate('SpotDetail', { spotId: duplicate.id }) },
+          ]
+        );
+        return;
+      }
+
+      let photoFileSize: number | null = null;
+      if (photoUri) {
+        const uploaded = await uploadImage(photoUri, 'spot_photos', user.id);
+        uploadedPhotoUrl = uploaded.url;
+        photoFileSize = uploaded.fileSize;
+      }
+
+      const { data, error } = await spotsService.createWithDetails({
         name: name.trim(),
         latitude: coordinates[1],
         longitude: coordinates[0],
-        difficulty,
+        difficultyLabel: difficulty,
         obstacles,
-        added_by: user.id,
-        spot_type: spotType,
-        bust_risk: bustRisk,
+        spotType,
+        bustRisk: spotType === 'street' ? bustRisk : undefined,
+        potential: potentialRating,
+        difficulty: difficultyRating,
+        quality: qualityRating,
+        photoUrl: uploadedPhotoUrl,
+        photoFileSize,
       });
-      if (error) throw error;
-      const createdId =
-        typeof (data as any)?.id === 'string' ? (data as any).id.trim() : '';
+      if (error) {
+        safeToCleanupUploadedPhoto = true;
+        throw error;
+      }
+      const created = Array.isArray(data) ? data[0] : data;
+      createdId = typeof created?.id === 'string' ? created.id.trim() : '';
       if (!createdId) {
         throw new Error('The saved spot did not return an ID.');
       }
@@ -229,14 +284,26 @@ export default function AddSpotScreen() {
         latitude: coordinates[1],
         longitude: coordinates[0],
         addedBy: user.id,
+        potentialRating,
+        difficultyRating,
+        qualityRating,
+        ratingCount: 1,
+        photoUrl: uploadedPhotoUrl,
       });
       if (persistenceError) throw new Error(persistenceError);
-      Alert.alert('Spot added', 'Your spot was saved to SkateQuest.', [
+      Alert.alert('Spot added', `Your pin and ratings${uploadedPhotoUrl ? ', plus the photo,' : ''} are saved on the live SkateQuest map.`, [
         { text: 'Done', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       Logger.error('Web spot creation failed', error);
-      Alert.alert('Spot not saved', error instanceof Error ? error.message : 'Please try again.');
+      if (uploadedPhotoUrl && safeToCleanupUploadedPhoto) {
+        try {
+          await deleteFromStorage(uploadedPhotoUrl, 'spot-photos');
+        } catch (cleanupError) {
+          Logger.warn('Orphan spot photo cleanup failed', cleanupError);
+        }
+      }
+      Alert.alert('Spot not saved', getSpotSubmissionErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -392,12 +459,14 @@ export default function AddSpotScreen() {
           value={difficulty}
           onChange={value => setDifficulty(value as typeof difficulty)}
         />
-        <Choice
-          label="BUST RISK"
-          values={['low', 'medium', 'high']}
-          value={bustRisk}
-          onChange={value => setBustRisk(value as typeof bustRisk)}
-        />
+        {spotType === 'street' ? (
+          <Choice
+            label="BUST RISK"
+            values={['low', 'medium', 'high']}
+            value={bustRisk}
+            onChange={value => setBustRisk(value as typeof bustRisk)}
+          />
+        ) : null}
       </View>
 
       <View style={s.obstacleCard}>
@@ -430,6 +499,41 @@ export default function AddSpotScreen() {
               </Pressable>
             );
           })}
+        </View>
+      </View>
+
+      <View style={s.mediaRatingCard}>
+        <View style={s.sectionHead}>
+          <View style={[s.sectionNumber, s.sectionNumberAcid]}><Text style={s.sectionNumberText}>03</Text></View>
+          <View style={s.sectionCopy}>
+            <Text style={s.sectionKicker}>SHOW IT + SCORE IT</Text>
+            <Text style={[s.sectionTitle, s.sectionTitleLight]}>Photo and ratings</Text>
+          </View>
+          <Star color={ACID} size={21} fill={ACID} />
+        </View>
+
+        <Text style={s.sectionBody}>Add a real photo if you have one. Rate what matters to skaters—not how pretty the place looks.</Text>
+        {photoUri ? (
+          <View style={s.photoPreviewShell}>
+            <Image source={{ uri: photoUri }} style={s.photoPreview} resizeMode="cover" />
+            <Pressable style={s.photoChangeButton} onPress={() => void choosePhoto()}>
+              <Text style={s.photoChangeText}>CHANGE PHOTO</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={s.photoButton} onPress={() => void choosePhoto()} disabled={pickingPhoto}>
+            {pickingPhoto ? <ActivityIndicator color={ACID} /> : <ImagePlus color={ACID} size={23} />}
+            <View style={s.photoButtonCopy}>
+              <Text style={s.photoButtonTitle}>ADD A REAL SPOT PHOTO</Text>
+              <Text style={s.photoButtonSub}>OPTIONAL · UPLOADS WITH THE SPOT</Text>
+            </View>
+          </Pressable>
+        )}
+
+        <View style={s.ratingStack}>
+          <RatingRow label="Potential" value={potentialRating} onChange={setPotentialRating} />
+          <RatingRow label="How hard" value={difficultyRating} onChange={setDifficultyRating} />
+          <RatingRow label="How good" value={qualityRating} onChange={setQualityRating} />
         </View>
       </View>
 
@@ -514,6 +618,24 @@ function Choice({
   );
 }
 
+function RatingRow({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <View style={s.ratingRow}>
+      <View style={s.ratingCopy}>
+        <Text style={s.ratingLabel}>{label.toUpperCase()}</Text>
+        <Text style={s.ratingValue}>{value}/5</Text>
+      </View>
+      <View style={s.ratingChoices}>
+        {[1, 2, 3, 4, 5].map(item => (
+          <Pressable key={item} accessibilityRole="button" accessibilityLabel={`${label} ${item} out of 5`} onPress={() => onChange(item)} style={[s.ratingButton, item <= value && s.ratingButtonActive]}>
+            <Star size={16} color={item <= value ? INK : '#727D8C'} fill={item <= value ? INK : 'transparent'} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
   content: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 54 },
@@ -572,9 +694,11 @@ const s = StyleSheet.create({
 
   formCard: { marginTop: 10, borderRadius: 23, padding: 15, backgroundColor: PAPER, borderWidth: 2, borderColor: INK },
   obstacleCard: { marginTop: 10, borderRadius: 23, padding: 15, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641' },
+  mediaRatingCard: { marginTop: 10, borderRadius: 23, padding: 15, backgroundColor: '#11151B', borderWidth: 1, borderColor: '#303641' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   sectionNumber: { width: 39, height: 39, borderRadius: 12, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
   sectionNumberBlue: { backgroundColor: BLUE },
+  sectionNumberAcid: { backgroundColor: ACID },
   sectionNumberText: { color: INK, fontSize: 10, fontWeight: '900' },
   sectionCopy: { flex: 1 },
   sectionKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
@@ -596,6 +720,23 @@ const s = StyleSheet.create({
   obstacleChipActive: { backgroundColor: ACID, borderColor: INK, borderWidth: 1.5 },
   obstacleChipText: { color: '#96A0AE', fontSize: 7.5, fontWeight: '900', letterSpacing: 0.6 },
   obstacleChipTextActive: { color: INK },
+
+  photoButton: { minHeight: 72, marginTop: 12, borderRadius: 15, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#52606F', backgroundColor: '#171D26', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  photoButtonCopy: { flex: 1 },
+  photoButtonTitle: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
+  photoButtonSub: { color: '#75808E', fontSize: 7, fontWeight: '900', letterSpacing: 0.5, marginTop: 3 },
+  photoPreviewShell: { height: 230, marginTop: 12, borderRadius: 17, overflow: 'hidden', borderWidth: 1, borderColor: '#3B4654', position: 'relative' },
+  photoPreview: { width: '100%', height: '100%' },
+  photoChangeButton: { position: 'absolute', right: 10, bottom: 10, minHeight: 37, borderRadius: 11, backgroundColor: 'rgba(7,8,11,.88)', paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center' },
+  photoChangeText: { color: PAPER, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.7 },
+  ratingStack: { marginTop: 12, gap: 8 },
+  ratingRow: { minHeight: 55, borderRadius: 15, backgroundColor: '#171D26', borderWidth: 1, borderColor: '#303946', paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ratingCopy: { width: 83 },
+  ratingLabel: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  ratingValue: { color: ACID, fontSize: 8, fontWeight: '900', marginTop: 3 },
+  ratingChoices: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 6 },
+  ratingButton: { width: 34, height: 34, borderRadius: 10, backgroundColor: '#222A35', alignItems: 'center', justifyContent: 'center' },
+  ratingButtonActive: { backgroundColor: ACID },
 
   integrityCard: { minHeight: 78, marginTop: 10, borderRadius: 18, padding: 11, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 10 },
   integrityMark: { width: 44, height: 44, borderRadius: 13, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },

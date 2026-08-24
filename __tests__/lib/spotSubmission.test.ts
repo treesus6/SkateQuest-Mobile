@@ -1,4 +1,5 @@
 import {
+  getSpotSubmissionErrorMessage,
   getSpotPersistenceError,
   parseSpotCoordinates,
 } from '../../lib/spotSubmission';
@@ -6,10 +7,7 @@ import type { PersistedSpotExpectation } from '../../lib/spotSubmission';
 
 describe('parseSpotCoordinates', () => {
   it('returns Mapbox longitude/latitude order for valid inputs', () => {
-    expect(parseSpotCoordinates('45.638700', '-122.661500')).toEqual([
-      -122.6615,
-      45.6387,
-    ]);
+    expect(parseSpotCoordinates('45.638700', '-122.661500')).toEqual([-122.6615, 45.6387]);
   });
 
   it('accepts real zero coordinates when zero is explicitly entered', () => {
@@ -81,9 +79,7 @@ describe('getSpotPersistenceError', () => {
   });
 
   it('rejects a missing row', () => {
-    expect(getSpotPersistenceError(null, expected)).toBe(
-      'The saved spot could not be read back.'
-    );
+    expect(getSpotPersistenceError(null, expected)).toBe('The saved spot could not be read back.');
   });
 
   it('rejects mismatched identity fields', () => {
@@ -105,5 +101,63 @@ describe('getSpotPersistenceError', () => {
     expect(
       getSpotPersistenceError({ ...saved, longitude: expected.longitude + 0.01 }, expected)
     ).toBe('The saved spot coordinates could not be verified.');
+  });
+
+  it('verifies the creator ratings and rating count', () => {
+    expect(
+      getSpotPersistenceError(
+        {
+          ...saved,
+          potential_rating: 5,
+          difficulty_rating: 4,
+          rating: 5,
+          rating_count: 1,
+        },
+        {
+          ...expected,
+          potentialRating: 5,
+          difficultyRating: 4,
+          qualityRating: 5,
+          ratingCount: 1,
+        }
+      )
+    ).toBeNull();
+
+    expect(
+      getSpotPersistenceError(
+        { ...saved, potential_rating: 4 },
+        { ...expected, potentialRating: 5 }
+      )
+    ).toBe('The saved spot potential rating could not be verified.');
+  });
+
+  it('verifies a nested primary photo read-back', () => {
+    const photoUrl = 'https://example.test/spot.jpg';
+    expect(
+      getSpotPersistenceError(
+        {
+          ...saved,
+          spot_photos: [{ is_primary: true, media: { url: photoUrl } }],
+        },
+        { ...expected, photoUrl }
+      )
+    ).toBeNull();
+    expect(getSpotPersistenceError(saved, { ...expected, photoUrl })).toBe(
+      'The saved spot photo could not be read back.'
+    );
+  });
+});
+
+describe('getSpotSubmissionErrorMessage', () => {
+  it('keeps Supabase duplicate messages visible to the skater', () => {
+    expect(
+      getSpotSubmissionErrorMessage({
+        message: 'A skate spot already exists here: Downtown ledges',
+      })
+    ).toBe('A skate spot already exists here: Downtown ledges');
+  });
+
+  it('falls back when an error has no readable message', () => {
+    expect(getSpotSubmissionErrorMessage(null, 'Try again.')).toBe('Try again.');
   });
 });
