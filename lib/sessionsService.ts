@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { Logger } from './logger';
 
 export type SessionStatus = 'upcoming' | 'live' | 'ended';
 
@@ -36,10 +37,21 @@ export const sessionsService = {
     });
   },
 
-  setRsvp(sessionId: string, attending: boolean) {
-    return supabase.rpc('set_session_rsvp', {
+  async setRsvp(sessionId: string, attending: boolean) {
+    const result = await supabase.rpc('set_session_rsvp', {
       p_session_id: sessionId,
       p_attending: attending,
     });
+    const data = result.data as SessionRsvpResult | null;
+
+    if (result.error || data?.error) {
+      Logger.error(
+        'Session RSVP persistence failed',
+        result.error ?? new Error(data?.error ?? 'Unknown RSVP persistence error'),
+        { session_id: sessionId, attending }
+      );
+    }
+
+    return result;
   },
 };

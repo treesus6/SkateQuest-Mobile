@@ -26,7 +26,9 @@ const config: configLoggerType<any, any> = {
       error: 'redBright',
     },
   },
-  async: true,
+  // Jest considers async console transports to be work that outlives the test.
+  // Keep production logging async while flushing test logs synchronously.
+  async: process.env.NODE_ENV !== 'test',
   dateFormat: 'time',
   printLevel: true,
   printDate: true,
