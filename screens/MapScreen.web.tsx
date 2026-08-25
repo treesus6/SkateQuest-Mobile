@@ -1,15 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Constants from 'expo-constants';
 import { Crosshair, Flame, MapPin, Plus, RotateCcw, TriangleAlert } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { getBrowserLocation } from '../lib/browserLocation';
 import { spotsService } from '../lib/spotsService';
 import { Logger } from '../lib/logger';
-import {
-  getMapboxAvailabilityError,
-  getMapInitializationError,
-} from '../lib/mapboxWebSupport';
+import { getMapboxAvailabilityError, getMapInitializationError } from '../lib/mapboxWebSupport';
 import { SkateSpot } from '../types';
 
 const INK = '#07080B';
@@ -74,7 +79,10 @@ export default function MapScreen() {
       await loadSpots(next);
       return true;
     } catch (locationError) {
-      const message = locationError instanceof Error ? locationError.message : 'Could not determine your location.';
+      const message =
+        locationError instanceof Error
+          ? locationError.message
+          : 'Could not determine your location.';
       setHasRealCenter(false);
       setSpots([]);
       setError(message);
@@ -128,7 +136,9 @@ export default function MapScreen() {
     }
 
     map.on('load', () => setError(current => (current?.includes('map library') ? null : current)));
-    map.on('error', () => setError('Map tiles could not be loaded. Check the Mapbox token and network.'));
+    map.on('error', () =>
+      setError('Map tiles could not be loaded. Check the Mapbox token and network.')
+    );
     map.on('moveend', () => {
       if (moveReloadTimerRef.current) clearTimeout(moveReloadTimerRef.current);
       moveReloadTimerRef.current = setTimeout(() => {
@@ -138,7 +148,9 @@ export default function MapScreen() {
         setCenter(next);
         void loadSpots(next).catch(queryError => {
           Logger.error('Web map moved-area spots query failed', queryError);
-          setError('Skate spots could not be loaded for this area. Check your connection and try again.');
+          setError(
+            'Skate spots could not be loaded for this area. Check your connection and try again.'
+          );
         });
       }, 250);
     });
@@ -167,20 +179,34 @@ export default function MapScreen() {
 
     const spotMarkers = spots.map(spot => {
       const selected = selectedSpot?.id === spot.id;
+      const hasPhoto = typeof spot.image_url === 'string' && spot.image_url.trim().length > 0;
       const el = document.createElement('button');
       el.type = 'button';
       el.title = spot.name;
       el.setAttribute('aria-label', `Open ${spot.name}`);
-      el.style.width = selected ? '34px' : '28px';
-      el.style.height = selected ? '34px' : '28px';
-      el.style.borderRadius = selected ? '11px' : '999px';
+      el.style.width = hasPhoto ? (selected ? '50px' : '44px') : selected ? '34px' : '28px';
+      el.style.height = hasPhoto ? (selected ? '50px' : '44px') : selected ? '34px' : '28px';
+      el.style.borderRadius = hasPhoto ? '13px' : selected ? '11px' : '999px';
       el.style.border = `3px solid ${INK}`;
       el.style.background = selected ? ORANGE : ACID;
+      el.style.padding = hasPhoto ? '2px' : '0';
+      el.style.overflow = 'hidden';
       el.style.boxShadow = selected
         ? '0 0 0 5px rgba(227,109,63,.23), 0 7px 16px rgba(0,0,0,.38)'
         : '0 0 0 4px rgba(217,243,74,.22), 0 5px 12px rgba(0,0,0,.32)';
       el.style.cursor = 'pointer';
       el.style.transition = 'all 160ms ease';
+      if (hasPhoto) {
+        const image = document.createElement('img');
+        image.src = spot.image_url!;
+        image.alt = '';
+        image.style.width = '100%';
+        image.style.height = '100%';
+        image.style.objectFit = 'cover';
+        image.style.borderRadius = '8px';
+        image.style.display = 'block';
+        el.appendChild(image);
+      }
       el.addEventListener('click', event => {
         event.stopPropagation();
         setSelectedSpot(spot);
@@ -260,7 +286,9 @@ export default function MapScreen() {
             <Text style={s.sceneKicker}>SCENE MAP</Text>
           </View>
           <Text style={s.sceneCount}>{hasRealCenter ? spots.length : '—'}</Text>
-          <Text style={s.sceneLabel}>{hasRealCenter ? 'REAL SPOTS NEARBY' : 'ENABLE GPS TO LOAD'}</Text>
+          <Text style={s.sceneLabel}>
+            {hasRealCenter ? 'REAL SPOTS NEARBY' : 'ENABLE GPS TO LOAD'}
+          </Text>
         </View>
 
         <View style={s.gpsChip}>
@@ -271,7 +299,9 @@ export default function MapScreen() {
         {error ? (
           <View style={s.errorCard}>
             <TriangleAlert color={ORANGE} size={19} />
-            <Text selectable style={s.errorText}>{error}</Text>
+            <Text selectable style={s.errorText}>
+              {error}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -281,7 +311,13 @@ export default function MapScreen() {
           label="Use my location"
           onPress={() => void locateUser()}
           accent={ACID}
-          icon={locationLoading ? <ActivityIndicator color={INK} /> : <Crosshair color={INK} size={21} strokeWidth={2.8} />}
+          icon={
+            locationLoading ? (
+              <ActivityIndicator color={INK} />
+            ) : (
+              <Crosshair color={INK} size={21} strokeWidth={2.8} />
+            )
+          }
         />
         <MapButton
           label="Add a spot"
@@ -313,19 +349,36 @@ export default function MapScreen() {
                 setSelectedSpot(spot);
                 mapRef.current?.flyTo({ center: [spot.longitude, spot.latitude], zoom: 15 });
               }}
-              style={[s.spotCard, selected && s.spotCardSelected, index % 2 === 1 && s.spotCardTilt]}
+              style={[
+                s.spotCard,
+                selected && s.spotCardSelected,
+                index % 2 === 1 && s.spotCardTilt,
+              ]}
             >
+              {spot.image_url ? (
+                <Image
+                  source={{ uri: spot.image_url }}
+                  style={s.spotThumb}
+                  resizeMode="cover"
+                  accessibilityLabel={`Photo of ${spot.name}`}
+                />
+              ) : null}
               <View style={[s.spotRank, selected && s.spotRankSelected]}>
                 <Text style={s.spotRankText}>{String(index + 1).padStart(2, '0')}</Text>
               </View>
               <View style={s.spotCopy}>
                 <View style={s.spotTypeRow}>
                   <MapPin color={selected ? INK : ORANGE} size={12} />
-                  <Text style={[s.spotType, selected && s.spotTypeSelected]}>{String(spot.spot_type ?? 'SKATE SPOT').toUpperCase()}</Text>
+                  <Text style={[s.spotType, selected && s.spotTypeSelected]}>
+                    {String(spot.spot_type ?? 'SKATE SPOT').toUpperCase()}
+                  </Text>
                 </View>
-                <Text numberOfLines={1} style={[s.spotName, selected && s.spotNameSelected]}>{spot.name}</Text>
+                <Text numberOfLines={1} style={[s.spotName, selected && s.spotNameSelected]}>
+                  {spot.name}
+                </Text>
                 <Text numberOfLines={1} style={[s.spotMeta, selected && s.spotMetaSelected]}>
-                  {spot.difficulty ? `${spot.difficulty} • ` : ''}{spot.tricks?.length ?? 0} TRICKS LOGGED
+                  {spot.difficulty ? `${spot.difficulty} • ` : ''}
+                  {spot.tricks?.length ?? 0} TRICKS LOGGED
                 </Text>
               </View>
               <Pressable
@@ -346,8 +399,11 @@ export default function MapScreen() {
         {spots.length === 0 && !loading ? (
           <View style={s.emptyCard}>
             <Flame color={ORANGE} size={24} />
-            <Text style={s.emptyTitle}>NO SPOTS IN RANGE</Text>
-            <Text style={s.emptyText}>Move the map, use GPS, or add the spot everyone is missing.</Text>
+            <Text style={s.emptyTitle}>NO SAVED SPOTS HERE YET</Text>
+            <Text style={s.emptyText}>
+              GPS only finds nearby pins—it never limits where you can add one. Move the map and
+              drop a real spot anywhere.
+            </Text>
           </View>
         ) : null}
       </ScrollView>
@@ -355,7 +411,17 @@ export default function MapScreen() {
   );
 }
 
-function MapButton({ label, onPress, icon, accent }: { label: string; onPress: () => void; icon: React.ReactNode; accent: string }) {
+function MapButton({
+  label,
+  onPress,
+  icon,
+  accent,
+}: {
+  label: string;
+  onPress: () => void;
+  icon: React.ReactNode;
+  accent: string;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -371,9 +437,13 @@ function MapButton({ label, onPress, icon, accent }: { label: string; onPress: (
 function MapError({ message, onAddSpot }: { message: string; onAddSpot: () => void }) {
   return (
     <View style={s.errorScreen}>
-      <View style={s.errorStamp}><MapPin color={INK} size={34} /></View>
+      <View style={s.errorStamp}>
+        <MapPin color={INK} size={34} />
+      </View>
       <Text style={s.errorScreenKicker}>MAP OFFLINE</Text>
-      <Text selectable style={s.errorScreenText}>{message}</Text>
+      <Text selectable style={s.errorScreenText}>
+        {message}
+      </Text>
       <Pressable accessibilityRole="button" onPress={onAddSpot} style={s.errorAddButton}>
         <Plus color={INK} size={19} strokeWidth={3} />
         <Text style={s.errorAddButtonText}>ADD A SPOT WITHOUT THE MAP</Text>
@@ -387,25 +457,105 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
   map: { flex: 1, minHeight: 420 },
   topHud: { position: 'absolute', top: 15, left: 14, right: 14, alignItems: 'flex-start', gap: 8 },
-  sceneCard: { width: 145, minHeight: 111, backgroundColor: INK, borderRadius: 21, borderWidth: 2, borderColor: PAPER, padding: 13, transform: [{ rotate: '-1.5deg' }], shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
+  sceneCard: {
+    width: 145,
+    minHeight: 111,
+    backgroundColor: INK,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: PAPER,
+    padding: 13,
+    transform: [{ rotate: '-1.5deg' }],
+    shadowColor: '#000',
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
+  },
   sceneCardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sceneDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACID },
   sceneKicker: { color: PAPER, fontSize: 8, fontWeight: '900', letterSpacing: 1.35 },
   sceneCount: { color: ACID, fontSize: 35, lineHeight: 37, fontWeight: '900', marginTop: 5 },
   sceneLabel: { color: PAPER, fontSize: 7.5, fontWeight: '900', letterSpacing: 0.85, marginTop: 2 },
-  gpsChip: { position: 'absolute', right: 0, top: 0, minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: 13, backgroundColor: ACID, borderWidth: 2, borderColor: INK, transform: [{ rotate: '1.5deg' }] },
+  gpsChip: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 11,
+    borderRadius: 13,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    transform: [{ rotate: '1.5deg' }],
+  },
   gpsChipText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  errorCard: { maxWidth: 340, marginTop: 2, backgroundColor: INK, borderColor: ORANGE, borderWidth: 2, borderRadius: 16, padding: 11, flexDirection: 'row', gap: 9 },
+  errorCard: {
+    maxWidth: 340,
+    marginTop: 2,
+    backgroundColor: INK,
+    borderColor: ORANGE,
+    borderWidth: 2,
+    borderRadius: 16,
+    padding: 11,
+    flexDirection: 'row',
+    gap: 9,
+  },
   errorText: { color: PAPER, flex: 1, fontSize: 11.5, lineHeight: 16, fontWeight: '700' },
   controlStack: { position: 'absolute', right: 14, bottom: 244, gap: 9 },
-  mapButton: { width: 51, height: 51, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: INK, shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 5 }, elevation: 7 },
-  loadingBadge: { position: 'absolute', top: '46%', alignSelf: 'center', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 13, borderRadius: 14, backgroundColor: ACID, borderWidth: 2, borderColor: INK },
+  mapButton: {
+    width: 51,
+    height: 51,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: INK,
+    shadowColor: '#000',
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 7,
+  },
+  loadingBadge: {
+    position: 'absolute',
+    top: '46%',
+    alignSelf: 'center',
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 13,
+    borderRadius: 14,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+  },
   loadingBadgeText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
   spotRailWrap: { position: 'absolute', left: 0, right: 0, bottom: 92, maxHeight: 132 },
   spotRail: { paddingHorizontal: 14, gap: 10, alignItems: 'flex-end' },
-  spotCard: { width: 252, minHeight: 116, borderRadius: 20, backgroundColor: INK, borderWidth: 2, borderColor: PAPER, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 7 },
+  spotCard: {
+    width: 252,
+    minHeight: 116,
+    borderRadius: 20,
+    backgroundColor: INK,
+    borderWidth: 2,
+    borderColor: PAPER,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 7,
+  },
   spotCardSelected: { backgroundColor: ACID, borderColor: INK, transform: [{ rotate: '-1deg' }] },
   spotCardTilt: { transform: [{ rotate: '0.6deg' }] },
+  spotThumb: { width: 74, height: '100%' },
   spotRank: { width: 38, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center' },
   spotRankSelected: { backgroundColor: ORANGE },
   spotRankText: { color: INK, fontSize: 13, fontWeight: '900', transform: [{ rotate: '-90deg' }] },
@@ -417,17 +567,69 @@ const s = StyleSheet.create({
   spotNameSelected: { color: INK },
   spotMeta: { color: '#A4ABB6', fontSize: 8.5, fontWeight: '800', marginTop: 4 },
   spotMetaSelected: { color: 'rgba(7,8,11,0.68)' },
-  openSpotBtn: { width: 52, backgroundColor: PAPER, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  openSpotBtn: {
+    width: 52,
+    backgroundColor: PAPER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
   openSpotBtnSelected: { backgroundColor: ORANGE },
   openSpotText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
   openSpotArrow: { color: INK, fontSize: 18, fontWeight: '900' },
-  emptyCard: { width: 276, minHeight: 110, borderRadius: 20, padding: 15, backgroundColor: INK, borderWidth: 2, borderColor: PAPER },
+  emptyCard: {
+    width: 276,
+    minHeight: 110,
+    borderRadius: 20,
+    padding: 15,
+    backgroundColor: INK,
+    borderWidth: 2,
+    borderColor: PAPER,
+  },
   emptyTitle: { color: PAPER, fontSize: 15, fontWeight: '900', marginTop: 7 },
   emptyText: { color: '#A4ABB6', fontSize: 10.5, lineHeight: 15, marginTop: 4 },
-  errorScreen: { flex: 1, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
-  errorStamp: { width: 68, height: 68, borderRadius: 19, backgroundColor: ORANGE, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
-  errorScreenKicker: { color: ORANGE, fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginTop: 4 },
-  errorScreenText: { color: PAPER, textAlign: 'center', fontSize: 15, lineHeight: 21, maxWidth: 330 },
-  errorAddButton: { minHeight: 46, marginTop: 5, borderRadius: 13, paddingHorizontal: 13, backgroundColor: ACID, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  errorScreen: {
+    flex: 1,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 10,
+  },
+  errorStamp: {
+    width: 68,
+    height: 68,
+    borderRadius: 19,
+    backgroundColor: ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-5deg' }],
+  },
+  errorScreenKicker: {
+    color: ORANGE,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.8,
+    marginTop: 4,
+  },
+  errorScreenText: {
+    color: PAPER,
+    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 21,
+    maxWidth: 330,
+  },
+  errorAddButton: {
+    minHeight: 46,
+    marginTop: 5,
+    borderRadius: 13,
+    paddingHorizontal: 13,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   errorAddButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
 });

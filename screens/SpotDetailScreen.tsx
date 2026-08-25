@@ -244,6 +244,14 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       }
       if (!data) throw new Error('The spot photo did not return a saved record.');
       attached = true;
+
+      const { data: saved, error: readError } = await spotsService.getById(spotId);
+      if (readError) throw readError;
+      const persisted = saved?.spot_photos?.some(
+        (photo: SpotPhoto) => photo.media?.url === photoResult.url
+      );
+      if (!persisted) throw new Error('The uploaded spot photo could not be read back.');
+
       await loadSpotData();
       Alert.alert('Photo saved', 'The photo is attached to this spot for every skater.');
     } catch (error) {
