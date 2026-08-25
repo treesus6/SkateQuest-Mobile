@@ -39,6 +39,16 @@ describe('web/native platform selection', () => {
       ),
       'utf8'
     );
+    const blankFallbackMigration = fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        'supabase',
+        'migrations',
+        '20260825064200_fix_blank_spot_photo_fallback.sql'
+      ),
+      'utf8'
+    );
     const retirementMigration = fs.readFileSync(
       path.join(
         __dirname,
@@ -52,10 +62,13 @@ describe('web/native platform selection', () => {
 
     expect(nativeMap).toContain('<PhotoSpotAnnotation');
     expect(nativeMap).toContain('selectedSpot.image_url');
+    expect(nativeMap).toContain('saved={savedSpotIds.has(spot.id)}');
+    expect(nativeMap).toContain("saved ? '#FFD700'");
     expect(service).toContain("supabase.rpc('add_spot_photo'");
     expect(migration).toContain('CREATE OR REPLACE FUNCTION public.add_spot_photo');
     expect(migration).toContain('(storage.foldername(object.name))[2] = caller_id::text');
     expect(migration).toContain('COALESCE(\n      spot.image_url,');
+    expect(blankFallbackMigration).toContain("NULLIF(btrim(spot.image_url), '')");
     expect(retirementMigration).toContain(
       'REVOKE EXECUTE ON FUNCTION public.create_spot_with_photo'
     );
