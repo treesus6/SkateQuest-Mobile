@@ -19,6 +19,47 @@ describe('web/native platform selection', () => {
     );
     expect(source).not.toContain('@rnmapbox/maps');
     expect(source).toContain('window.mapboxgl');
+    expect(source).toContain("const hasPhoto = typeof spot.image_url === 'string'");
+    expect(source).toContain('style={s.spotThumb}');
+  });
+
+  it('keeps photo-backed spot markers and the live photo RPC migration on both platforms', () => {
+    const nativeMap = fs.readFileSync(
+      path.join(__dirname, '..', 'screens', 'MapScreen.native.tsx'),
+      'utf8'
+    );
+    const service = fs.readFileSync(path.join(__dirname, '..', 'lib', 'spotsService.ts'), 'utf8');
+    const migration = fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        'supabase',
+        'migrations',
+        '20260824193608_create_spots_with_primary_photos.sql'
+      ),
+      'utf8'
+    );
+    const retirementMigration = fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        'supabase',
+        'migrations',
+        '20260824195855_retire_unrated_spot_creation_rpc.sql'
+      ),
+      'utf8'
+    );
+
+    expect(nativeMap).toContain('<PhotoSpotAnnotation');
+    expect(nativeMap).toContain('selectedSpot.image_url');
+    expect(service).toContain("supabase.rpc('add_spot_photo'");
+    expect(migration).toContain('CREATE OR REPLACE FUNCTION public.add_spot_photo');
+    expect(migration).toContain('(storage.foldername(object.name))[2] = caller_id::text');
+    expect(migration).toContain('COALESCE(\n      spot.image_url,');
+    expect(retirementMigration).toContain(
+      'REVOKE EXECUTE ON FUNCTION public.create_spot_with_photo'
+    );
+    expect(retirementMigration).toContain('FROM authenticated');
   });
 
   it('keeps web Add Spot accessible and included in the exported route gate', () => {
@@ -34,7 +75,9 @@ describe('web/native platform selection', () => {
 
     expect(fs.existsSync(route)).toBe(true);
     expect(source).toContain('accessibilityLabel="Use my location"');
-    expect(source).toContain('accessibilityHint="Uses your browser location to place the spot pin"');
+    expect(source).toContain(
+      'accessibilityHint="Uses your browser location to place the spot pin"'
+    );
     expect(source).toContain('style={[s.sectionTitle, s.sectionTitleLight]}');
     expect(source).toContain('sectionTitleLight: { color: PAPER }');
     expect(workflow).toContain('test -f dist-quality/add-spot.html');
@@ -76,7 +119,10 @@ describe('web/native platform selection', () => {
       path.join(__dirname, '..', 'components', 'BetaNotice.web.tsx'),
       'utf8'
     );
-    const base = fs.readFileSync(path.join(__dirname, '..', 'components', 'BetaNotice.tsx'), 'utf8');
+    const base = fs.readFileSync(
+      path.join(__dirname, '..', 'components', 'BetaNotice.tsx'),
+      'utf8'
+    );
     const native = fs.readFileSync(
       path.join(__dirname, '..', 'components', 'BetaNotice.native.tsx'),
       'utf8'
