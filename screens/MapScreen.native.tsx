@@ -245,6 +245,21 @@ export default function MapScreen() {
     }
   };
 
+  const openAddSpot = async () => {
+    let mapCenter: [number, number] | null = null;
+    try {
+      const currentCenter = await mapRef.current?.getCenter();
+      if (currentCenter && currentCenter.length >= 2) {
+        mapCenter = [currentCenter[0], currentCenter[1]];
+      }
+    } catch {
+      mapCenter = null;
+    }
+    navigation.navigate(
+      'AddSpot',
+      mapCenter ? { latitude: mapCenter[1], longitude: mapCenter[0] } : {}
+    );
+  };
   const toggleSave = async (spot: SkateSpot) => {
     const next = new Set(savedSpotIds);
     if (next.has(spot.id)) next.delete(spot.id);
@@ -257,7 +272,11 @@ export default function MapScreen() {
     if (!user || !selectedSpot || reportingCondition) return;
     setReportingCondition(true);
     try {
-      const savedCondition = await spotsService.reportCondition(selectedSpot.id, user.id, condition);
+      const savedCondition = await spotsService.reportCondition(
+        selectedSpot.id,
+        user.id,
+        condition
+      );
       setSpotCondition(savedCondition.condition);
     } catch (error) {
       Alert.alert(
@@ -286,7 +305,18 @@ export default function MapScreen() {
     [spots, activeFilters]
   );
 
-  const filteredShops = useMemo(() => (activeFilters.shop ? shops : []), [shops, activeFilters.shop]);
+  const filteredShops = useMemo(
+    () => (activeFilters.shop ? shops : []),
+    [shops, activeFilters.shop]
+  );
+  const spotsWithoutPhotos = useMemo(
+    () => filteredSpots.filter(spot => !spot.image_url?.trim()),
+    [filteredSpots]
+  );
+  const spotsWithPhotos = useMemo(
+    () => filteredSpots.filter(spot => !!spot.image_url?.trim()),
+    [filteredSpots]
+  );
   const savedIdsArray = Array.from(savedSpotIds);
 
   return (
@@ -315,7 +345,7 @@ export default function MapScreen() {
           clusterMaxZoomLevel={14}
           shape={{
             type: 'FeatureCollection',
-            features: filteredSpots.map(spot => ({
+            features: spotsWithoutPhotos.map(spot => ({
               type: 'Feature',
               id: spot.id,
               geometry: { type: 'Point', coordinates: [spot.longitude, spot.latitude] },
@@ -330,7 +360,9 @@ export default function MapScreen() {
           onPress={(event: any) => {
             const f = event.features[0];
             if (f?.properties && !f.properties.cluster) {
-              const spot = filteredSpots.find((item: SkateSpot) => item.id === f.properties!.spotId);
+              const spot = filteredSpots.find(
+                (item: SkateSpot) => item.id === f.properties!.spotId
+              );
               if (spot) {
                 setSelectedShop(null);
                 setSelectedSpot(spot);
@@ -364,9 +396,12 @@ export default function MapScreen() {
               circleColor: [
                 'match',
                 ['get', 'spotType'],
-                'street', '#F59E0B',
-                'diy', '#A855F7',
-                'quest', '#22C55E',
+                'street',
+                '#F59E0B',
+                'diy',
+                '#A855F7',
+                'quest',
+                '#22C55E',
                 '#D2673D',
               ],
               circleRadius: 8,
@@ -389,6 +424,18 @@ export default function MapScreen() {
             }}
           />
         </Mapbox.ShapeSource>
+
+        {spotsWithPhotos.map(spot => (
+          <PhotoSpotAnnotation
+            key={spot.id}
+            spot={spot}
+            selected={selectedSpot?.id === spot.id}
+            onSelect={() => {
+              setSelectedShop(null);
+              setSelectedSpot(spot);
+            }}
+          />
+        ))}
 
         {filteredShops.length > 0 && (
           <Mapbox.ShapeSource
@@ -582,6 +629,14 @@ export default function MapScreen() {
 
       {selectedSpot && !showDirections && (
         <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+          {selectedSpot.image_url ? (
+            <Image
+              source={{ uri: selectedSpot.image_url }}
+              className="w-full h-28 rounded-xl mb-3"
+              resizeMode="cover"
+              accessibilityLabel={`Photo of ${selectedSpot.name}`}
+            />
+          ) : null}
           <View className="flex-row justify-between items-start mb-1">
             <View className="flex-1 mr-2">
               <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-0.5">
@@ -715,12 +770,56 @@ export default function MapScreen() {
 
       <TouchableOpacity
         className="absolute bottom-6 right-5 bg-[#D2673D] rounded-full w-14 h-14 justify-center items-center shadow-lg"
-        onPress={() => navigation.navigate('AddSpot', {})}
+        onPress={() => void openAddSpot()}
         accessibilityRole="button"
         accessibilityLabel="Add a skate spot"
       >
         <Text className="text-white text-3xl font-light">+</Text>
       </TouchableOpacity>
     </View>
+  );
+}
+
+function PhotoSpotAnnotation({
+  spot,
+  selected,
+  onSelect,
+}: {
+  spot: SkateSpot;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const annotationRef = useRef<any>(null);
+
+  return (
+    <Mapbox.PointAnnotation
+      ref={annotationRef}
+      id={`photo-spot-${spot.id}`}
+      coordinate={[spot.longitude, spot.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+      onSelected={onSelect}
+    >
+      <View
+        style={{
+          width: selected ? 54 : 46,
+          height: selected ? 54 : 46,
+          borderRadius: 14,
+          borderWidth: selected ? 4 : 3,
+          borderColor: selected ? '#D2673D' : '#FFFFFF',
+          backgroundColor: '#101722',
+          padding: 2,
+          overflow: 'hidden',
+          elevation: selected ? 9 : 6,
+        }}
+      >
+        <Image
+          source={{ uri: spot.image_url! }}
+          style={{ width: '100%', height: '100%', borderRadius: 9 }}
+          resizeMode="cover"
+          accessibilityLabel={`${spot.name} skate spot`}
+          onLoad={() => annotationRef.current?.refresh?.()}
+        />
+      </View>
+    </Mapbox.PointAnnotation>
   );
 }
