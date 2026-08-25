@@ -2,8 +2,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { getSessionStatus, sessionsService } from '../../lib/sessionsService';
 import { supabase } from '../../lib/supabase';
+import { Logger } from '../../lib/logger';
 
 const mockRpc = supabase.rpc as unknown as jest.Mock;
+const mockLoggerError = jest.spyOn(Logger, 'error').mockImplementation(() => undefined);
 
 describe('sessionsService', () => {
   beforeEach(() => {
@@ -51,5 +53,31 @@ describe('sessionsService', () => {
       p_session_id: 'session-1',
       p_attending: false,
     });
+    expect(mockLoggerError).not.toHaveBeenCalled();
+  });
+
+  it('logs application-level RSVP persistence failures', async () => {
+    mockRpc.mockResolvedValue({ data: { error: 'full' }, error: null });
+
+    await sessionsService.setRsvp('session-2', true);
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      'Session RSVP persistence failed',
+      expect.objectContaining({ message: 'full' }),
+      { session_id: 'session-2', attending: true }
+    );
+  });
+
+  it('logs PostgREST RSVP persistence failures', async () => {
+    const persistenceError = new Error('network unavailable');
+    mockRpc.mockResolvedValue({ data: null, error: persistenceError });
+
+    await sessionsService.setRsvp('session-3', false);
+
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      'Session RSVP persistence failed',
+      persistenceError,
+      { session_id: 'session-3', attending: false }
+    );
   });
 });
