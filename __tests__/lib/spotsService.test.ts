@@ -77,4 +77,17 @@ describe('spotsService Add Spot contracts', () => {
       p_quality: 5,
     });
   });
+
+  it('attaches an additional photo through the ownership-validating RPC', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'photo-link-id' }, error: null });
+
+    await spotsService.addPhoto('spot-2', 'https://photo', 42, 'Photo of Library Ledges');
+
+    expect(supabase.rpc).toHaveBeenCalledWith('add_spot_photo', {
+      p_spot_id: 'spot-2',
+      p_photo_url: 'https://photo',
+      p_photo_file_size: 42,
+      p_caption: 'Photo of Library Ledges',
+    });
+  });
 });
