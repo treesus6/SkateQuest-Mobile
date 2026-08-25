@@ -430,6 +430,7 @@ export default function MapScreen() {
             key={spot.id}
             spot={spot}
             selected={selectedSpot?.id === spot.id}
+            saved={savedSpotIds.has(spot.id)}
             onSelect={() => {
               setSelectedShop(null);
               setSelectedSpot(spot);
@@ -783,10 +784,12 @@ export default function MapScreen() {
 function PhotoSpotAnnotation({
   spot,
   selected,
+  saved,
   onSelect,
 }: {
   spot: SkateSpot;
   selected: boolean;
+  saved: boolean;
   onSelect: () => void;
 }) {
   const annotationRef = useRef<any>(null);
@@ -805,7 +808,7 @@ function PhotoSpotAnnotation({
           height: selected ? 54 : 46,
           borderRadius: 14,
           borderWidth: selected ? 4 : 3,
-          borderColor: selected ? '#D2673D' : '#FFFFFF',
+          borderColor: selected ? '#D2673D' : saved ? '#FFD700' : '#FFFFFF',
           backgroundColor: '#101722',
           padding: 2,
           overflow: 'hidden',
