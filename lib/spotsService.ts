@@ -220,25 +220,6 @@ export const spotsService = {
     }
   },
 
-  async uploadPhoto(spotId: string, mediaId: string, userId: string, isPrimary: boolean = false) {
-    try {
-      const { error } = await supabase.from('spot_photos').insert([
-        {
-          spot_id: spotId,
-          media_id: mediaId,
-          uploaded_by: userId,
-          is_primary: isPrimary,
-        },
-      ]);
-      if (error)
-        throw new ServiceError('Failed to upload spot photo', 'SPOTS_UPLOAD_PHOTO_FAILED', error);
-    } catch (error) {
-      if (error instanceof ServiceError) throw error;
-      Logger.error('spotsService.uploadPhoto failed', error);
-      throw new ServiceError('Failed to upload spot photo', 'SPOTS_UPLOAD_PHOTO_FAILED', error);
-    }
-  },
-
   async reportCondition(spotId: string, userId: string, condition: string, notes?: string) {
     try {
       const { data, error } = await supabase
