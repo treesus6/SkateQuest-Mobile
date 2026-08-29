@@ -22,16 +22,24 @@ export function sanitizeAuthReturnPath(value: unknown): string {
 
 export function rememberAuthReturnPath(value: unknown): string {
   pendingReturnPath = sanitizeAuthReturnPath(value);
-  if (typeof window !== 'undefined') {
-    window.sessionStorage?.setItem(STORAGE_KEY, pendingReturnPath);
+  try {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage?.setItem(STORAGE_KEY, pendingReturnPath);
+    }
+  } catch {
+    // Some privacy modes block sessionStorage; the in-memory path still works.
   }
   return pendingReturnPath;
 }
 
 export function getAuthReturnPath(): string {
-  if (typeof window !== 'undefined') {
-    const stored = window.sessionStorage?.getItem(STORAGE_KEY);
-    if (stored) pendingReturnPath = sanitizeAuthReturnPath(stored);
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = window.sessionStorage?.getItem(STORAGE_KEY);
+      if (stored) pendingReturnPath = sanitizeAuthReturnPath(stored);
+    }
+  } catch {
+    // Fall back to the in-memory path when browser storage is unavailable.
   }
   return pendingReturnPath;
 }
