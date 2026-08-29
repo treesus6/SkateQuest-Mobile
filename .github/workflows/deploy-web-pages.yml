@@ -76,10 +76,11 @@ jobs:
 
       - name: Verify core PWA export
         run: |
-          test -f dist/index.html
-          test -f dist/map.html
-          test -f dist/login.html
-          test -f dist/quests.html
+          for route in \
+            index login signup forgot-password map add-spot spots crews quests \
+            skate-tv upload-media sessions; do
+            test -f "dist/${route}.html"
+          done
           test -f dist/manifest.webmanifest
           test -f dist/service-worker.js
           grep -q '"name": "SkateQuest"' dist/manifest.webmanifest
@@ -114,22 +115,28 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5 6; do
-            if curl --fail --silent --show-error --location --max-time 20 \
-                https://skatequest.me/ -o /tmp/skatequest-home \
-              && grep -qi '<html' /tmp/skatequest-home \
-              && curl --fail --silent --show-error --location --max-time 20 \
-                https://skatequest.me/map -o /tmp/skatequest-map \
-              && grep -qi '<html' /tmp/skatequest-map \
-              && curl --fail --silent --show-error --location --max-time 20 \
-                https://skatequest.me/login -o /tmp/skatequest-login \
-              && grep -qi '<html' /tmp/skatequest-login \
+            routes_healthy=true
+            for route in \
+              / /login /signup /forgot-password /map /add-spot /spots /crews \
+              /quests /skate-tv /upload-media /sessions; do
+              route_slug="${route#/}"
+              route_slug="${route_slug:-home}"
+              if ! curl --fail --silent --show-error --location --max-time 20 \
+                  "https://skatequest.me${route}" -o "/tmp/skatequest-${route_slug}" \
+                || ! grep -qi '<html' "/tmp/skatequest-${route_slug}"; then
+                routes_healthy=false
+                break
+              fi
+            done
+
+            if $routes_healthy \
               && curl --fail --silent --show-error --location --max-time 20 \
                 https://skatequest.me/manifest.webmanifest -o /tmp/skatequest-manifest \
               && grep -q '"name": "SkateQuest"' /tmp/skatequest-manifest \
               && curl --fail --silent --show-error --location --max-time 20 \
                 https://skatequest.me/service-worker.js -o /tmp/skatequest-sw \
               && grep -q 'skatequest-shell-' /tmp/skatequest-sw; then
-              echo 'SkateQuest production HTTPS PWA, home, map, and login routes are reachable.'
+              echo 'SkateQuest production HTTPS PWA and release-critical routes are reachable.'
               exit 0
             fi
             echo "Production web check attempt ${attempt} failed; retrying."
@@ -182,7 +189,7 @@ jobs:
               `- Commit: \`${context.sha}\``,
               `- Workflow run: ${runUrl}`,
               '',
-              'The deploy workflow verifies the exported PWA plus live HTTPS home, map, login, manifest, and service-worker responses at `https://skatequest.me`.',
+              'The deploy workflow verifies the exported PWA plus live HTTPS auth, map, Add Spot, spots, crews, quests, SkateTV, upload, sessions, manifest, and service-worker responses at `https://skatequest.me`.',
             ].join('\n');
 
             const { data: openIssues } = await github.rest.issues.listForRepo({
