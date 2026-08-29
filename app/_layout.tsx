@@ -26,6 +26,7 @@ import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQue
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
 import { supabase } from '../lib/supabase';
+import { getAuthReturnPath, rememberAuthReturnPath } from '../lib/authReturnPath';
 
 import '../global.css';
 
@@ -64,16 +65,18 @@ function AuthGuard() {
     if (loading) return;
 
     const routeSegments = segments as readonly string[];
+    const requestedPath = '/' + routeSegments.filter(segment => !segment.startsWith('(')).join('/');
     const inAuthGroup = routeSegments[0] === '(auth)';
     const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
     if (!user && !inAuthGroup) {
+      rememberAuthReturnPath(requestedPath);
       router.replace('/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {
-      router.replace('/');
+      router.replace(getAuthReturnPath() as any);
     }
-  }, [user, loading, segments]);
+  }, [user, loading, router, segments]);
 
   useEffect(() => {
     if (!loading) {

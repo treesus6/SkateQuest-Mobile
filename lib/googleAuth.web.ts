@@ -1,14 +1,16 @@
 import { supabase } from './supabase';
 
-function webCallbackUrl() {
+function webCallbackUrl(returnTo = '/') {
   if (typeof window === 'undefined') return undefined;
   const pathname = window.location.pathname;
   const projectBase = pathname.startsWith('/SkateQuest-Mobile/') ? '/SkateQuest-Mobile' : '';
-  return `${window.location.origin}${projectBase}/`;
+  const callback = new URL(`${projectBase}/callback`, window.location.origin);
+  callback.searchParams.set('returnTo', returnTo);
+  return callback.toString();
 }
 
-export async function signInWithGoogle() {
-  const redirectTo = webCallbackUrl();
+export async function signInWithGoogle(returnTo = '/') {
+  const redirectTo = webCallbackUrl(returnTo);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

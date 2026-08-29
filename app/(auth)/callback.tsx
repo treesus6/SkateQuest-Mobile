@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { getAuthReturnPath } from '../../lib/authReturnPath';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function AuthCallback() {
         setError(sessionError.message);
         return;
       }
-      router.replace(data.session ? '/' : '/login');
+      router.replace((data.session ? getAuthReturnPath() : '/login') as any);
     };
 
     void finish();

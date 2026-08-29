@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import LoginScreenComponent from '../../screens/LoginScreen';
+import { getAuthReturnPath } from '../../lib/authReturnPath';
 
 // Bridge: gives LoginScreen a navigation prop shaped like @react-navigation
 // so we don't have to touch the screen itself
 export default function LoginRoute() {
   const router = useRouter();
+  const safeReturnTo = getAuthReturnPath();
 
   const navigation = {
     navigate: (screen: string) => {
@@ -14,5 +16,5 @@ export default function LoginRoute() {
     goBack: () => router.back(),
   };
 
-  return <LoginScreenComponent navigation={navigation} />;
+  return <LoginScreenComponent navigation={navigation} returnTo={safeReturnTo} />;
 }
