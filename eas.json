@@ -8,18 +8,12 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
-      "node": "22.22.1",
-      "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
-      }
+      "node": "22.22.1"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "node": "22.22.1",
-      "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
-      },
       "android": {
         "buildType": "apk"
       }
@@ -29,9 +23,6 @@
       "channel": "production",
       "node": "22.22.1",
       "autoIncrement": true,
-      "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
-      },
       "android": {
         "buildType": "app-bundle"
       }
