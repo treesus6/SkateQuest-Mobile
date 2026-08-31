@@ -63,25 +63,6 @@ jobs:
             exit 1
           fi
 
-      - name: Expo Prebuild
-        run: npx expo prebuild --platform android --clean
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
-          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-
-      - name: Build installable debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
-        env:
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
-
       - name: Detect release signing credentials
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -94,6 +75,37 @@ jobs:
           else
             echo "HAS_RELEASE_KEYSTORE=false" >> "$GITHUB_ENV"
           fi
+
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform android --clean
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          SKATEQUEST_GITHUB_SIGNING: ${{ env.HAS_RELEASE_KEYSTORE }}
+
+      - name: Verify generated release signing wiring
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        shell: bash
+        run: |
+          grep -q 'signingConfigs {' android/app/build.gradle
+          grep -q 'signingConfig signingConfigs.release' android/app/build.gradle
+          if grep -A 8 -E 'release[[:space:]]*\{' android/app/build.gradle | grep -q 'signingConfig signingConfigs.debug'; then
+            echo "::error::Generated release build type still uses the debug signing config"
+            exit 1
+          fi
+
+      - name: Build installable debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
 
       - name: Decode release keystore
         if: env.HAS_RELEASE_KEYSTORE == 'true'
@@ -168,8 +180,13 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
           test -x "$APKSIGNER"
           for apk in android/app/build/outputs/apk/release/*.apk; do
-            "$APKSIGNER" verify --verbose --print-certs "$apk"
-            actual="$($APKSIGNER verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+            signer_output="$($APKSIGNER verify --verbose --print-certs "$apk")"
+            printf '%s\n' "$signer_output"
+            actual="$(printf '%s\n' "$signer_output" | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+            if [ -z "$actual" ]; then
+              echo "::error::Unable to read release signing certificate SHA-256 digest"
+              exit 1
+            fi
             if [ "$actual" != "$EXPECTED_SIGNING_SHA256" ]; then
               echo "::error::Release signing certificate mismatch (got $actual)"
               exit 1
