@@ -126,6 +126,56 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Verify packaged runtime configuration
+        shell: bash
+        run: |
+          verify_config() {
+            local apk="$1"
+            unzip -p "$apk" assets/app.config | node -e '
+              let input = "";
+              process.stdin.on("data", chunk => { input += chunk; });
+              process.stdin.on("end", () => {
+                const config = JSON.parse(input);
+                const extra = config.extra || {};
+                const missing = ["supabaseUrl", "supabaseAnonKey", "mapboxAccessToken"]
+                  .filter(name => typeof extra[name] !== "string" || extra[name].trim() === "");
+                if (missing.length) {
+                  throw new Error(`Packaged APK is missing runtime configuration: ${missing.join(", ")}`);
+                }
+                if (extra.supabaseUrl.includes("configuration-missing")) {
+                  throw new Error("Packaged APK contains the Supabase fallback URL");
+                }
+                console.log(`Verified packaged runtime configuration in ${process.argv[1]}`);
+              });
+            ' "$apk"
+          }
+
+          for apk in android/app/build/outputs/apk/debug/*.apk; do
+            verify_config "$apk"
+          done
+          if [ "$HAS_RELEASE_KEYSTORE" = 'true' ]; then
+            for apk in android/app/build/outputs/apk/release/*.apk; do
+              verify_config "$apk"
+            done
+          fi
+
+      - name: Verify release signing identity
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        shell: bash
+        env:
+          EXPECTED_SIGNING_SHA256: 2F:C9:59:AD:2A:29:40:BA:8B:83:1B:3B:52:50:AD:CF:45:FB:81:48:F9:C8:3C:50:C3:F8:4B:AA:3C:8A:3A:0B
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          test -x "$APKSIGNER"
+          for apk in android/app/build/outputs/apk/release/*.apk; do
+            "$APKSIGNER" verify --verbose --print-certs "$apk"
+            actual="$($APKSIGNER verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+            if [ "$actual" != "$EXPECTED_SIGNING_SHA256" ]; then
+              echo "::error::Release signing certificate mismatch (got $actual)"
+              exit 1
+            fi
+          done
+
       - name: Upload signed release APK
         if: env.HAS_RELEASE_KEYSTORE == 'true'
         uses: actions/upload-artifact@v7
