@@ -54,7 +54,7 @@ jobs:
           writeFileSync('google-service-account.json', key, { mode: 0o600 });
           NODE
 
-      - name: Submit exact build to Play Store internal track
+      - name: Submit exact build to Play Store alpha closed-testing track
         run: eas submit --platform android --profile production --id "${{ steps.request.outputs.build_id }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
