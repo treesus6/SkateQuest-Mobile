@@ -43,18 +43,52 @@ export const spotsService = {
 
   async getById(spotId: string) {
     try {
-      return await supabase
+      // Read the persisted spot independently from condition reporter embeds. This keeps
+      // spot creation verification and SpotDetail usable even if PostgREST is briefly
+      // refreshing an optional relationship in its schema cache.
+      const spotResult = await supabase
         .from('skate_spots')
         .select(
           `
           *,
           spot_photos(*, media(*)),
-          spot_conditions(*, reporter:profiles(id, username)),
           challenges(*)
         `
         )
         .eq('id', spotId)
         .single();
+
+      if (spotResult.error || !spotResult.data) return spotResult;
+
+      const conditionsResult = await supabase
+        .from('spot_conditions')
+        .select(
+          `
+          *,
+          reporter:profiles!spot_conditions_reported_by_profiles_fkey(id, username)
+        `
+        )
+        .eq('spot_id', spotId)
+        .order('created_at', { ascending: false });
+
+      if (conditionsResult.error) {
+        Logger.warn('spotsService.getById condition reporter lookup failed', conditionsResult.error);
+        return {
+          ...spotResult,
+          data: {
+            ...spotResult.data,
+            spot_conditions: [],
+          },
+        };
+      }
+
+      return {
+        ...spotResult,
+        data: {
+          ...spotResult.data,
+          spot_conditions: conditionsResult.data ?? [],
+        },
+      };
     } catch (error) {
       Logger.error('spotsService.getById failed', error);
       throw new ServiceError('Failed to fetch spot', 'SPOTS_GET_BY_ID_FAILED', error);
