@@ -82,14 +82,6 @@ jobs:
           RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
           GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
 
-      - name: Upload installable APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: skatequest-android-apk
-          path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 14
-          if-no-files-found: error
-
       - name: Detect release signing credentials
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -158,6 +150,14 @@ jobs:
               verify_config "$apk"
             done
           fi
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-android-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Verify release signing identity
         if: env.HAS_RELEASE_KEYSTORE == 'true'
