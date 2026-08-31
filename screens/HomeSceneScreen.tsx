@@ -25,7 +25,6 @@ import {
   Play,
   Sparkles,
   Target,
-  Timer,
   Trophy,
   Users,
   Video,
@@ -244,9 +243,9 @@ export default function HomeSceneScreen() {
                     <Crosshair color={INK} size={18} strokeWidth={2.8} />
                     <Text style={s.heroPrimaryText}>OPEN MAP</Text>
                   </Pressable>
-                  <Pressable style={s.heroGhost} onPress={() => go('ActiveSession')}>
-                    <Timer color="#fff" size={17} />
-                    <Text style={s.heroGhostText}>START SESSION</Text>
+                  <Pressable style={s.heroGhost} onPress={() => go('AddSpot')}>
+                    <MapPinned color="#fff" size={17} />
+                    <Text style={s.heroGhostText}>ADD SPOT</Text>
                   </Pressable>
                 </View>
               </View>
