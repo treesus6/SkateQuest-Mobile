@@ -32,12 +32,22 @@ const LIBCPP_PACKAGING = `    packagingOptions {
         pickFirst 'lib/armeabi-v7a/libc++_shared.so'
     }`;
 
+const RELEASE_SIGNING_ENTRY = `        release {
+            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }`;
+
 // Regex guards — more precise than .includes() and avoids CodeQL URL-substring-sanitization flag.
 // Each checks for the actual structural pattern we care about, not a raw URL substring.
 const MAPBOX_MAVEN_PRESENT = /maven\s*\{[^}]*api\.mapbox\.com\/downloads\/v2\/releases\/maven/;
 const PREFER_SETTINGS_PRESENT = /RepositoriesMode\.PREFER_SETTINGS/;
 const LIBCPP_PRESENT = /pickFirst\s+'lib\/x86\/libc\+\+_shared\.so'/;
-const SIGNING_CONFIG_PRESENT = /signingConfigs\s*\{/;
+const RELEASE_SIGNING_CONFIG_PRESENT = /signingConfigs\s*\{[\s\S]*?release\s*\{/;
 
 /**
  * Validate a version string before injecting it into a Gradle file.
@@ -55,6 +65,49 @@ function sanitizeVersion(version) {
     );
   }
   return version;
+}
+
+function withAndroidSigning(config) {
+  return withAppBuildGradle(config, cfg => {
+    if (cfg.modResults.language !== 'groovy') return cfg;
+
+    let contents = cfg.modResults.contents;
+    if (!RELEASE_SIGNING_CONFIG_PRESENT.test(contents)) {
+      if (/signingConfigs\s*\{/.test(contents)) {
+        contents = contents.replace(
+          /signingConfigs\s*\{/,
+          match => `${match}\n${RELEASE_SIGNING_ENTRY}`
+        );
+      } else {
+        const signingConfig = `
+    signingConfigs {
+${RELEASE_SIGNING_ENTRY}
+    }`;
+        contents = contents.replace(
+          /^(\s*android\s*\{)/m,
+          `$1\n${signingConfig}`
+        );
+      }
+    }
+
+    // Expo's generated release build type is debug-signed by default. Replace that
+    // assignment instead of merely adding another signingConfig line before it.
+    const releaseDebugSigning = /(release\s*\{[\s\S]*?)signingConfig\s+signingConfigs\.debug/;
+    if (releaseDebugSigning.test(contents)) {
+      contents = contents.replace(
+        releaseDebugSigning,
+        '$1signingConfig signingConfigs.release'
+      );
+    } else if (!/release\s*\{[\s\S]*?signingConfig\s+signingConfigs\.release/.test(contents)) {
+      contents = contents.replace(
+        /release\s*\{(\s*)/,
+        `release {\n            signingConfig signingConfigs.release\n            `
+      );
+    }
+
+    cfg.modResults.contents = contents;
+    return cfg;
+  });
 }
 
 module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
@@ -109,39 +162,13 @@ module.exports = function withMapboxRepo(config, { RNMapboxMapsVersion } = {}) {
     return cfg;
   });
 
+  // GitHub's native release workflow opts in explicitly. EAS and local prebuilds
+  // remain untouched so their own credential handling is not overridden.
+  if (process.env.SKATEQUEST_GITHUB_SIGNING === 'true') {
+    config = withAndroidSigning(config);
+  }
+
   return config;
 };
 
-// Export a separate signing plugin for GitHub Actions builds
-module.exports.withAndroidSigning = function withAndroidSigning(config) {
-  const { withAppBuildGradle } = require('expo/config-plugins');
-
-  return withAppBuildGradle(config, cfg => {
-    if (cfg.modResults.language !== 'groovy') return cfg;
-
-    const signingConfig = `
-    signingConfigs {
-        release {
-            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-            if (keystorePath) {
-                storeFile file(keystorePath)
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-            }
-        }
-    }`;
-
-    if (!SIGNING_CONFIG_PRESENT.test(cfg.modResults.contents)) {
-      cfg.modResults.contents = cfg.modResults.contents.replace(
-        /^(\s*android\s*\{)/m,
-        `$1\n${signingConfig}`
-      );
-      cfg.modResults.contents = cfg.modResults.contents.replace(
-        /release\s*\{(\s*)/,
-        `release {\n            signingConfig signingConfigs.release\n            `
-      );
-    }
-    return cfg;
-  });
-};
+module.exports.withAndroidSigning = withAndroidSigning;
