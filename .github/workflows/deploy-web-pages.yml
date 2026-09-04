@@ -74,7 +74,7 @@ jobs:
       - name: Build static web app
         run: npx expo export --platform web --output-dir dist
 
-      - name: Verify core PWA export
+      - name: Verify core PWA export and legacy-route recovery
         run: |
           for route in \
             index login signup forgot-password map add-spot spots crews quests \
@@ -83,7 +83,13 @@ jobs:
           done
           test -f dist/manifest.webmanifest
           test -f dist/service-worker.js
+          test -f dist/videos.html
+          test -f dist/videos/index.html
+          test -f dist/404.html
           grep -q '"name": "SkateQuest"' dist/manifest.webmanifest
+          grep -q 'SKATEQUEST_LEGACY_VIDEOS_REDIRECT' dist/videos/index.html
+          grep -q 'SKATEQUEST_LEGACY_ROUTE_RECOVERY' dist/404.html
+          grep -q '/spot-detail' dist/404.html
 
       - name: Disable Jekyll
         run: touch dist/.nojekyll
@@ -110,7 +116,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Verify production HTTPS PWA and key routes
+      - name: Verify production HTTPS PWA, key routes, and route recovery
         shell: bash
         run: |
           set -euo pipefail
@@ -129,21 +135,37 @@ jobs:
               fi
             done
 
-            if $routes_healthy \
+            # Verify the legacy paths themselves are represented in the deployed
+            # artifact. The custom 404 intentionally returns HTTP 404, so inspect
+            # its body without --fail and verify the recovery script marker.
+            legacy_healthy=true
+            if ! curl --fail --silent --show-error --max-time 20 \
+                https://skatequest.me/videos/ -o /tmp/skatequest-legacy-videos \
+              || ! grep -q 'SKATEQUEST_LEGACY_VIDEOS_REDIRECT' /tmp/skatequest-legacy-videos; then
+              legacy_healthy=false
+            fi
+            curl --silent --show-error --max-time 20 \
+              https://skatequest.me/spot/skatequest-route-smoke \
+              -o /tmp/skatequest-legacy-spot || true
+            if ! grep -q 'SKATEQUEST_LEGACY_ROUTE_RECOVERY' /tmp/skatequest-legacy-spot; then
+              legacy_healthy=false
+            fi
+
+            if $routes_healthy && $legacy_healthy \
               && curl --fail --silent --show-error --location --max-time 20 \
                 https://skatequest.me/manifest.webmanifest -o /tmp/skatequest-manifest \
               && grep -q '"name": "SkateQuest"' /tmp/skatequest-manifest \
               && curl --fail --silent --show-error --location --max-time 20 \
                 https://skatequest.me/service-worker.js -o /tmp/skatequest-sw \
               && grep -q 'skatequest-shell-' /tmp/skatequest-sw; then
-              echo 'SkateQuest production HTTPS PWA and release-critical routes are reachable.'
+              echo 'SkateQuest production HTTPS PWA, release-critical routes, and legacy-route recovery are healthy.'
               exit 0
             fi
             echo "Production web check attempt ${attempt} failed; retrying."
             sleep 10
           done
 
-          echo 'Production HTTPS app or a key route did not become healthy after deployment.' >&2
+          echo 'Production HTTPS app, a key route, or legacy-route recovery did not become healthy after deployment.' >&2
           exit 1
 
   report-web-health:
@@ -189,7 +211,7 @@ jobs:
               `- Commit: \`${context.sha}\``,
               `- Workflow run: ${runUrl}`,
               '',
-              'The deploy workflow verifies the exported PWA plus live HTTPS auth, map, Add Spot, spots, crews, quests, SkateTV, upload, sessions, manifest, and service-worker responses at `https://skatequest.me`.',
+              'The deploy workflow verifies the exported PWA plus live HTTPS auth, map, Add Spot, spots, crews, quests, SkateTV, upload, sessions, manifest, service-worker responses, and legacy `/videos` + `/spot/<id>` route recovery at `https://skatequest.me`.',
             ].join('\n');
 
             const { data: openIssues } = await github.rest.issues.listForRepo({
