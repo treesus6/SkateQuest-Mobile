@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SkateQuest · Route recovery</title>
+  <meta name="robots" content="noindex" />
+  <script>
+    (() => {
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      const query = new URLSearchParams(window.location.search);
+
+      if (path === '/videos') {
+        window.location.replace(`/skate-tv${window.location.search}${window.location.hash}`);
+        return;
+      }
+
+      const spotMatch = path.match(/^\/spot\/([^/]+)$/);
+      if (spotMatch) {
+        let spotId;
+        try {
+          spotId = decodeURIComponent(spotMatch[1]);
+        } catch {
+          spotId = spotMatch[1];
+        }
+        query.set('spotId', spotId);
+        const suffix = query.toString();
+        window.location.replace(`/spot-detail${suffix ? `?${suffix}` : ''}${window.location.hash}`);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <!-- SKATEQUEST_LEGACY_ROUTE_RECOVERY -->
+  <main>
+    <h1>That SkateQuest link was not found.</h1>
+    <p>If this was an older spot link, SkateQuest will recover it automatically.</p>
+    <p><a href="/">Return to SkateQuest</a></p>
+  </main>
+</body>
+</html>
