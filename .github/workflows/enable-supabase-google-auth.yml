@@ -1,0 +1,67 @@
+name: Enable Supabase Google Auth
+
+on:
+  push:
+    branches:
+      - fix/google-auth-enable
+    paths:
+      - .github/workflows/enable-supabase-google-auth.yml
+
+permissions:
+  contents: read
+
+jobs:
+  enable-google-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Google provider in Supabase Auth
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: hreeuqdgrwvnxquxohod
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN repository secret is not configured."
+            exit 1
+          fi
+
+          http_code=$(curl --silent --show-error \
+            --output /tmp/supabase-auth-update.json \
+            --write-out '%{http_code}' \
+            --request PATCH \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data '{"external_google_enabled":true}' \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth")
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "::error::Supabase Auth update failed with HTTP $http_code"
+            jq -r '{message, error, error_code}' /tmp/supabase-auth-update.json 2>/dev/null || true
+            exit 1
+          fi
+
+          verify_code=$(curl --silent --show-error \
+            --output /tmp/supabase-auth-config.json \
+            --write-out '%{http_code}' \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth")
+
+          if [ "$verify_code" -lt 200 ] || [ "$verify_code" -ge 300 ]; then
+            echo "::error::Could not verify Supabase Auth config; HTTP $verify_code"
+            exit 1
+          fi
+
+          enabled=$(jq -r '.external_google_enabled // false' /tmp/supabase-auth-config.json)
+          has_client_id=$(jq -r 'if (.external_google_client_id // "") == "" then "false" else "true" end' /tmp/supabase-auth-config.json)
+
+          echo "Google provider enabled: $enabled"
+          echo "Google client ID configured: $has_client_id"
+
+          if [ "$enabled" != "true" ]; then
+            echo "::error::Google provider is still disabled after the update."
+            exit 1
+          fi
+
+          if [ "$has_client_id" != "true" ]; then
+            echo "::error::Google provider is enabled, but no Google client ID is configured in Supabase."
+            exit 1
+          fi
