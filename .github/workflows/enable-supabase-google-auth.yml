@@ -65,3 +65,38 @@ jobs:
             echo "::error::Google provider is enabled, but no Google client ID is configured in Supabase."
             exit 1
           fi
+
+      - name: Verify Google OAuth starts successfully
+        env:
+          SUPABASE_URL: https://hreeuqdgrwvnxquxohod.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_buIhyaJxXUblLeU4gs_Y9Q_Ighua9bb
+        run: |
+          headers=$(mktemp)
+          body=$(mktemp)
+          status=$(curl --silent --show-error \
+            --output "$body" \
+            --dump-header "$headers" \
+            --write-out '%{http_code}' \
+            --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            --header "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+            "${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fskatequest.me%2Fcallback")
+
+          location=$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]+:[[:space:]]*/, ""); gsub(/\r/, ""); print; exit}' "$headers")
+          echo "OAuth start HTTP status: $status"
+
+          if [ "$status" -lt 300 ] || [ "$status" -ge 400 ]; then
+            echo "::error::Google OAuth did not return a redirect."
+            cat "$body"
+            exit 1
+          fi
+
+          case "$location" in
+            https://accounts.google.com/*|https://accounts.google.com/o/oauth2/*|https://accounts.google.com/o/oauth2/v2/auth*)
+              echo "Google OAuth redirect verified."
+              ;;
+            *)
+              echo "::error::Unexpected OAuth redirect target."
+              echo "$location"
+              exit 1
+              ;;
+          esac
