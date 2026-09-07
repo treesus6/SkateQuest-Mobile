@@ -53,15 +53,14 @@ module.exports = {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#d2673d',
       },
-      permissions: [
-        'ACCESS_COARSE_LOCATION',
-        'ACCESS_FINE_LOCATION',
-        'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
-        'READ_MEDIA_IMAGES',
-        'READ_MEDIA_VIDEO',
-        'RECORD_AUDIO',
+      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'CAMERA', 'RECORD_AUDIO'],
+      // Expo Image Picker uses Android's system photo picker. Broad library access is
+      // unnecessary and creates avoidable Google Play photo/video policy review risk.
+      blockedPermissions: [
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
       ],
     },
 
