@@ -100,6 +100,8 @@ describe('web/native platform selection', () => {
     expect(workflow).toContain('node scripts/verify-web-routes.js dist-quality');
     expect(routeVerifier).toContain("'add-spot.html'");
     expect(routeVerifier).toContain("'spot-detail.html'");
+    expect(routeVerifier).toContain("'crew.html'");
+    expect(routeVerifier).toContain("'profile.html'");
   });
 
   it('uses URL session detection only in the web auth adapter', () => {

@@ -11,6 +11,8 @@ const requiredFiles = [
   'add-spot.html',
   'spots.html',
   'crews.html',
+  'crew.html',
+  'profile.html',
   'quests.html',
   'skate-tv.html',
   'spot-detail.html',

@@ -29,6 +29,8 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Changed
 
+- Reset spot detail state on route ID changes, preserve configured web base paths in share URLs, and restore crew/profile export checks (PR #279 review).
+
 - Preserved Expo Router query parameters through the authenticated redirect flow on web and native.
 - Blocked broad Android storage/media permissions that are unnecessary for system picker-based uploads.
 - Pinned `sanitize-html` to 2.17.7 and moved the Expo tunnel helper to development dependencies.

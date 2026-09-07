@@ -44,7 +44,7 @@ import GhostClipViewer from '../components/GhostClipViewer';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import SpotMiniMap from '../components/SpotMiniMap';
 import { getSessionStatus, sessionsService, SessionRsvpResult } from '../lib/sessionsService';
-import { getSpotShareUrl } from '../lib/spotLinks';
+import { getSpotShareUrl, normalizeSpotId } from '../lib/spotLinks';
 
 const { width } = Dimensions.get('window');
 
@@ -81,8 +81,14 @@ interface SpotSession {
   is_attending: boolean;
 }
 
-const SpotDetailScreen = memo(({ route, navigation }: any) => {
-  const { spotId } = route.params;
+// A route change resets all spot data, drafts and modals together. In-flight
+// requests from the previous spot can only update the unmounted content.
+const SpotDetailScreen = ({ route, navigation }: any) => {
+  const spotId = normalizeSpotId(route?.params?.spotId);
+  return <SpotDetailContent key={spotId ?? 'invalid'} spotId={spotId} navigation={navigation} />;
+};
+
+const SpotDetailContent = memo(({ spotId, navigation }: any) => {
   const { user } = useAuthStore();
   const [spot, setSpot] = useState<SkateSpot | null>(null);
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
@@ -116,6 +122,7 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       setLoadError(null);
       const { data: spotData, error: spotError } = await spotsService.getById(spotId);
       if (spotError || !spotData) {
+        if (spotError) Logger.error('Spot detail load failed', spotError);
         const code = (spotError as { code?: string } | null)?.code;
         setSpot(null);
         setLoadError(
@@ -156,7 +163,8 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     if (!spot || !spotId) return;
     const origin =
       Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
-    const url = getSpotShareUrl(spotId, origin);
+    const basePath = Platform.OS === 'web' ? process.env.EXPO_PUBLIC_BASE_URL : undefined;
+    const url = getSpotShareUrl(spotId, origin, basePath);
     try {
       await Share.share({ title: spot.name, message: `${spot.name}\n${url}`, url });
     } catch (error) {

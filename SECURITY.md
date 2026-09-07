@@ -1,6 +1,6 @@
 # Security Policy
 
-## Supported version
+## Supported versions
 
 SkateQuest is currently a pre-release product. Security fixes are applied to the current `main` branch and the active release-candidate branch; older snapshots are not supported.
 

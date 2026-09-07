@@ -22,6 +22,19 @@ describe('spot links', () => {
     );
   });
 
+  it.each(['/SkateQuest-Mobile', '/SkateQuest-Mobile/', 'SkateQuest-Mobile'])(
+    'preserves a configured project base path %s',
+    basePath => {
+      expect(getSpotShareUrl(SPOT_ID, 'https://treesus6.github.io/', basePath)).toBe(
+        `https://treesus6.github.io/SkateQuest-Mobile/spot-detail?spotId=${SPOT_ID}`
+      );
+    }
+  );
+
+  it('uses the canonical production URL on native', () => {
+    expect(getSpotShareUrl(SPOT_ID)).toBe(`https://skatequest.me/spot-detail?spotId=${SPOT_ID}`);
+  });
+
   it('refuses to create a link for an invalid id', () => {
     expect(() => getSpotDetailPath('bad')).toThrow('valid spot ID');
   });

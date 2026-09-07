@@ -13,7 +13,12 @@ export function getSpotDetailPath(spotId: string): string {
   return `/spot-detail?spotId=${encodeURIComponent(normalized)}`;
 }
 
-export function getSpotShareUrl(spotId: string, origin = 'https://skatequest.me'): string {
+export function getSpotShareUrl(
+  spotId: string,
+  origin = 'https://skatequest.me',
+  basePath = ''
+): string {
   const safeOrigin = origin.replace(/\/+$/, '');
-  return `${safeOrigin}${getSpotDetailPath(spotId)}`;
+  const normalizedBasePath = basePath.replace(/^\/+|\/+$/g, '');
+  return `${safeOrigin}${normalizedBasePath ? `/${normalizedBasePath}` : ''}${getSpotDetailPath(spotId)}`;
 }
