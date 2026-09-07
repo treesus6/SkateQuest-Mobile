@@ -14,15 +14,47 @@ jobs:
   enable-google-auth:
     runs-on: ubuntu-latest
     steps:
-      - name: Enable Google provider in Supabase Auth
+      - name: Align Supabase Google provider and redirect URLs
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: hreeuqdgrwvnxquxohod
         run: |
+          set -euo pipefail
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
             echo "::error::SUPABASE_ACCESS_TOKEN repository secret is not configured."
             exit 1
           fi
+
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth" \
+            -o /tmp/supabase-auth-current.json
+
+          current_allow=$(jq -r '.uri_allow_list // ""' /tmp/supabase-auth-current.json)
+          merged_allow=$(CURRENT_ALLOW="$current_allow" node - <<'NODE'
+          const required = [
+            'https://skatequest.me',
+            'https://skatequest.me/',
+            'https://skatequest.me/callback',
+            'https://skatequest.me/reset-password',
+            'https://www.skatequest.me',
+            'https://www.skatequest.me/',
+            'https://www.skatequest.me/callback',
+            'https://www.skatequest.me/reset-password',
+            'com.treesus6.skatequest://auth/callback',
+          ];
+          const existing = (process.env.CURRENT_ALLOW || '')
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean);
+          console.log([...new Set([...existing, ...required])].join(','));
+          NODE
+          )
+
+          payload=$(jq -n \
+            --arg site_url 'https://skatequest.me' \
+            --arg uri_allow_list "$merged_allow" \
+            '{external_google_enabled:true, site_url:$site_url, uri_allow_list:$uri_allow_list}')
 
           http_code=$(curl --silent --show-error \
             --output /tmp/supabase-auth-update.json \
@@ -30,7 +62,7 @@ jobs:
             --request PATCH \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header 'Content-Type: application/json' \
-            --data '{"external_google_enabled":true}' \
+            --data "$payload" \
             "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth")
 
           if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
@@ -39,64 +71,71 @@ jobs:
             exit 1
           fi
 
-          verify_code=$(curl --silent --show-error \
-            --output /tmp/supabase-auth-config.json \
-            --write-out '%{http_code}' \
+          curl --fail --silent --show-error \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth")
-
-          if [ "$verify_code" -lt 200 ] || [ "$verify_code" -ge 300 ]; then
-            echo "::error::Could not verify Supabase Auth config; HTTP $verify_code"
-            exit 1
-          fi
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/config/auth" \
+            -o /tmp/supabase-auth-config.json
 
           enabled=$(jq -r '.external_google_enabled // false' /tmp/supabase-auth-config.json)
           has_client_id=$(jq -r 'if (.external_google_client_id // "") == "" then "false" else "true" end' /tmp/supabase-auth-config.json)
+          site_url=$(jq -r '.site_url // ""' /tmp/supabase-auth-config.json)
+          allow_list=$(jq -r '.uri_allow_list // ""' /tmp/supabase-auth-config.json)
 
           echo "Google provider enabled: $enabled"
           echo "Google client ID configured: $has_client_id"
+          echo "Production Site URL: $site_url"
 
-          if [ "$enabled" != "true" ]; then
-            echo "::error::Google provider is still disabled after the update."
-            exit 1
-          fi
+          test "$enabled" = "true"
+          test "$has_client_id" = "true"
+          test "$site_url" = "https://skatequest.me"
 
-          if [ "$has_client_id" != "true" ]; then
-            echo "::error::Google provider is enabled, but no Google client ID is configured in Supabase."
-            exit 1
-          fi
+          for required in \
+            'https://skatequest.me/callback' \
+            'https://skatequest.me/reset-password' \
+            'https://www.skatequest.me/callback' \
+            'com.treesus6.skatequest://auth/callback'; do
+            if ! printf '%s' "$allow_list" | tr ',' '\n' | grep -Fxq "$required"; then
+              echo "::error::Missing required auth redirect: $required"
+              exit 1
+            fi
+          done
 
       - name: Verify Google OAuth starts successfully
         env:
           SUPABASE_URL: https://hreeuqdgrwvnxquxohod.supabase.co
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_buIhyaJxXUblLeU4gs_Y9Q_Ighua9bb
         run: |
-          headers=$(mktemp)
-          body=$(mktemp)
-          status=$(curl --silent --show-error \
-            --output "$body" \
-            --dump-header "$headers" \
-            --write-out '%{http_code}' \
-            --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
-            --header "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
-            "${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=https%3A%2F%2Fskatequest.me%2Fcallback")
+          set -euo pipefail
+          for redirect in \
+            'https%3A%2F%2Fskatequest.me%2Fcallback' \
+            'https%3A%2F%2Fwww.skatequest.me%2Fcallback'; do
+            headers=$(mktemp)
+            body=$(mktemp)
+            status=$(curl --silent --show-error \
+              --output "$body" \
+              --dump-header "$headers" \
+              --write-out '%{http_code}' \
+              --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+              --header "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY" \
+              "${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirect}")
 
-          location=$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]+:[[:space:]]*/, ""); gsub(/\r/, ""); print; exit}' "$headers")
-          echo "OAuth start HTTP status: $status"
+            location=$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]+:[[:space:]]*/, ""); gsub(/\r/, ""); print; exit}' "$headers")
+            echo "OAuth start HTTP status: $status"
 
-          if [ "$status" -lt 300 ] || [ "$status" -ge 400 ]; then
-            echo "::error::Google OAuth did not return a redirect."
-            cat "$body"
-            exit 1
-          fi
-
-          case "$location" in
-            https://accounts.google.com/*|https://accounts.google.com/o/oauth2/*|https://accounts.google.com/o/oauth2/v2/auth*)
-              echo "Google OAuth redirect verified."
-              ;;
-            *)
-              echo "::error::Unexpected OAuth redirect target."
-              echo "$location"
+            if [ "$status" -lt 300 ] || [ "$status" -ge 400 ]; then
+              echo "::error::Google OAuth did not return a redirect."
+              cat "$body"
               exit 1
-              ;;
-          esac
+            fi
+
+            case "$location" in
+              https://accounts.google.com/*|https://accounts.google.com/o/oauth2/*|https://accounts.google.com/o/oauth2/v2/auth*)
+                echo "Google OAuth redirect verified."
+                ;;
+              *)
+                echo "::error::Unexpected OAuth redirect target."
+                echo "$location"
+                exit 1
+                ;;
+            esac
+          done
