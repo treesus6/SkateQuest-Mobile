@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import type { AuthError, Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { getAuthReturnPath } from '../../lib/authReturnPath';
 
@@ -50,20 +51,20 @@ function cleanBrowserAuthUrl() {
   );
 }
 
-async function waitForSession(timeoutMs = 4000) {
+async function waitForSession(timeoutMs = 4000): Promise<{
+  session: Session | null;
+  error: AuthError | null;
+}> {
   const initial = await supabase.auth.getSession();
   if (initial.error || initial.data.session) {
     return { session: initial.data.session, error: initial.error };
   }
 
-  return new Promise<{
-    session: typeof initial.data.session;
-    error: typeof initial.error;
-  }>((resolve) => {
+  return new Promise((resolve) => {
     let settled = false;
     let subscription: { unsubscribe: () => void } | null = null;
 
-    const finish = (session: typeof initial.data.session) => {
+    const finish = (session: Session | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
