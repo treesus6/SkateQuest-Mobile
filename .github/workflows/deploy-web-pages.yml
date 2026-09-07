@@ -75,21 +75,7 @@ jobs:
         run: npx expo export --platform web --output-dir dist
 
       - name: Verify core PWA export and legacy-route recovery
-        run: |
-          for route in \
-            index login signup forgot-password map add-spot spots crews quests \
-            skate-tv upload-media sessions; do
-            test -f "dist/${route}.html"
-          done
-          test -f dist/manifest.webmanifest
-          test -f dist/service-worker.js
-          test -f dist/videos.html
-          test -f dist/videos/index.html
-          test -f dist/404.html
-          grep -q '"name": "SkateQuest"' dist/manifest.webmanifest
-          grep -q 'SKATEQUEST_LEGACY_VIDEOS_REDIRECT' dist/videos/index.html
-          grep -q 'SKATEQUEST_LEGACY_ROUTE_RECOVERY' dist/404.html
-          grep -q '/spot-detail' dist/404.html
+        run: npm run verify:web-routes
 
       - name: Disable Jekyll
         run: touch dist/.nojekyll

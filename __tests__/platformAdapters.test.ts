@@ -85,6 +85,10 @@ describe('web/native platform selection', () => {
       path.join(__dirname, '..', '.github', 'workflows', 'full-quality-gate.yml'),
       'utf8'
     );
+    const routeVerifier = fs.readFileSync(
+      path.join(__dirname, '..', 'scripts', 'verify-web-routes.js'),
+      'utf8'
+    );
 
     expect(fs.existsSync(route)).toBe(true);
     expect(source).toContain('accessibilityLabel="Use my location"');
@@ -93,7 +97,9 @@ describe('web/native platform selection', () => {
     );
     expect(source).toContain('style={[s.sectionTitle, s.sectionTitleLight]}');
     expect(source).toContain('sectionTitleLight: { color: PAPER }');
-    expect(workflow).toContain('test -f dist-quality/add-spot.html');
+    expect(workflow).toContain('node scripts/verify-web-routes.js dist-quality');
+    expect(routeVerifier).toContain("'add-spot.html'");
+    expect(routeVerifier).toContain("'spot-detail.html'");
   });
 
   it('uses URL session detection only in the web auth adapter', () => {

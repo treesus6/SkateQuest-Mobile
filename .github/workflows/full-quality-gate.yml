@@ -66,14 +66,4 @@ jobs:
         run: npx expo export --platform web --output-dir dist-quality
 
       - name: Verify key routes
-        run: |
-          test -f dist-quality/index.html
-          test -f dist-quality/map.html
-          test -f dist-quality/add-spot.html
-          test -f dist-quality/login.html
-          test -f dist-quality/quests.html
-          test -f dist-quality/crew.html
-          test -f dist-quality/profile.html
-          test -f dist-quality/skate-tv.html
-          test -f dist-quality/manifest.webmanifest
-          test -f dist-quality/service-worker.js
+        run: node scripts/verify-web-routes.js dist-quality
