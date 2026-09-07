@@ -1,5 +1,7 @@
 # SkateQuest — Google Play Release Guide
 
+> Procedure guide only. Before running a production build or submission, complete the gates in [`docs/ANDROID_RELEASE_CHECKLIST.md`](docs/ANDROID_RELEASE_CHECKLIST.md) and confirm the current status in [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md).
+
 **Updated:** August 9, 2026
 
 This guide matches the current SkateQuest EAS configuration and current Google Play testing requirements.

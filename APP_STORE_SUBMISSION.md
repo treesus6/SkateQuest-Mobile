@@ -1,5 +1,7 @@
 # iOS App Store Submission Guide
 
+> Planning guide only; no current iOS release build has been verified. See the iOS readiness section in [`docs/ANDROID_RELEASE_CHECKLIST.md`](docs/ANDROID_RELEASE_CHECKLIST.md) and the authoritative [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md).
+
 **Target**: Apple App Store
 **Timeline**: 24-48 hours (review time)
 **Cost**: $99/year Apple Developer Account
@@ -23,6 +25,7 @@
 ### 1. Create App in App Store Connect
 
 **If first time:**
+
 1. Go to [App Store Connect](https://appstoreconnect.apple.com)
 2. Click "My Apps"
 3. Click "+" → "New App"
@@ -39,23 +42,24 @@
 
 **App > Information**
 
-| Field | Value |
-|-------|-------|
-| **App Name** | SkateQuest |
-| **Subtitle** | Discover Skate Spots & Join Challenges |
-| **Positive Rating** | Skateboarding maps, social gaming, trick challenges |
-| **Description** | The ultimate skateboarding companion app. Find skate spots with an interactive map of 27,000+ parks worldwide, track your trick progression, compete in SKATE challenges, earn XP, and join a crew. Features AI-powered trick analysis, social feed, crew battles, leaderboards, offline support, and a thriving global skating community. Build for skaters, by skaters. |
-| **Keywords** | skateboarding, skate maps, skateparks, challenges, gaming, social, tricks, XP, crews |
-| **Support URL** | https://www.skatequest.com/support |
-| **Privacy Policy URL** | https://www.skatequest.com/privacy |
-| **Category** | Sports |
-| **Content Rating** | Requires questionnaire (see below) |
+| Field                  | Value                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **App Name**           | SkateQuest                                                                                                                                                                                                                                                                                                                                                                |
+| **Subtitle**           | Discover Skate Spots & Join Challenges                                                                                                                                                                                                                                                                                                                                    |
+| **Positive Rating**    | Skateboarding maps, social gaming, trick challenges                                                                                                                                                                                                                                                                                                                       |
+| **Description**        | The ultimate skateboarding companion app. Find skate spots with an interactive map of 27,000+ parks worldwide, track your trick progression, compete in SKATE challenges, earn XP, and join a crew. Features AI-powered trick analysis, social feed, crew battles, leaderboards, offline support, and a thriving global skating community. Build for skaters, by skaters. |
+| **Keywords**           | skateboarding, skate maps, skateparks, challenges, gaming, social, tricks, XP, crews                                                                                                                                                                                                                                                                                      |
+| **Support URL**        | https://www.skatequest.com/support                                                                                                                                                                                                                                                                                                                                        |
+| **Privacy Policy URL** | https://www.skatequest.com/privacy                                                                                                                                                                                                                                                                                                                                        |
+| **Category**           | Sports                                                                                                                                                                                                                                                                                                                                                                    |
+| **Content Rating**     | Requires questionnaire (see below)                                                                                                                                                                                                                                                                                                                                        |
 
 ### 3. Content Rating Questionnaire
 
 **App > Compliance > Content Ratings**
 
 Go through questionnaire:
+
 - Violence: `None`
 - Profanity: `Infrequent/Mild` (user-generated video content possible)
 - Mature content: `None`
@@ -70,11 +74,13 @@ Result should be: **12+ or 4+**
 **App > Manage > iOS Screenshots**
 
 Upload 5-7 screenshots for these dimensions:
+
 - **6.5" display (required)**: 1242 × 2688 px
 - **5.5" display (required)**: 1242 × 2208 px
 - **iPad Pro 12.9" (recommended)**: 2048 × 2732 px
 
 **Screenshot order (best practice):**
+
 1. **Screen**: Map with skateparks (main feature)
    - Caption: "Discover 27,000+ skateparks worldwide"
 2. **Screen**: Challenges/XP system
@@ -87,6 +93,7 @@ Upload 5-7 screenshots for these dimensions:
    - Caption: "Join the global skateboarding community"
 
 **📸 Screenshot Tips:**
+
 - Use light text on dark background for contrast
 - Show main features clearly
 - No fake devices or borders
@@ -117,26 +124,28 @@ Upload 5-7 screenshots for these dimensions:
 
 **Build > App Review Information**
 
-| Field | Value |
-|-------|-------|
-| **Test Account Email** | (optional) |
-| **Demo Account** | If sign-up required, provide test credentials |
-| **Demo Notes** | "The app requires location permission and loads skateparks from map. Use demo account if empty." |
-| **First Name** | Your name |
-| **Last Name** | Your name |
-| **Email** | Your email |
-| **Phone Number** | Your phone |
-| **Address** | Your address |
-| **Country/Region** | Your country |
+| Field                  | Value                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| **Test Account Email** | (optional)                                                                                       |
+| **Demo Account**       | If sign-up required, provide test credentials                                                    |
+| **Demo Notes**         | "The app requires location permission and loads skateparks from map. Use demo account if empty." |
+| **First Name**         | Your name                                                                                        |
+| **Last Name**          | Your name                                                                                        |
+| **Email**              | Your email                                                                                       |
+| **Phone Number**       | Your phone                                                                                       |
+| **Address**            | Your address                                                                                     |
+| **Country/Region**     | Your country                                                                                     |
 
 ### 8. Upload Build
 
 **Build > iOS Builds**
 
 **Option A: EAS (Automated)**
+
 ```bash
 eas submit --platform ios --profile production
 ```
+
 - Automatically uploads build to App Store
 - Creates certificate if needed
 - Requires one-time setup: `eas build --platform ios --profile production --setup`
@@ -144,6 +153,7 @@ eas submit --platform ios --profile production
 **Option B: Manual (Transporter App)**
 
 1. Download build from EAS:
+
    ```bash
    eas build:download --id <BUILD_ID>
    ```
@@ -175,19 +185,20 @@ eas submit --platform ios --profile production
 
 ## Common Rejection Reasons & Fixes
 
-| Reason | Fix |
-|--------|-----|
-| **Crash on launch** | Test more thoroughly; check Sentry |
-| **Missing privacy policy** | Add URL; make it real (not placeholder) |
-| **Spam/low quality** | Improve app description; add more features |
-| **Competitor SDK** | Disable non-essential analytics |
-| **Incomplete functionality** | Ensure all features work as described |
+| Reason                       | Fix                                        |
+| ---------------------------- | ------------------------------------------ |
+| **Crash on launch**          | Test more thoroughly; check Sentry         |
+| **Missing privacy policy**   | Add URL; make it real (not placeholder)    |
+| **Spam/low quality**         | Improve app description; add more features |
+| **Competitor SDK**           | Disable non-essential analytics            |
+| **Incomplete functionality** | Ensure all features work as described      |
 
 ---
 
 ## Post-Approval
 
 Once status is **Ready for Sale**:
+
 1. Set release date (immediately or schedule)
 2. App will appear in App Store within 24h
 3. Monitor reviews & ratings daily
@@ -198,6 +209,7 @@ Once status is **Ready for Sale**:
 ## Update Process (v1.1+)
 
 For subsequent updates:
+
 1. Increment `buildNumber` in app.config.js
 2. Create new build: `eas build --platform ios --profile production`
 3. Submit: `eas submit --platform ios`
@@ -209,10 +221,12 @@ For subsequent updates:
 ## Troubleshooting
 
 **Build rejected "Doesn't match provisioning profile"**
+
 - Run: `eas build --platform ios --profile production --setup`
 - Regenerate certificates
 
 **Submitter certificate expired**
+
 - Go to App Store Connect > Certificates > Renew
 - Or run `eas build --setup` again
 

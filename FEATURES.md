@@ -1,4 +1,6 @@
-# SkateQuest Mobile - New Features
+# SkateQuest Mobile — Historical Feature Inventory
+
+> This document records feature work from an earlier implementation stage. It is not a release-readiness claim or a database setup guide. Trust the current implementation and migrations; use [`docs/PRODUCT_AUDIT.md`](docs/PRODUCT_AUDIT.md) for feature triage and [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md) for verified status.
 
 ## 🎉 Major Features Added
 
@@ -261,9 +263,11 @@ All new TypeScript interfaces added to `types/index.ts`:
 
 ---
 
-## 🚀 Next Steps
+## Historical setup notes
 
-### Setup Required:
+Do not run the following old setup steps against production. Reconcile migration history using [`docs/SUPABASE_RECONCILIATION.md`](docs/SUPABASE_RECONCILIATION.md).
+
+### Original setup notes:
 
 1. Run `database-new-features.sql` in Supabase
 2. Create storage buckets (photos & videos)
@@ -282,7 +286,7 @@ All new TypeScript interfaces added to `types/index.ts`:
 
 ## 🏆 Summary
 
-**ALL 8 FEATURES COMPLETE!**
+**Original milestone inventory (not a current verification result):**
 
 - ✅ Full media upload system with Supabase Storage
 - ✅ Social activity feed with real-time updates
@@ -297,8 +301,7 @@ All new TypeScript interfaces added to `types/index.ts`:
 - ✅ TypeScript types for everything
 - ✅ Documentation & setup guides
 
-**Ready to Deploy:**
-After Supabase setup, all features are fully functional and ready for production!
+Current release readiness is tracked only in [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md).
 
 ---
 

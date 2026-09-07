@@ -1,5 +1,7 @@
 # App Store Submission Checklist
 
+> Historical checklist. For current verified status and blockers, use [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md) and [`docs/ANDROID_RELEASE_CHECKLIST.md`](docs/ANDROID_RELEASE_CHECKLIST.md). Unchecked items below must not be treated as complete.
+
 Complete guide for submitting SkateQuest to Apple App Store and Google Play Store.
 
 ## Pre-Submission Checklist

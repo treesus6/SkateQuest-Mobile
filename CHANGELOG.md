@@ -12,6 +12,9 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Added
 
+- Engineering, product, Supabase reconciliation, Android release, and consolidated release-status audits under `docs/`.
+- Reusable web export smoke verification for canonical routes, PWA assets, `/videos`, and legacy spot-route recovery.
+- Canonical spot sharing URLs and strict spot ID validation.
 - Global Mapbox-powered skate map with real user spots, parks, shops, filters, directions, conditions, check-ins, and community spot creation.
 - Web Add Spot flow with explicit real-coordinate selection and read-back verification after save.
 - Portal Dimension partner marker in Newport, Oregon with map-only website routing.
@@ -26,6 +29,9 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Changed
 
+- Preserved Expo Router query parameters through the authenticated redirect flow on web and native.
+- Blocked broad Android storage/media permissions that are unnecessary for system picker-based uploads.
+- Pinned `sanitize-html` to 2.17.7 and moved the Expo tunnel helper to development dependencies.
 - Reworked major screens into the current SkateQuest visual system, including Home-adjacent gameplay surfaces, Challenges, Achievements, AI Coach, Demo Day, Spot of the Day, XP Rewards, QR Hunt, and web Add Spot.
 - Upgraded to Expo SDK 57 / React Native 0.86 with Node 22.22.1 CI and EAS alignment.
 - Replaced client-controlled SKATE state mutation with secure server-managed RPC behavior.
@@ -34,6 +40,7 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Fixed
 
+- Spot detail now rejects invalid IDs before querying, distinguishes missing records from load failures, and provides a persistent retry state.
 - Expo SDK patch-package alignment so Expo Doctor passes the configured project checks.
 - Auth redirect handling for `skatequest.me`, GitHub Pages project paths, missing browser origins, and opaque origins.
 - Crew RPC test expectations to match the live server-managed UUID return contract.

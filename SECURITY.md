@@ -1,21 +1,18 @@
 # Security Policy
 
-## Supported Versions
+## Supported version
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+SkateQuest is currently a pre-release product. Security fixes are applied to the current `main` branch and the active release-candidate branch; older snapshots are not supported.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Report suspected vulnerabilities privately to `support@skatequest.me`. Do not include access tokens, passwords, private user media, or production database exports in an issue or other public channel.
 
-Use this section to tell people how to report a vulnerability.
+Include the affected surface, reproduction steps, impact, and the smallest safe proof of concept. The maintainers will acknowledge the report, assess severity, and coordinate remediation and disclosure. Please avoid accessing other users' data or degrading production while testing.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## Repository rules
+
+- Never commit service-role keys, signing credentials, OAuth client secrets, or production access tokens.
+- Expo `EXPO_PUBLIC_*` values and the Supabase anon key are public client configuration; their safety depends on RLS, Storage policies, and RPC authorization.
+- Competitive state, XP, challenge completion, and privileged actions must be authorized and validated server-side.
+- Production migrations must be reviewed, reversible where practical, and reconciled before they are applied.

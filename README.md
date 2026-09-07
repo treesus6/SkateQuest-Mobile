@@ -4,6 +4,8 @@ SkateQuest is a real-world skateboarding companion app for discovering spots, pr
 
 The project targets Android and web/PWA today, with iOS support available through Expo once the native release path is included in launch QA.
 
+> Release source of truth: [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md). A green source build does not replace authenticated persistence tests or physical-device QA.
+
 ## Product principles
 
 - **Real features, not mock UI.** User-facing actions must connect to their real Supabase, device, media, location, or platform behavior.
