@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from './supabase';
 import { decode } from 'base64-arraybuffer';
 import { Platform } from 'react-native';
@@ -24,12 +24,13 @@ export interface MediaUploadResult {
 export async function pickImage(
   useCamera: boolean = false
 ): Promise<ImagePicker.ImagePickerAsset | null> {
-  const { status } = useCamera
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (status !== 'granted') {
-    throw new Error('Permission denied');
+  // Android's system picker grants access to the selected asset only.
+  // Keep the existing iOS permission flow and camera permission checks.
+  if (useCamera || Platform.OS === 'ios') {
+    const { status } = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permission denied');
   }
 
   const result = useCamera
@@ -57,12 +58,13 @@ export async function pickImage(
 export async function pickVideo(
   useCamera: boolean = false
 ): Promise<ImagePicker.ImagePickerAsset | null> {
-  const { status } = useCamera
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (status !== 'granted') {
-    throw new Error('Permission denied');
+  // Android's system picker grants access to the selected asset only.
+  // Keep the existing iOS permission flow and camera permission checks.
+  if (useCamera || Platform.OS === 'ios') {
+    const { status } = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permission denied');
   }
 
   const result = useCamera
@@ -103,13 +105,13 @@ export async function uploadToStorage(
     const response = Platform.OS === 'web' ? await fetch(uri) : null;
     if (response && !response.ok) throw new Error('The selected media could not be read.');
     const webBlob = response ? await response.blob() : null;
-    const base64 = webBlob
-      ? null
-      : await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+    const base64 = webBlob ? null : await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     const contentType = webBlob?.type || '';
-    const extFromType = contentType.split('/')[1]?.replace('quicktime', 'mov').replace('jpeg', 'jpg');
-    const ext =
-      extFromType || uri.split(/[?#]/)[0].split('.').pop() || 'jpg';
+    const extFromType = contentType
+      .split('/')[1]
+      ?.replace('quicktime', 'mov')
+      .replace('jpeg', 'jpg');
+    const ext = extFromType || uri.split(/[?#]/)[0].split('.').pop() || 'jpg';
     const normalizedExt = ext.toLowerCase();
     const isVideo = ['mp4', 'mov', 'm4v', 'webm'].includes(normalizedExt);
     const filePath = `${folder}/${fileName}/${Date.now()}.${normalizedExt}`;

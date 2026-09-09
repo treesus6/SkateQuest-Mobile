@@ -31,6 +31,15 @@ describe('spot links', () => {
     }
   );
 
+  it.each([undefined, 'null', '', 'file://', 'undefined'])(
+    'falls back to the production root for unavailable origin %s',
+    origin => {
+      expect(getSpotShareUrl(SPOT_ID, origin, '/SkateQuest-Mobile')).toBe(
+        `https://skatequest.me/spot-detail?spotId=${SPOT_ID}`
+      );
+    }
+  );
+
   it('uses the canonical production URL on native', () => {
     expect(getSpotShareUrl(SPOT_ID)).toBe(`https://skatequest.me/spot-detail?spotId=${SPOT_ID}`);
   });

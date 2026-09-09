@@ -70,7 +70,10 @@ it('does not restore an old spot when its request finishes after invalid navigat
   expect(view.getByText('Spot unavailable')).toBeTruthy();
 });
 
-it('shares the configured web base path from the actual share button', async () => {
+it.each([
+  ['https://treesus6.github.io', 'https://treesus6.github.io/SkateQuest-Mobile'],
+  ['null', 'https://skatequest.me'],
+])('shares a usable link from browser origin %s', async (origin, expectedRoot) => {
   const previousLocation = Object.getOwnPropertyDescriptor(window, 'location');
   const previousOS = Platform.OS;
   const previousBase = process.env.EXPO_PUBLIC_BASE_URL;
@@ -79,7 +82,7 @@ it('shares the configured web base path from the actual share button', async () 
     Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { origin: 'https://treesus6.github.io' },
+      value: { origin },
     });
     process.env.EXPO_PUBLIC_BASE_URL = '/SkateQuest-Mobile/';
     const view = await render(screen(SPOT_ID));
@@ -87,7 +90,7 @@ it('shares the configured web base path from the actual share button', async () 
     await fireEvent.press(view.getByLabelText('Share First spot'));
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: `${window.location.origin}/SkateQuest-Mobile/spot-detail?spotId=${SPOT_ID}`,
+        url: `${expectedRoot}/spot-detail?spotId=${SPOT_ID}`,
       })
     );
   } finally {

@@ -13,12 +13,10 @@ export function getSpotDetailPath(spotId: string): string {
   return `/spot-detail?spotId=${encodeURIComponent(normalized)}`;
 }
 
-export function getSpotShareUrl(
-  spotId: string,
-  origin = 'https://skatequest.me',
-  basePath = ''
-): string {
-  const safeOrigin = origin.replace(/\/+$/, '');
-  const normalizedBasePath = basePath.replace(/^\/+|\/+$/g, '');
+export function getSpotShareUrl(spotId: string, origin?: string, basePath = ''): string {
+  // Opaque/missing browser origins must use the production root, not a project path.
+  const hasWebOrigin = typeof origin === 'string' && /^https?:\/\//i.test(origin);
+  const safeOrigin = hasWebOrigin ? origin.replace(/\/+$/, '') : 'https://skatequest.me';
+  const normalizedBasePath = hasWebOrigin ? basePath.replace(/^\/+|\/+$/g, '') : '';
   return `${safeOrigin}${normalizedBasePath ? `/${normalizedBasePath}` : ''}${getSpotDetailPath(spotId)}`;
 }

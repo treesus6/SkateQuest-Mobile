@@ -105,9 +105,10 @@ jest.mock('expo-video', () => ({
   })),
 }));
 
-// ✅ REAL Expo Image Picker Integration
+// Expo Image Picker native methods are mocked for component tests.
 jest.mock('expo-image-picker', () => ({
   __esModule: true,
+  UIImagePickerControllerQualityType: { Medium: 1 },
   requestMediaLibraryPermissionsAsync: jest
     .fn()
     .mockResolvedValue({ granted: true, status: 'granted', expires: 1 }),

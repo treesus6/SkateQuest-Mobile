@@ -103,9 +103,7 @@ export async function listGoProMedia(): Promise<GoProMediaItem[]> {
     }
 
     // Sort newest first
-    return items.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (err) {
     console.error('listGoProMedia error:', err);
     return [];
@@ -122,8 +120,8 @@ export async function downloadGoProClip(
 ): Promise<string | null> {
   try {
     // Dynamically import expo-file-system to avoid hard dependency at module level
-    const FileSystem = await import('expo-file-system');
-    const destUri = `${(FileSystem as any).cacheDirectory ?? "/tmp/"}gopro_${item.filename}`;
+    const FileSystem = await import('expo-file-system/legacy');
+    const destUri = `${(FileSystem as any).cacheDirectory ?? '/tmp/'}gopro_${item.filename}`;
 
     const downloadResumable = FileSystem.createDownloadResumable(
       item.downloadUrl,

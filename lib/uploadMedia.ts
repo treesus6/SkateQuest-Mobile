@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 export type UploadBucket = 'quest-proofs' | 'skatetv-clips' | 'user-avatars' | 'spot-photos';
