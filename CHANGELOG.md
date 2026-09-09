@@ -42,6 +42,13 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Fixed
 
+- Exclude generated web exports from TypeScript input so type-checking after export does not crash the compiler on minified bundles.
+
+- Android gallery selection no longer stops on permissions deliberately blocked in the manifest; camera and iOS permission checks are retained.
+- Native media uploads, file size checks, optimization, and GoPro downloads use Expo's working legacy file-system entry point instead of root exports that throw at runtime.
+- Opaque/missing web origins share the canonical production spot URL without an unrelated deployment base path.
+- Updated xmldom to 0.8.15, js-yaml to 4.3.2/3.15.2, and nanoid to 3.3.18 for security fixes.
+
 - Spot detail now rejects invalid IDs before querying, distinguishes missing records from load failures, and provides a persistent retry state.
 - Expo SDK patch-package alignment so Expo Doctor passes the configured project checks.
 - Auth redirect handling for `skatequest.me`, GitHub Pages project paths, missing browser origins, and opaque origins.

@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "types": ["jest", "node"]
   },
-  "exclude": ["node_modules", "scripts", "__tests__", "supabase/functions"]
+  "exclude": ["node_modules", "scripts", "__tests__", "supabase/functions", "dist", "dist-quality"]
 }
