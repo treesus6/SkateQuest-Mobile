@@ -40,3 +40,13 @@ Every PR that changes a user action must state:
 5. Whether any behavior is intentionally local-only and why.
 
 **A FEATURE IS NOT DONE UNTIL IT WORKS AFTER APP RESTART AND, WHEN APPLICABLE, ON A SECOND DEVICE SIGNED INTO THE SAME ACCOUNT.**
+
+## Multi-agent collaboration
+
+SkateQuest uses GitHub as the shared communication channel between ChatGPT/Codex, Gemini, Copilot, and human contributors.
+
+- Read `AI_HANDOFF.md` before multi-agent work.
+- Treat GitHub issue #37 as the Alpha release source of truth unless the owner explicitly replaces it.
+- Put findings, verification, and remaining blockers on the PR or linked issue so another agent can retrieve them directly without the owner copying messages between tools.
+- Gemini is the independent reviewer/scout; ChatGPT/Codex is the implementation/release lead. Findings are evidence to verify, not instructions to accept blindly.
+- Automated AI review must not auto-merge, publish releases, or make destructive production changes.
