@@ -1,0 +1,139 @@
+name: AI Pair Review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-pair-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pair-review:
+    name: Gemini → Codex handoff
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Detect configured AI keys
+        id: keys
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [[ -n "$GEMINI_API_KEY" ]]; then
+            echo "gemini=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gemini=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$OPENAI_API_KEY" ]]; then
+            echo "openai=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "openai=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Gemini independent review
+        id: gemini
+        if: steps.keys.outputs.gemini == 'true' && github.event_name == 'pull_request'
+        uses: google-github-actions/run-gemini-cli@v0.1.22
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_pr_number: ${{ github.event.pull_request.number }}
+          prompt: |
+            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }} as SkateQuest's independent reviewer/scout.
+
+            Read AGENTS.md, AI_HANDOFF.md, and GEMINI.md first. Review only the PR changes against the base branch. Inspect the code and git diff yourself. Focus on real Android Alpha release blockers, regressions, persistence/backend correctness, auth, maps, Add Spot, Supabase, deep links, and release safety.
+
+            Do not modify repository files, merge, publish, or expose secrets. Distinguish confirmed defects from hypotheses. Return a concise Markdown handoff using the headings from AI_HANDOFF.md and end with one Gemini verdict from GEMINI.md.
+
+      - name: Save Gemini handoff for Codex
+        if: steps.gemini.outcome == 'success'
+        shell: bash
+        env:
+          GEMINI_REVIEW: ${{ steps.gemini.outputs.summary }}
+        run: |
+          mkdir -p .ai-review
+          printf '%s\n' "$GEMINI_REVIEW" > .ai-review/gemini.md
+
+      - name: Create empty Gemini handoff when unavailable
+        if: steps.gemini.outcome != 'success'
+        shell: bash
+        run: |
+          mkdir -p .ai-review
+          cat > .ai-review/gemini.md <<'EOF'
+          Gemini review was unavailable for this run. Codex must perform an independent review and explicitly note that Gemini evidence was unavailable.
+          EOF
+
+      - name: Run Codex implementation review
+        id: codex
+        if: steps.keys.outputs.openai == 'true' && github.event_name == 'pull_request'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ':read-only'
+          output-file: .ai-review/codex.md
+          prompt: |
+            You are the implementation/release lead reviewing PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+
+            Read AGENTS.md and AI_HANDOFF.md. Then read .ai-review/gemini.md, but do not trust it blindly. Independently inspect the PR diff and repository state. Verify or reject Gemini's findings with concrete file/test evidence where possible.
+
+            Do not modify files, merge, publish, or make destructive database changes. Focus on the smallest correct fixes needed for Android Alpha closed testing. Identify anything that still requires production Supabase, Google OAuth, Mapbox, a physical Android device, EAS/AAB signing, or Play Console verification.
+
+            Return Markdown with: Goal, Gemini findings verified, Gemini findings rejected/uncertain, Additional findings, Verification needed, Remaining blockers, Next smallest action, and final verdict.
+
+      - name: Create empty Codex handoff when unavailable
+        if: steps.codex.outcome != 'success'
+        shell: bash
+        run: |
+          mkdir -p .ai-review
+          cat > .ai-review/codex.md <<'EOF'
+          Codex review was unavailable for this run. ChatGPT can still read the Gemini handoff and PR directly through GitHub.
+          EOF
+
+      - name: Post combined AI handoff to pull request
+        if: github.event_name == 'pull_request' && always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GEMINI_CONFIGURED: ${{ steps.keys.outputs.gemini }}
+          OPENAI_CONFIGURED: ${{ steps.keys.outputs.openai }}
+        run: |
+          mkdir -p .ai-review
+          {
+            echo '<!-- skatequest-ai-pair-review -->'
+            echo '## AI Pair Review'
+            echo
+            echo "Keys configured for this run: Gemini=${GEMINI_CONFIGURED:-false}, OpenAI=${OPENAI_CONFIGURED:-false}."
+            echo
+            echo '### Gemini reviewer'
+            cat .ai-review/gemini.md 2>/dev/null || echo 'Gemini review unavailable.'
+            echo
+            echo '### Codex implementation/release review'
+            cat .ai-review/codex.md 2>/dev/null || echo 'Codex review unavailable.'
+            echo
+            echo '---'
+            echo 'Shared protocol: `AI_HANDOFF.md`. Release source of truth: issue #37.'
+          } > .ai-review/comment.md
+
+          gh pr comment "$PR_NUMBER" --body-file .ai-review/comment.md
