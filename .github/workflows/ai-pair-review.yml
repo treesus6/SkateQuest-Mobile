@@ -89,6 +89,7 @@ jobs:
       - name: Run Codex implementation review
         id: codex
         if: always() && steps.keys.outputs.openai == 'true' && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
@@ -103,16 +104,16 @@ jobs:
 
             Return Markdown with: Goal, Gemini findings verified, Gemini findings rejected/uncertain, Additional findings, Verification needed, Remaining blockers, Next smallest action, and final verdict.
 
-      - name: Create empty Codex handoff when unavailable
+      - name: Create Codex fallback handoff
         if: always() && steps.codex.outcome != 'success'
         shell: bash
         run: |
           mkdir -p .ai-review
           cat > .ai-review/codex.md <<'EOF'
-          Codex review was unavailable for this run. This is not a passing review. ChatGPT can still inspect the PR directly through GitHub, but the automated OpenAI review needs attention.
+          Codex review was unavailable for this run because the external OpenAI step did not complete successfully (for example, API credit/quota exhaustion). This is not a passing Codex review. The automated handoff remains operational and ChatGPT can still inspect the PR directly through the connected GitHub repository.
           EOF
 
-      - name: Post combined AI handoff to pull request
+      - name: Post or update combined AI handoff
         if: github.event_name == 'pull_request' && always()
         shell: bash
         env:
@@ -138,7 +139,20 @@ jobs:
             cat .ai-review/codex.md 2>/dev/null || echo 'Codex review unavailable.'
             echo
             echo '---'
+            echo 'Provider quota/credit failures are advisory infrastructure status, not a passing AI review.'
             echo 'Shared protocol: `AI_HANDOFF.md`. Release source of truth: issue #37.'
           } > .ai-review/comment.md
 
-          gh pr comment "$PR_NUMBER" --body-file .ai-review/comment.md
+          comment_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- skatequest-ai-pair-review -->"))) | .id' \
+              | tail -n 1
+          )"
+
+          if [[ -n "$comment_id" ]]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              --raw-field body="$(cat .ai-review/comment.md)" >/dev/null
+            echo "Updated AI handoff comment ${comment_id}."
+          else
+            gh pr comment "$PR_NUMBER" --body-file .ai-review/comment.md
+          fi
