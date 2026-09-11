@@ -8,6 +8,33 @@ const AUTH_ROUTES = new Set([
 const STORAGE_KEY = 'skatequest.auth.returnTo';
 let pendingReturnPath = '/';
 
+type SearchParamValue = string | string[] | undefined;
+
+/**
+ * Build the exact in-app destination that should be restored after authentication.
+ * Expo Router exposes the pathname and search params separately; keeping only the
+ * pathname breaks deep links such as /spot-detail?spotId=<uuid>.
+ */
+export function buildAuthReturnPath(
+  pathname: string,
+  searchParams: Record<string, SearchParamValue> = {}
+): string {
+  const query = new URLSearchParams();
+
+  Object.keys(searchParams)
+    .sort()
+    .forEach(key => {
+      const value = searchParams[key];
+      const values = Array.isArray(value) ? value : [value];
+      values.forEach(item => {
+        if (typeof item === 'string') query.append(key, item);
+      });
+    });
+
+  const suffix = query.toString();
+  return sanitizeAuthReturnPath(`${pathname}${suffix ? `?${suffix}` : ''}`);
+}
+
 export function sanitizeAuthReturnPath(value: unknown): string {
   const candidate = Array.isArray(value) ? value[0] : value;
   if (typeof candidate !== 'string') return '/';
