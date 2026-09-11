@@ -1,0 +1,33 @@
+name: Align Expo SDK 57 runtime branch
+
+on:
+  push:
+    branches:
+      - codex/runtime-1.0.2-clean
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: codex/runtime-1.0.2-clean
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.1
+          cache: npm
+      - run: npm ci
+      - name: Align Expo packages to SDK 57 recommended patches
+        run: CI=1 npx expo install --fix
+      - name: Commit aligned manifests and remove helper workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git rm .github/workflows/align-expo-sdk57-runtime.yml
+          git commit -m "chore: align Expo SDK 57 recommended patches"
+          git push
