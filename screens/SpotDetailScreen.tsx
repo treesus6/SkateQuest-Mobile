@@ -13,6 +13,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native';
 import {
   Camera,
@@ -27,6 +28,7 @@ import {
   ExternalLink,
   Activity as ActivityIcon,
   ChevronRight,
+  Share2,
 } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
@@ -42,6 +44,7 @@ import GhostClipViewer from '../components/GhostClipViewer';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import SpotMiniMap from '../components/SpotMiniMap';
 import { getSessionStatus, sessionsService, SessionRsvpResult } from '../lib/sessionsService';
+import { getSpotShareUrl, normalizeSpotId } from '../lib/spotLinks';
 
 const { width } = Dimensions.get('window');
 
@@ -78,14 +81,21 @@ interface SpotSession {
   is_attending: boolean;
 }
 
-const SpotDetailScreen = memo(({ route, navigation }: any) => {
-  const { spotId } = route.params;
+// A route change resets all spot data, drafts and modals together. In-flight
+// requests from the previous spot can only update the unmounted content.
+const SpotDetailScreen = ({ route, navigation }: any) => {
+  const spotId = normalizeSpotId(route?.params?.spotId);
+  return <SpotDetailContent key={spotId ?? 'invalid'} spotId={spotId} navigation={navigation} />;
+};
+
+const SpotDetailContent = memo(({ spotId, navigation }: any) => {
   const { user } = useAuthStore();
   const [spot, setSpot] = useState<SkateSpot | null>(null);
   const [photos, setPhotos] = useState<SpotPhoto[]>([]);
   const [conditions, setConditions] = useState<SpotCondition[]>([]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [showConditionsModal, setShowConditionsModal] = useState(false);
@@ -97,13 +107,31 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
   const [rsvpingId, setRsvpingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!spotId) {
+      setLoadError('This spot link is missing a valid spot ID.');
+      setLoading(false);
+      return;
+    }
     void loadSpotData();
   }, [spotId]);
 
   const loadSpotData = async () => {
+    if (!spotId) return;
     try {
+      setLoading(true);
+      setLoadError(null);
       const { data: spotData, error: spotError } = await spotsService.getById(spotId);
-      if (spotError) throw spotError;
+      if (spotError || !spotData) {
+        if (spotError) Logger.error('Spot detail load failed', spotError);
+        const code = (spotError as { code?: string } | null)?.code;
+        setSpot(null);
+        setLoadError(
+          code === 'PGRST116'
+            ? 'That spot does not exist or is no longer available.'
+            : 'SkateQuest could not load this spot. Check your connection and try again.'
+        );
+        return;
+      }
       setSpot(spotData);
       setPhotos(spotData?.spot_photos || []);
       setConditions(
@@ -122,11 +150,26 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
       setComments(commentsData || []);
 
       void loadSpotSessions();
-    } catch (error: any) {
-      console.error('Error loading spot:', error);
-      Alert.alert('Error', error.message);
+    } catch (error) {
+      Logger.error('Spot detail load failed', error);
+      setSpot(null);
+      setLoadError('SkateQuest could not load this spot. Check your connection and try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const shareSpot = async () => {
+    if (!spot || !spotId) return;
+    const origin =
+      Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined;
+    const basePath = Platform.OS === 'web' ? process.env.EXPO_PUBLIC_BASE_URL : undefined;
+    const url = getSpotShareUrl(spotId, origin, basePath);
+    try {
+      await Share.share({ title: spot.name, message: `${spot.name}\n${url}`, url });
+    } catch (error) {
+      Logger.warn('Spot share failed', error);
+      Alert.alert('Could not share', 'Copy the spot link from your browser and try again.');
     }
   };
 
@@ -327,7 +370,18 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
     return (
       <View className="flex-1 bg-[#07090D] justify-center items-center px-8">
         <MapPin size={34} color="#596271" />
-        <Text className="text-white text-lg font-black mt-3">Spot not found</Text>
+        <Text className="text-white text-lg font-black mt-3">Spot unavailable</Text>
+        <Text className="text-[#7B8493] text-sm text-center mt-2">
+          {loadError ?? 'That spot could not be found.'}
+        </Text>
+        {spotId ? (
+          <TouchableOpacity
+            className="bg-[#D2673D] rounded-xl px-5 py-3 mt-5"
+            onPress={loadSpotData}
+          >
+            <Text className="text-white text-xs font-black">TRY AGAIN</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   }
@@ -416,6 +470,15 @@ const SpotDetailScreen = memo(({ route, navigation }: any) => {
               {spot.rating ? spot.rating.toFixed(1) : '—'}
             </Text>
             <Text className="text-[#D2673D] text-[10px] font-black">REVIEWS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-row items-center gap-1.5 bg-[#10151D] border border-[#252D39] px-3 py-1.5 rounded-full"
+            onPress={shareSpot}
+            accessibilityRole="button"
+            accessibilityLabel={`Share ${spot.name}`}
+          >
+            <Share2 color="#72A9FF" size={14} />
+            <Text className="text-[#72A9FF] text-[10px] font-black">SHARE</Text>
           </TouchableOpacity>
         </View>
 
