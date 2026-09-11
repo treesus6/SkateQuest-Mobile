@@ -64,3 +64,5 @@ Treat these as high priority until Alpha is approved:
 - Never replace a real feature with fake success, local-only state, a no-op, or placeholder behavior.
 - Automated AI review must not auto-merge or publish a release.
 - Avoid bot-to-bot commit loops. AI automation may review and hand off; implementation changes require a controlled branch/PR.
+
+<!-- AI pair-review setup verification trigger: 2026-09-11 -->
