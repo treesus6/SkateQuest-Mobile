@@ -53,6 +53,7 @@ jobs:
       - name: Run Gemini independent review
         id: gemini
         if: steps.keys.outputs.gemini == 'true' && github.event_name == 'pull_request'
+        continue-on-error: true
         uses: google-github-actions/run-gemini-cli@v0.1.22
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -68,7 +69,7 @@ jobs:
             Do not modify repository files, merge, publish, or expose secrets. Distinguish confirmed defects from hypotheses. Return a concise Markdown handoff using the headings from AI_HANDOFF.md and end with one Gemini verdict from GEMINI.md.
 
       - name: Save Gemini handoff for Codex
-        if: steps.gemini.outcome == 'success'
+        if: always() && steps.gemini.outcome == 'success'
         shell: bash
         env:
           GEMINI_REVIEW: ${{ steps.gemini.outputs.summary }}
@@ -76,18 +77,18 @@ jobs:
           mkdir -p .ai-review
           printf '%s\n' "$GEMINI_REVIEW" > .ai-review/gemini.md
 
-      - name: Create empty Gemini handoff when unavailable
-        if: steps.gemini.outcome != 'success'
+      - name: Create Gemini fallback handoff
+        if: always() && steps.gemini.outcome != 'success'
         shell: bash
         run: |
           mkdir -p .ai-review
           cat > .ai-review/gemini.md <<'EOF'
-          Gemini review was unavailable for this run. Codex must perform an independent review and explicitly note that Gemini evidence was unavailable.
+          Gemini review was unavailable for this run because the external Gemini step did not complete successfully (for example, API quota/rate limiting). This is not evidence that the PR passed Gemini review. Codex must perform an independent review and explicitly note that Gemini evidence was unavailable.
           EOF
 
       - name: Run Codex implementation review
         id: codex
-        if: steps.keys.outputs.openai == 'true' && github.event_name == 'pull_request'
+        if: always() && steps.keys.outputs.openai == 'true' && github.event_name == 'pull_request'
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
@@ -103,12 +104,12 @@ jobs:
             Return Markdown with: Goal, Gemini findings verified, Gemini findings rejected/uncertain, Additional findings, Verification needed, Remaining blockers, Next smallest action, and final verdict.
 
       - name: Create empty Codex handoff when unavailable
-        if: steps.codex.outcome != 'success'
+        if: always() && steps.codex.outcome != 'success'
         shell: bash
         run: |
           mkdir -p .ai-review
           cat > .ai-review/codex.md <<'EOF'
-          Codex review was unavailable for this run. ChatGPT can still read the Gemini handoff and PR directly through GitHub.
+          Codex review was unavailable for this run. This is not a passing review. ChatGPT can still inspect the PR directly through GitHub, but the automated OpenAI review needs attention.
           EOF
 
       - name: Post combined AI handoff to pull request
@@ -119,13 +120,16 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GEMINI_CONFIGURED: ${{ steps.keys.outputs.gemini }}
           OPENAI_CONFIGURED: ${{ steps.keys.outputs.openai }}
+          GEMINI_OUTCOME: ${{ steps.gemini.outcome }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
         run: |
           mkdir -p .ai-review
           {
             echo '<!-- skatequest-ai-pair-review -->'
             echo '## AI Pair Review'
             echo
-            echo "Keys configured for this run: Gemini=${GEMINI_CONFIGURED:-false}, OpenAI=${OPENAI_CONFIGURED:-false}."
+            echo "Keys configured: Gemini=${GEMINI_CONFIGURED:-false}, OpenAI=${OPENAI_CONFIGURED:-false}."
+            echo "Run outcomes: Gemini=${GEMINI_OUTCOME:-not-run}, Codex=${CODEX_OUTCOME:-not-run}."
             echo
             echo '### Gemini reviewer'
             cat .ai-review/gemini.md 2>/dev/null || echo 'Gemini review unavailable.'
