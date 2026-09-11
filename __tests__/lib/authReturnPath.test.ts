@@ -1,4 +1,4 @@
-import { sanitizeAuthReturnPath } from '../../lib/authReturnPath';
+import { buildAuthReturnPath, sanitizeAuthReturnPath } from '../../lib/authReturnPath';
 
 describe('sanitizeAuthReturnPath', () => {
   it.each(['/add-spot', '/spot-detail?id=123', '/quests#daily'])(
@@ -23,5 +23,26 @@ describe('sanitizeAuthReturnPath', () => {
 
   it('uses the first Expo Router search parameter value', () => {
     expect(sanitizeAuthReturnPath(['/crews', '//evil.example'])).toBe('/crews');
+  });
+});
+
+describe('buildAuthReturnPath', () => {
+  it('preserves the spot ID needed after login', () => {
+    expect(
+      buildAuthReturnPath('/spot-detail', {
+        spotId: '7f9d5ad6-e271-4ad2-8ca5-8e2537edb5bc',
+      })
+    ).toBe('/spot-detail?spotId=7f9d5ad6-e271-4ad2-8ca5-8e2537edb5bc');
+  });
+
+  it('preserves repeated values and ignores undefined values', () => {
+    expect(buildAuthReturnPath('/map', { type: ['park', 'diy'], ignored: undefined })).toBe(
+      '/map?type=park&type=diy'
+    );
+  });
+
+  it('still blocks authentication loops and external destinations', () => {
+    expect(buildAuthReturnPath('/login', { returnTo: '//evil.example' })).toBe('/');
+    expect(buildAuthReturnPath('//evil.example', {})).toBe('/');
   });
 });
