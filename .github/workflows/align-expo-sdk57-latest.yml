@@ -1,0 +1,36 @@
+name: Align Expo SDK 57 patches
+
+on:
+  push:
+    branches:
+      - fix/supabase-migration-history-alignment
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/supabase-migration-history-alignment
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.1
+          cache: npm
+      - run: npm ci
+      - name: Align Expo packages to SDK 57 recommended patches
+        run: CI=1 npx expo install --fix
+      - name: Commit aligned manifests and lockfile
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "Expo packages already aligned."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: align Expo SDK 57 patch versions"
+          git push
