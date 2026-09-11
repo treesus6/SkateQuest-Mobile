@@ -67,6 +67,7 @@ module.exports = {
 
     plugins: [
       'expo-router',
+      'expo-image',
       'expo-build-properties',
       [
         './plugins/withMapboxRepo',
