@@ -4,7 +4,8 @@ module.exports = {
     slug: 'skatequest',
     owner: 'treesus',
     scheme: 'com.treesus6.skatequest',
-    version: '1.0.1',
+    // Native SDK changes require a new appVersion runtime before publishing OTA updates.
+    version: '1.0.2',
     runtimeVersion: {
       policy: 'appVersion',
     },
