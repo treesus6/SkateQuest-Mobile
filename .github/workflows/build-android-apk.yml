@@ -130,6 +130,29 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
+      - name: Verify packaged Android permission policy
+        shell: bash
+        run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          test -x "$AAPT"
+          shopt -s nullglob
+          apks=(android/app/build/outputs/apk/debug/*.apk android/app/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error::No APKs found for packaged permission verification"
+            exit 1
+          fi
+          for apk in "${apks[@]}"; do
+            echo "Inspecting packaged permissions in $apk"
+            permissions="$("$AAPT" dump permissions "$apk")"
+            printf '%s\n' "$permissions"
+            for forbidden in READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE READ_MEDIA_IMAGES READ_MEDIA_VIDEO; do
+              if printf '%s\n' "$permissions" | grep -q "android.permission.${forbidden}"; then
+                echo "::error::Forbidden broad media/storage permission packaged in $apk: android.permission.${forbidden}"
+                exit 1
+              fi
+            done
+          done
+
       - name: Verify packaged runtime configuration
         shell: bash
         run: |
