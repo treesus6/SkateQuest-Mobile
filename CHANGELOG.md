@@ -26,6 +26,7 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Changed
 
+- Raised the native appVersion/runtime boundary to 1.0.2 and aligned the current Expo SDK 57 patch set, including explicit image, localization, and video config plugins.
 - Reworked major screens into the current SkateQuest visual system, including Home-adjacent gameplay surfaces, Challenges, Achievements, AI Coach, Demo Day, Spot of the Day, XP Rewards, QR Hunt, and web Add Spot.
 - Upgraded to Expo SDK 57 / React Native 0.86 with Node 22.22.1 CI and EAS alignment.
 - Replaced client-controlled SKATE state mutation with secure server-managed RPC behavior.
