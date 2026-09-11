@@ -1,0 +1,158 @@
+name: AI Pair Review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-pair-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pair-review:
+    name: Gemini → Codex handoff
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Detect configured AI keys
+        id: keys
+        shell: bash
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [[ -n "$GEMINI_API_KEY" ]]; then
+            echo "gemini=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gemini=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -n "$OPENAI_API_KEY" ]]; then
+            echo "openai=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "openai=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Gemini independent review
+        id: gemini
+        if: steps.keys.outputs.gemini == 'true' && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: google-github-actions/run-gemini-cli@v0.1.22
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_pr_number: ${{ github.event.pull_request.number }}
+          prompt: |
+            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }} as SkateQuest's independent reviewer/scout.
+
+            Read AGENTS.md, AI_HANDOFF.md, and GEMINI.md first. Review only the PR changes against the base branch. Inspect the code and git diff yourself. Focus on real Android Alpha release blockers, regressions, persistence/backend correctness, auth, maps, Add Spot, Supabase, deep links, and release safety.
+
+            Do not modify repository files, merge, publish, or expose secrets. Distinguish confirmed defects from hypotheses. Return a concise Markdown handoff using the headings from AI_HANDOFF.md and end with one Gemini verdict from GEMINI.md.
+
+      - name: Save Gemini handoff for Codex
+        if: always() && steps.gemini.outcome == 'success'
+        shell: bash
+        env:
+          GEMINI_REVIEW: ${{ steps.gemini.outputs.summary }}
+        run: |
+          mkdir -p .ai-review
+          printf '%s\n' "$GEMINI_REVIEW" > .ai-review/gemini.md
+
+      - name: Create Gemini fallback handoff
+        if: always() && steps.gemini.outcome != 'success'
+        shell: bash
+        run: |
+          mkdir -p .ai-review
+          cat > .ai-review/gemini.md <<'EOF'
+          Gemini review was unavailable for this run because the external Gemini step did not complete successfully (for example, API quota/rate limiting). This is not evidence that the PR passed Gemini review. Codex must perform an independent review and explicitly note that Gemini evidence was unavailable.
+          EOF
+
+      - name: Run Codex implementation review
+        id: codex
+        if: always() && steps.keys.outputs.openai == 'true' && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ':read-only'
+          output-file: .ai-review/codex.md
+          prompt: |
+            You are the implementation/release lead reviewing PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+
+            Read AGENTS.md and AI_HANDOFF.md. Then read .ai-review/gemini.md, but do not trust it blindly. Independently inspect the PR diff and repository state. Verify or reject Gemini's findings with concrete file/test evidence where possible.
+
+            Do not modify files, merge, publish, or make destructive database changes. Focus on the smallest correct fixes needed for Android Alpha closed testing. Identify anything that still requires production Supabase, Google OAuth, Mapbox, a physical Android device, EAS/AAB signing, or Play Console verification.
+
+            Return Markdown with: Goal, Gemini findings verified, Gemini findings rejected/uncertain, Additional findings, Verification needed, Remaining blockers, Next smallest action, and final verdict.
+
+      - name: Create Codex fallback handoff
+        if: always() && steps.codex.outcome != 'success'
+        shell: bash
+        run: |
+          mkdir -p .ai-review
+          cat > .ai-review/codex.md <<'EOF'
+          Codex review was unavailable for this run because the external OpenAI step did not complete successfully (for example, API credit/quota exhaustion). This is not a passing Codex review. The automated handoff remains operational and ChatGPT can still inspect the PR directly through the connected GitHub repository.
+          EOF
+
+      - name: Post or update combined AI handoff
+        if: github.event_name == 'pull_request' && always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GEMINI_CONFIGURED: ${{ steps.keys.outputs.gemini }}
+          OPENAI_CONFIGURED: ${{ steps.keys.outputs.openai }}
+          GEMINI_OUTCOME: ${{ steps.gemini.outcome }}
+          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+        run: |
+          mkdir -p .ai-review
+          {
+            echo '<!-- skatequest-ai-pair-review -->'
+            echo '## AI Pair Review'
+            echo
+            echo "Keys configured: Gemini=${GEMINI_CONFIGURED:-false}, OpenAI=${OPENAI_CONFIGURED:-false}."
+            echo "Run outcomes: Gemini=${GEMINI_OUTCOME:-not-run}, Codex=${CODEX_OUTCOME:-not-run}."
+            echo
+            echo '### Gemini reviewer'
+            cat .ai-review/gemini.md 2>/dev/null || echo 'Gemini review unavailable.'
+            echo
+            echo '### Codex implementation/release review'
+            cat .ai-review/codex.md 2>/dev/null || echo 'Codex review unavailable.'
+            echo
+            echo '---'
+            echo 'Provider quota/credit failures are advisory infrastructure status, not a passing AI review.'
+            echo 'Shared protocol: `AI_HANDOFF.md`. Release source of truth: issue #37.'
+          } > .ai-review/comment.md
+
+          comment_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+              --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- skatequest-ai-pair-review -->"))) | .id' \
+              | tail -n 1
+          )"
+
+          if [[ -n "$comment_id" ]]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" \
+              --raw-field body="$(cat .ai-review/comment.md)" >/dev/null
+            echo "Updated AI handoff comment ${comment_id}."
+          else
+            gh pr comment "$PR_NUMBER" --body-file .ai-review/comment.md
+          fi

@@ -35,6 +35,10 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# AI agent local state / credentials
+.gemini/
+gha-creds-*.json
+
 # Local scripts
 claude.js
 build*list*
