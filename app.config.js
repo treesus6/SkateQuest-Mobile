@@ -58,11 +58,16 @@ module.exports = {
         'ACCESS_COARSE_LOCATION',
         'ACCESS_FINE_LOCATION',
         'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
-        'READ_MEDIA_IMAGES',
-        'READ_MEDIA_VIDEO',
         'RECORD_AUDIO',
+      ],
+      // SkateQuest uses Android's system photo/video picker for user-selected media.
+      // Block broad storage/media permissions added by native packages so the Play
+      // build follows Google's photo/video permissions policy.
+      blockedPermissions: [
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
       ],
     },
 
