@@ -72,7 +72,9 @@ jobs:
           NODE
 
       - name: Build static web app
-        run: npx expo export --platform web --output-dir dist
+        run: |
+          npx expo export --platform web --output-dir dist
+          node scripts/export-policy-pages.mjs dist
 
       - name: Verify core PWA export and legacy-route recovery
         run: |
@@ -81,6 +83,9 @@ jobs:
             skate-tv upload-media sessions; do
             test -f "dist/${route}.html"
           done
+          test -f dist/delete-account/index.html
+          test -f dist/privacy-policy/index.html
+          grep -q 'id="data-deletion"' dist/delete-account/index.html
           test -f dist/manifest.webmanifest
           test -f dist/service-worker.js
           test -f dist/videos.html
@@ -124,9 +129,10 @@ jobs:
             routes_healthy=true
             for route in \
               / /login /signup /forgot-password /map /add-spot /spots /crews \
-              /quests /skate-tv /upload-media /sessions; do
+              /quests /skate-tv /upload-media /sessions /delete-account/ /privacy-policy/; do
               route_slug="${route#/}"
               route_slug="${route_slug:-home}"
+              route_slug="${route_slug//\//-}"
               if ! curl --fail --silent --show-error --location --max-time 20 \
                   "https://skatequest.me${route}" -o "/tmp/skatequest-${route_slug}" \
                 || ! grep -qi '<html' "/tmp/skatequest-${route_slug}"; then
