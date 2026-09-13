@@ -35,6 +35,8 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Fixed
 
+- Publish account/data deletion instructions and the privacy policy in the static web export, including directory URLs; add deployment checks to prevent missing policy pages from blocking Play Alpha review.
+
 - Expo SDK patch-package alignment so Expo Doctor passes the configured project checks.
 - Auth redirect handling for `skatequest.me`, GitHub Pages project paths, missing browser origins, and opaque origins.
 - Crew RPC test expectations to match the live server-managed UUID return contract.
