@@ -10,6 +10,7 @@ export const shopsService = {
         .select(
           'id, shop_name, address, latitude, longitude, phone, website, verified'
         )
+        .eq('verified', true)
         .order('shop_name', { ascending: true });
 
       if (error) throw error;
