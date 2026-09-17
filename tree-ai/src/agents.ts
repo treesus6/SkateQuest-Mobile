@@ -1,0 +1,87 @@
+import type { AgentId, AgentProfile } from './types';
+
+export const AGENTS: Record<AgentId, AgentProfile> = {
+  supervisor: {
+    id: 'supervisor',
+    name: 'Supervisor',
+    description: 'Coordinates work, chooses specialists, enforces approval policy, and learns from outcomes.',
+    capabilities: ['route', 'coordinate', 'decide', 'delegate', 'prioritize'],
+    baseConfidence: 0.86,
+  },
+  planner: {
+    id: 'planner',
+    name: 'Planner',
+    description: 'Breaks large goals into ordered, dependency-aware tasks and identifies blockers.',
+    capabilities: ['plan', 'organize', 'prioritize', 'roadmap', 'project', 'task', 'workflow'],
+    baseConfidence: 0.82,
+  },
+  coder: {
+    id: 'coder',
+    name: 'Coder',
+    description: 'Handles code, debugging, architecture, tests, pull requests, builds, and developer tooling.',
+    capabilities: [
+      'code',
+      'debug',
+      'typescript',
+      'javascript',
+      'react',
+      'react native',
+      'expo',
+      'github',
+      'build',
+      'test',
+      'api',
+      'database',
+    ],
+    baseConfidence: 0.88,
+  },
+  researcher: {
+    id: 'researcher',
+    name: 'Researcher',
+    description: 'Finds, compares, verifies, and synthesizes external information.',
+    capabilities: ['research', 'web', 'compare', 'find', 'verify', 'documentation', 'source', 'price'],
+    baseConfidence: 0.84,
+  },
+  skatequest: {
+    id: 'skatequest',
+    name: 'SkateQuest Specialist',
+    description: 'Understands SkateQuest product behavior, maps, spots, quests, Supabase, Expo, and release flows.',
+    capabilities: [
+      'skatequest',
+      'spot',
+      'spots',
+      'quest',
+      'map',
+      'mapbox',
+      'supabase',
+      'android',
+      'alpha',
+      'play console',
+      'expo',
+    ],
+    baseConfidence: 0.92,
+  },
+  files: {
+    id: 'files',
+    name: 'Files Specialist',
+    description: 'Works with documents, PDFs, spreadsheets, images, forms, and structured file extraction.',
+    capabilities: ['file', 'pdf', 'document', 'spreadsheet', 'image', 'form', 'invoice', 'extract'],
+    baseConfidence: 0.83,
+  },
+  qa: {
+    id: 'qa',
+    name: 'QA / Critic',
+    description: 'Challenges plans, verifies outputs, checks regressions, and looks for safer or simpler alternatives.',
+    capabilities: ['qa', 'review', 'verify', 'test', 'critic', 'regression', 'risk', 'validate'],
+    baseConfidence: 0.9,
+  },
+};
+
+export const SPECIALIST_AGENT_IDS: AgentId[] = [
+  'planner',
+  'coder',
+  'researcher',
+  'skatequest',
+  'files',
+  'qa',
+];
