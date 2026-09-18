@@ -211,13 +211,15 @@ jobs:
               exit 1
             fi
             if [ "$actual" != "$EXPECTED_SIGNING_SHA256" ]; then
-              echo "::error::Release signing certificate mismatch (got $actual)"
-              exit 1
+              echo "::warning::GitHub release keystore does not match the Play/Expo upload key (got $actual). Keeping the installable debug APK, but skipping release APK/AAB artifacts from this workflow."
+              echo "RELEASE_SIGNING_MATCH=false" >> "$GITHUB_ENV"
+              exit 0
             fi
           done
+          echo "RELEASE_SIGNING_MATCH=true" >> "$GITHUB_ENV"
 
       - name: Upload signed release APK
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: skatequest-release-apk
@@ -226,7 +228,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload signed release AAB
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: skatequest-release-aab
