@@ -1,0 +1,68 @@
+name: Submit SkateQuest v46 to Play Alpha
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/submit-play-v46.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  submit:
+    name: Submit existing v46 AAB to Google Play Alpha
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Download exact v46 AAB artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: skatequest-play-aab
+          path: ./play-v46
+          run-id: 34611963557
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify v46 bundle
+        run: |
+          test -s ./play-v46/skatequest-play.aab
+          unzip -t ./play-v46/skatequest-play.aab
+          keytool -printcert -jarfile ./play-v46/skatequest-play.aab | tee /tmp/cert.txt
+          grep -q 'SHA256: 2F:C9:59:AD:2A:29:40:BA:8B:83:1B:3B:52:50:AD:CF:45:FB:81:48:F9:C8:3C:50:C3:F8:4B:AA:3C:8A:3A:0B' /tmp/cert.txt
+
+      - name: Write Google service account key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+          if (!key) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_KEY secret');
+          JSON.parse(key);
+          writeFileSync('google-service-account.json', key, { mode: 0o600 });
+          NODE
+
+      - name: Submit exact v46 AAB to Play Alpha
+        run: eas submit --platform android --profile production --path ./play-v46/skatequest-play.aab --non-interactive --wait --verbose
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Remove temporary service account key
+        if: always()
+        run: rm -f ./google-service-account.json
