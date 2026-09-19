@@ -31,6 +31,9 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Download exact v46 AAB artifact
         uses: actions/download-artifact@v5
         with:
