@@ -84,6 +84,7 @@ jobs:
             test -f "dist/${route}.html"
           done
           test -f dist/delete-account/index.html
+          test -f dist/data-deletion/index.html
           test -f dist/privacy-policy/index.html
           grep -q 'id="data-deletion"' dist/delete-account/index.html
           test -f dist/manifest.webmanifest
@@ -129,7 +130,7 @@ jobs:
             routes_healthy=true
             for route in \
               / /login /signup /forgot-password /map /add-spot /spots /crews \
-              /quests /skate-tv /upload-media /sessions /delete-account/ /privacy-policy/; do
+              /quests /skate-tv /upload-media /sessions /delete-account/ /data-deletion/ /privacy-policy/; do
               route_slug="${route#/}"
               route_slug="${route_slug:-home}"
               route_slug="${route_slug//\//-}"
