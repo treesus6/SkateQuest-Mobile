@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       - name: Download exact v46 AAB artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: skatequest-play-aab
           path: ./play-v46
