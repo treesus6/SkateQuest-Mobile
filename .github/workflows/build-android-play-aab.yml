@@ -65,6 +65,12 @@ jobs:
           ];
           const missing = required.filter((name) => !process.env[name]);
           if (missing.length) throw new Error(`Missing GitHub build secrets: ${missing.join(', ')}`);
+          if (!process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN.startsWith('pk.')) {
+            throw new Error('EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN must be a Mapbox public token beginning with pk.');
+          }
+          if (!process.env.MAPBOX_DOWNLOADS_TOKEN.startsWith('sk.')) {
+            throw new Error('MAPBOX_DOWNLOADS_TOKEN must be a Mapbox secret token beginning with sk.');
+          }
           const names = [...required, 'EXPO_PUBLIC_ENV'];
           const contents = names
             .map((name) => `${name}=${JSON.stringify(process.env[name] || '')}`)
