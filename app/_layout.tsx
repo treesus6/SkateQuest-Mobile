@@ -25,6 +25,7 @@ import { analytics } from '../lib/analytics';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
+import { initializeMapbox } from '../lib/mapboxSetup';
 import { supabase } from '../lib/supabase';
 import {
   buildAuthReturnPath,
@@ -59,6 +60,9 @@ Sentry.init({
 });
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Configure the native Mapbox SDK before any route can construct a MapView.
+initializeMapbox();
 
 function AuthGuard() {
   const { user, loading } = useAuthStore();

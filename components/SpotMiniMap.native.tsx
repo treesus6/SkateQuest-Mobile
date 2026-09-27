@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import { MapPin } from 'lucide-react-native';
+import { isMapboxConfigured } from '../lib/mapboxSetup';
 
 export default function SpotMiniMap({
   latitude,
@@ -10,8 +11,20 @@ export default function SpotMiniMap({
   latitude: number;
   longitude: number;
 }) {
+  if (!isMapboxConfigured) {
+    return <View style={{ flex: 1, borderRadius: 18, backgroundColor: '#101722' }} />;
+  }
+
   return (
-    <View style={{ flex: 1, overflow: 'hidden', borderRadius: 18, borderWidth: 1, borderColor: '#283241' }}>
+    <View
+      style={{
+        flex: 1,
+        overflow: 'hidden',
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#283241',
+      }}
+    >
       <Mapbox.MapView
         style={{ flex: 1 }}
         styleURL={Mapbox.StyleURL.Dark}
