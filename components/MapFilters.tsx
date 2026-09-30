@@ -56,8 +56,8 @@ export default function MapFilters({ visible, onClose, filters, onFilterChange }
                 <SlidersHorizontal color="#D2673D" size={21} />
               </View>
               <View className="flex-1">
-                <Text className="text-[11px] font-black tracking-[2px] text-[#D2673D] uppercase">Map Layers</Text>
-                <Text className="text-2xl font-black text-white mt-0.5">What do you want to find?</Text>
+                <Text className="text-[11px] font-black tracking-[2px] text-[#E36D3F] uppercase">SPOT FILTERS</Text>
+                <Text className="text-2xl font-black text-white mt-0.5">What are you hunting?</Text>
                 <Text className="text-xs text-[#7C8795] mt-1">{activeCount} of {FILTER_TYPES.length} layers visible</Text>
               </View>
             </View>
@@ -110,8 +110,8 @@ export default function MapFilters({ visible, onClose, filters, onFilterChange }
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity className="min-h-[54px] rounded-2xl bg-[#D2673D] items-center justify-center" onPress={onClose}>
-            <Text className="text-white text-base font-black">Back to the map</Text>
+          <TouchableOpacity className="min-h-[54px] rounded-[14px] bg-[#D8F04B] items-center justify-center" onPress={onClose}>
+            <Text className="text-[#07080B] text-base font-black tracking-wider">DROP BACK IN</Text>
           </TouchableOpacity>
         </View>
       </View>
