@@ -45,7 +45,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
     setPostOpen(open => !open);
   };
 
-  const spin = postRotate.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '37deg'] });
+  const spin = postRotate.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '8deg'] });
 
   const TAB_CONFIG = [
     { icon: Home, label: 'HOME', name: 'index' },
@@ -74,7 +74,7 @@ function SkateQuestTabBar({ state, navigation }: any) {
           accessibilityLabel="Close action menu"
         >
           <View style={[s.postMenu, { bottom: 82 + insets.bottom }]}>
-            <Text style={s.postMenuKicker}>DROP SOMETHING</Text>
+            <Text style={s.postMenuKicker}>QUICK DROP // STREET TO CLOUD</Text>
             {POST_ACTIONS.map((action, i) => (
               <Animated.View key={action.screen} style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}>
                 <TouchableOpacity
@@ -100,6 +100,8 @@ function SkateQuestTabBar({ state, navigation }: any) {
 
       <View style={[s.shell, { paddingBottom: Math.max(insets.bottom, 7) }]}>
         <View style={s.rail}>
+          <View pointerEvents="none" style={s.railScratchA} />
+          <View pointerEvents="none" style={s.railScratchB} />
           {TAB_CONFIG.map(tab => {
             if (tab.isPost) {
               return (
@@ -113,10 +115,24 @@ function SkateQuestTabBar({ state, navigation }: any) {
                       accessibilityLabel={postOpen ? 'Close action menu' : 'Open action menu'}
                       accessibilityState={{ expanded: postOpen }}
                     >
-                      <Text style={s.postPlus}>+</Text>
+                      <View style={s.deck}>
+                        <View style={s.deckBolts}>
+                          <View style={s.deckBolt} />
+                          <View style={s.deckBolt} />
+                        </View>
+                        <Text style={s.deckText}>{postOpen ? '×' : 'DROP'}</Text>
+                        <View style={s.deckBolts}>
+                          <View style={s.deckBolt} />
+                          <View style={s.deckBolt} />
+                        </View>
+                      </View>
+                      <View style={s.deckWheels}>
+                        <View style={s.deckWheel} />
+                        <View style={s.deckWheel} />
+                      </View>
                     </TouchableOpacity>
                   </Animated.View>
-                  <Text style={s.postCaption}>DROP</Text>
+                  <Text style={s.postCaption}>POST • CHECK IN • TRICK</Text>
                 </View>
               );
             }
@@ -257,46 +273,91 @@ export default function TabsLayout() {
 }
 
 const s = StyleSheet.create({
-  shell: { backgroundColor: INK, paddingHorizontal: 9, paddingTop: 7 },
+  shell: { backgroundColor: INK, paddingHorizontal: 8, paddingTop: 7 },
   rail: {
-    minHeight: 68,
+    minHeight: 70,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    backgroundColor: '#101319',
-    borderRadius: 23,
+    paddingHorizontal: 5,
+    backgroundColor: '#0D1015',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#2B3039',
+    borderColor: '#303640',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.34,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -7 },
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
     elevation: 18,
+    overflow: 'visible',
+  },
+  railScratchA: {
+    position: 'absolute',
+    top: 4,
+    left: 16,
+    width: 64,
+    height: 3,
+    backgroundColor: ORANGE,
+    opacity: 0.72,
+    transform: [{ rotate: '-2deg' }],
+  },
+  railScratchB: {
+    position: 'absolute',
+    bottom: 5,
+    right: 18,
+    width: 46,
+    height: 2,
+    backgroundColor: ACID,
+    opacity: 0.55,
+    transform: [{ rotate: '2deg' }],
   },
   tab: { flex: 1 },
   tabInner: { alignItems: 'center', justifyContent: 'center', minHeight: 58, gap: 3 },
-  iconWrap: { width: 35, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  iconWrapActive: { backgroundColor: PAPER, transform: [{ rotate: '-3deg' }] },
-  tabLabel: { fontSize: 8, color: '#606875', fontWeight: '900', letterSpacing: 0.8 },
+  iconWrap: { width: 35, height: 31, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  iconWrapActive: {
+    backgroundColor: PAPER,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '-4deg' }],
+  },
+  tabLabel: { fontSize: 8, color: '#69717D', fontWeight: '900', letterSpacing: 0.9 },
   tabLabelActive: { color: PAPER },
-  postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -23 },
+  postWrap: { flex: 1.18, alignItems: 'center', justifyContent: 'center', marginTop: -25 },
   postBtn: {
-    width: 57,
-    height: 57,
-    borderRadius: 17,
-    backgroundColor: ACID,
+    width: 70,
+    height: 62,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: INK,
-    shadowColor: ACID,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 13,
   },
-  postPlus: { color: INK, fontSize: 34, fontWeight: '400', lineHeight: 37, marginTop: -3 },
-  postCaption: { color: ACID, fontSize: 7, fontWeight: '900', letterSpacing: 1.2, marginTop: 2 },
+  deck: {
+    width: 64,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: ACID,
+    borderWidth: 3,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 6,
+    shadowColor: ACID,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.24,
+    shadowRadius: 9,
+    elevation: 12,
+  },
+  deckBolts: { gap: 3 },
+  deckBolt: { width: 3, height: 3, borderRadius: 2, backgroundColor: INK, opacity: 0.8 },
+  deckText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  deckWheels: {
+    position: 'absolute',
+    bottom: 10,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  deckWheel: { width: 7, height: 7, borderRadius: 4, backgroundColor: ORANGE, borderWidth: 1, borderColor: INK },
+  postCaption: { color: '#8E96A3', fontSize: 6, fontWeight: '900', letterSpacing: 0.8, marginTop: -2 },
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, backgroundColor: 'rgba(3,4,6,0.54)' },
   postMenu: { position: 'absolute', right: 12, left: 12, gap: 8, alignItems: 'stretch' },
   postMenuKicker: { color: PAPER, fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'right', marginBottom: 2, marginRight: 6 },
