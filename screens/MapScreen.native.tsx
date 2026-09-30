@@ -376,7 +376,7 @@ export default function MapScreen() {
             id="clusters"
             filter={['has', 'point_count']}
             style={{
-              circleColor: '#d2673d',
+              circleColor: '#E36D3F',
               circleRadius: ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
               circleOpacity: 0.8,
             }}
@@ -419,7 +419,7 @@ export default function MapScreen() {
               ['literal', savedIdsArray.length > 0 ? savedIdsArray : ['']] as any,
             ]}
             style={{
-              circleColor: '#FFD700',
+              circleColor: '#D8F04B',
               circleRadius: 11,
               circleStrokeWidth: 2,
               circleStrokeColor: '#ffffff',
@@ -553,10 +553,10 @@ export default function MapScreen() {
       )}
 
       <TouchableOpacity
-        className="absolute top-[110px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg"
+        className="absolute top-[110px] right-5 bg-[#0B1018]/95 rounded-[14px] w-[50px] h-[50px] justify-center items-center border border-[#343B46] shadow-lg"
         onPress={() => setShowFilters(true)}
       >
-        <Grid3x3 color="#d2673d" size={22} />
+        <Grid3x3 color="#E36D3F" size={22} />
       </TouchableOpacity>
 
       <MapFilters
@@ -568,24 +568,25 @@ export default function MapScreen() {
 
       {userLocation && (
         <TouchableOpacity
-          className="absolute top-[50px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg"
+          className="absolute top-[50px] right-5 bg-[#0B1018]/95 rounded-[14px] w-[50px] h-[50px] justify-center items-center border border-[#343B46] shadow-lg"
           onPress={goToUserLocation}
         >
-          <Crosshair color="#d2673d" size={24} />
+          <Crosshair color="#D8F04B" size={24} />
         </TouchableOpacity>
       )}
 
-      <View className="absolute top-[50px] left-5 bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
-        <Text className="text-white font-bold text-sm">
+      <View className="absolute top-[48px] left-4 bg-[#0B1018]/95 border border-[#343B46] px-3 py-2.5 rounded-[14px] shadow-lg">
+        <Text className="text-[9px] font-black tracking-[2px] text-[#E36D3F]">SKATE MAP // LIVE</Text>
+        <Text className="mt-0.5 text-[12px] font-black text-[#F5F0E7]">
           {loading
-            ? 'Finding nearby spots…'
-            : `${filteredSpots.length} spots${activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby`}
+            ? 'SCANNING THE STREETS…'
+            : `${filteredSpots.length} SPOTS${activeFilters.shop ? ` · ${filteredShops.length} SHOPS` : ''}`}
         </Text>
       </View>
 
       {savedSpotIds.size > 0 && (
-        <View className="absolute top-[90px] left-5 bg-yellow-500 px-3 py-1.5 rounded-full shadow">
-          <Text className="text-white font-bold text-xs">⭐ {savedSpotIds.size} saved</Text>
+        <View className="absolute top-[104px] left-4 bg-[#D8F04B] px-3 py-1.5 rounded-[10px] shadow">
+          <Text className="text-[#07080B] font-black text-[10px] tracking-wide">{savedSpotIds.size} SAVED LINES</Text>
         </View>
       )}
 
@@ -596,7 +597,7 @@ export default function MapScreen() {
         filteredSpots.length > 0 && (
           <View className="absolute bottom-[92px] left-0 right-0">
             <Text className="px-5 mb-2 text-xs font-black tracking-widest text-white">
-              NEARBY SPOTS
+              SPOT RADAR // TAP TO DROP IN
             </Text>
             <ScrollView
               horizontal
@@ -606,7 +607,7 @@ export default function MapScreen() {
               {filteredSpots.slice(0, 12).map(spot => (
                 <TouchableOpacity
                   key={spot.id}
-                  className="w-[210px] rounded-2xl border border-[#2A303A] bg-[#10151D] p-4"
+                  className="w-[218px] rounded-[18px] border border-[#343B46] bg-[#0D1117]/95 p-4"
                   onPress={() => {
                     setSelectedSpot(spot);
                     cameraRef.current?.setCamera({
@@ -631,7 +632,7 @@ export default function MapScreen() {
         )}
 
       {selectedSpot && !showDirections && (
-        <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg">
+        <View className="absolute bottom-[100px] left-4 right-4 bg-[#0B1018]/95 border border-[#343B46] rounded-[22px] p-4 shadow-lg">
           {selectedSpot.image_url ? (
             <Image
               source={{ uri: selectedSpot.image_url }}
@@ -642,16 +643,16 @@ export default function MapScreen() {
           ) : null}
           <View className="flex-row justify-between items-start mb-1">
             <View className="flex-1 mr-2">
-              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-0.5">
+              <Text className="text-xl font-black text-[#F5F0E7] mb-0.5">
                 {selectedSpot.name}
               </Text>
               <View className="flex-row items-center gap-2 flex-wrap">
-                <Text className="text-sm text-gray-500 dark:text-gray-400">
+                <Text className="text-xs font-black uppercase tracking-wide text-[#929AA7]">
                   {selectedSpot.difficulty || 'Unknown'}
                 </Text>
                 {spotCondition && (
-                  <View className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                    <Text className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  <View className="bg-[#D8F04B] px-2 py-1 rounded-[9px]">
+                    <Text className="text-[10px] font-black text-[#07080B]">
                       {CONDITION_LABELS[spotCondition] ?? spotCondition}
                     </Text>
                   </View>
@@ -677,7 +678,7 @@ export default function MapScreen() {
           </View>
 
           <View className="mb-3">
-            <Text className="text-xs text-gray-400 mb-1.5 font-medium">Report conditions:</Text>
+            <Text className="text-[9px] text-[#E36D3F] mb-2 font-black tracking-[1.4px]">SPOT CONDITIONS // TAP TO REPORT</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-2">
                 {CONDITION_OPTIONS.map(opt => {
@@ -689,13 +690,13 @@ export default function MapScreen() {
                       disabled={reportingCondition}
                       className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full border ${
                         isActive
-                          ? 'bg-[#D2673D] border-brand-terracotta'
-                          : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                          ? 'bg-[#E36D3F] border-[#E36D3F]'
+                          : 'bg-[#12171E] border-[#343B46]'
                       }`}
                     >
                       <Text className="text-sm">{opt.emoji}</Text>
                       <Text
-                        className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                        className={`text-[10px] font-black ${isActive ? 'text-[#07080B]' : 'text-[#B7BEC8]'}`}
                       >
                         {opt.label}
                       </Text>
@@ -708,21 +709,21 @@ export default function MapScreen() {
 
           <View className="flex-row gap-2.5">
             <TouchableOpacity
-              className="flex-1 bg-[#D2673D] p-3 rounded-lg items-center flex-row justify-center gap-1.5"
+              className="flex-1 bg-[#D8F04B] p-3 rounded-[12px] items-center flex-row justify-center gap-1.5"
               onPress={() => setShowDirections(true)}
             >
-              <Navigation color="#fff" size={14} />
-              <Text className="text-white font-semibold text-sm">Directions</Text>
+              <Navigation color="#07080B" size={14} />
+              <Text className="text-[#07080B] font-black text-xs tracking-wide">DROP IN</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="flex-1 bg-brand-beige dark:bg-gray-700 p-3 rounded-lg items-center"
+              className="flex-1 bg-[#171C24] border border-[#343B46] p-3 rounded-[12px] items-center"
               onPress={() => {
                 navigation.navigate('SpotDetail', { spotId: selectedSpot.id });
                 setSelectedSpot(null);
               }}
             >
-              <Text className="text-gray-800 dark:text-gray-100 font-semibold text-sm">
-                View Details
+              <Text className="text-[#F5F0E7] font-black text-xs tracking-wide">
+                SPOT DETAILS
               </Text>
             </TouchableOpacity>
           </View>
@@ -730,13 +731,13 @@ export default function MapScreen() {
       )}
 
       {selectedShop && !showDirections && (
-        <View className="absolute bottom-[100px] left-5 right-5 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-lg z-10">
+        <View className="absolute bottom-[100px] left-4 right-4 bg-[#0B1018]/95 border border-[#343B46] rounded-[22px] p-4 shadow-lg z-10">
           <View className="flex-row justify-between items-start mb-3">
             <View className="flex-1 mr-2">
-              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100">
+              <Text className="text-xl font-black text-[#F5F0E7]">
                 {selectedShop.name}
               </Text>
-              <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <Text className="text-xs font-bold text-[#929AA7] mt-1">
                 {selectedShop.address}
               </Text>
               {selectedShop.verified && (
@@ -772,12 +773,13 @@ export default function MapScreen() {
       )}
 
       <TouchableOpacity
-        className="absolute bottom-6 right-5 bg-[#D2673D] rounded-full w-14 h-14 justify-center items-center shadow-lg"
+        className="absolute bottom-5 right-4 bg-[#D8F04B] border-[3px] border-[#07080B] rounded-[18px] min-w-[118px] h-[52px] px-4 flex-row gap-2 justify-center items-center shadow-lg"
         onPress={() => void openAddSpot()}
         accessibilityRole="button"
         accessibilityLabel="Add a skate spot"
       >
-        <Text className="text-white text-3xl font-light">+</Text>
+        <Text className="text-[#07080B] text-xl font-black">+</Text>
+        <Text className="text-[#07080B] text-[10px] font-black tracking-[1.2px]">DROP SPOT</Text>
       </TouchableOpacity>
     </View>
   );
