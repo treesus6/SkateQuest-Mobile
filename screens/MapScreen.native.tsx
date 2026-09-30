@@ -741,8 +741,8 @@ export default function MapScreen() {
                 {selectedShop.address}
               </Text>
               {selectedShop.verified && (
-                <Text className="text-xs text-green-600 dark:text-green-400 mt-1 font-semibold">
-                  Verified skate shop
+                <Text className="text-[10px] text-[#D8F04B] mt-2 font-black tracking-wide">
+                  VERIFIED SKATE SHOP
                 </Text>
               )}
             </View>
@@ -752,20 +752,20 @@ export default function MapScreen() {
           </View>
           <View className="flex-row gap-2.5">
             <TouchableOpacity
-              className="flex-1 bg-[#D2673D] p-3 rounded-lg items-center flex-row justify-center gap-1.5"
+              className="flex-1 bg-[#D8F04B] p-3 rounded-[12px] items-center flex-row justify-center gap-1.5"
               onPress={() => setShowDirections(true)}
             >
-              <Navigation color="#fff" size={14} />
-              <Text className="text-white font-semibold text-sm">Directions</Text>
+              <Navigation color="#07080B" size={14} />
+              <Text className="text-[#07080B] font-black text-xs tracking-wide">DROP IN</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="flex-1 bg-brand-beige dark:bg-gray-700 p-3 rounded-lg items-center"
+              className="flex-1 bg-[#171C24] border border-[#343B46] p-3 rounded-[12px] items-center"
               disabled={!selectedShop.website}
               onPress={() => selectedShop.website && Linking.openURL(selectedShop.website)}
               style={{ opacity: selectedShop.website ? 1 : 0.5 }}
             >
-              <Text className="text-gray-800 dark:text-gray-100 font-semibold text-sm">
-                {selectedShop.website ? 'Website' : 'No Website'}
+              <Text className="text-[#F5F0E7] font-black text-xs tracking-wide">
+                {selectedShop.website ? 'SHOP SITE' : 'NO WEBSITE'}
               </Text>
             </TouchableOpacity>
           </View>
