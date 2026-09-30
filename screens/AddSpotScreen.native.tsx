@@ -25,8 +25,6 @@ const ACCENT = '#E36D3F';
 const ACID = '#D8F04B';
 const PAPER = '#F5F0E7';
 const BG = '#05070B';
-const CARD = '#101722';
-const BORDER = '#202B3A';
 const NEUTRAL_CENTER: [number, number] = [0, 20];
 const OBSTACLES = [
   'Stairs',
