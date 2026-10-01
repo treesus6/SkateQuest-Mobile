@@ -18,7 +18,11 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
 import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import { Logger } from '../lib/logger';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
+import {
+  getSpotPersistenceError,
+  getSpotSubmissionErrorMessage,
+  parseSpotCoordinates,
+} from '../lib/spotSubmission';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
 
 const ACCENT = '#D2673D';
@@ -47,12 +51,12 @@ export default function AddSpotScreen() {
   const route = useRoute<any>();
   const user = useAuthStore(state => state.user);
   const cameraRef = useRef<Mapbox.Camera>(null);
-  const routeLat = Number(route.params?.latitude);
-  const routeLng = Number(route.params?.longitude);
-  const hasRoutePoint = Number.isFinite(routeLat) && Number.isFinite(routeLng);
+  const locationRequest = useRef(0);
+  const routedCoordinates = parseSpotCoordinates(route.params?.latitude, route.params?.longitude);
+  const hasRoutePoint = routedCoordinates !== null;
 
   const [coordinates, setCoordinates] = useState<[number, number]>(
-    hasRoutePoint ? [routeLng, routeLat] : NEUTRAL_CENTER
+    routedCoordinates ?? NEUTRAL_CENTER
   );
   const [hasCoordinates, setHasCoordinates] = useState(hasRoutePoint);
   const [name, setName] = useState('');
@@ -71,10 +75,12 @@ export default function AddSpotScreen() {
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
 
   const locate = async () => {
+    const request = ++locationRequest.current;
     setLocating(true);
     setLocationMessage(null);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
+      if (request !== locationRequest.current) return;
       if (permission.status !== 'granted') {
         setLocationMessage('Location permission is off. Tap the real spot on the map instead.');
         return;
@@ -82,7 +88,9 @@ export default function AddSpotScreen() {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      const next: [number, number] = [location.coords.longitude, location.coords.latitude];
+      if (request !== locationRequest.current) return;
+      const next = parseSpotCoordinates(location.coords.latitude, location.coords.longitude);
+      if (!next) throw new Error('Your device returned an invalid location. Choose a pin on the map.');
       setCoordinates(next);
       setHasCoordinates(true);
       cameraRef.current?.setCamera({
@@ -91,16 +99,20 @@ export default function AddSpotScreen() {
         animationDuration: 700,
       });
     } catch (error) {
+      if (request !== locationRequest.current) return;
       setLocationMessage(
         error instanceof Error ? error.message : 'Could not get your current location.'
       );
     } finally {
-      setLocating(false);
+      if (request === locationRequest.current) setLocating(false);
     }
   };
 
   useEffect(() => {
     if (isMapboxConfigured && !hasRoutePoint) void locate();
+    return () => {
+      locationRequest.current += 1;
+    };
   }, []);
 
   if (!isMapboxConfigured) {
@@ -115,8 +127,12 @@ export default function AddSpotScreen() {
   const handleMapPress = (event: any) => {
     const point = event?.geometry?.coordinates;
     if (!Array.isArray(point) || point.length < 2) return;
-    const next: [number, number] = [Number(point[0]), Number(point[1])];
-    if (!Number.isFinite(next[0]) || !Number.isFinite(next[1])) return;
+    const next = parseSpotCoordinates(point[1], point[0]);
+    if (!next) return;
+    // A chosen pin takes precedence over any pending GPS request.
+    locationRequest.current += 1;
+    setLocating(false);
+    setLocationMessage(null);
     setCoordinates(next);
     setHasCoordinates(true);
   };
@@ -292,7 +308,13 @@ export default function AddSpotScreen() {
                 : 'Choose a real location'}
             </Text>
           </View>
-          <Pressable style={s.locateButton} onPress={() => void locate()} disabled={locating}>
+          <Pressable
+            accessibilityLabel="Use my location"
+            accessibilityRole="button"
+            style={s.locateButton}
+            onPress={() => void locate()}
+            disabled={locating}
+          >
             {locating ? (
               <ActivityIndicator color={ACCENT} size="small" />
             ) : (
