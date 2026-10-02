@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Bot,
   Camera,
+  CalendarDays,
   ChevronRight,
   Compass,
   Crosshair,
@@ -33,6 +34,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
+import { Logger } from '../lib/logger';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -72,57 +74,91 @@ export default function HomeSceneScreen() {
   const [sceneMedia, setSceneMedia] = useState<SceneMedia[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
+  const loadRequestRef = useRef(0);
   const intro = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
   const floatY = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setDataError(null);
+      return;
+    }
 
-    const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase
-        .from('live_checkins')
-        .select('*,profiles(username,avatar_url)')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('daily_quests')
-        .select('id,title,description,xp_reward,quest_type')
-        .eq('active', true)
-        .eq('frozen', false)
-        .order('xp_reward', { ascending: false })
-        .limit(4),
-      supabase
-        .from('skatetv_clips')
-        .select('id,title,thumbnail_url,likes,views,trick_name,park_name,created_at,profiles(username)')
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('bounties')
-        .select('id,trick_name,park_name,xp_reward,status')
-        .eq('status', 'open')
-        .order('xp_reward', { ascending: false })
-        .limit(4),
-      supabase
-        .from('media')
-        .select('id,url,thumbnail_url,type,caption,created_at')
-        .order('created_at', { ascending: false })
-        .limit(12),
-    ]);
+    const requestId = ++loadRequestRef.current;
 
-    if (profileRes.data) setProfile(profileRes.data as HomeProfile);
-    setCheckins(liveRes.data ?? []);
-    setQuests(questRes.data ?? []);
-    setClips(clipRes.data ?? []);
-    setBounties(bountyRes.data ?? []);
-    setSceneMedia((mediaRes.data ?? []) as SceneMedia[]);
+    try {
+      const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase
+          .from('live_checkins')
+          .select('*,profiles(username,avatar_url)')
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('daily_quests')
+          .select('id,title,description,xp_reward,quest_type')
+          .eq('active', true)
+          .eq('frozen', false)
+          .order('xp_reward', { ascending: false })
+          .limit(4),
+        supabase
+          .from('skatetv_clips')
+          .select('id,title,thumbnail_url,likes,views,trick_name,park_name,created_at,profiles(username)')
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('bounties')
+          .select('id,trick_name,park_name,xp_reward,status')
+          .eq('status', 'open')
+          .order('xp_reward', { ascending: false })
+          .limit(4),
+        supabase
+          .from('media')
+          .select('id,url,thumbnail_url,type,caption,created_at')
+          .order('created_at', { ascending: false })
+          .limit(12),
+      ]);
+
+      if (requestId !== loadRequestRef.current) return;
+
+      const failures = [
+        { label: 'profile', error: profileRes.error },
+        { label: 'live scene', error: liveRes.error },
+        { label: 'quests', error: questRes.error },
+        { label: 'clips', error: clipRes.error },
+        { label: 'bounties', error: bountyRes.error },
+        { label: 'media', error: mediaRes.error },
+      ].filter(item => item.error);
+
+      if (!profileRes.error && profileRes.data) setProfile(profileRes.data as HomeProfile);
+      if (!liveRes.error) setCheckins(liveRes.data ?? []);
+      if (!questRes.error) setQuests(questRes.data ?? []);
+      if (!clipRes.error) setClips(clipRes.data ?? []);
+      if (!bountyRes.error) setBounties(bountyRes.data ?? []);
+      if (!mediaRes.error) setSceneMedia((mediaRes.data ?? []) as SceneMedia[]);
+
+      if (failures.length > 0) {
+        Logger.warn('Home scene refresh partially failed', failures);
+        setDataError('Some live scene data could not refresh. Showing the last good snapshot.');
+      } else {
+        setDataError(null);
+      }
+    } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
+      Logger.error('Home scene refresh failed', error);
+      setDataError('Could not refresh the live scene. Showing the last good snapshot.');
+    }
   }, [user?.id]);
 
   useEffect(() => {
-    void loadData().finally(() => setLoading(false));
+    let active = true;
+    void loadData().finally(() => {
+      if (active) setLoading(false);
+    });
 
     Animated.timing(intro, {
       toValue: 1,
@@ -149,6 +185,8 @@ export default function HomeSceneScreen() {
 
     const timer = setInterval(() => void loadData(), 30000);
     return () => {
+      active = false;
+      loadRequestRef.current += 1;
       clearInterval(timer);
       pulseAnimation.stop();
       floatAnimation.stop();
@@ -157,8 +195,11 @@ export default function HomeSceneScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    try {
+      await loadData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadData]);
 
   const level = Math.max(1, Number(profile?.level ?? 1));
@@ -225,6 +266,22 @@ export default function HomeSceneScreen() {
             </Pressable>
           </View>
 
+          {dataError ? (
+            <View style={s.dataWarning}>
+              <View style={s.dataWarningCopy}>
+                <Text style={s.dataWarningTitle}>LIVE DATA HIT A BUMP</Text>
+                <Text style={s.dataWarningText}>{dataError}</Text>
+              </View>
+              <Pressable
+                style={[s.dataWarningButton, refreshing && s.dataWarningButtonDisabled]}
+                onPress={() => void onRefresh()}
+                disabled={refreshing}
+              >
+                <Text style={s.dataWarningButtonText}>{refreshing ? 'RETRYING…' : 'TRY AGAIN'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={s.heroWrap}>
             <View style={s.hero}>
               {heroImage ? <Image source={{ uri: heroImage }} style={s.fill} contentFit="cover" transition={180} /> : null}
@@ -232,9 +289,17 @@ export default function HomeSceneScreen() {
               <View style={s.heroOrangeSlash} />
               <View style={s.heroAcidSlash} />
               <View style={s.heroContent}>
-                <View style={s.liveChip}>
-                  <Animated.View style={[s.liveDot, { transform: [{ scale: pulse }] }]} />
-                  <Text style={s.liveChipText}>SCENE LIVE</Text>
+                <View style={[s.liveChip, checkins.length === 0 && s.liveChipQuiet]}>
+                  <Animated.View
+                    style={[
+                      s.liveDot,
+                      checkins.length === 0 && s.liveDotQuiet,
+                      checkins.length > 0 ? { transform: [{ scale: pulse }] } : undefined,
+                    ]}
+                  />
+                  <Text style={s.liveChipText}>
+                    {checkins.length > 0 ? 'SCENE LIVE' : 'SCENE QUIET'}
+                  </Text>
                 </View>
                 <Text style={s.heroTitle}>GO FIND{`\n`}SOMETHING{`\n`}TO SKATE.</Text>
                 <Text style={s.heroSub}>{sceneLine}</Text>
@@ -246,6 +311,10 @@ export default function HomeSceneScreen() {
                   <Pressable style={s.heroGhost} onPress={() => go('AddSpot')}>
                     <MapPinned color="#fff" size={17} />
                     <Text style={s.heroGhostText}>ADD SPOT</Text>
+                  </Pressable>
+                  <Pressable style={s.heroGhost} onPress={() => go('Sessions')}>
+                    <CalendarDays color="#fff" size={17} />
+                    <Text style={s.heroGhostText}>SESSIONS</Text>
                   </Pressable>
                 </View>
               </View>
@@ -332,7 +401,7 @@ export default function HomeSceneScreen() {
 
           <View style={s.actionRail}>
             <ActionTile accent={ORANGE} icon={<MapPinned color={INK} size={23} />} label="SPOTS" sub="Find something new" tilt="-2deg" onPress={() => go('Map')} />
-            <ActionTile accent={ACID} icon={<Camera color={INK} size={23} />} label="POST" sub="Drop a real clip" tilt="2deg" onPress={() => go('SkateTV')} />
+            <ActionTile accent={ACID} icon={<Camera color={INK} size={23} />} label="POST" sub="Drop a real clip" tilt="2deg" onPress={() => go('UploadMedia')} />
             <ActionTile accent={BLUE} icon={<Users color={INK} size={23} />} label="CREW" sub="Link with homies" tilt="-1deg" onPress={() => go('Crews')} />
           </View>
 
@@ -498,6 +567,14 @@ const s = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 14, overflow: 'hidden', backgroundColor: '#171A20', borderWidth: 2, borderColor: PAPER, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '3deg' }] },
   avatarText: { color: PAPER, fontWeight: '900', fontSize: 15 },
 
+  dataWarning: { marginHorizontal: 14, marginBottom: 12, borderRadius: 16, borderWidth: 1, borderColor: '#5A3B2F', backgroundColor: '#1B1411', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dataWarningCopy: { flex: 1 },
+  dataWarningTitle: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
+  dataWarningText: { color: '#CFD4DC', fontSize: 10.5, lineHeight: 15, marginTop: 3, fontWeight: '700' },
+  dataWarningButton: { minHeight: 36, paddingHorizontal: 11, borderRadius: 10, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center' },
+  dataWarningButtonDisabled: { opacity: 0.55 },
+  dataWarningButtonText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+
   heroWrap: { marginHorizontal: 12, position: 'relative' },
   hero: { height: 380, borderRadius: 31, overflow: 'hidden', backgroundColor: '#15171D', borderWidth: 1, borderColor: '#2A2E36' },
   heroShade: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(4,5,7,0.48)' },
@@ -506,14 +583,16 @@ const s = StyleSheet.create({
   heroAcidSlash: { position: 'absolute', width: 190, height: 24, backgroundColor: ACID, left: -62, bottom: 50, transform: [{ rotate: '-11deg' }] },
   heroContent: { flex: 1, padding: 22, justifyContent: 'flex-end' },
   liveChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.62)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: 12 },
+  liveChipQuiet: { backgroundColor: 'rgba(0,0,0,0.76)', borderColor: 'rgba(255,255,255,0.12)' },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACID },
+  liveDotQuiet: { backgroundColor: '#7D8592' },
   liveChipText: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
   heroTitle: { color: '#fff', fontSize: 43, lineHeight: 40, letterSpacing: -2.5, fontWeight: '900', maxWidth: 310 },
   heroSub: { color: '#E0E3E8', fontSize: 13, fontWeight: '800', marginTop: 10 },
-  heroActions: { flexDirection: 'row', gap: 9, marginTop: 18 },
-  heroPrimary: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACID, paddingHorizontal: 15, minHeight: 47, borderRadius: 14 },
+  heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 },
+  heroPrimary: { flexGrow: 1, minWidth: 126, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACID, paddingHorizontal: 15, minHeight: 47, borderRadius: 14 },
   heroPrimaryText: { color: INK, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
-  heroGhost: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, minHeight: 47, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  heroGhost: { flexGrow: 1, minWidth: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 12, minHeight: 47, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   heroGhostText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.7 },
   heroSticker: { position: 'absolute', right: -1, top: 16, width: 76, height: 76, borderRadius: 18, backgroundColor: PAPER, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
   heroStickerBig: { color: INK, fontSize: 26, lineHeight: 27, fontWeight: '900' },
