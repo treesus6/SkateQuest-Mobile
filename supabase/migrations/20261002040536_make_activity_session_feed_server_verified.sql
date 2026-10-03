@@ -17,8 +17,8 @@ declare
   v_session public.skate_activity_sessions%rowtype;
   v_minutes integer;
   v_xp integer;
-  v_tricks integer := least(greatest(coalesce(p_trick_count,0),0),1000);
-  v_inserted boolean := false;
+  v_tricks integer := greatest(coalesce(p_trick_count,0),0);
+  v_reward_rows integer := 0;
 begin
   if v_user_id is null then raise exception 'authentication required'; end if;
 
@@ -64,8 +64,8 @@ begin
       v_xp
     )
     on conflict(user_id,reward_key) do nothing;
-    get diagnostics v_inserted = row_count;
-    if v_inserted then
+    get diagnostics v_reward_rows = row_count;
+    if v_reward_rows = 1 then
       perform public.increment_user_xp(v_user_id,v_xp);
     end if;
   end if;
@@ -87,13 +87,13 @@ begin
     'skate_session',
     'Completed a skate session',
     v_minutes::text || ' min · ' || v_tricks::text || ' tricks logged',
-    case when v_inserted then v_xp else 0 end
+    case when v_reward_rows = 1 then v_xp else 0 end
   );
 
   return jsonb_build_object(
     'session_id', v_session.id,
     'duration_minutes', v_minutes,
-    'xp_awarded', case when v_inserted then v_xp else 0 end,
+    'xp_awarded', case when v_reward_rows = 1 then v_xp else 0 end,
     'trick_count', v_tricks,
     'already_completed', false
   );
