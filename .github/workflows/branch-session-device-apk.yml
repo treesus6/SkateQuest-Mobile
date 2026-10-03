@@ -1,0 +1,108 @@
+name: Branch Session Device APK
+
+on:
+  push:
+    branches:
+      - codex/session-integrity
+    paths:
+      - '.github/workflows/branch-session-device-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build exact PR 316 debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+      RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install frozen dependencies
+        run: npm ci
+
+      - name: Release checks
+        run: |
+          npm run type-check
+          npm run lint
+          npm test -- --runInBand
+          npx expo-doctor
+
+      - name: Validate runtime configuration
+        shell: bash
+        run: |
+          missing=()
+          for name in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "::error::Missing required Android build secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Expo prebuild
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build installable debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
+
+      - name: Verify packaged permissions and runtime configuration
+        shell: bash
+        run: |
+          apk="$(find android/app/build/outputs/apk/debug -name '*.apk' -type f | head -1)"
+          test -s "$apk"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          permissions="$("$AAPT" dump permissions "$apk")"
+          for forbidden in READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE READ_MEDIA_IMAGES READ_MEDIA_VIDEO; do
+            if printf '%s\n' "$permissions" | grep -q "android.permission.${forbidden}"; then
+              echo "::error::Forbidden permission: android.permission.${forbidden}"
+              exit 1
+            fi
+          done
+          unzip -p "$apk" assets/app.config | node -e '
+            let input="";
+            process.stdin.on("data",chunk=>input+=chunk);
+            process.stdin.on("end",()=>{
+              const extra=(JSON.parse(input).extra||{});
+              const missing=["supabaseUrl","supabaseAnonKey","mapboxAccessToken"].filter(k=>!String(extra[k]||"").trim());
+              if(missing.length) throw new Error("Missing packaged config: "+missing.join(", "));
+              if(extra.supabaseUrl.includes("configuration-missing")) throw new Error("Supabase fallback URL packaged");
+            });
+          '
+
+      - name: Upload exact PR 316 debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-pr316-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: error
