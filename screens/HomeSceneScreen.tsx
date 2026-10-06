@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowUpRight,
   Bot,
-  Camera,
   CalendarDays,
+  Camera,
   ChevronRight,
   Compass,
   Crosshair,
@@ -74,20 +74,16 @@ export default function HomeSceneScreen() {
   const [sceneMedia, setSceneMedia] = useState<SceneMedia[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [dataError, setDataError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
 
-  const loadRequestRef = useRef(0);
   const intro = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
   const floatY = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
-    if (!user?.id) {
-      setDataError(null);
-      return;
-    }
-
-    const requestId = ++loadRequestRef.current;
+    if (!user?.id) return;
+    const currentRequest = ++requestId.current;
 
     try {
       const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
@@ -123,39 +119,36 @@ export default function HomeSceneScreen() {
           .limit(12),
       ]);
 
-      if (requestId !== loadRequestRef.current) return;
-
-      const failures = [
-        { label: 'profile', error: profileRes.error },
-        { label: 'live scene', error: liveRes.error },
-        { label: 'quests', error: questRes.error },
-        { label: 'clips', error: clipRes.error },
-        { label: 'bounties', error: bountyRes.error },
-        { label: 'media', error: mediaRes.error },
-      ].filter(item => item.error);
-
-      if (!profileRes.error && profileRes.data) setProfile(profileRes.data as HomeProfile);
+      if (currentRequest !== requestId.current) return;
+      const results = [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes];
+      const failed = results.find(result => result.error);
+      if (failed) Logger.error('Home scene could not refresh', failed.error);
+      setLoadError(Boolean(failed));
+      if (!profileRes.error) setProfile(profileRes.data as HomeProfile | null);
       if (!liveRes.error) setCheckins(liveRes.data ?? []);
       if (!questRes.error) setQuests(questRes.data ?? []);
       if (!clipRes.error) setClips(clipRes.data ?? []);
       if (!bountyRes.error) setBounties(bountyRes.data ?? []);
       if (!mediaRes.error) setSceneMedia((mediaRes.data ?? []) as SceneMedia[]);
-
-      if (failures.length > 0) {
-        Logger.warn('Home scene refresh partially failed', failures);
-        setDataError('Some live scene data could not refresh. Showing the last good snapshot.');
-      } else {
-        setDataError(null);
-      }
     } catch (error) {
-      if (requestId !== loadRequestRef.current) return;
-      Logger.error('Home scene refresh failed', error);
-      setDataError('Could not refresh the live scene. Showing the last good snapshot.');
+      if (currentRequest !== requestId.current) return;
+      Logger.error('Home scene request failed', error);
+      setLoadError(true);
     }
   }, [user?.id]);
 
   useEffect(() => {
     let active = true;
+    // A failed request must never retain the previous account's scene.
+    setProfile(null);
+    setCheckins([]);
+    setQuests([]);
+    setClips([]);
+    setBounties([]);
+    setSceneMedia([]);
+    setLoadError(false);
+    setRefreshing(false);
+    setLoading(true);
     void loadData().finally(() => {
       if (active) setLoading(false);
     });
@@ -186,7 +179,7 @@ export default function HomeSceneScreen() {
     const timer = setInterval(() => void loadData(), 30000);
     return () => {
       active = false;
-      loadRequestRef.current += 1;
+      requestId.current += 1;
       clearInterval(timer);
       pulseAnimation.stop();
       floatAnimation.stop();
@@ -215,10 +208,11 @@ export default function HomeSceneScreen() {
   const firstQuest = quests[0];
 
   const sceneLine = useMemo(() => {
-    if (checkins.length > 0) return `${checkins.length} skater${checkins.length === 1 ? '' : 's'} out right now`;
-    if (bounties.length > 0) return `${bounties.length} open bounties waiting`;
+    if (loadError) return 'Scene updates are unavailable. Pull down to retry.';
+    if (checkins.length > 0) return 'Skaters are checked in. Explore the live scene.';
+    if (bounties.length > 0) return 'Open bounties are waiting for your next session.';
     return 'The map is waiting for the next session';
-  }, [bounties.length, checkins.length]);
+  }, [bounties.length, checkins.length, loadError]);
 
   const go = (screen: string) => navigation.navigate(screen);
 
@@ -254,7 +248,7 @@ export default function HomeSceneScreen() {
         >
           <View style={s.topbar}>
             <View>
-              <Text style={s.kicker}>SKATEQUEST // LIVE SCENE</Text>
+              <Text style={s.kicker}>SKATEQUEST // YOUR SCENE</Text>
               <Text style={s.hello}>Yo, @{profile?.username || 'skater'}</Text>
             </View>
             <Pressable style={s.avatar} onPress={() => go('Profile')}>
@@ -266,18 +260,19 @@ export default function HomeSceneScreen() {
             </Pressable>
           </View>
 
-          {dataError ? (
-            <View style={s.dataWarning}>
-              <View style={s.dataWarningCopy}>
-                <Text style={s.dataWarningTitle}>LIVE DATA HIT A BUMP</Text>
-                <Text style={s.dataWarningText}>{dataError}</Text>
-              </View>
+          {loadError ? (
+            <View style={s.errorNotice} accessibilityLiveRegion="polite">
+              <Text style={s.errorTitle}>Couldn’t refresh the scene</Text>
+              <Text style={s.errorCopy}>Some sections may show content from their last successful load.</Text>
               <Pressable
-                style={[s.dataWarningButton, refreshing && s.dataWarningButtonDisabled]}
-                onPress={() => void onRefresh()}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading the scene"
+                accessibilityState={{ disabled: refreshing }}
                 disabled={refreshing}
+                onPress={() => void onRefresh()}
+                style={s.retryButton}
               >
-                <Text style={s.dataWarningButtonText}>{refreshing ? 'RETRYING…' : 'TRY AGAIN'}</Text>
+                <Text style={s.retryText}>{refreshing ? 'RETRYING…' : 'TRY AGAIN'}</Text>
               </Pressable>
             </View>
           ) : null}
@@ -289,17 +284,9 @@ export default function HomeSceneScreen() {
               <View style={s.heroOrangeSlash} />
               <View style={s.heroAcidSlash} />
               <View style={s.heroContent}>
-                <View style={[s.liveChip, checkins.length === 0 && s.liveChipQuiet]}>
-                  <Animated.View
-                    style={[
-                      s.liveDot,
-                      checkins.length === 0 && s.liveDotQuiet,
-                      checkins.length > 0 ? { transform: [{ scale: pulse }] } : undefined,
-                    ]}
-                  />
-                  <Text style={s.liveChipText}>
-                    {checkins.length > 0 ? 'SCENE LIVE' : 'SCENE QUIET'}
-                  </Text>
+                <View style={s.liveChip}>
+                  {!loadError && checkins.length > 0 ? <Animated.View style={[s.liveDot, { transform: [{ scale: pulse }] }]} /> : null}
+                  <Text style={s.liveChipText}>{loadError ? 'UPDATES UNAVAILABLE' : checkins.length > 0 ? 'SKATERS CHECKED IN' : 'MAKE YOUR NEXT MOVE'}</Text>
                 </View>
                 <Text style={s.heroTitle}>GO FIND{`\n`}SOMETHING{`\n`}TO SKATE.</Text>
                 <Text style={s.heroSub}>{sceneLine}</Text>
@@ -321,20 +308,20 @@ export default function HomeSceneScreen() {
             </View>
 
             <Animated.View style={[s.heroSticker, { transform: [{ translateY: floatY }, { rotate: '5deg' }] }]}>
-              <Text style={s.heroStickerBig}>{clips.length}</Text>
-              <Text style={s.heroStickerSmall}>FRESH{`\n`}CLIPS</Text>
+              <Text style={s.heroStickerBig}>SQ</Text>
+              <Text style={s.heroStickerSmall}>YOUR{`\n`}SCENE</Text>
             </Animated.View>
           </View>
 
           <View style={s.sceneTicker}>
             <View style={s.tickerDot} />
-            <Text style={s.tickerText}>SCENE PULSE</Text>
+            <Text style={s.tickerText}>SKATEQUEST</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{checkins.length} OUT</Text>
+            <Text style={s.tickerMetric}>SPOTS</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{bounties.length} BOUNTIES</Text>
+            <Text style={s.tickerMetric}>SESSIONS</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{clips.length} CLIPS</Text>
+            <Text style={s.tickerMetric}>CLIPS</Text>
           </View>
 
           <View style={s.scoreFloat}>
@@ -381,7 +368,7 @@ export default function HomeSceneScreen() {
             ) : (
               <Pressable style={s.emptyMissionLight} onPress={() => go('DailyQuests')}>
                 <Sparkles color={INK} size={20} />
-                <Text style={s.emptyMissionLightText}>No mission loaded — tap to refresh quests.</Text>
+                <Text style={s.emptyMissionLightText}>{loadError ? 'Quests couldn’t refresh. Open quests to try again.' : 'No active quest right now. Explore the quest board.'}</Text>
                 <ChevronRight color={INK} size={18} />
               </Pressable>
             )}
@@ -431,8 +418,8 @@ export default function HomeSceneScreen() {
             )) : (
               <Pressable style={s.noClips} onPress={() => go('SkateTV')}>
                 <Camera color={ORANGE} size={30} />
-                <Text style={s.noClipsTitle}>The feed is empty.</Text>
-                <Text style={s.noClipsText}>Be the first real clip on the scene.</Text>
+                <Text style={s.noClipsTitle}>{loadError ? 'Clips couldn’t refresh.' : 'Your next clip belongs here.'}</Text>
+                <Text style={s.noClipsText}>{loadError ? 'Open SkateTV to try loading the feed.' : 'Open SkateTV and explore the scene.'}</Text>
               </Pressable>
             )}
           </ScrollView>
@@ -468,8 +455,8 @@ export default function HomeSceneScreen() {
               )) : (
                 <Pressable style={s.emptyLivePaper} onPress={() => go('LiveCheckIn')}>
                   <Flame color={ORANGE} size={22} />
-                  <Text style={s.emptyLivePaperTitle}>Nobody checked in yet.</Text>
-                  <Text style={s.emptyLivePaperText}>Start the session and put your spot on the live scene.</Text>
+                  <Text style={s.emptyLivePaperTitle}>{loadError ? 'Check-ins couldn’t refresh.' : 'No active check-ins right now.'}</Text>
+                  <Text style={s.emptyLivePaperText}>{loadError ? 'Open check-in to try again.' : 'Check in at your spot and let the scene know you’re skating.'}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -525,7 +512,12 @@ function SectionHeader({ eyebrow, title, action, onPress, dark = false }: { eyeb
 
 function ActionTile({ accent, icon, label, sub, tilt, onPress }: { accent: string; icon: React.ReactNode; label: string; sub: string; tilt: string; onPress: () => void }) {
   return (
-    <Pressable style={[s.actionTile, { backgroundColor: accent, transform: [{ rotate: tilt }] }]} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${sub}`}
+      style={({ pressed }) => [s.actionTile, { backgroundColor: accent, transform: [{ rotate: tilt }, { scale: pressed ? 0.96 : 1 }], opacity: pressed ? 0.85 : 1 }]}
+      onPress={onPress}
+    >
       <View style={s.actionTileTop}>{icon}<ArrowUpRight color={INK} size={16} /></View>
       <Text style={s.actionLabel}>{label}</Text>
       <Text style={s.actionSub}>{sub}</Text>
@@ -535,7 +527,12 @@ function ActionTile({ accent, icon, label, sub, tilt, onPress }: { accent: strin
 
 function ExploreTile({ icon, label, sub, onPress }: { icon: React.ReactNode; label: string; sub: string; onPress: () => void }) {
   return (
-    <Pressable style={s.exploreTile} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${sub}`}
+      style={({ pressed }) => [s.exploreTile, { opacity: pressed ? 0.75 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+      onPress={onPress}
+    >
       <View style={s.exploreIcon}>{icon}</View>
       <Text style={s.exploreLabel}>{label}</Text>
       <Text style={s.exploreSub}>{sub}</Text>
@@ -545,6 +542,11 @@ function ExploreTile({ icon, label, sub, onPress }: { icon: React.ReactNode; lab
 }
 
 const s = StyleSheet.create({
+  errorNotice: { marginHorizontal: 14, marginBottom: 14, padding: 16, borderRadius: 18, backgroundColor: PANEL, borderWidth: 1, borderColor: ORANGE },
+  errorTitle: { color: PAPER, fontSize: 16, fontWeight: '800' },
+  errorCopy: { color: MUTED, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  retryButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 14, marginTop: 10, borderRadius: 12, backgroundColor: ACID },
+  retryText: { color: INK, fontSize: 12, fontWeight: '900' },
   fill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   container: { flex: 1, backgroundColor: INK },
   content: { paddingBottom: 170 },
@@ -567,14 +569,6 @@ const s = StyleSheet.create({
   avatar: { width: 46, height: 46, borderRadius: 14, overflow: 'hidden', backgroundColor: '#171A20', borderWidth: 2, borderColor: PAPER, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '3deg' }] },
   avatarText: { color: PAPER, fontWeight: '900', fontSize: 15 },
 
-  dataWarning: { marginHorizontal: 14, marginBottom: 12, borderRadius: 16, borderWidth: 1, borderColor: '#5A3B2F', backgroundColor: '#1B1411', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dataWarningCopy: { flex: 1 },
-  dataWarningTitle: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
-  dataWarningText: { color: '#CFD4DC', fontSize: 10.5, lineHeight: 15, marginTop: 3, fontWeight: '700' },
-  dataWarningButton: { minHeight: 36, paddingHorizontal: 11, borderRadius: 10, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center' },
-  dataWarningButtonDisabled: { opacity: 0.55 },
-  dataWarningButtonText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-
   heroWrap: { marginHorizontal: 12, position: 'relative' },
   hero: { height: 380, borderRadius: 31, overflow: 'hidden', backgroundColor: '#15171D', borderWidth: 1, borderColor: '#2A2E36' },
   heroShade: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(4,5,7,0.48)' },
@@ -583,16 +577,14 @@ const s = StyleSheet.create({
   heroAcidSlash: { position: 'absolute', width: 190, height: 24, backgroundColor: ACID, left: -62, bottom: 50, transform: [{ rotate: '-11deg' }] },
   heroContent: { flex: 1, padding: 22, justifyContent: 'flex-end' },
   liveChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.62)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginBottom: 12 },
-  liveChipQuiet: { backgroundColor: 'rgba(0,0,0,0.76)', borderColor: 'rgba(255,255,255,0.12)' },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACID },
-  liveDotQuiet: { backgroundColor: '#7D8592' },
   liveChipText: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
   heroTitle: { color: '#fff', fontSize: 43, lineHeight: 40, letterSpacing: -2.5, fontWeight: '900', maxWidth: 310 },
   heroSub: { color: '#E0E3E8', fontSize: 13, fontWeight: '800', marginTop: 10 },
   heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 },
-  heroPrimary: { flexGrow: 1, minWidth: 126, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACID, paddingHorizontal: 15, minHeight: 47, borderRadius: 14 },
+  heroPrimary: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACID, paddingHorizontal: 15, minHeight: 47, borderRadius: 14 },
   heroPrimaryText: { color: INK, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
-  heroGhost: { flexGrow: 1, minWidth: 96, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 12, minHeight: 47, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  heroGhost: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, minHeight: 47, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   heroGhostText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.7 },
   heroSticker: { position: 'absolute', right: -1, top: 16, width: 76, height: 76, borderRadius: 18, backgroundColor: PAPER, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 7 }, elevation: 5 },
   heroStickerBig: { color: INK, fontSize: 26, lineHeight: 27, fontWeight: '900' },
