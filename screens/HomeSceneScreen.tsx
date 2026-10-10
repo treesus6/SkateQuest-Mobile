@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowUpRight,
   Bot,
+  CalendarDays,
   Camera,
   ChevronRight,
   Compass,
@@ -33,6 +34,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
+import { Logger } from '../lib/logger';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -72,6 +74,8 @@ export default function HomeSceneScreen() {
   const [sceneMedia, setSceneMedia] = useState<SceneMedia[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
 
   const intro = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -79,50 +83,75 @@ export default function HomeSceneScreen() {
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
+    const currentRequest = ++requestId.current;
 
-    const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase
-        .from('live_checkins')
-        .select('*,profiles(username,avatar_url)')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('daily_quests')
-        .select('id,title,description,xp_reward,quest_type')
-        .eq('active', true)
-        .eq('frozen', false)
-        .order('xp_reward', { ascending: false })
-        .limit(4),
-      supabase
-        .from('skatetv_clips')
-        .select('id,title,thumbnail_url,likes,views,trick_name,park_name,created_at,profiles(username)')
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('bounties')
-        .select('id,trick_name,park_name,xp_reward,status')
-        .eq('status', 'open')
-        .order('xp_reward', { ascending: false })
-        .limit(4),
-      supabase
-        .from('media')
-        .select('id,url,thumbnail_url,type,caption,created_at')
-        .order('created_at', { ascending: false })
-        .limit(12),
-    ]);
+    try {
+      const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase
+          .from('live_checkins')
+          .select('*,profiles(username,avatar_url)')
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('daily_quests')
+          .select('id,title,description,xp_reward,quest_type')
+          .eq('active', true)
+          .eq('frozen', false)
+          .order('xp_reward', { ascending: false })
+          .limit(4),
+        supabase
+          .from('skatetv_clips')
+          .select('id,title,thumbnail_url,likes,views,trick_name,park_name,created_at,profiles(username)')
+          .order('created_at', { ascending: false })
+          .limit(8),
+        supabase
+          .from('bounties')
+          .select('id,trick_name,park_name,xp_reward,status')
+          .eq('status', 'open')
+          .order('xp_reward', { ascending: false })
+          .limit(4),
+        supabase
+          .from('media')
+          .select('id,url,thumbnail_url,type,caption,created_at')
+          .order('created_at', { ascending: false })
+          .limit(12),
+      ]);
 
-    if (profileRes.data) setProfile(profileRes.data as HomeProfile);
-    setCheckins(liveRes.data ?? []);
-    setQuests(questRes.data ?? []);
-    setClips(clipRes.data ?? []);
-    setBounties(bountyRes.data ?? []);
-    setSceneMedia((mediaRes.data ?? []) as SceneMedia[]);
+      if (currentRequest !== requestId.current) return;
+      const results = [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes];
+      const failed = results.find(result => result.error);
+      if (failed) Logger.error('Home scene could not refresh', failed.error);
+      setLoadError(Boolean(failed));
+      if (!profileRes.error) setProfile(profileRes.data as HomeProfile | null);
+      if (!liveRes.error) setCheckins(liveRes.data ?? []);
+      if (!questRes.error) setQuests(questRes.data ?? []);
+      if (!clipRes.error) setClips(clipRes.data ?? []);
+      if (!bountyRes.error) setBounties(bountyRes.data ?? []);
+      if (!mediaRes.error) setSceneMedia((mediaRes.data ?? []) as SceneMedia[]);
+    } catch (error) {
+      if (currentRequest !== requestId.current) return;
+      Logger.error('Home scene request failed', error);
+      setLoadError(true);
+    }
   }, [user?.id]);
 
   useEffect(() => {
-    void loadData().finally(() => setLoading(false));
+    let active = true;
+    // A failed request must never retain the previous account's scene.
+    setProfile(null);
+    setCheckins([]);
+    setQuests([]);
+    setClips([]);
+    setBounties([]);
+    setSceneMedia([]);
+    setLoadError(false);
+    setRefreshing(false);
+    setLoading(true);
+    void loadData().finally(() => {
+      if (active) setLoading(false);
+    });
 
     Animated.timing(intro, {
       toValue: 1,
@@ -149,6 +178,8 @@ export default function HomeSceneScreen() {
 
     const timer = setInterval(() => void loadData(), 30000);
     return () => {
+      active = false;
+      requestId.current += 1;
       clearInterval(timer);
       pulseAnimation.stop();
       floatAnimation.stop();
@@ -157,8 +188,11 @@ export default function HomeSceneScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    try {
+      await loadData();
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadData]);
 
   const level = Math.max(1, Number(profile?.level ?? 1));
@@ -174,10 +208,11 @@ export default function HomeSceneScreen() {
   const firstQuest = quests[0];
 
   const sceneLine = useMemo(() => {
-    if (checkins.length > 0) return `${checkins.length} skater${checkins.length === 1 ? '' : 's'} out right now`;
-    if (bounties.length > 0) return `${bounties.length} open bounties waiting`;
+    if (loadError) return 'Scene updates are unavailable. Pull down to retry.';
+    if (checkins.length > 0) return 'Skaters are checked in. Explore the live scene.';
+    if (bounties.length > 0) return 'Open bounties are waiting for your next session.';
     return 'The map is waiting for the next session';
-  }, [bounties.length, checkins.length]);
+  }, [bounties.length, checkins.length, loadError]);
 
   const go = (screen: string) => navigation.navigate(screen);
 
@@ -213,7 +248,7 @@ export default function HomeSceneScreen() {
         >
           <View style={s.topbar}>
             <View>
-              <Text style={s.kicker}>SKATEQUEST // LIVE SCENE</Text>
+              <Text style={s.kicker}>SKATEQUEST // YOUR SCENE</Text>
               <Text style={s.hello}>Yo, @{profile?.username || 'skater'}</Text>
             </View>
             <Pressable style={s.avatar} onPress={() => go('Profile')}>
@@ -225,6 +260,23 @@ export default function HomeSceneScreen() {
             </Pressable>
           </View>
 
+          {loadError ? (
+            <View style={s.errorNotice} accessibilityLiveRegion="polite">
+              <Text style={s.errorTitle}>Couldn’t refresh the scene</Text>
+              <Text style={s.errorCopy}>Some sections may show content from their last successful load.</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading the scene"
+                accessibilityState={{ disabled: refreshing }}
+                disabled={refreshing}
+                onPress={() => void onRefresh()}
+                style={s.retryButton}
+              >
+                <Text style={s.retryText}>{refreshing ? 'RETRYING…' : 'TRY AGAIN'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={s.heroWrap}>
             <View style={s.hero}>
               {heroImage ? <Image source={{ uri: heroImage }} style={s.fill} contentFit="cover" transition={180} /> : null}
@@ -233,8 +285,8 @@ export default function HomeSceneScreen() {
               <View style={s.heroAcidSlash} />
               <View style={s.heroContent}>
                 <View style={s.liveChip}>
-                  <Animated.View style={[s.liveDot, { transform: [{ scale: pulse }] }]} />
-                  <Text style={s.liveChipText}>SCENE LIVE</Text>
+                  {!loadError && checkins.length > 0 ? <Animated.View style={[s.liveDot, { transform: [{ scale: pulse }] }]} /> : null}
+                  <Text style={s.liveChipText}>{loadError ? 'UPDATES UNAVAILABLE' : checkins.length > 0 ? 'SKATERS CHECKED IN' : 'MAKE YOUR NEXT MOVE'}</Text>
                 </View>
                 <Text style={s.heroTitle}>GO FIND{`\n`}SOMETHING{`\n`}TO SKATE.</Text>
                 <Text style={s.heroSub}>{sceneLine}</Text>
@@ -247,25 +299,29 @@ export default function HomeSceneScreen() {
                     <MapPinned color="#fff" size={17} />
                     <Text style={s.heroGhostText}>ADD SPOT</Text>
                   </Pressable>
+                  <Pressable style={s.heroGhost} onPress={() => go('Sessions')}>
+                    <CalendarDays color="#fff" size={17} />
+                    <Text style={s.heroGhostText}>SESSIONS</Text>
+                  </Pressable>
                 </View>
               </View>
             </View>
 
             <Animated.View style={[s.heroSticker, { transform: [{ translateY: floatY }, { rotate: '5deg' }] }]}>
-              <Text style={s.heroStickerBig}>{clips.length}</Text>
-              <Text style={s.heroStickerSmall}>FRESH{`\n`}CLIPS</Text>
+              <Text style={s.heroStickerBig}>SQ</Text>
+              <Text style={s.heroStickerSmall}>YOUR{`\n`}SCENE</Text>
             </Animated.View>
           </View>
 
           <View style={s.sceneTicker}>
             <View style={s.tickerDot} />
-            <Text style={s.tickerText}>SCENE PULSE</Text>
+            <Text style={s.tickerText}>SKATEQUEST</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{checkins.length} OUT</Text>
+            <Text style={s.tickerMetric}>SPOTS</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{bounties.length} BOUNTIES</Text>
+            <Text style={s.tickerMetric}>SESSIONS</Text>
             <Text style={s.tickerSlash}>/</Text>
-            <Text style={s.tickerMetric}>{clips.length} CLIPS</Text>
+            <Text style={s.tickerMetric}>CLIPS</Text>
           </View>
 
           <View style={s.scoreFloat}>
@@ -312,7 +368,7 @@ export default function HomeSceneScreen() {
             ) : (
               <Pressable style={s.emptyMissionLight} onPress={() => go('DailyQuests')}>
                 <Sparkles color={INK} size={20} />
-                <Text style={s.emptyMissionLightText}>No mission loaded — tap to refresh quests.</Text>
+                <Text style={s.emptyMissionLightText}>{loadError ? 'Quests couldn’t refresh. Open quests to try again.' : 'No active quest right now. Explore the quest board.'}</Text>
                 <ChevronRight color={INK} size={18} />
               </Pressable>
             )}
@@ -332,7 +388,7 @@ export default function HomeSceneScreen() {
 
           <View style={s.actionRail}>
             <ActionTile accent={ORANGE} icon={<MapPinned color={INK} size={23} />} label="SPOTS" sub="Find something new" tilt="-2deg" onPress={() => go('Map')} />
-            <ActionTile accent={ACID} icon={<Camera color={INK} size={23} />} label="POST" sub="Drop a real clip" tilt="2deg" onPress={() => go('SkateTV')} />
+            <ActionTile accent={ACID} icon={<Camera color={INK} size={23} />} label="POST" sub="Drop a real clip" tilt="2deg" onPress={() => go('UploadMedia')} />
             <ActionTile accent={BLUE} icon={<Users color={INK} size={23} />} label="CREW" sub="Link with homies" tilt="-1deg" onPress={() => go('Crews')} />
           </View>
 
@@ -362,8 +418,8 @@ export default function HomeSceneScreen() {
             )) : (
               <Pressable style={s.noClips} onPress={() => go('SkateTV')}>
                 <Camera color={ORANGE} size={30} />
-                <Text style={s.noClipsTitle}>The feed is empty.</Text>
-                <Text style={s.noClipsText}>Be the first real clip on the scene.</Text>
+                <Text style={s.noClipsTitle}>{loadError ? 'Clips couldn’t refresh.' : 'Your next clip belongs here.'}</Text>
+                <Text style={s.noClipsText}>{loadError ? 'Open SkateTV to try loading the feed.' : 'Open SkateTV and explore the scene.'}</Text>
               </Pressable>
             )}
           </ScrollView>
@@ -399,8 +455,8 @@ export default function HomeSceneScreen() {
               )) : (
                 <Pressable style={s.emptyLivePaper} onPress={() => go('LiveCheckIn')}>
                   <Flame color={ORANGE} size={22} />
-                  <Text style={s.emptyLivePaperTitle}>Nobody checked in yet.</Text>
-                  <Text style={s.emptyLivePaperText}>Start the session and put your spot on the live scene.</Text>
+                  <Text style={s.emptyLivePaperTitle}>{loadError ? 'Check-ins couldn’t refresh.' : 'No active check-ins right now.'}</Text>
+                  <Text style={s.emptyLivePaperText}>{loadError ? 'Open check-in to try again.' : 'Check in at your spot and let the scene know you’re skating.'}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -456,7 +512,12 @@ function SectionHeader({ eyebrow, title, action, onPress, dark = false }: { eyeb
 
 function ActionTile({ accent, icon, label, sub, tilt, onPress }: { accent: string; icon: React.ReactNode; label: string; sub: string; tilt: string; onPress: () => void }) {
   return (
-    <Pressable style={[s.actionTile, { backgroundColor: accent, transform: [{ rotate: tilt }] }]} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${sub}`}
+      style={({ pressed }) => [s.actionTile, { backgroundColor: accent, transform: [{ rotate: tilt }, { scale: pressed ? 0.96 : 1 }], opacity: pressed ? 0.85 : 1 }]}
+      onPress={onPress}
+    >
       <View style={s.actionTileTop}>{icon}<ArrowUpRight color={INK} size={16} /></View>
       <Text style={s.actionLabel}>{label}</Text>
       <Text style={s.actionSub}>{sub}</Text>
@@ -466,7 +527,12 @@ function ActionTile({ accent, icon, label, sub, tilt, onPress }: { accent: strin
 
 function ExploreTile({ icon, label, sub, onPress }: { icon: React.ReactNode; label: string; sub: string; onPress: () => void }) {
   return (
-    <Pressable style={s.exploreTile} onPress={onPress}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}. ${sub}`}
+      style={({ pressed }) => [s.exploreTile, { opacity: pressed ? 0.75 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+      onPress={onPress}
+    >
       <View style={s.exploreIcon}>{icon}</View>
       <Text style={s.exploreLabel}>{label}</Text>
       <Text style={s.exploreSub}>{sub}</Text>
@@ -476,6 +542,11 @@ function ExploreTile({ icon, label, sub, onPress }: { icon: React.ReactNode; lab
 }
 
 const s = StyleSheet.create({
+  errorNotice: { marginHorizontal: 14, marginBottom: 14, padding: 16, borderRadius: 18, backgroundColor: PANEL, borderWidth: 1, borderColor: ORANGE },
+  errorTitle: { color: PAPER, fontSize: 16, fontWeight: '800' },
+  errorCopy: { color: MUTED, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  retryButton: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 14, marginTop: 10, borderRadius: 12, backgroundColor: ACID },
+  retryText: { color: INK, fontSize: 12, fontWeight: '900' },
   fill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   container: { flex: 1, backgroundColor: INK },
   content: { paddingBottom: 170 },
@@ -510,7 +581,7 @@ const s = StyleSheet.create({
   liveChipText: { color: PAPER, fontSize: 9, fontWeight: '900', letterSpacing: 1.6 },
   heroTitle: { color: '#fff', fontSize: 43, lineHeight: 40, letterSpacing: -2.5, fontWeight: '900', maxWidth: 310 },
   heroSub: { color: '#E0E3E8', fontSize: 13, fontWeight: '800', marginTop: 10 },
-  heroActions: { flexDirection: 'row', gap: 9, marginTop: 18 },
+  heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 },
   heroPrimary: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: ACID, paddingHorizontal: 15, minHeight: 47, borderRadius: 14 },
   heroPrimaryText: { color: INK, fontSize: 11, fontWeight: '900', letterSpacing: 1.1 },
   heroGhost: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, minHeight: 47, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
