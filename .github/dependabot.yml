@@ -23,6 +23,12 @@ updates:
         patterns:
           - "@supabase/*"
     ignore:
+      # Keep React Native on the Expo SDK 57-supported 0.86.x line until a dedicated Expo/RN upgrade.
+      # RN 0.87.1 breaks the current SDK 57 quality gate and should not ride the Alpha release.
+      - dependency-name: "react-native"
+        versions: [">=0.87.0"]
+      - dependency-name: "@react-native/jest-preset"
+        versions: [">=0.87.0"]
       # @babel/core v8 bump caused 4 days of broken EAS builds — never auto-PR majors again
       - dependency-name: "@babel/core"
         update-types: ["version-update:semver-major"]

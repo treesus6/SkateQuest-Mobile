@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -185,10 +186,12 @@ export default function SkateTVVerifiedScreen() {
   };
 
   const pickVideo = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'Allow media access to choose a real video clip.');
-      return;
+    if (Platform.OS === 'ios') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Allow media access to choose a real video clip.');
+        return;
+      }
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({

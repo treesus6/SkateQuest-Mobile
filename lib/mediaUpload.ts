@@ -18,19 +18,29 @@ export interface MediaUploadResult {
   duration?: number;
 }
 
+async function ensurePickerPermission(useCamera: boolean): Promise<void> {
+  if (useCamera) {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permission denied');
+    return;
+  }
+
+  // Android's system photo/video picker does not require broad media-library
+  // permission. Keep the explicit request on iOS where original video assets can
+  // still require Photo Library access.
+  if (Platform.OS === 'ios') {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') throw new Error('Permission denied');
+  }
+}
+
 /**
  * Pick image from library or camera
  */
 export async function pickImage(
   useCamera: boolean = false
 ): Promise<ImagePicker.ImagePickerAsset | null> {
-  const { status } = useCamera
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (status !== 'granted') {
-    throw new Error('Permission denied');
-  }
+  await ensurePickerPermission(useCamera);
 
   const result = useCamera
     ? await ImagePicker.launchCameraAsync({
@@ -57,13 +67,7 @@ export async function pickImage(
 export async function pickVideo(
   useCamera: boolean = false
 ): Promise<ImagePicker.ImagePickerAsset | null> {
-  const { status } = useCamera
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (status !== 'granted') {
-    throw new Error('Permission denied');
-  }
+  await ensurePickerPermission(useCamera);
 
   const result = useCamera
     ? await ImagePicker.launchCameraAsync({

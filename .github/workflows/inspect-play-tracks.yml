@@ -1,0 +1,59 @@
+name: Inspect Google Play Tracks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-play-tracks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install fastlane
+        run: gem install fastlane --no-document
+
+      - name: Write Google service account key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+          if (!key) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_KEY secret');
+          JSON.parse(key);
+          writeFileSync('google-service-account.json', key, { mode: 0o600 });
+          NODE
+
+      - name: Inspect Play tracks
+        shell: bash
+        run: |
+          set -e
+          for track in alpha internal beta production; do
+            echo "===== TRACK: $track ====="
+            fastlane run google_play_track_version_codes \
+              package_name:"com.treesus6.skatequest" \
+              track:"$track" \
+              json_key:"google-service-account.json" || true
+            fastlane run google_play_track_release_names \
+              package_name:"com.treesus6.skatequest" \
+              track:"$track" \
+              json_key:"google-service-account.json" || true
+          done
+
+      - name: Remove key
+        if: always()
+        run: rm -f google-service-account.json

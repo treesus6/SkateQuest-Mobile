@@ -1,0 +1,111 @@
+name: Android Alpha Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .eas-trigger/android-alpha
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-alpha-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build AAB and submit to Play Alpha
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22.22.1
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Validate release secrets
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          node - <<'NODE'
+          const required = [
+            'EXPO_TOKEN',
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
+            'EXPO_PUBLIC_SENTRY_DSN',
+            'MAPBOX_DOWNLOADS_TOKEN',
+            'GOOGLE_SERVICE_ACCOUNT_KEY',
+          ];
+          const missing = required.filter((name) => !process.env[name]);
+          if (missing.length) throw new Error(`Missing release secrets: ${missing.join(', ')}`);
+          NODE
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release preflight
+        run: |
+          node -e "const p=require('./package.json');if(p.dependencies?.['expo-av'])throw new Error('Unsupported expo-av dependency detected')"
+          npm run type-check
+          npm test -- --runInBand
+          npx expo-doctor
+
+      - name: Prepare build environment
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+        run: |
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const names = [
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
+            'EXPO_PUBLIC_SENTRY_DSN',
+            'MAPBOX_DOWNLOADS_TOKEN',
+          ];
+          const contents = names.map((name) => `${name}=${JSON.stringify(process.env[name] || '')}`).join('\n');
+          writeFileSync('.env.local', `${contents}\nEXPO_PUBLIC_ENV=production\n`, { mode: 0o600 });
+          NODE
+
+      - name: Build Android app bundle
+        run: eas build --platform android --profile production --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+      - name: Write Google service account key
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+        run: printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY" > ./google-service-account.json
+
+      - name: Submit AAB to Google Play Alpha
+        run: eas submit --platform android --profile production --latest --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

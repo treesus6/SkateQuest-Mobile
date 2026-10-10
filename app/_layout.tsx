@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { Slot, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
@@ -25,8 +25,13 @@ import { analytics } from '../lib/analytics';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
+import { initializeMapbox } from '../lib/mapboxSetup';
 import { supabase } from '../lib/supabase';
-import { getAuthReturnPath, rememberAuthReturnPath } from '../lib/authReturnPath';
+import {
+  buildAuthReturnPath,
+  getAuthReturnPath,
+  rememberAuthReturnPath,
+} from '../lib/authReturnPath';
 
 import '../global.css';
 
@@ -56,16 +61,21 @@ Sentry.init({
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Configure the native Mapbox SDK before any route can construct a MapView.
+initializeMapbox();
+
 function AuthGuard() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
   const segments = useSegments();
+  const searchParams = useGlobalSearchParams();
 
   useEffect(() => {
     if (loading) return;
 
     const routeSegments = segments as readonly string[];
-    const requestedPath = '/' + routeSegments.filter(segment => !segment.startsWith('(')).join('/');
+    const routePath = '/' + routeSegments.filter(segment => !segment.startsWith('(')).join('/');
+    const requestedPath = buildAuthReturnPath(routePath, searchParams);
     const inAuthGroup = routeSegments[0] === '(auth)';
     const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
@@ -76,7 +86,7 @@ function AuthGuard() {
     } else if (user && inAuthGroup && !isPasswordRecovery) {
       router.replace(getAuthReturnPath() as any);
     }
-  }, [user, loading, router, segments]);
+  }, [user, loading, router, searchParams, segments]);
 
   useEffect(() => {
     if (!loading) {

@@ -63,10 +63,14 @@ jobs:
           printf 'declare namespace MapboxGL {\n  type Camera = any;\n  type MapView = any;\n  const StyleURL: { [key: string]: string };\n  const MapView: any;\n  const Camera: any;\n  const UserLocation: any;\n  const ShapeSource: any;\n  const CircleLayer: any;\n  const SymbolLayer: any;\n  const LineLayer: any;\n  const PointAnnotation: any;\n  const Images: any;\n  const MarkerView: any;\n  const Callout: any;\n  function setAccessToken(token: string | undefined): void;\n}\nexport = MapboxGL;\n' > node_modules/@rnmapbox/maps/index.d.ts
 
       - name: Export web
-        run: npx expo export --platform web --output-dir dist-quality
+        run: |
+          npx expo export --platform web --output-dir dist-quality
+          node scripts/export-policy-pages.mjs dist-quality
 
       - name: Verify key routes
         run: |
+          test -f dist-quality/delete-account/index.html
+          test -f dist-quality/privacy-policy/index.html
           test -f dist-quality/index.html
           test -f dist-quality/map.html
           test -f dist-quality/add-spot.html

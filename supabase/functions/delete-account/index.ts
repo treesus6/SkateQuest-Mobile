@@ -26,40 +26,59 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Remove user-owned uploaded objects before deleting database rows that reference them.
-  const { data: mediaRows, error: mediaError } = await admin
-    .from("media")
-    .select("url, thumbnail_url")
-    .eq("user_id", user.id);
-  if (mediaError) console.warn("Could not enumerate media for deletion", mediaError);
+  // Delete every object stored under the app's folder/user-id ownership convention.
+  // The service-role client is required so cleanup does not depend on the user's
+  // storage policies. Fail closed: never report account deletion as successful
+  // when object enumeration or deletion is incomplete.
+  const buckets = ["quest-proofs", "skatetv-clips", "user-avatars", "spot-photos"] as const;
+  const pageSize = 100;
 
-  const byBucket: Record<string, Set<string>> = { photos: new Set(), videos: new Set() };
-  const collectPath = (raw: unknown) => {
-    if (typeof raw !== "string" || !raw) return;
-    for (const bucket of Object.keys(byBucket)) {
-      const marker = `/storage/v1/object/public/${bucket}/`;
-      const index = raw.indexOf(marker);
-      if (index < 0) continue;
-      const encoded = raw.slice(index + marker.length).split("?")[0];
-      if (!encoded) continue;
-      try {
-        byBucket[bucket].add(decodeURIComponent(encoded));
-      } catch {
-        byBucket[bucket].add(encoded);
-      }
+  const listAll = async (bucket: string, path: string) => {
+    const entries: Array<{ id?: string | null; name: string }> = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data, error } = await admin.storage.from(bucket).list(path, {
+        limit: pageSize,
+        offset,
+        sortBy: { column: "name", order: "asc" },
+      });
+      if (error) throw new Error(`Could not enumerate ${bucket}/${path}: ${error.message}`);
+      entries.push(...(data ?? []));
+      if ((data?.length ?? 0) < pageSize) break;
     }
+    return entries;
   };
 
-  for (const row of mediaRows ?? []) {
-    collectPath(row.url);
-    collectPath(row.thumbnail_url);
-  }
+  const collectFiles = async (bucket: string, path: string): Promise<string[]> => {
+    const files: string[] = [];
+    for (const entry of await listAll(bucket, path)) {
+      const objectPath = path ? `${path}/${entry.name}` : entry.name;
+      if (entry.id == null) files.push(...await collectFiles(bucket, objectPath));
+      else files.push(objectPath);
+    }
+    return files;
+  };
 
-  for (const [bucket, paths] of Object.entries(byBucket)) {
-    const list = [...paths];
-    if (!list.length) continue;
-    const { error } = await admin.storage.from(bucket).remove(list);
-    if (error) console.warn(`Could not remove all ${bucket} objects`, error);
+  try {
+    for (const bucket of buckets) {
+      // Uploads are written as <feature-folder>/<user-id>/<filename>.
+      const rootFolders = (await listAll(bucket, "")).filter((entry) => entry.id == null);
+      const ownedPaths: string[] = [];
+      for (const folder of rootFolders) {
+        ownedPaths.push(...await collectFiles(bucket, `${folder.name}/${user.id}`));
+      }
+      for (let index = 0; index < ownedPaths.length; index += pageSize) {
+        const { error } = await admin.storage
+          .from(bucket)
+          .remove(ownedPaths.slice(index, index + pageSize));
+        if (error) throw new Error(`Could not delete ${bucket} objects: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    console.error("Account storage cleanup failed", error);
+    return new Response(JSON.stringify({ error: "Could not delete uploaded account data" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const { error: cleanupError } = await userClient.rpc("delete_my_account_data", {

@@ -32,7 +32,8 @@ const LIBCPP_PACKAGING = `    packagingOptions {
         pickFirst 'lib/armeabi-v7a/libc++_shared.so'
     }`;
 
-const RELEASE_SIGNING_ENTRY = `        release {
+const RELEASE_SIGNING_CONFIG = `    signingConfigs {
+        create("release") {
             def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
             if (keystorePath) {
                 storeFile file(keystorePath)
@@ -40,14 +41,15 @@ const RELEASE_SIGNING_ENTRY = `        release {
                 keyAlias System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword System.getenv("ANDROID_KEY_PASSWORD")
             }
-        }`;
+        }
+    }`;
 
 // Regex guards — more precise than .includes() and avoids CodeQL URL-substring-sanitization flag.
 // Each checks for the actual structural pattern we care about, not a raw URL substring.
 const MAPBOX_MAVEN_PRESENT = /maven\s*\{[^}]*api\.mapbox\.com\/downloads\/v2\/releases\/maven/;
 const PREFER_SETTINGS_PRESENT = /RepositoriesMode\.PREFER_SETTINGS/;
 const LIBCPP_PRESENT = /pickFirst\s+'lib\/x86\/libc\+\+_shared\.so'/;
-const RELEASE_SIGNING_CONFIG_PRESENT = /signingConfigs\s*\{[\s\S]*?release\s*\{/;
+const RELEASE_SIGNING_MARKER = /def\s+keystorePath\s*=\s*System\.getenv\("ANDROID_KEYSTORE_PATH"\)/;
 
 /**
  * Validate a version string before injecting it into a Gradle file.
@@ -72,22 +74,17 @@ function withAndroidSigning(config) {
     if (cfg.modResults.language !== 'groovy') return cfg;
 
     let contents = cfg.modResults.contents;
-    if (!RELEASE_SIGNING_CONFIG_PRESENT.test(contents)) {
-      if (/signingConfigs\s*\{/.test(contents)) {
-        contents = contents.replace(
-          /signingConfigs\s*\{/,
-          match => `${match}\n${RELEASE_SIGNING_ENTRY}`
-        );
-      } else {
-        const signingConfig = `
-    signingConfigs {
-${RELEASE_SIGNING_ENTRY}
-    }`;
-        contents = contents.replace(
-          /^(\s*android\s*\{)/m,
-          `$1\n${signingConfig}`
-        );
-      }
+
+    // Expo already emits a signingConfigs block containing only `debug`. A regex that
+    // spans braces can accidentally see the later `buildTypes.release` block and treat
+    // it as a release signing config. Use our unique keystore marker instead and add a
+    // second signingConfigs closure immediately before buildTypes. Gradle configures the
+    // same container on both closures; create("release") makes the new entry explicit.
+    if (!RELEASE_SIGNING_MARKER.test(contents)) {
+      contents = contents.replace(
+        /^(\s*buildTypes\s*\{)/m,
+        `${RELEASE_SIGNING_CONFIG}\n\n$1`
+      );
     }
 
     // Expo's generated release build type is debug-signed by default. Replace that

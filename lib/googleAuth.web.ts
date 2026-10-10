@@ -1,16 +1,19 @@
+import { rememberAuthReturnPath } from './authReturnPath';
 import { supabase } from './supabase';
 
-function webCallbackUrl(returnTo = '/') {
+function webCallbackUrl() {
   if (typeof window === 'undefined') return undefined;
   const pathname = window.location.pathname;
   const projectBase = pathname.startsWith('/SkateQuest-Mobile/') ? '/SkateQuest-Mobile' : '';
-  const callback = new URL(`${projectBase}/callback`, window.location.origin);
-  callback.searchParams.set('returnTo', returnTo);
-  return callback.toString();
+  return new URL(`${projectBase}/callback`, window.location.origin).toString();
 }
 
 export async function signInWithGoogle(returnTo = '/') {
-  const redirectTo = webCallbackUrl(returnTo);
+  // Keep the destination in same-origin session storage instead of putting it in
+  // the OAuth redirect URL. That gives Supabase one stable, exact callback URL
+  // to validate in production while still returning users to the requested page.
+  rememberAuthReturnPath(returnTo);
+  const redirectTo = webCallbackUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

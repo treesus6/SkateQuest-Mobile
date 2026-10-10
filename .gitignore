@@ -20,6 +20,7 @@ eas-build-*/
 .eas/
 
 # Production
+dist/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -34,6 +35,10 @@ pnpm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# AI agent local state / credentials
+.gemini/
+gha-creds-*.json
 
 # Local scripts
 claude.js

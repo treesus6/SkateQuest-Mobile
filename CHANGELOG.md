@@ -26,6 +26,7 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 
 ### Changed
 
+- Raised the native appVersion/runtime boundary to 1.0.2 and aligned the current Expo SDK 57 patch set, including explicit image, localization, and video config plugins.
 - Reworked major screens into the current SkateQuest visual system, including Home-adjacent gameplay surfaces, Challenges, Achievements, AI Coach, Demo Day, Spot of the Day, XP Rewards, QR Hunt, and web Add Spot.
 - Upgraded to Expo SDK 57 / React Native 0.86 with Node 22.22.1 CI and EAS alignment.
 - Replaced client-controlled SKATE state mutation with secure server-managed RPC behavior.
@@ -33,6 +34,8 @@ SkateQuest Mobile is in the v1.0 release-candidate stage. Web/PWA deployment and
 - Updated Husky setup to its current prepare command.
 
 ### Fixed
+
+- Publish account/data deletion instructions and the privacy policy in the static web export, including directory URLs; add deployment checks to prevent missing policy pages from blocking Play Alpha review.
 
 - Expo SDK patch-package alignment so Expo Doctor passes the configured project checks.
 - Auth redirect handling for `skatequest.me`, GitHub Pages project paths, missing browser origins, and opaque origins.
