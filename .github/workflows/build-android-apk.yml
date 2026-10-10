@@ -227,6 +227,17 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
+      # This is for device testing only. The release artifact above stays gated
+      # on the expected Play/Expo signing identity.
+      - name: Upload standalone APK for internal testing
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-internal-test-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Upload signed release AAB
         if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
         uses: actions/upload-artifact@v7
