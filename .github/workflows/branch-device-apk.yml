@@ -1,0 +1,92 @@
+name: Branch Android Device APK
+
+on:
+  push:
+    branches:
+      - codex/skate-visual-identity-v2
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build device-test APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+      RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate runtime configuration
+        shell: bash
+        run: |
+          missing=()
+          for name in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            echo "::error::Missing required Android build secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build installable debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
+
+      - name: Verify packaged runtime configuration
+        shell: bash
+        run: |
+          for apk in android/app/build/outputs/apk/debug/*.apk; do
+            unzip -p "$apk" assets/app.config | node -e '
+              let input = "";
+              process.stdin.on("data", chunk => { input += chunk; });
+              process.stdin.on("end", () => {
+                const config = JSON.parse(input);
+                const extra = config.extra || {};
+                const missing = ["supabaseUrl", "supabaseAnonKey", "mapboxAccessToken"]
+                  .filter(name => typeof extra[name] !== "string" || extra[name].trim() === "");
+                if (missing.length) throw new Error("Missing packaged config: " + missing.join(", "));
+              });
+            '
+          done
+
+      - name: Upload device-test APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-device-test-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+          if-no-files-found: error

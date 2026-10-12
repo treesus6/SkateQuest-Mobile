@@ -31,12 +31,12 @@ export default function MapStyleSelector({ currentStyle, onStyleChange }: MapSty
   return (
     <>
       <TouchableOpacity
-        className="absolute top-[110px] right-5 bg-[#0F1623]/95 rounded-2xl w-[50px] h-[50px] justify-center items-center border border-[#283241] shadow-lg"
+        className="absolute top-[170px] right-5 bg-[#0B1018]/95 rounded-[14px] w-[50px] h-[50px] justify-center items-center border border-[#343B46] shadow-lg"
         onPress={() => setModalVisible(true)}
         accessibilityRole="button"
         accessibilityLabel={`Map style: ${currentStyleInfo.name}`}
       >
-        <CurrentIcon color="#D2673D" size={23} />
+        <CurrentIcon color="#D8F04B" size={23} />
       </TouchableOpacity>
 
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
@@ -50,8 +50,8 @@ export default function MapStyleSelector({ currentStyle, onStyleChange }: MapSty
                   <Layers3 color="#D2673D" size={21} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[11px] font-black tracking-[2px] text-[#D2673D] uppercase">Map Look</Text>
-                  <Text className="text-2xl font-black text-white mt-0.5">Choose your terrain view</Text>
+                  <Text className="text-[11px] font-black tracking-[2px] text-[#E36D3F] uppercase">MAP MODE</Text>
+                  <Text className="text-2xl font-black text-white mt-0.5">Pick your line</Text>
                   <Text className="text-xs text-[#7C8795] mt-1">Current: {currentStyleInfo.name}</Text>
                 </View>
               </View>
