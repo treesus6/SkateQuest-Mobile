@@ -186,10 +186,10 @@ jobs:
             done
           fi
 
-      - name: Upload installable APK
+      - name: Upload development launcher APK
         uses: actions/upload-artifact@v7
         with:
-          name: skatequest-android-apk
+          name: skatequest-development-launcher-apk
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
           if-no-files-found: error
