@@ -1,11 +1,10 @@
 name: SkateQuest Full Quality Gate
 
-# Keep this gate strict: every main push must pass type, lint, tests, Expo Doctor, and web export.
+# Keep this gate strict for main pushes and every PR, including stacked release PRs.
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
