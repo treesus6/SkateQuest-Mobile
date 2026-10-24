@@ -1,0 +1,84 @@
+name: Android Remote Emulator Smoke Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: Direct HTTPS URL to an installable SkateQuest APK (EAS artifact)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Install and launch APK on Android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate APK source
+        env:
+          APK_URL: ${{ inputs.apk_url }}
+        run: |
+          python3 - <<'PY'
+          import os, urllib.parse
+          u = urllib.parse.urlsplit(os.environ["APK_URL"])
+          if u.scheme != "https" or not u.hostname or u.username or u.password:
+              raise SystemExit("APK URL must be HTTPS without embedded credentials")
+          print("APK URL scheme and host validated")
+          PY
+
+      - name: Download installable APK
+        env:
+          APK_URL: ${{ inputs.apk_url }}
+        run: |
+          curl --fail --location --retry 3 --max-time 240 --output /tmp/skatequest.apk "$APK_URL"
+          test "$(stat -c%s /tmp/skatequest.apk)" -gt 1000000
+          file /tmp/skatequest.apk
+          unzip -t /tmp/skatequest.apk >/dev/null
+          echo "APK downloaded and ZIP structure validated"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android emulator startup smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            set -euo pipefail
+            adb install -r /tmp/skatequest.apk
+            adb shell pm path com.treesus6.skatequest
+            adb logcat -c
+            adb shell am force-stop com.treesus6.skatequest || true
+            adb shell monkey -p com.treesus6.skatequest -c android.intent.category.LAUNCHER 1
+            sleep 20
+            adb shell pidof com.treesus6.skatequest | tee /tmp/skatequest.pid
+            adb shell dumpsys activity activities > /tmp/activities.txt
+            adb logcat -d -v time > /tmp/skatequest-logcat.txt
+            adb shell screencap -p /sdcard/skatequest-startup.png
+            adb pull /sdcard/skatequest-startup.png /tmp/skatequest-startup.png
+            echo "PASS: APK installed, launch intent dispatched, and app process alive after 20 seconds"
+
+      - name: Upload startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-android-emulator-evidence
+          path: |
+            /tmp/skatequest-logcat.txt
+            /tmp/skatequest-startup.png
+            /tmp/activities.txt
+            /tmp/skatequest.pid
+          if-no-files-found: warn
+          retention-days: 7
