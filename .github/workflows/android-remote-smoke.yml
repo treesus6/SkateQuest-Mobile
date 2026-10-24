@@ -5,7 +5,7 @@ on:
     inputs:
       apk_url:
         description: Direct HTTPS URL to an installable SkateQuest APK (EAS artifact)
-        required: true
+        required: false
         type: string
 
 permissions:
