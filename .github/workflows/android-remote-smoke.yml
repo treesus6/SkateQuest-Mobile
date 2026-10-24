@@ -1,6 +1,8 @@
 name: Android Remote Emulator Smoke Test
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       apk_url:
