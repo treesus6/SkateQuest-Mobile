@@ -31,6 +31,7 @@ jobs:
             echo "APK_URL=$PROVIDED_URL" >> "$GITHUB_ENV"
           else
             npm install --global eas-cli
+            eas whoami --non-interactive
             eas build:list --platform android --build-profile preview --status finished --limit 10 --json --non-interactive > /tmp/builds.json
             python3 -c 'import json,os; b=json.load(open("/tmp/builds.json")); u=next((x.get("artifacts",{}).get("buildUrl") for x in b if x.get("artifacts",{}).get("buildUrl")),None); assert u,"No completed preview APK"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+u+chr(10))'
           fi
