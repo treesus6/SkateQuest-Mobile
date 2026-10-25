@@ -1,3 +1,4 @@
+import { evaluateActionPolicy } from './policy';
 import type { AgentId, MemoryStore, OutcomeRecord, SupervisorPlan } from './types';
 import type {
   GuardedExecutionResult,
@@ -14,17 +15,25 @@ const failedVerification = (summary: string): ToolResult => ({
 export class GuardedExecutor {
   constructor(
     private readonly tools: ToolRegistry,
-    private readonly memory: MemoryStore,
+    private readonly memory: MemoryStore
   ) {}
 
   async executePlan(
     plan: SupervisorPlan,
-    context: ToolExecutionContext,
+    context: ToolExecutionContext
   ): Promise<GuardedExecutionResult[]> {
     const results: GuardedExecutionResult[] = [];
 
     for (const entry of plan.actions) {
-      const { action, policy } = entry;
+      const { action } = entry;
+      // A plan is data, not authority to weaken the execution policy.
+      const evaluated = evaluateActionPolicy(action);
+      const policy = {
+        ...evaluated,
+        requiresOwnerApproval:
+          evaluated.requiresOwnerApproval || entry.policy.requiresOwnerApproval,
+        requiresVerification: evaluated.requiresVerification || entry.policy.requiresVerification,
+      };
 
       if (policy.requiresOwnerApproval && !context.approvedActionIds.has(action.id)) {
         results.push({ status: 'approval_required', action, policy });
@@ -37,6 +46,17 @@ export class GuardedExecutor {
         continue;
       }
 
+      if (policy.requiresVerification && !tool.verify) {
+        results.push({
+          status: 'failed',
+          action,
+          policy,
+          toolName: tool.name,
+          result: failedVerification(`Action ${action.id} requires a verifier before execution.`),
+        });
+        continue;
+      }
+
       try {
         const result = await tool.execute(action, context);
         let verification: ToolResult | undefined;
@@ -45,7 +65,7 @@ export class GuardedExecutor {
           verification = tool.verify
             ? await tool.verify(action, result, context)
             : failedVerification(
-                `Action ${action.id} requires verification, but tool ${tool.name} has no verifier.`,
+                `Action ${action.id} requires verification, but tool ${tool.name} has no verifier.`
               );
         }
 
@@ -81,7 +101,7 @@ export class GuardedExecutor {
     actionKind: OutcomeRecord['actionKind'],
     success: boolean,
     result: ToolResult,
-    verification?: ToolResult,
+    verification?: ToolResult
   ): void {
     const qualityScore = success ? (verification?.ok === true ? 1 : 0.85) : 0.2;
     const record: OutcomeRecord = {
@@ -91,7 +111,9 @@ export class GuardedExecutor {
       actionKind,
       success,
       qualityScore,
-      notes: verification ? `${result.summary} | Verification: ${verification.summary}` : result.summary,
+      notes: verification
+        ? `${result.summary} | Verification: ${verification.summary}`
+        : result.summary,
       createdAt: new Date().toISOString(),
     };
     this.memory.recordOutcome(record);

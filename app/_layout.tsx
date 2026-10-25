@@ -25,6 +25,7 @@ import { analytics } from '../lib/analytics';
 import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
+import { initializeMapbox } from '../lib/mapboxSetup';
 import { supabase } from '../lib/supabase';
 import {
   buildAuthReturnPath,
@@ -60,6 +61,9 @@ Sentry.init({
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Configure the native Mapbox SDK before any route can construct a MapView.
+initializeMapbox();
+
 function AuthGuard() {
   const { user, loading } = useAuthStore();
   const router = useRouter();
@@ -76,7 +80,7 @@ function AuthGuard() {
     const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !(routeSegments[0] === 'auth' && routeSegments[1] === 'callback')) {
       rememberAuthReturnPath(requestedPath);
       router.replace('/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {

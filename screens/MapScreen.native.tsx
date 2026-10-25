@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Mapbox from '@rnmapbox/maps';
-import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { useNavigation } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
@@ -25,6 +24,7 @@ import { SkateEvents } from '../lib/analytics';
 import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
+import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -69,10 +69,6 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(INITIAL_COORDINATES);
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
-  const mapboxAccessToken =
-    (Constants.expoConfig?.extra?.mapboxAccessToken as string) ??
-    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
-    '';
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -89,11 +85,7 @@ export default function MapScreen() {
   const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
-    if (mapboxAccessToken) {
-      Mapbox.setAccessToken(mapboxAccessToken);
-    } else {
-      setMapError('The Mapbox access token is missing from this Android build.');
-    }
+    if (!isMapboxConfigured) setMapError(mapboxConfigurationError);
 
     SkateEvents.mapOpened();
     void requestLocationPermission();
@@ -318,6 +310,16 @@ export default function MapScreen() {
     [filteredSpots]
   );
   const savedIdsArray = Array.from(savedSpotIds);
+
+  if (!isMapboxConfigured) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#07090D] px-6">
+        <TriangleAlert color="#D2673D" size={34} />
+        <Text className="mt-4 text-center text-lg font-black text-white">Map unavailable</Text>
+        <Text className="mt-2 text-center text-sm text-gray-400">{mapboxConfigurationError}</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-[#07090D]">

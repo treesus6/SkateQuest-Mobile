@@ -23,6 +23,25 @@ describe('web/native platform selection', () => {
     expect(source).toContain('style={s.spotThumb}');
   });
 
+  it('initializes Mapbox before native routes can construct a MapView', () => {
+    const layout = fs.readFileSync(path.join(__dirname, '..', 'app', '_layout.tsx'), 'utf8');
+    const setup = fs.readFileSync(
+      path.join(__dirname, '..', 'lib', 'mapboxSetup.native.ts'),
+      'utf8'
+    );
+    const nativeSources = [
+      path.join(__dirname, '..', 'screens', 'MapScreen.native.tsx'),
+      path.join(__dirname, '..', 'screens', 'AddSpotScreen.native.tsx'),
+      path.join(__dirname, '..', 'components', 'SpotMiniMap.native.tsx'),
+    ].map(file => fs.readFileSync(file, 'utf8'));
+
+    expect(layout).toContain("import { initializeMapbox } from '../lib/mapboxSetup'");
+    expect(layout).toContain('initializeMapbox();');
+    expect(setup).toContain('Mapbox.setAccessToken(accessToken)');
+    expect(setup).toContain("accessToken.startsWith('pk.')");
+    nativeSources.forEach(source => expect(source).toContain('isMapboxConfigured'));
+  });
+
   it('keeps photo-backed spot markers and the live photo RPC migration on both platforms', () => {
     const nativeMap = fs.readFileSync(
       path.join(__dirname, '..', 'screens', 'MapScreen.native.tsx'),

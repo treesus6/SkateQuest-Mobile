@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(process.argv[2] || 'dist');
-for (const page of ['delete-account', 'privacy-policy']) {
+for (const page of ['delete-account', 'data-deletion', 'privacy-policy']) {
   const source = resolve(root, `${page}.html`);
   mkdirSync(resolve(output, page), { recursive: true });
   copyFileSync(source, resolve(output, `${page}.html`));

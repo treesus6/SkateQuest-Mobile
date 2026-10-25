@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { authStorage, detectSessionInUrl } from './authStorage';
 
 // Runtime config comes from Constants.expoConfig.extra (set in app.config.js) —
@@ -32,6 +33,7 @@ export const supabase = createClient(clientUrl, clientAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl,
+    flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
     lock: processLock,
   },
   global: {

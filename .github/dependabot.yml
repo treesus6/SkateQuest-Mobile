@@ -23,6 +23,16 @@ updates:
         patterns:
           - "@supabase/*"
     ignore:
+      # Expo SDK 57 requires matching native module lines. SDK 58 modules and
+      # newer React Native module minors need a coordinated SDK upgrade.
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "@react-native/*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
       # Keep React Native on the Expo SDK 57-supported 0.86.x line until a dedicated Expo/RN upgrade.
       # RN 0.87.1 breaks the current SDK 57 quality gate and should not ride the Alpha release.
       - dependency-name: "react-native"
@@ -47,6 +57,8 @@ updates:
       - dependency-name: "react-native-worklets"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
 
   # Keep GitHub Actions up to date
