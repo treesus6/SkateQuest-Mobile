@@ -80,7 +80,7 @@ function AuthGuard() {
     const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !(routeSegments[0] === 'auth' && routeSegments[1] === 'callback')) {
       rememberAuthReturnPath(requestedPath);
       router.replace('/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {

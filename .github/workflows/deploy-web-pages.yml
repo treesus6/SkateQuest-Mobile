@@ -79,7 +79,7 @@ jobs:
       - name: Verify core PWA export and legacy-route recovery
         run: |
           for route in \
-            index login signup forgot-password map add-spot spots crews quests \
+            index login signup forgot-password map add-spot spots spot-detail crews crew-details quests \
             skate-tv upload-media sessions; do
             test -f "dist/${route}.html"
           done
@@ -129,7 +129,7 @@ jobs:
           for attempt in 1 2 3 4 5 6; do
             routes_healthy=true
             for route in \
-              / /login /signup /forgot-password /map /add-spot /spots /crews \
+              / /login /signup /forgot-password /map /add-spot /spots /spot-detail /crews /crew-details \
               /quests /skate-tv /upload-media /sessions /delete-account/ /data-deletion/ /privacy-policy/; do
               route_slug="${route#/}"
               route_slug="${route_slug:-home}"
