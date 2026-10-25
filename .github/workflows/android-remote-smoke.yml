@@ -22,6 +22,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - name: Install project dependencies for Expo config resolution
+        run: npm ci
+
       - name: Find EAS preview artifact
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -31,6 +40,7 @@ jobs:
             echo "APK_URL=$PROVIDED_URL" >> "$GITHUB_ENV"
           else
             npm install --global eas-cli
+            npx expo config --type public --json > /tmp/expo-project.json
             eas whoami --non-interactive
             eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
             python3 -c 'import json,os; b=json.load(open("/tmp/builds.json")); u=next((x.get("artifacts",{}).get("buildUrl") for x in b if x.get("buildProfile")== "preview" and x.get("status")=="FINISHED" and x.get("artifacts",{}).get("buildUrl")),None); assert u,"No completed preview APK"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+u+chr(10))'
