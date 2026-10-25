@@ -3,7 +3,7 @@ name: Build Android Play AAB Locally
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/android-standalone-signing-20261012]
     paths:
       - '.android-trigger/play-aab'
       - '.github/workflows/build-android-play-aab.yml'
@@ -95,7 +95,14 @@ jobs:
         run: |
           test -s skatequest-play.aab
           unzip -t skatequest-play.aab
-          keytool -printcert -jarfile skatequest-play.aab
+          certificate="$(keytool -printcert -jarfile skatequest-play.aab)"
+          printf '%s\n' "$certificate"
+          expected='2F:C9:59:AD:2A:29:40:BA:8B:83:1B:3B:52:50:AD:CF:45:FB:81:48:F9:C8:3C:50:C3:F8:4B:AA:3C:8A:3A:0B'
+          actual="$(printf '%s\n' "$certificate" | sed -n 's/^[[:space:]]*SHA256: //p')"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::AAB does not use the expected Play upload certificate"
+            exit 1
+          fi
 
       - name: Upload signed Play AAB
         uses: actions/upload-artifact@v7

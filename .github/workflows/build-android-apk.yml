@@ -1,248 +1,115 @@
-name: Build Android Installable APK
+name: Build Android Standalone APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main, codex/android-standalone-signing-20261012]
     paths:
-      - '.github/workflows/build-android-apk.yml'
       - '.android-trigger/release'
+      - '.github/workflows/build-android-apk.yml'
+      - 'eas.json'
+      - 'scripts/verify_standalone_apk.py'
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build standalone APK with Expo credentials
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env:
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
-      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
-      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-      RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node 22
+      - name: Setup Node 22.22.1
         uses: actions/setup-node@v7
         with:
           node-version: '22.22.1'
-          cache: 'npm'
+          cache: npm
 
       - name: Setup Java 21
         uses: actions/setup-java@v6
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Setup Expo + EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate runtime configuration
-        shell: bash
-        run: |
-          missing=()
-          for name in EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
-            if [ -z "${!name}" ]; then missing+=("$name"); fi
-          done
-          if [ "${#missing[@]}" -ne 0 ]; then
-            echo "::error::Missing required Android build secrets: ${missing[*]}"
-            exit 1
-          fi
-          if [[ "$EXPO_PUBLIC_SUPABASE_URL" == *"configuration-missing"* ]]; then
-            echo "::error::Supabase URL is still the missing-configuration fallback"
-            exit 1
-          fi
-
-      - name: Detect release signing credentials
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
-            echo "HAS_RELEASE_KEYSTORE=true" >> "$GITHUB_ENV"
-          else
-            echo "HAS_RELEASE_KEYSTORE=false" >> "$GITHUB_ENV"
-          fi
-
-      - name: Expo Prebuild
-        run: npx expo prebuild --platform android --clean
+      - name: Prepare production environment
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          SKATEQUEST_GITHUB_SIGNING: ${{ env.HAS_RELEASE_KEYSTORE }}
-
-      - name: Verify generated release signing wiring
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
-        shell: bash
+          EXPO_PUBLIC_ENV: production
         run: |
-          grep -q 'signingConfigs {' android/app/build.gradle
-          grep -q 'signingConfig signingConfigs.release' android/app/build.gradle
-          if grep -A 8 -E 'release[[:space:]]*\{' android/app/build.gradle | grep -q 'signingConfig signingConfigs.debug'; then
-            echo "::error::Generated release build type still uses the debug signing config"
-            exit 1
-          fi
-
-      - name: Build installable debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
-        env:
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
-
-      - name: Decode release keystore
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/skatequest.keystore
-          test -s android/app/skatequest.keystore
-
-      - name: Build signed release APK + AAB
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
-        env:
-          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
-          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
-          ANDROID_KEYSTORE_PATH: skatequest.keystore
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Verify packaged Android permission policy
-        shell: bash
-        run: |
-          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
-          test -x "$AAPT"
-          shopt -s nullglob
-          apks=(android/app/build/outputs/apk/debug/*.apk android/app/build/outputs/apk/release/*.apk)
-          if [ "${#apks[@]}" -eq 0 ]; then
-            echo "::error::No APKs found for packaged permission verification"
-            exit 1
-          fi
-          for apk in "${apks[@]}"; do
-            echo "Inspecting packaged permissions in $apk"
-            permissions="$("$AAPT" dump permissions "$apk")"
-            printf '%s\n' "$permissions"
-            for forbidden in READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE READ_MEDIA_IMAGES READ_MEDIA_VIDEO; do
-              if printf '%s\n' "$permissions" | grep -q "android.permission.${forbidden}"; then
-                echo "::error::Forbidden broad media/storage permission packaged in $apk: android.permission.${forbidden}"
-                exit 1
-              fi
-            done
-          done
-
-      - name: Verify packaged runtime configuration
-        shell: bash
-        run: |
-          verify_config() {
-            local apk="$1"
-            unzip -p "$apk" assets/app.config | node -e '
-              let input = "";
-              process.stdin.on("data", chunk => { input += chunk; });
-              process.stdin.on("end", () => {
-                const config = JSON.parse(input);
-                const extra = config.extra || {};
-                const missing = ["supabaseUrl", "supabaseAnonKey", "mapboxAccessToken"]
-                  .filter(name => typeof extra[name] !== "string" || extra[name].trim() === "");
-                if (missing.length) {
-                  throw new Error(`Packaged APK is missing runtime configuration: ${missing.join(", ")}`);
-                }
-                if (extra.supabaseUrl.includes("configuration-missing")) {
-                  throw new Error("Packaged APK contains the Supabase fallback URL");
-                }
-                console.log(`Verified packaged runtime configuration in ${process.argv[1]}`);
-              });
-            ' "$apk"
+          node - <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const required = [
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN',
+            'EXPO_PUBLIC_SENTRY_DSN',
+            'MAPBOX_DOWNLOADS_TOKEN',
+          ];
+          const missing = required.filter((name) => !process.env[name]);
+          if (missing.length) throw new Error(`Missing GitHub build secrets: ${missing.join(', ')}`);
+          if (!process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN.startsWith('pk.')) {
+            throw new Error('EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN must be a Mapbox public token beginning with pk.');
           }
+          if (!process.env.MAPBOX_DOWNLOADS_TOKEN.startsWith('sk.')) {
+            throw new Error('MAPBOX_DOWNLOADS_TOKEN must be a Mapbox secret token beginning with sk.');
+          }
+          const names = [...required, 'EXPO_PUBLIC_ENV'];
+          const contents = names
+            .map((name) => `${name}=${JSON.stringify(process.env[name] || '')}`)
+            .join('\n');
+          writeFileSync('.env.local', `${contents}\n`, { mode: 0o600 });
+          NODE
 
-          for apk in android/app/build/outputs/apk/debug/*.apk; do
-            verify_config "$apk"
-          done
-          if [ "$HAS_RELEASE_KEYSTORE" = 'true' ]; then
-            for apk in android/app/build/outputs/apk/release/*.apk; do
-              verify_config "$apk"
-            done
-          fi
+      - name: Build standalone release APK locally
+        run: eas build --platform android --profile production-apk --local --non-interactive --output ./skatequest-standalone.apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+          EAS_LOCAL_BUILD_SKIP_CLEANUP: '1'
+          GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false'
 
-      - name: Upload development launcher APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: skatequest-development-launcher-apk
-          path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 14
-          if-no-files-found: error
+      - name: Test artifact validation
+        run: python3 -m unittest discover -s scripts/tests -p 'test_verify_standalone_apk.py'
 
-      - name: Verify release signing identity
-        if: env.HAS_RELEASE_KEYSTORE == 'true'
-        shell: bash
+      - name: Verify standalone app and upload certificate
         env:
           EXPECTED_SIGNING_SHA256: 2F:C9:59:AD:2A:29:40:BA:8B:83:1B:3B:52:50:AD:CF:45:FB:81:48:F9:C8:3C:50:C3:F8:4B:AA:3C:8A:3A:0B
         run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          test -x "$APKSIGNER"
-          for apk in android/app/build/outputs/apk/release/*.apk; do
-            signer_output="$($APKSIGNER verify --verbose --print-certs "$apk")"
-            printf '%s\n' "$signer_output"
-            actual="$(printf '%s\n' "$signer_output" | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
-            if [ -z "$actual" ]; then
-              echo "::error::Unable to read release signing certificate SHA-256 digest"
-              exit 1
-            fi
-            if [ "$actual" != "$EXPECTED_SIGNING_SHA256" ]; then
-              echo "::warning::GitHub release keystore does not match the Play/Expo upload key (got $actual). Keeping the installable debug APK, but skipping release APK/AAB artifacts from this workflow."
-              echo "RELEASE_SIGNING_MATCH=false" >> "$GITHUB_ENV"
-              exit 0
-            fi
-          done
-          echo "RELEASE_SIGNING_MATCH=true" >> "$GITHUB_ENV"
+          python3 scripts/verify_standalone_apk.py skatequest-standalone.apk \
+            --aapt "$AAPT" --apksigner "$APKSIGNER" \
+            --expected-sha256 "$EXPECTED_SIGNING_SHA256"
 
-      - name: Upload signed release APK
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+      - name: Upload verified standalone APK
         uses: actions/upload-artifact@v7
         with:
-          name: skatequest-release-apk
-          path: android/app/build/outputs/apk/release/*.apk
-          retention-days: 14
-          if-no-files-found: error
-
-      # This is for device testing only. The release artifact above stays gated
-      # on the expected Play/Expo signing identity.
-      - name: Upload standalone APK for internal testing
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: skatequest-internal-test-apk
-          path: android/app/build/outputs/apk/release/*.apk
-          retention-days: 14
-          if-no-files-found: error
-
-      - name: Upload signed release AAB
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: skatequest-release-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          name: skatequest-standalone-apk
+          path: skatequest-standalone.apk
           retention-days: 14
           if-no-files-found: error
