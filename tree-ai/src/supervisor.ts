@@ -11,13 +11,18 @@ import type {
   TaskRequest,
 } from './types';
 
-const normalize = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const normalize = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 
-const containsAny = (text: string, terms: string[]): boolean => terms.some((term) => text.includes(term));
+const containsAny = (text: string, terms: string[]): boolean =>
+  terms.some(term => text.includes(term));
 
 const uniqueActions = (actions: CandidateAction[]): CandidateAction[] => {
   const seen = new Set<ActionKind>();
-  return actions.filter((action) => {
+  return actions.filter(action => {
     if (seen.has(action.kind)) return false;
     seen.add(action.kind);
     return true;
@@ -30,12 +35,12 @@ export class TreeAiSupervisor {
   plan(request: TaskRequest): SupervisorPlan {
     const rankedAgents = this.rankAgents(request);
     const selectedAgent = rankedAgents[0]?.agent.id ?? 'planner';
-    const actions = this.inferActions(request).map((action) => ({
+    const actions = this.inferActions(request).map(action => ({
       action,
       policy: evaluateActionPolicy(action),
     }));
-    const needsVerification = actions.some((entry) => entry.policy.requiresVerification);
-    const requiresApproval = actions.some((entry) => entry.policy.requiresOwnerApproval);
+    const needsVerification = actions.some(entry => entry.policy.requiresVerification);
+    const requiresApproval = actions.some(entry => entry.policy.requiresOwnerApproval);
 
     return {
       taskId: request.id,
@@ -54,16 +59,19 @@ export class TreeAiSupervisor {
   rankAgents(request: TaskRequest): RankedAgent[] {
     const goal = normalize(request.goal);
 
-    return SPECIALIST_AGENT_IDS.map((agentId) => {
+    return SPECIALIST_AGENT_IDS.map(agentId => {
       const agent = AGENTS[agentId];
       const learned = this.memory.getAgentStats(agentId).learnedScore;
-      const matchedCapabilities = agent.capabilities.filter((capability) =>
-        goal.includes(normalize(capability)),
+      const matchedCapabilities = agent.capabilities.filter(capability =>
+        goal.includes(normalize(capability))
       );
       const keywordScore = Math.min(1, matchedCapabilities.length / 3);
       const preferredBoost = request.preferredAgent === agentId ? 0.2 : 0;
       const skateQuestBoost = agentId === 'skatequest' && goal.includes('skatequest') ? 0.18 : 0;
-      const qaPenalty = agentId === 'qa' && !containsAny(goal, ['verify', 'review', 'check', 'test', 'qa']) ? 0.12 : 0;
+      const qaPenalty =
+        agentId === 'qa' && !containsAny(goal, ['verify', 'review', 'check', 'test', 'qa'])
+          ? 0.12
+          : 0;
       const score = Math.max(
         0,
         Math.min(
@@ -73,8 +81,8 @@ export class TreeAiSupervisor {
             keywordScore * 0.35 +
             preferredBoost +
             skateQuestBoost -
-            qaPenalty,
-        ),
+            qaPenalty
+        )
       );
 
       const reasons: string[] = [
@@ -93,11 +101,39 @@ export class TreeAiSupervisor {
 
   private inferActions(request: TaskRequest): CandidateAction[] {
     const goal = normalize(request.goal);
+    // Topic keywords justify inspection, never write authorization by themselves.
+    // Be conservative: an explicit no-write constraint wins over edit verbs.
+    const readOnly =
+      /\bread only\b|\b(?:without|do not|don t|never|no) (?:\w+ )?(?:chang\w*|modif\w*|edit\w*|writ\w*|fix\w*)\b/.test(
+        goal
+      );
+    const modificationIntent =
+      !readOnly &&
+      /(?:^|\b(?:and|then) )(?:then )?(?:(?:can|could|would) you )?(?:please )?(?:fix|change|modify|edit|update|implement|refactor|add|remove|replace|create|build|write)\b/.test(
+        goal
+      );
     const actions: CandidateAction[] = [
-      this.action(request.id, 'plan', 'Plan the task', 'Break the goal into ordered steps.', true, false),
+      this.action(
+        request.id,
+        'plan',
+        'Plan the task',
+        'Break the goal into ordered steps.',
+        true,
+        false
+      ),
     ];
 
-    if (containsAny(goal, ['research', 'find', 'look up', 'compare', 'latest', 'documentation', 'price'])) {
+    if (
+      containsAny(goal, [
+        'research',
+        'find',
+        'look up',
+        'compare',
+        'latest',
+        'documentation',
+        'price',
+      ])
+    ) {
       actions.push(
         this.action(
           request.id,
@@ -105,12 +141,24 @@ export class TreeAiSupervisor {
           'Research relevant information',
           'Gather and compare evidence needed to complete the goal.',
           true,
-          false,
-        ),
+          false
+        )
       );
     }
 
-    if (containsAny(goal, ['code', 'fix', 'debug', 'build', 'app', 'github', 'typescript', 'javascript', 'api'])) {
+    if (
+      containsAny(goal, [
+        'code',
+        'fix',
+        'debug',
+        'build',
+        'app',
+        'github',
+        'typescript',
+        'javascript',
+        'api',
+      ])
+    ) {
       actions.push(
         this.action(
           request.id,
@@ -118,28 +166,37 @@ export class TreeAiSupervisor {
           'Inspect technical state',
           'Read the relevant code, logs, configuration, and dependencies before changing anything.',
           true,
-          false,
-        ),
-        this.action(
-          request.id,
-          'code_change',
-          'Prepare code changes',
-          'Make reversible changes on an isolated branch or workspace.',
-          true,
-          false,
-        ),
-        this.action(
-          request.id,
-          'test',
-          'Verify the implementation',
-          'Run targeted checks and regression tests.',
-          true,
-          false,
-        ),
+          false
+        )
       );
+      if (modificationIntent)
+        actions.push(
+          this.action(
+            request.id,
+            'code_change',
+            'Prepare code changes',
+            'Make reversible changes on an isolated branch or workspace.',
+            true,
+            false
+          )
+        );
+      if (modificationIntent || /\b(?:test|verify|check)\b/.test(goal))
+        actions.push(
+          this.action(
+            request.id,
+            'test',
+            'Verify the implementation',
+            'Run targeted checks and regression tests.',
+            true,
+            false
+          )
+        );
     }
 
-    if (containsAny(goal, ['config', 'configuration', 'workflow', 'setting'])) {
+    if (
+      modificationIntent &&
+      containsAny(goal, ['config', 'configuration', 'workflow', 'setting'])
+    ) {
       actions.push(
         this.action(
           request.id,
@@ -147,12 +204,15 @@ export class TreeAiSupervisor {
           'Prepare configuration change',
           'Modify configuration in a reversible workspace and verify the effect.',
           true,
-          false,
-        ),
+          false
+        )
       );
     }
 
-    if (containsAny(goal, ['database', 'supabase', 'save data', 'write data', 'update record'])) {
+    if (
+      modificationIntent &&
+      containsAny(goal, ['database', 'supabase', 'save data', 'write data', 'update record'])
+    ) {
       actions.push(
         this.action(
           request.id,
@@ -160,8 +220,8 @@ export class TreeAiSupervisor {
           'Prepare structured data change',
           'Write persistent data only through an approved, auditable tool and verify it afterward.',
           true,
-          true,
-        ),
+          true
+        )
       );
     }
 
@@ -173,8 +233,8 @@ export class TreeAiSupervisor {
           'Draft communication',
           'Prepare the message without sending it.',
           true,
-          false,
-        ),
+          false
+        )
       );
       if (containsAny(goal, ['send', 'reply to', 'contact them'])) {
         actions.push(
@@ -184,8 +244,8 @@ export class TreeAiSupervisor {
             'Send communication',
             'Send an external message after owner approval.',
             false,
-            true,
-          ),
+            true
+          )
         );
       }
     }
@@ -198,8 +258,8 @@ export class TreeAiSupervisor {
           'Change production state',
           'Publish, deploy, release, or otherwise affect a live system.',
           false,
-          true,
-        ),
+          true
+        )
       );
     }
 
@@ -211,8 +271,8 @@ export class TreeAiSupervisor {
           'Delete persistent state',
           'Remove data or resources in a way that may be difficult to reverse.',
           false,
-          true,
-        ),
+          true
+        )
       );
     }
 
@@ -224,8 +284,8 @@ export class TreeAiSupervisor {
           'Spend money',
           'Commit funds or place an order.',
           false,
-          true,
-        ),
+          true
+        )
       );
     }
 
@@ -237,8 +297,8 @@ export class TreeAiSupervisor {
           'Enter an agreement',
           'Accept terms or create a commitment on the owner’s behalf.',
           false,
-          true,
-        ),
+          true
+        )
       );
     }
 
@@ -250,12 +310,20 @@ export class TreeAiSupervisor {
           'Analyze the request',
           'Determine the best approach using available context and tools.',
           true,
-          false,
-        ),
+          false
+        )
       );
     }
 
-    return uniqueActions(actions);
+    return uniqueActions(
+      readOnly
+        ? actions.filter(action =>
+            ['plan', 'read', 'research', 'analyze', 'calculate', 'test', 'draft'].includes(
+              action.kind
+            )
+          )
+        : actions
+    );
   }
 
   private action(
@@ -264,7 +332,7 @@ export class TreeAiSupervisor {
     title: string,
     description: string,
     reversible: boolean,
-    requiresExternalSideEffect: boolean,
+    requiresExternalSideEffect: boolean
   ): CandidateAction {
     return {
       id: `${taskId}:${kind}`,
