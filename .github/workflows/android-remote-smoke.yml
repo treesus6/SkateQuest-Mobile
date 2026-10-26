@@ -2,7 +2,7 @@ name: Android Remote Emulator Smoke Test
 
 on:
   push:
-    branches: [main]
+    branches: [main, codex/android-smoke-bash-fix]
   workflow_dispatch:
     inputs:
       apk_url:
@@ -81,20 +81,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          script: |
-            set -euo pipefail
-            adb install -r /tmp/skatequest.apk
-            adb shell pm path com.treesus6.skatequest
-            adb logcat -c
-            adb shell am force-stop com.treesus6.skatequest || true
-            adb shell monkey -p com.treesus6.skatequest -c android.intent.category.LAUNCHER 1
-            sleep 20
-            adb shell pidof com.treesus6.skatequest | tee /tmp/skatequest.pid
-            adb shell dumpsys activity activities > /tmp/activities.txt
-            adb logcat -d -v time > /tmp/skatequest-logcat.txt
-            adb shell screencap -p /sdcard/skatequest-startup.png
-            adb pull /sdcard/skatequest-startup.png /tmp/skatequest-startup.png
-            echo "PASS: APK installed, launch intent dispatched, and app process alive after 20 seconds"
+          script: bash scripts/android-smoke.sh
 
       - name: Upload startup evidence
         if: always()
