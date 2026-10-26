@@ -44,3 +44,9 @@ This is the foundation, not a finished autonomous product. The core runs without
 ## Important architecture rule
 
 Never put service-role keys, GitHub tokens, OpenAI keys, or other secrets in the React Native bundle. Tool execution that needs secrets belongs in a server-side worker or protected backend function.
+
+## Execution and intent safeguards
+
+Plans execute as an ordered chain of prerequisites. Any failure, missing tool/verifier, or missing approval blocks all remaining actions. Blocked results identify the first incomplete action with `blockedByActionId`; they do not execute tools or count as attempted outcomes. Independent branches and resumable execution are not implemented.
+
+Technical topic keywords schedule inspection. Code, configuration, and data changes additionally require a recognized explicit modification request; recognized read-only/no-write constraints override modification intent. This is a conservative English rule-based planner, not general natural-language authorization. Real external adapters still require a separate authorization design before connecting this experimental core.

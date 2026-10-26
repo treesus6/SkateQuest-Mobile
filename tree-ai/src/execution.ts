@@ -35,6 +35,18 @@ export class GuardedExecutor {
         requiresVerification: evaluated.requiresVerification || entry.policy.requiresVerification,
       };
 
+      // Plans are ordered prerequisites until explicit independent dependencies exist.
+      const blocker = results.find(result => result.status !== 'completed');
+      if (blocker) {
+        results.push({
+          status: 'blocked',
+          action,
+          policy,
+          blockedByActionId: blocker.action.id,
+        });
+        continue;
+      }
+
       if (policy.requiresOwnerApproval && !context.approvedActionIds.has(action.id)) {
         results.push({ status: 'approval_required', action, policy });
         continue;

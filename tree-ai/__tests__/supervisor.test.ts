@@ -1,3 +1,4 @@
+import { describe, expect, it } from '@jest/globals';
 import { InMemoryLearningStore } from '../src/memory';
 import { TreeAiSupervisor } from '../src/supervisor';
 import type { OutcomeRecord } from '../src/types';
@@ -14,13 +15,13 @@ describe('TreeAiSupervisor', () => {
     expect(plan.status).toBe('approval_required');
     expect(
       plan.actions.some(
-        (entry) => entry.action.kind === 'send_message' && entry.policy.requiresOwnerApproval,
-      ),
+        entry => entry.action.kind === 'send_message' && entry.policy.requiresOwnerApproval
+      )
     ).toBe(true);
     expect(
       plan.actions.some(
-        (entry) => entry.action.kind === 'production_change' && entry.policy.requiresOwnerApproval,
-      ),
+        entry => entry.action.kind === 'production_change' && entry.policy.requiresOwnerApproval
+      )
     ).toBe(true);
   });
 
@@ -32,7 +33,7 @@ describe('TreeAiSupervisor', () => {
       goal: 'Debug the TypeScript code and fix the app build',
     });
 
-    const codeChange = plan.actions.find((entry) => entry.action.kind === 'code_change');
+    const codeChange = plan.actions.find(entry => entry.action.kind === 'code_change');
     expect(codeChange?.policy.autonomy).toBe('auto_verify');
     expect(codeChange?.policy.requiresOwnerApproval).toBe(false);
     expect(plan.verificationAgent).toBe('qa');
@@ -71,5 +72,43 @@ describe('TreeAiSupervisor', () => {
 
     const after = supervisor.plan(task).selectedAgent;
     expect(after).toBe('coder');
+  });
+});
+
+describe('modification intent', () => {
+  it.each([
+    'Review the code without changing any files',
+    'Research API documentation',
+    'Review the code',
+    'Explain how to fix the TypeScript code',
+    'Find a fix for the app build',
+    'Fix the code, but do not modify any files',
+    "Fix the code, but don't change files",
+    'Read-only review of code, configuration and database deployment',
+  ])('keeps inspection read-only: %s', (goal: string) => {
+    const plan = new TreeAiSupervisor(new InMemoryLearningStore()).plan({ id: 'read-only', goal });
+    expect(
+      plan.actions.some(({ action }) => action.kind === 'analyze' || action.kind === 'research')
+    ).toBe(true);
+    expect(
+      plan.actions.filter(({ action }) =>
+        ['code_change', 'config_change', 'data_write', 'production_change'].includes(action.kind)
+      )
+    ).toEqual([]);
+  });
+
+  it.each([
+    'Fix the code',
+    'Please update the API implementation',
+    'Review the code and then fix the bug',
+    'Can you refactor the TypeScript code?',
+  ])('retains requested edits: %s', (goal: string) => {
+    const plan = new TreeAiSupervisor(new InMemoryLearningStore()).plan({ id: 'edit', goal });
+    expect(plan.actions.map(({ action }) => action.kind)).toEqual([
+      'plan',
+      'analyze',
+      'code_change',
+      'test',
+    ]);
   });
 });
