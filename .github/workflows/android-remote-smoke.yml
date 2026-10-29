@@ -44,16 +44,7 @@ jobs:
             npx expo config --type public --json > /tmp/expo-project.json
             eas whoami --non-interactive
             eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-            python3 - <<'PY'
-            import json, os
-            builds = json.load(open("/tmp/builds.json"))
-            sha = os.environ["EXPECTED_COMMIT"]
-            matches = [b for b in builds if b.get("buildProfile") == "preview" and b.get("status") == "FINISHED" and b.get("artifacts", {}).get("buildUrl") and b.get("gitCommitHash") == sha]
-            if not matches:
-                raise SystemExit(f"No finished preview APK matched commit {sha}; build a new signed preview APK first")
-            with open(os.environ["GITHUB_ENV"], "a") as env:
-                env.write("APK_URL=" + matches[0]["artifacts"]["buildUrl"] + "\n")
-            PY
+            python3 -c 'import json,os; b=json.load(open("/tmp/builds.json")); sha=os.environ["EXPECTED_COMMIT"]; matches=[x for x in b if x.get("buildProfile")=="preview" and x.get("status")=="FINISHED" and x.get("artifacts",{}).get("buildUrl") and x.get("gitCommitHash")==sha]; assert matches, "No finished preview APK matched commit "+sha+"; build a new signed preview APK first"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+matches[0]["artifacts"]["buildUrl"]+chr(10))'
           fi
 
       - name: Validate APK source
