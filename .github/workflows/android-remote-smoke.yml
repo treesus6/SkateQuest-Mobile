@@ -34,6 +34,7 @@ jobs:
       - name: Find EAS preview artifact
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPECTED_COMMIT: ${{ github.sha }}
           PROVIDED_URL: ${{ inputs.apk_url }}
         run: |
           if [ -n "$PROVIDED_URL" ]; then
@@ -43,7 +44,16 @@ jobs:
             npx expo config --type public --json > /tmp/expo-project.json
             eas whoami --non-interactive
             eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-            python3 -c 'import json,os; b=json.load(open("/tmp/builds.json")); u=next((x.get("artifacts",{}).get("buildUrl") for x in b if x.get("buildProfile")== "preview" and x.get("status")=="FINISHED" and x.get("artifacts",{}).get("buildUrl")),None); assert u,"No completed preview APK"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+u+chr(10))'
+            python3 - <<'PY'
+            import json, os
+            builds = json.load(open("/tmp/builds.json"))
+            sha = os.environ["EXPECTED_COMMIT"]
+            matches = [b for b in builds if b.get("buildProfile") == "preview" and b.get("status") == "FINISHED" and b.get("artifacts", {}).get("buildUrl") and b.get("gitCommitHash") == sha]
+            if not matches:
+                raise SystemExit(f"No finished preview APK matched commit {sha}; build a new signed preview APK first")
+            with open(os.environ["GITHUB_ENV"], "a") as env:
+                env.write("APK_URL=" + matches[0]["artifacts"]["buildUrl"] + "\\n")
+            PY
           fi
 
       - name: Validate APK source
@@ -73,6 +83,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Verify APK signature and package
+        run: |
+          SDK_BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$SDK_BUILD_TOOLS/apksigner" verify --verbose --print-certs /tmp/skatequest.apk
+          PACKAGE="$("$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | sed -n "s/^package: name=\x27\\([^\x27]*\\)\x27.*/\\1/p" | head -1)"
+          test "$PACKAGE" = "com.treesus6.skatequest"
+          echo "PASS: signed APK and expected package verified"
 
       - name: Android emulator startup smoke
         uses: reactivecircus/android-emulator-runner@v2
