@@ -1,0 +1,70 @@
+name: Agent Android Preview Build and Emulator Test
+on:
+  push:
+    paths:
+      - '.github/workflows/agent-android-preview-emulator.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.1'
+          cache: npm
+      - run: npm ci
+      - run: npm install --global eas-cli
+      - name: Build signed preview APK with EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CI: '1'
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "::error::Missing EXPO_TOKEN"; exit 1; }
+          eas build --platform android --profile preview --non-interactive --wait
+      - name: Retrieve APK built from this commit
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
+          python3 - <<'PY'
+          import json, os
+          builds=json.load(open('/tmp/builds.json'))
+          sha=os.environ['EXPECTED_COMMIT']
+          matches=[b for b in builds if b.get('buildProfile')=='preview' and b.get('status')=='FINISHED' and b.get('gitCommitHash')==sha and b.get('artifacts',{}).get('buildUrl')]
+          if not matches:
+              raise SystemExit('No completed preview APK matches this source commit')
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('APK_URL='+matches[0]['artifacts']['buildUrl']+'\n')
+          PY
+          curl --fail --location --retry 3 --max-time 300 -o /tmp/skatequest.apk "$APK_URL"
+          unzip -t /tmp/skatequest.apk >/dev/null
+      - name: Verify APK signature and package
+        run: |
+          TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$TOOLS/apksigner" verify --verbose --print-certs /tmp/skatequest.apk
+          "$TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -q "package: name='com.treesus6.skatequest'"
+      - name: Install and launch on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: bash scripts/android-smoke.sh
+      - name: Upload emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-preview-emulator-evidence
+          path: |
+            /tmp/skatequest-logcat.txt
+            /tmp/skatequest-startup.png
+            /tmp/activities.txt
+            /tmp/skatequest.pid
+          if-no-files-found: warn
+          retention-days: 7
