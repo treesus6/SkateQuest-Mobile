@@ -52,7 +52,7 @@ jobs:
             if not matches:
                 raise SystemExit(f"No finished preview APK matched commit {sha}; build a new signed preview APK first")
             with open(os.environ["GITHUB_ENV"], "a") as env:
-                env.write("APK_URL=" + matches[0]["artifacts"]["buildUrl"] + "\\n")
+                env.write("APK_URL=" + matches[0]["artifacts"]["buildUrl"] + "\n")
             PY
           fi
 
@@ -88,8 +88,7 @@ jobs:
         run: |
           SDK_BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$SDK_BUILD_TOOLS/apksigner" verify --verbose --print-certs /tmp/skatequest.apk
-          PACKAGE="$("$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | sed -n "s/^package: name=\x27\\([^\x27]*\\)\x27.*/\\1/p" | head -1)"
-          test "$PACKAGE" = "com.treesus6.skatequest"
+          "$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -q "package: name=\x27com.treesus6.skatequest\x27"
           echo "PASS: signed APK and expected package verified"
 
       - name: Android emulator startup smoke
