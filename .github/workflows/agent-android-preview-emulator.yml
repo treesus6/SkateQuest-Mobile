@@ -31,17 +31,14 @@ jobs:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-          python3 - <<'PY'
-          import json, os
-          builds=json.load(open('/tmp/builds.json'))
-          sha=os.environ['EXPECTED_COMMIT']
-          matches=[b for b in builds if b.get('buildProfile')=='preview' and b.get('status')=='FINISHED' and b.get('gitCommitHash')==sha and b.get('artifacts',{}).get('buildUrl')]
-          if not matches:
-              raise SystemExit('No completed preview APK matches this source commit')
-          with open(os.environ['GITHUB_ENV'],'a') as f:
-              f.write('APK_URL='+matches[0]['artifacts']['buildUrl']+'\n')
-          PY
+          python3 -c 'import json,os; builds=json.load(open("/tmp/builds.json")); sha=os.environ["EXPECTED_COMMIT"]; matches=[b for b in builds if b.get("buildProfile")=="preview" and b.get("status")=="FINISHED" and b.get("gitCommitHash")==sha and b.get("artifacts",{}).get("buildUrl")]; assert matches, "No completed preview APK matches this source commit"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+matches[0]["artifacts"]["buildUrl"]+chr(10))'
+      - name: Download and validate APK
+        env:
+          APK_URL: ${{ env.APK_URL }}
+        run: |
+          test -n "$APK_URL" || { echo "::error::No APK URL"; exit 1; }
           curl --fail --location --retry 3 --max-time 300 -o /tmp/skatequest.apk "$APK_URL"
+          test "$(stat -c%s /tmp/skatequest.apk)" -gt 1000000
           unzip -t /tmp/skatequest.apk >/dev/null
       - name: Verify APK signature and package
         run: |
