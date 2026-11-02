@@ -89,7 +89,7 @@ jobs:
         run: |
           SDK_BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$SDK_BUILD_TOOLS/apksigner" verify --verbose --print-certs /tmp/skatequest.apk
-          "$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -q "package: name=\x27com.treesus6.skatequest\x27"
+          "$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -Fq "package: name='com.treesus6.skatequest'"
           echo "PASS: signed APK and expected package verified"
 
       - name: Enable KVM acceleration
