@@ -46,9 +46,17 @@ jobs:
           TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$TOOLS/apksigner" verify --verbose --print-certs /tmp/skatequest.apk
           "$TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -q "package: name='com.treesus6.skatequest'"
+      - name: Enable KVM acceleration for emulator
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          else
+            echo '::warning::/dev/kvm unavailable; emulator may boot slowly'
+          fi
       - name: Install and launch on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
+          disable-linux-hw-accel: false
           api-level: 35
           target: google_apis
           arch: x86_64
