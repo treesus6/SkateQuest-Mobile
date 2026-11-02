@@ -36,7 +36,7 @@ jobs:
           python3 - <<'PY'
           import json, os, re
           output = open('/tmp/eas-build-output.txt').read()
-          ids = list(dict.fromkeys(re.findall(r'expo\\.dev/accounts/[^/\\s]+/projects/[^/\\s]+/builds/([0-9a-fA-F-]{36})', output)))
+          ids = list(dict.fromkeys(re.findall(r'expo\.dev/accounts/[^/\s]+/projects/[^/\s]+/builds/([0-9a-fA-F-]{36})', output)))
           if len(ids) != 1:
               raise SystemExit(f'Could not uniquely identify EAS build from CLI output (found {len(ids)} IDs)')
           builds = json.load(open('/tmp/builds.json'))
