@@ -26,30 +26,27 @@ jobs:
         run: |
           test -n "$EXPO_TOKEN" || { echo "::error::Missing EXPO_TOKEN"; exit 1; }
           date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/eas-build-started-at
-          eas build --platform android --profile preview --non-interactive --wait
+          set -o pipefail
+          eas build --platform android --profile preview --non-interactive --wait 2>&1 | tee /tmp/eas-build-output.txt
       - name: Retrieve APK built during this workflow
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
           python3 - <<'PY'
-          import datetime, json, os
+          import json, os, re
+          output = open('/tmp/eas-build-output.txt').read()
+          ids = list(dict.fromkeys(re.findall(r'expo\\.dev/accounts/[^/\\s]+/projects/[^/\\s]+/builds/([0-9a-fA-F-]{36})', output)))
+          if len(ids) != 1:
+              raise SystemExit(f'Could not uniquely identify EAS build from CLI output (found {len(ids)} IDs)')
           builds = json.load(open('/tmp/builds.json'))
-          started = datetime.datetime.fromisoformat(open('/tmp/eas-build-started-at').read().strip().replace('Z','+00:00'))
-          candidates = []
-          for build in builds:
-              created = build.get('createdAt') or ''
-              try:
-                  created_at = datetime.datetime.fromisoformat(created.replace('Z','+00:00'))
-              except ValueError:
-                  continue
-              if (build.get('buildProfile') == 'preview' and build.get('status') == 'FINISHED'
-                  and created_at >= started and (build.get('artifacts') or {}).get('buildUrl')):
-                  candidates.append(build)
-          if len(candidates) != 1:
-              raise SystemExit(f'Expected exactly one completed preview APK from this run; found {len(candidates)}. Refusing stale or ambiguous artifact.')
-          build = candidates[0]
-          print('Selected EAS build:', build.get('id'), 'gitCommitHash:', build.get('gitCommitHash'))
+          matches = [b for b in builds if b.get('id', '').lower() == ids[0].lower()
+                     and b.get('buildProfile') == 'preview' and b.get('status') == 'FINISHED'
+                     and (b.get('artifacts') or {}).get('buildUrl')]
+          if len(matches) != 1:
+              raise SystemExit('The EAS build started by this workflow is not a completed preview APK in build:list')
+          build = matches[0]
+          print('Selected exact EAS build:', build['id'], 'gitCommitHash:', build.get('gitCommitHash'))
           with open(os.environ['GITHUB_ENV'], 'a') as env:
               env.write('APK_URL=' + build['artifacts']['buildUrl'] + chr(10))
           PY
