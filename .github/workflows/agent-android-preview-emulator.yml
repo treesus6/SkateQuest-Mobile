@@ -27,10 +27,9 @@ jobs:
           test -n "$EXPO_TOKEN" || { echo "::error::Missing EXPO_TOKEN"; exit 1; }
           date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/eas-build-started-at
           eas build --platform android --profile preview --non-interactive --wait
-      - name: Retrieve APK built from this commit
+      - name: Retrieve APK built during this workflow
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
           python3 - <<'PY'
@@ -52,7 +51,7 @@ jobs:
           build = candidates[0]
           print('Selected EAS build:', build.get('id'), 'gitCommitHash:', build.get('gitCommitHash'))
           with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write('APK_URL=' + build['artifacts']['buildUrl'] + '\\n')
+              env.write('APK_URL=' + build['artifacts']['buildUrl'] + chr(10))
           PY
       - name: Download and validate APK
         env:
