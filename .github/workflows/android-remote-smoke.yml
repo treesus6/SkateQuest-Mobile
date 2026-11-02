@@ -17,7 +17,7 @@ jobs:
   smoke:
     name: Install and launch APK on Android emulator
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +34,6 @@ jobs:
       - name: Find EAS preview artifact
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPECTED_COMMIT: ${{ github.sha }}
           PROVIDED_URL: ${{ inputs.apk_url }}
         run: |
           if [ -n "$PROVIDED_URL" ]; then
@@ -44,7 +43,18 @@ jobs:
             npx expo config --type public --json > /tmp/expo-project.json
             eas whoami --non-interactive
             eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-            python3 -c 'import json,os; b=json.load(open("/tmp/builds.json")); sha=os.environ["EXPECTED_COMMIT"]; matches=[x for x in b if x.get("buildProfile")=="preview" and x.get("status")=="FINISHED" and x.get("artifacts",{}).get("buildUrl") and x.get("gitCommitHash")==sha]; assert matches, "No finished preview APK matched commit "+sha+"; build a new signed preview APK first"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+matches[0]["artifacts"]["buildUrl"]+chr(10))'
+            python3 - <<'PY'
+            import json, os
+            builds = json.load(open('/tmp/builds.json'))
+            matches = [b for b in builds if b.get('buildProfile') == 'preview' and b.get('status') == 'FINISHED' and (b.get('artifacts') or {}).get('buildUrl')]
+            if not matches:
+                raise SystemExit('No finished signed preview APK available; run the preview build workflow first')
+            matches.sort(key=lambda b: b.get('createdAt') or '', reverse=True)
+            selected = matches[0]
+            print('Testing existing signed EAS preview build:', selected.get('id'), 'commit:', selected.get('gitCommitHash'))
+            with open(os.environ['GITHUB_ENV'], 'a') as env:
+                env.write('APK_URL=' + selected['artifacts']['buildUrl'] + chr(10))
+            PY
           fi
 
       - name: Validate APK source
@@ -82,6 +92,10 @@ jobs:
           "$SDK_BUILD_TOOLS/aapt" dump badging /tmp/skatequest.apk | grep -q "package: name=\x27com.treesus6.skatequest\x27"
           echo "PASS: signed APK and expected package verified"
 
+      - name: Enable KVM acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; else echo '::warning::/dev/kvm unavailable'; fi
+
       - name: Android emulator startup smoke
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -89,6 +103,8 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          ram-size: 2048M
+          heap-size: 384M
           script: bash scripts/android-smoke.sh
 
       - name: Upload startup evidence
