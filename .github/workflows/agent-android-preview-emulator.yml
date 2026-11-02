@@ -25,6 +25,7 @@ jobs:
           CI: '1'
         run: |
           test -n "$EXPO_TOKEN" || { echo "::error::Missing EXPO_TOKEN"; exit 1; }
+          date -u +%Y-%m-%dT%H:%M:%SZ > /tmp/eas-build-started-at
           eas build --platform android --profile preview --non-interactive --wait
       - name: Retrieve APK built from this commit
         env:
@@ -32,7 +33,27 @@ jobs:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
           eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-          python3 -c 'import json,os; builds=json.load(open("/tmp/builds.json")); sha=os.environ["EXPECTED_COMMIT"]; matches=[b for b in builds if b.get("buildProfile")=="preview" and b.get("status")=="FINISHED" and b.get("gitCommitHash")==sha and b.get("artifacts",{}).get("buildUrl")]; assert matches, "No completed preview APK matches this source commit"; open(os.environ["GITHUB_ENV"],"a").write("APK_URL="+matches[0]["artifacts"]["buildUrl"]+chr(10))'
+          python3 - <<'PY'
+          import datetime, json, os
+          builds = json.load(open('/tmp/builds.json'))
+          started = datetime.datetime.fromisoformat(open('/tmp/eas-build-started-at').read().strip().replace('Z','+00:00'))
+          candidates = []
+          for build in builds:
+              created = build.get('createdAt') or ''
+              try:
+                  created_at = datetime.datetime.fromisoformat(created.replace('Z','+00:00'))
+              except ValueError:
+                  continue
+              if (build.get('buildProfile') == 'preview' and build.get('status') == 'FINISHED'
+                  and created_at >= started and (build.get('artifacts') or {}).get('buildUrl')):
+                  candidates.append(build)
+          if len(candidates) != 1:
+              raise SystemExit(f'Expected exactly one completed preview APK from this run; found {len(candidates)}. Refusing stale or ambiguous artifact.')
+          build = candidates[0]
+          print('Selected EAS build:', build.get('id'), 'gitCommitHash:', build.get('gitCommitHash'))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('APK_URL=' + build['artifacts']['buildUrl'] + '\\n')
+          PY
       - name: Download and validate APK
         env:
           APK_URL: ${{ env.APK_URL }}
