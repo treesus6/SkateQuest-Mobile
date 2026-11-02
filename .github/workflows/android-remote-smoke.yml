@@ -43,18 +43,18 @@ jobs:
             npx expo config --type public --json > /tmp/expo-project.json
             eas whoami --non-interactive
             eas build:list --platform android --limit 20 --json --non-interactive > /tmp/builds.json
-            python3 - <<'PY'
-            import json, os
-            builds = json.load(open('/tmp/builds.json'))
-            matches = [b for b in builds if b.get('buildProfile') == 'preview' and b.get('status') == 'FINISHED' and (b.get('artifacts') or {}).get('buildUrl')]
-            if not matches:
-                raise SystemExit('No finished signed preview APK available; run the preview build workflow first')
-            matches.sort(key=lambda b: b.get('createdAt') or '', reverse=True)
-            selected = matches[0]
-            print('Testing existing signed EAS preview build:', selected.get('id'), 'commit:', selected.get('gitCommitHash'))
-            with open(os.environ['GITHUB_ENV'], 'a') as env:
-                env.write('APK_URL=' + selected['artifacts']['buildUrl'] + chr(10))
-            PY
+          python3 - <<'PY'
+          import json, os
+          builds = json.load(open('/tmp/builds.json'))
+          matches = [b for b in builds if b.get('buildProfile') == 'preview' and b.get('status') == 'FINISHED' and (b.get('artifacts') or {}).get('buildUrl')]
+          if not matches:
+              raise SystemExit('No finished signed preview APK available; run the preview build workflow first')
+          matches.sort(key=lambda b: b.get('createdAt') or '', reverse=True)
+          selected = matches[0]
+          print('Testing existing signed EAS preview build:', selected.get('id'), 'commit:', selected.get('gitCommitHash'))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('APK_URL=' + selected['artifacts']['buildUrl'] + chr(10))
+          PY
           fi
 
       - name: Validate APK source
