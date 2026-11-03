@@ -61,7 +61,11 @@ function persistQueue(queue: OfflineMutation[]): Promise<void> {
 
 function removePersistedQueue(): Promise<void> {
   const removal = storageOperation.then(async () => {
-    await removePersistedQueue();
+    try {
+      await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
+    } catch (err) {
+      Logger.error('Failed to clear mutation queue storage', err);
+    }
   });
   storageOperation = removal;
   return removal;
@@ -153,10 +157,6 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
 
   clear: async () => {
     set({ queue: [] });
-    try {
-      await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
-    } catch (err) {
-      Logger.error('Failed to clear mutation queue storage', err);
-    }
+    await removePersistedQueue();
   },
 }));
