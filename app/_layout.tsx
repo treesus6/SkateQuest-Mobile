@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import { ObserveRoot, useObserve } from 'expo-observe';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -65,6 +66,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 initializeMapbox();
 
 function AuthGuard() {
+  const { markInteractive } = useObserve();
   const { user, loading } = useAuthStore();
   const router = useRouter();
   const segments = useSegments();
@@ -90,9 +92,9 @@ function AuthGuard() {
 
   useEffect(() => {
     if (!loading) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().then(() => markInteractive()).catch(() => {});
     }
-  }, [loading]);
+  }, [loading, markInteractive]);
 
   if (loading) {
     return (
@@ -180,4 +182,4 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default Sentry.wrap(ObserveRoot.wrap(RootLayout));
