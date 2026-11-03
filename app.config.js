@@ -129,7 +129,10 @@ module.exports = {
     extra: {
       posthogKey: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? '',
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
-      mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '',
+      mapboxAccessToken:
+        process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN_PREVIEW ||
+        process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
+        '',
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
       supportEmail: process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'support@skatequest.me',
