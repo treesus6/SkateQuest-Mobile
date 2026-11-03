@@ -122,8 +122,18 @@ function RootLayout() {
 
         await useMutationQueueStore.getState().rehydrate();
         const mutationExecutor = async (mutation: OfflineMutation) => {
-          if (mutation.table !== 'session_attendees') return;
+          // Never acknowledge an unsupported queued write as successful: the
+          // queue removes mutations when the executor resolves.
+          if (mutation.table !== 'session_attendees') {
+            throw new Error(`Unsupported offline mutation table: ${mutation.table}`);
+          }
+          if (mutation.type !== 'create' && mutation.type !== 'delete') {
+            throw new Error(`Unsupported session RSVP mutation: ${mutation.type}`);
+          }
           const { session_id } = mutation.payload;
+          if (typeof session_id !== 'string' || !session_id) {
+            throw new Error('Queued session RSVP is missing a session_id');
+          }
           const { data, error } = await supabase.rpc('set_session_rsvp', {
             p_session_id: session_id,
             p_attending: mutation.type === 'create',
