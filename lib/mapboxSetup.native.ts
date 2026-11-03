@@ -2,8 +2,8 @@ import Mapbox from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 
 const accessToken = (
-  (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
-  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+  (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ||
+  process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ||
   ''
 ).trim();
 
