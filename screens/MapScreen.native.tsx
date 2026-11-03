@@ -331,6 +331,9 @@ export default function MapScreen() {
         styleURL={mapStyle}
         onRegionDidChange={() => onRegionDidChange()}
         onDidFinishLoadingMap={() => setMapError(null)}
+        onMapLoadingError={() => {
+          setMapError('Mapbox reported a style or tile loading error. Check connectivity and token access.');
+        }}
         onDidFailLoadingMap={() => {
           setMapError('Mapbox could not load its style or tiles. Check network access and Mapbox token restrictions.');
         }}

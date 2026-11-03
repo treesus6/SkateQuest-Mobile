@@ -69,6 +69,8 @@ export default function AddSpotScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const locate = async () => {
     setLocating(true);
@@ -153,6 +155,10 @@ export default function AddSpotScreen() {
         'Location required',
         'Tap the real spot on the map or use your current location.'
       );
+      return;
+    }
+    if (!mapReady || mapError) {
+      Alert.alert('Map not ready', mapError ?? 'Wait until the map finishes drawing before saving this spot.');
       return;
     }
     let uploadedPhotoUrl: string | null = null;
@@ -269,7 +275,13 @@ export default function AddSpotScreen() {
           surfaceView={false}
           styleURL={Mapbox.StyleURL.Street}
           onPress={handleMapPress}
-          onDidFailLoadingMap={() => Alert.alert('Map unavailable', 'Mapbox could not load the map. Check your connection and try again. Do not save a spot until the map is visible.')}
+          onWillStartLoadingMap={() => setMapReady(false)}
+          onDidFinishRenderingMapFully={() => {
+            setMapReady(true);
+            setMapError(null);
+          }}
+          onDidFailLoadingMap={() => setMapError('Mapbox could not load its map style.')}
+          onMapLoadingError={() => setMapError('Mapbox could not load map tiles. Check your connection and Mapbox token access.')}
         >
           <Mapbox.Camera
             ref={cameraRef}
@@ -304,6 +316,10 @@ export default function AddSpotScreen() {
         </View>
       </View>
       {locationMessage ? <Text style={s.warning}>{locationMessage}</Text> : null}
+      {mapError ? <Text style={s.warning}>{mapError}</Text> : null}
+      {!mapReady && !mapError ? (
+        <Text style={s.warning}>Waiting for the map to finish drawing before a spot can be saved.</Text>
+      ) : null}
 
       <View style={s.formCard}>
         <Label text="Spot name" />
