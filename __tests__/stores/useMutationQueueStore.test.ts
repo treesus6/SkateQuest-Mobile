@@ -80,6 +80,7 @@ describe('offline mutation queue data integrity', () => {
       createdAt: 1,
       retryCount: 0,
     }];
+    const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
     const spy = jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async () => {
       readStarted();
       await readGate;
@@ -99,7 +100,6 @@ describe('offline mutation queue data integrity', () => {
 
       const queue = useMutationQueueStore.getState().queue;
       expect(queue.map((entry) => entry.payload.session_id)).toEqual(['previous', 'new']);
-      const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
       const calls = setItemSpy.mock.calls;
       const stored = calls[calls.length - 1]?.[1] as string;
       expect(JSON.parse(stored).map((entry: { payload: { session_id: string } }) => entry.payload.session_id))
@@ -107,6 +107,7 @@ describe('offline mutation queue data integrity', () => {
     } finally {
       releaseRead();
       spy.mockRestore();
+      setItemSpy.mockRestore();
     }
   });
 
@@ -115,6 +116,7 @@ describe('offline mutation queue data integrity', () => {
     let readStarted!: () => void;
     const gate = new Promise<void>((resolve) => { releaseRead = resolve; });
     const started = new Promise<void>((resolve) => { readStarted = resolve; });
+    const removeItemSpy = jest.spyOn(AsyncStorage, 'removeItem');
     const spy = jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async () => {
       readStarted();
       await gate;
@@ -131,10 +133,11 @@ describe('offline mutation queue data integrity', () => {
       releaseRead();
       await Promise.all([hydration, clearing]);
       expect(useMutationQueueStore.getState().queue).toEqual([]);
-      expect(AsyncStorage.removeItem).toHaveBeenCalledWith('offline_mutation_queue');
+      expect(removeItemSpy).toHaveBeenCalledWith('offline_mutation_queue');
     } finally {
       releaseRead();
       spy.mockRestore();
+      removeItemSpy.mockRestore();
     }
   });
 
