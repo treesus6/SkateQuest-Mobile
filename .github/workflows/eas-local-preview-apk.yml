@@ -8,14 +8,28 @@ on:
     branches:
       - main
     paths:
+      # Rebuild the actual Android source, not only edits to this workflow.
       - '.github/workflows/eas-local-preview-apk.yml'
+      - '.android-trigger/release'
+      - 'scripts/android-smoke.sh'
+      - 'app/**'
+      - 'screens/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'stores/**'
+      - 'hooks/**'
+      - 'assets/**'
+      - 'app.config.js'
+      - 'eas.json'
+      - 'package.json'
+      - 'package-lock.json'
 
 permissions:
   contents: read
 
 concurrency:
   group: eas-local-preview-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   preview:
