@@ -31,7 +31,7 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
@@ -250,3 +250,42 @@ jobs:
           path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
           if-no-files-found: error
+
+      - name: Stage signed release APK for emulator
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+        shell: bash
+        run: |
+          shopt -s nullglob
+          apks=(android/app/build/outputs/apk/release/*.apk)
+          test "${#apks[@]}" -eq 1
+          cp "${apks[0]}" /tmp/skatequest.apk
+
+      - name: Enable emulator acceleration
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; else echo '::warning::/dev/kvm unavailable'; fi
+
+      - name: Android emulator smoke for locally signed APK
+        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 2048M
+          heap-size: 384M
+          script: bash scripts/android-smoke.sh
+
+      - name: Upload locally signed APK emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: skatequest-local-release-emulator-evidence
+          path: |
+            /tmp/skatequest-logcat.txt
+            /tmp/skatequest-startup.png
+            /tmp/activities.txt
+            /tmp/skatequest.pid
+          retention-days: 14
+          if-no-files-found: warn
