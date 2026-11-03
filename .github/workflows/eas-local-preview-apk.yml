@@ -1,0 +1,132 @@
+name: EAS Local Signed Preview APK and Emulator
+
+# Build on GitHub's runner, not the quota-limited EAS cloud. EAS CLI reads
+# the existing remotely managed Android keystore without changing it.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/eas-local-preview-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eas-local-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: Build and smoke-test Expo-signed APK locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+      # GitHub's public token was independently probed for style/tile access.
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN_PREVIEW: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+      MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+      RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
+      CI: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.1'
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Validate required configuration
+        shell: bash
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          for name in EXPO_TOKEN EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN MAPBOX_DOWNLOADS_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required secret $name"
+              exit 1
+            fi
+          done
+
+      - name: Install Expo project and EAS CLI
+        run: |
+          npm ci
+          npm install --global eas-cli
+
+      - name: Build preview APK locally with existing EAS credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          # --local does not request an EAS cloud build or consume its quota.
+          # --freeze-credentials prevents EAS from changing signing credentials.
+          eas build --platform android --profile preview --local --non-interactive --freeze-credentials --output=/tmp/skatequest-eas-local.apk
+          test -s /tmp/skatequest-eas-local.apk
+
+      - name: Verify Play/Expo upload signer, APK integrity and package
+        shell: bash
+        env:
+          EXPECTED_SIGNING_SHA256: 2F:C9:59:AD:2A:29:40:BA:8B:83:1B:3B:52:50:AD:CF:45:FB:81:48:F9:C8:3C:50:C3:F8:4B:AA:3C:8A:3A:0B
+        run: |
+          apk=/tmp/skatequest-eas-local.apk
+          test "$(stat -c%s "$apk")" -gt 1000000
+          unzip -t "$apk" >/dev/null
+          tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$tools/apksigner" verify --verbose --print-certs "$apk" > /tmp/skatequest-signature.txt
+          actual="$(sed -n 's/^.*certificate SHA-256 digest: //p' /tmp/skatequest-signature.txt | head -n 1 | tr -d ':' | tr '[:lower:]' '[:upper:]' | sed 's/../&:/g; s/:$//')"
+          if [ "$actual" != "$EXPECTED_SIGNING_SHA256" ]; then
+            echo "::error::EAS local APK signer differs from the established Expo upload key. Withholding APK."
+            exit 1
+          fi
+          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.treesus6.skatequest'"
+          cp "$apk" /tmp/skatequest.apk
+          echo "Verified matching EAS upload signer and Android package."
+
+      - name: Enable KVM acceleration
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; else echo '::warning::KVM unavailable'; fi
+
+      - name: Install and smoke-test signed APK on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 2048M
+          heap-size: 384M
+          script: bash scripts/android-smoke.sh
+
+      - name: Upload verified installable preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-eas-local-verified-preview-apk
+          path: /tmp/skatequest.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Upload emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-eas-local-emulator-evidence
+          path: |
+            /tmp/skatequest-logcat.txt
+            /tmp/skatequest-startup.png
+            /tmp/activities.txt
+            /tmp/skatequest.pid
+          retention-days: 14
+          if-no-files-found: warn
