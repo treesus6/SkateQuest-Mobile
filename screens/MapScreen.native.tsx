@@ -331,7 +331,10 @@ export default function MapScreen() {
         styleURL={mapStyle}
         onRegionDidChange={() => onRegionDidChange()}
         onDidFinishLoadingMap={() => setMapError(null)}
-        onDidFailLoadingMap={() => setMapError('Map tiles could not be loaded.')}
+        onDidFailLoadingMap={(event) => {
+          const details = JSON.stringify(event?.nativeEvent ?? event).slice(0, 350);
+          setMapError(`Mapbox failed: ${details}`);
+        }}
       >
         <Mapbox.Camera
           ref={cameraRef}
