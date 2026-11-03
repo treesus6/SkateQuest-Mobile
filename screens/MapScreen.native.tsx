@@ -330,7 +330,9 @@ export default function MapScreen() {
         surfaceView={false}
         styleURL={mapStyle}
         onRegionDidChange={() => onRegionDidChange()}
-        onDidFinishLoadingMap={() => setMapError(null)}
+        // A loaded style is not proof that tiles actually rendered. Only clear
+        // a prior map error after Mapbox reports a complete frame.
+        onDidFinishRenderingMapFully={() => setMapError(null)}
         onMapLoadingError={() => {
           setMapError('Mapbox reported a style or tile loading error. Check connectivity and token access.');
         }}
