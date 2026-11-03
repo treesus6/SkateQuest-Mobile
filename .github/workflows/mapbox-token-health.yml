@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,14 +19,28 @@ jobs:
           node-version: '22.22.1'
       - run: npm ci
       - run: npm install --global eas-cli
-      - name: Compare GitHub public Mapbox token health
-        continue-on-error: true
+      - id: github_probe
+        name: Validate existing GitHub public Mapbox token
         env:
           EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
         run: node scripts/mapbox-token-health.cjs
-      - name: Probe Mapbox style and tile access using EAS preview token
+      - id: eas_probe
+        name: Check EAS preview public Mapbox token
+        continue-on-error: true
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           test -n "$EXPO_TOKEN" || { echo "::error::EXPO_TOKEN missing"; exit 1; }
           eas env:exec preview "node scripts/mapbox-token-health.cjs" --non-interactive
+      - name: Repair only EAS preview token from validated GitHub token
+        if: ${{ steps.github_probe.outcome == 'success' && steps.eas_probe.outcome == 'failure' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" && test -n "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN"
+          eas env:set preview --name EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN --value "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN" --visibility sensitive --scope project --non-interactive
+      - name: Confirm EAS preview style and tiles are authorized
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas env:exec preview "node scripts/mapbox-token-health.cjs" --non-interactive
