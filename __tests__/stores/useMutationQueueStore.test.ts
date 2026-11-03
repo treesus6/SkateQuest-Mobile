@@ -177,4 +177,46 @@ describe('offline mutation queue data integrity', () => {
     }
   });
 
+  it('surfaces a failed write and still persists the next complete queue snapshot', async () => {
+    const spy = jest.spyOn(AsyncStorage, 'setItem')
+      .mockImplementationOnce(async () => { throw new Error('storage full'); })
+      .mockImplementation(async () => undefined);
+    try {
+      await expect(
+        useMutationQueueStore.getState().enqueue('create', 'session_attendees', {
+          session_id: 'first',
+        })
+      ).rejects.toThrow('storage full');
+
+      // The first action remains in memory, and a later successful write
+      // must persist both actions rather than getting stuck behind rejection.
+      await useMutationQueueStore.getState().enqueue('create', 'session_attendees', {
+        session_id: 'second',
+      });
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      const lastSnapshot = spy.mock.calls[1]?.[1] as string;
+      expect(JSON.parse(lastSnapshot).map((entry: { payload: { session_id: string } }) =>
+        entry.payload.session_id)).toEqual(['first', 'second']);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('reports a failed clear and allows subsequent writes', async () => {
+    const spy = jest.spyOn(AsyncStorage, 'removeItem')
+      .mockImplementationOnce(async () => { throw new Error('remove failed'); });
+    try {
+      await expect(useMutationQueueStore.getState().clear()).rejects.toThrow('remove failed');
+      await useMutationQueueStore.getState().enqueue('create', 'session_attendees', {
+        session_id: 'after-clear',
+      });
+      expect(useMutationQueueStore.getState().queue).toEqual([
+        expect.objectContaining({ payload: { session_id: 'after-clear' } }),
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
 });
