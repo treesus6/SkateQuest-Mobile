@@ -24,5 +24,11 @@ sleep 20
 timeout 20s adb shell pidof com.treesus6.skatequest | tee "$evidence_dir/skatequest.pid"
 collect_evidence
 trap - EXIT
+# Fail when the app logs a native or JavaScript fatal crash during startup.
+if grep -E "FATAL EXCEPTION|Fatal signal [0-9]+|ReactNativeJS.*(TypeError|ReferenceError|Invariant Violation)" "$evidence_dir/skatequest-logcat.txt" | grep -E "com\.treesus6\.skatequest|ReactNativeJS|libc" > "$evidence_dir/skatequest-fatal-lines.txt"; then
+  echo "FAIL: Android startup emitted a fatal error" >&2
+  cat "$evidence_dir/skatequest-fatal-lines.txt" >&2
+  exit 1
+fi
 test -s "$evidence_dir/skatequest-startup.png" || { echo "FAIL: no startup screenshot captured" >&2; exit 1; }
 echo "PASS: APK installed, activity launched, process alive after 20 seconds, screenshot captured"
