@@ -42,12 +42,29 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-async function persistQueue(queue: OfflineMutation[]): Promise<void> {
-  try {
-    await AsyncStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
-  } catch (err) {
-    Logger.error('Failed to persist mutation queue', err);
-  }
+// AsyncStorage writes can complete out of order. Serialize snapshots so a
+// slower old write cannot overwrite an action enqueued during a sync.
+let storageOperation: Promise<void> = Promise.resolve();
+
+function persistQueue(queue: OfflineMutation[]): Promise<void> {
+  const snapshot = JSON.stringify(queue);
+  const write = storageOperation.then(async () => {
+    try {
+      await AsyncStorage.setItem(QUEUE_STORAGE_KEY, snapshot);
+    } catch (err) {
+      Logger.error('Failed to persist mutation queue', err);
+    }
+  });
+  storageOperation = write;
+  return write;
+}
+
+function removePersistedQueue(): Promise<void> {
+  const removal = storageOperation.then(async () => {
+    await removePersistedQueue();
+  });
+  storageOperation = removal;
+  return removal;
 }
 
 export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
