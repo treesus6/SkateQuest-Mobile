@@ -28,8 +28,8 @@ trap - EXIT
 # the launcher or displayed a system crash dialog. Require the SkateQuest
 # activity to remain foregrounded after the startup settling period.
 timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt" || true
-if ! grep -E '(mCurrentFocus|mFocusedApp).*com\\.treesus6\\.skatequest' "$evidence_dir/window-focus.txt" >/dev/null && \
-   ! grep -E '(topResumedActivity|mResumedActivity).*com\\.treesus6\\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
+if ! grep -E '(mCurrentFocus|mFocusedApp).*com\.treesus6\.skatequest' "$evidence_dir/window-focus.txt" >/dev/null && \
+   ! grep -E '(topResumedActivity|mResumedActivity).*com\.treesus6\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
   echo "FAIL: SkateQuest process exists but its activity is not foregrounded" >&2
   grep -E 'mCurrentFocus|mFocusedApp' "$evidence_dir/window-focus.txt" >&2 || true
   grep -E 'topResumedActivity|mResumedActivity' "$evidence_dir/activities.txt" >&2 || true
