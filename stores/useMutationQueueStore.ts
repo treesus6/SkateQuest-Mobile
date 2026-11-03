@@ -60,9 +60,13 @@ function persistQueue(queue: OfflineMutation[]): Promise<void> {
       await AsyncStorage.setItem(QUEUE_STORAGE_KEY, snapshot);
     } catch (err) {
       Logger.error('Failed to persist mutation queue', err);
+      // The caller must know the offline action is not durable yet.
+      throw err;
     }
   });
-  storageOperation = write;
+  // Recover the serialization tail after a failed write so later snapshots
+  // can still save the complete in-memory queue.
+  storageOperation = write.then(() => undefined, () => undefined);
   return write;
 }
 
@@ -72,9 +76,10 @@ function removePersistedQueue(): Promise<void> {
       await AsyncStorage.removeItem(QUEUE_STORAGE_KEY);
     } catch (err) {
       Logger.error('Failed to clear mutation queue storage', err);
+      throw err;
     }
   });
-  storageOperation = removal;
+  storageOperation = removal.then(() => undefined, () => undefined);
   return removal;
 }
 
