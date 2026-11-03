@@ -19,6 +19,11 @@ jobs:
           node-version: '22.22.1'
       - run: npm ci
       - run: npm install --global eas-cli
+      - name: Compare GitHub public Mapbox token health
+        continue-on-error: true
+        env:
+          EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
+        run: node scripts/mapbox-token-health.cjs
       - name: Probe Mapbox style and tile access using EAS preview token
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
