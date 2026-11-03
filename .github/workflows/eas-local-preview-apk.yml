@@ -127,6 +127,7 @@ jobs:
             /tmp/skatequest-logcat.txt
             /tmp/skatequest-startup.png
             /tmp/activities.txt
+            /tmp/window-focus.txt
             /tmp/skatequest.pid
           retention-days: 14
           if-no-files-found: warn
