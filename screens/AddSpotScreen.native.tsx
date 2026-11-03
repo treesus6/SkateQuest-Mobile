@@ -268,6 +268,7 @@ export default function AddSpotScreen() {
           style={StyleSheet.absoluteFill}
           styleURL={Mapbox.StyleURL.Street}
           onPress={handleMapPress}
+          onDidFailLoadingMap={() => Alert.alert('Map unavailable', 'Mapbox could not load the map. Check your connection and try again. Do not save a spot until the map is visible.')}
         >
           <Mapbox.Camera
             ref={cameraRef}
