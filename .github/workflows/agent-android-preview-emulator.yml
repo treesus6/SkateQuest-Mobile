@@ -9,6 +9,7 @@ on:
       - 'app/_layout.tsx'
       - 'package.json'
       - 'app.config.js'
+      - 'scripts/android-smoke.sh'
   workflow_dispatch:
 permissions:
   contents: read
