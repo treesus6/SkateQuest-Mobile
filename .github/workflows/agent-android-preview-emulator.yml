@@ -1,18 +1,8 @@
 name: Agent Android Preview Build and Emulator Test
+# EAS Free Android quota exhausted until 2026-12-01. Keep manual EAS
+# verification available without burning failed attempts on every push.
+# Re-enable push triggers once the monthly build quota resets.
 on:
-  push:
-    paths:
-      - '.github/workflows/agent-android-preview-emulator.yml'
-      - 'screens/MapScreen.native.tsx'
-      - 'screens/AddSpotScreen.native.tsx'
-      - 'lib/mapboxSetup.native.ts'
-      - 'app/_layout.tsx'
-      - 'package.json'
-      - 'app.config.js'
-      - 'scripts/android-smoke.sh'
-      - 'app/auth/callback.tsx'
-      - 'components/auth/NativeAuthCallback.tsx'
-      - 'lib/googleAuth.native.ts'
   workflow_dispatch:
 permissions:
   contents: read
