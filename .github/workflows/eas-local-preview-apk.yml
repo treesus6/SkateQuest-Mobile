@@ -108,9 +108,46 @@ jobs:
             echo "::error::EAS local APK signer differs from the established Expo upload key. Withholding APK."
             exit 1
           fi
-          "$tools/aapt" dump badging "$apk" | grep -q "package: name='com.treesus6.skatequest'"
+          # A matching signing certificate alone does not prove this is a
+          # standalone APK. Refuse developer-client/Metro-dependent artifacts.
+          badging="$("$tools/aapt" dump badging "$apk")"
+          printf '%s\n' "$badging" | grep -F "package: name='com.treesus6.skatequest'" >/dev/null
+          if printf '%s\n' "$badging" | grep -F 'application-debuggable' >/dev/null; then
+            echo "::error::Refusing debuggable Android APK."
+            exit 1
+          fi
+          if ! printf '%s\n' "$badging" | grep -F 'launchable-activity:' >/dev/null; then
+            echo "::error::APK is missing a launchable activity."
+            exit 1
+          fi
+          if ! unzip -Z1 "$apk" | grep -Fx 'assets/index.android.bundle' >/dev/null; then
+            echo "::error::APK has no bundled JavaScript and may require Metro."
+            exit 1
+          fi
+          if [ "$(unzip -p "$apk" assets/index.android.bundle | wc -c)" -eq 0 ]; then
+            echo "::error::APK contains an empty JavaScript bundle."
+            exit 1
+          fi
+          # Validate packaged settings, not merely GitHub Actions environment
+          # variables, without printing any public tokens or backend keys.
+          unzip -p "$apk" assets/app.config | node -e '
+            let input = "";
+            process.stdin.on("data", chunk => { input += chunk; });
+            process.stdin.on("end", () => {
+              const config = JSON.parse(input);
+              const extra = config.extra || {};
+              for (const name of ["supabaseUrl", "supabaseAnonKey", "mapboxAccessToken"]) {
+                if (typeof extra[name] !== "string" || !extra[name].trim()) {
+                  throw new Error("APK is missing packaged runtime setting: " + name);
+                }
+              }
+              if (extra.supabaseUrl.includes("configuration-missing")) {
+                throw new Error("APK contains the Supabase fallback URL");
+              }
+            });
+          '
           cp "$apk" /tmp/skatequest.apk
-          echo "Verified matching EAS upload signer and Android package."
+          echo "Verified matching EAS upload signer, standalone JS bundle, release manifest and packaged runtime configuration."
 
       - name: Enable KVM acceleration
         run: |
