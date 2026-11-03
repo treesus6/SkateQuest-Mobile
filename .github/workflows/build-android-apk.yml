@@ -251,22 +251,28 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Stage signed release APK for emulator
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+      # A locally signed release APK is standalone and useful for emulator QA
+      # even when its signing identity differs from the existing Play install.
+      # Never publish the mismatched APK as an upgrade or store artifact.
+      - name: Stage locally signed release APK for emulator QA
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         shell: bash
         run: |
           shopt -s nullglob
           apks=(android/app/build/outputs/apk/release/*.apk)
           test "${#apks[@]}" -eq 1
+          if [ "$RELEASE_SIGNING_MATCH" != 'true' ]; then
+            echo '::warning::Emulator QA only: local signing key differs from Play/Expo; this APK cannot update the existing Play installation.'
+          fi
           cp "${apks[0]}" /tmp/skatequest.apk
 
       - name: Enable emulator acceleration
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; else echo '::warning::/dev/kvm unavailable'; fi
 
-      - name: Android emulator smoke for locally signed APK
-        if: env.HAS_RELEASE_KEYSTORE == 'true' && env.RELEASE_SIGNING_MATCH == 'true'
+      - name: Android emulator smoke for locally signed release APK (QA only)
+        if: env.HAS_RELEASE_KEYSTORE == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
