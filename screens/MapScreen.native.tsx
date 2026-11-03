@@ -327,6 +327,7 @@ export default function MapScreen() {
         key={mapInstance}
         ref={mapRef}
         style={{ flex: 1 }}
+        surfaceView={false}
         styleURL={mapStyle}
         onRegionDidChange={() => onRegionDidChange()}
         onDidFinishLoadingMap={() => setMapError(null)}
