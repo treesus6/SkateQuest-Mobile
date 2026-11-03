@@ -23,11 +23,11 @@ import { shouldDropSentryEvent } from '../lib/sentryEventFilter';
 import { validateEnvironment } from '../lib/envValidation';
 import { Logger } from '../lib/logger';
 import { analytics } from '../lib/analytics';
-import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
+import { useMutationQueueStore } from '../stores/useMutationQueueStore';
+import { executeOfflineMutation } from '../lib/offlineMutationExecutor';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
 import { initializeMapbox } from '../lib/mapboxSetup';
-import { supabase } from '../lib/supabase';
 import {
   buildAuthReturnPath,
   getAuthReturnPath,
@@ -121,28 +121,7 @@ function RootLayout() {
         }
 
         await useMutationQueueStore.getState().rehydrate();
-        const mutationExecutor = async (mutation: OfflineMutation) => {
-          // Never acknowledge an unsupported queued write as successful: the
-          // queue removes mutations when the executor resolves.
-          if (mutation.table !== 'session_attendees') {
-            throw new Error(`Unsupported offline mutation table: ${mutation.table}`);
-          }
-          if (mutation.type !== 'create' && mutation.type !== 'delete') {
-            throw new Error(`Unsupported session RSVP mutation: ${mutation.type}`);
-          }
-          const { session_id } = mutation.payload;
-          if (typeof session_id !== 'string' || !session_id) {
-            throw new Error('Queued session RSVP is missing a session_id');
-          }
-          const { data, error } = await supabase.rpc('set_session_rsvp', {
-            p_session_id: session_id,
-            p_attending: mutation.type === 'create',
-          });
-          if (error) throw error;
-          const result = data as { error?: string } | null;
-          if (result?.error) throw new Error(result.error);
-        };
-        startBackgroundSync([], mutationExecutor);
+        startBackgroundSync([], executeOfflineMutation);
 
         if (Platform.OS !== 'web') {
           checkForOTAUpdate({ silent: true });
