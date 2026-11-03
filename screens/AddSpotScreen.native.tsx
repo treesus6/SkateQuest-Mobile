@@ -20,6 +20,7 @@ import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import { Logger } from '../lib/logger';
 import { getSpotPersistenceError, getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
+import { parseMapCoordinates } from '../lib/geoCoordinates';
 
 const ACCENT = '#D2673D';
 const BG = '#05070B';
@@ -47,14 +48,12 @@ export default function AddSpotScreen() {
   const route = useRoute<any>();
   const user = useAuthStore(state => state.user);
   const cameraRef = useRef<Mapbox.Camera>(null);
-  const routeLat = Number(route.params?.latitude);
-  const routeLng = Number(route.params?.longitude);
-  const hasRoutePoint = Number.isFinite(routeLat) && Number.isFinite(routeLng);
+  const routePoint = parseMapCoordinates(route.params?.latitude, route.params?.longitude);
 
   const [coordinates, setCoordinates] = useState<[number, number]>(
-    hasRoutePoint ? [routeLng, routeLat] : NEUTRAL_CENTER
+    routePoint ?? NEUTRAL_CENTER
   );
-  const [hasCoordinates, setHasCoordinates] = useState(hasRoutePoint);
+  const [hasCoordinates, setHasCoordinates] = useState(routePoint !== null);
   const [name, setName] = useState('');
   const [difficulty, setDifficulty] = useState<(typeof DIFFICULTIES)[number]>('Beginner');
   const [spotType, setSpotType] = useState<(typeof TYPES)[number]>('park');
@@ -102,7 +101,7 @@ export default function AddSpotScreen() {
   };
 
   useEffect(() => {
-    if (isMapboxConfigured && !hasRoutePoint) void locate();
+    if (isMapboxConfigured && !routePoint) void locate();
   }, []);
 
   if (!isMapboxConfigured) {
@@ -117,8 +116,8 @@ export default function AddSpotScreen() {
   const handleMapPress = (event: any) => {
     const point = event?.geometry?.coordinates;
     if (!Array.isArray(point) || point.length < 2) return;
-    const next: [number, number] = [Number(point[0]), Number(point[1])];
-    if (!Number.isFinite(next[0]) || !Number.isFinite(next[1])) return;
+    const next = parseMapCoordinates(point[1], point[0]);
+    if (!next) return;
     setCoordinates(next);
     setHasCoordinates(true);
   };
