@@ -25,6 +25,7 @@ import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
+import { parseMapCoordinates } from '../lib/geoCoordinates';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -123,14 +124,17 @@ export default function MapScreen() {
     };
   }, [selectedSpot?.id]);
 
-  const applyLocation = (location: Location.LocationObject) => {
+  const applyLocation = (location: Location.LocationObject): boolean => {
+    const center = parseMapCoordinates(location.coords.latitude, location.coords.longitude);
+    if (!center) return false;
     setUserLocation(location);
-    setCenterCoordinates([location.coords.longitude, location.coords.latitude]);
+    setCenterCoordinates(center);
     cameraRef.current?.setCamera({
-      centerCoordinate: [location.coords.longitude, location.coords.latitude],
+      centerCoordinate: center,
       zoomLevel: 12,
       animationDuration: 700,
     });
+    return true;
   };
 
   const requestLocationPermission = async () => {
@@ -143,9 +147,8 @@ export default function MapScreen() {
       }
 
       const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
-      if (lastKnown) {
+      if (lastKnown && applyLocation(lastKnown)) {
         usedLastKnown = true;
-        applyLocation(lastKnown);
         void loadSpots(lastKnown.coords.latitude, lastKnown.coords.longitude);
       }
 
@@ -156,7 +159,9 @@ export default function MapScreen() {
         setTimeout(() => reject(new Error('Location request timed out')), LOCATION_TIMEOUT_MS);
       });
       const location = await Promise.race([currentPromise, timeoutPromise]);
-      applyLocation(location);
+      if (!applyLocation(location)) {
+        throw new Error('Location provider returned invalid GPS coordinates');
+      }
       await loadSpots(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.warn('Location unavailable; keeping the map usable:', error);
@@ -222,7 +227,10 @@ export default function MapScreen() {
       if (!userLocation && loading) return;
       if (mapRef.current) {
         const center = await mapRef.current.getCenter();
-        if (center) void loadSpots(center[1], center[0]);
+        if (center) {
+          const validCenter = parseMapCoordinates(center[1], center[0]);
+          if (validCenter) void loadSpots(validCenter[1], validCenter[0]);
+        }
       }
     }, 800);
   };
@@ -242,7 +250,7 @@ export default function MapScreen() {
     try {
       const currentCenter = await mapRef.current?.getCenter();
       if (currentCenter && currentCenter.length >= 2) {
-        mapCenter = [currentCenter[0], currentCenter[1]];
+        mapCenter = parseMapCoordinates(currentCenter[1], currentCenter[0]);
       }
     } catch {
       mapCenter = null;
