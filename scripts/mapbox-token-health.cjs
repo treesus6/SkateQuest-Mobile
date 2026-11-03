@@ -1,7 +1,7 @@
 'use strict';
 
 // Validate the exact EAS preview public token without printing it in CI logs.
-const token = (process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '').trim();
+const token = (process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN_PREVIEW || process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || '').trim();
 if (!token.startsWith('pk.')) {
   console.error('Mapbox preview token missing or not a public (pk.) token.');
   process.exitCode = 1;

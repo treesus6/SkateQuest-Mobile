@@ -39,7 +39,7 @@ jobs:
           EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: ${{ secrets.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN }}
         run: |
           test -n "$EXPO_TOKEN" && test -n "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN"
-          eas env:set --name EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN --value "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN" --environment preview --visibility sensitive --scope project --non-interactive
+          eas env:set --name EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN_PREVIEW --value "$EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN" --environment preview --visibility sensitive --scope project --non-interactive
       - name: Confirm EAS preview style and tiles are authorized
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
