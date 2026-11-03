@@ -29,7 +29,10 @@ permissions:
 
 concurrency:
   group: eas-local-preview-${{ github.ref }}
-  cancel-in-progress: true
+  # Android builds can run for over an hour. Keep the running job alive so
+  # rapid main pushes cannot repeatedly cancel APK signing/emulator evidence.
+  # GitHub queues the next run for the same branch instead.
+  cancel-in-progress: false
 
 jobs:
   preview:
