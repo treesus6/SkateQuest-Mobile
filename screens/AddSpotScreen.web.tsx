@@ -63,6 +63,7 @@ export default function AddSpotScreen() {
   const container = useRef<any>(null);
   const map = useRef<MapboxGLMap | null>(null);
   const marker = useRef<MapboxGLMarker | null>(null);
+  const locationRequest = useRef(0);
   const routedCoordinates = parseSpotCoordinates(
     route.params?.latitude,
     route.params?.longitude
@@ -90,6 +91,12 @@ export default function AddSpotScreen() {
   const [manualLongitude, setManualLongitude] = useState(
     routedCoordinates ? String(routedCoordinates[0]) : ''
   );
+
+  useEffect(() => {
+    return () => {
+      locationRequest.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     const mapbox = window.mapboxgl;
@@ -121,7 +128,10 @@ export default function AddSpotScreen() {
         ? new mapbox.Marker({ color: ORANGE }).setLngLat(coordinates).addTo(createdMap)
         : null;
       createdMap.on('click', event => {
-        const next: [number, number] = [event.lngLat.lng, event.lngLat.lat];
+        const next = parseSpotCoordinates(event.lngLat.lat, event.lngLat.lng);
+        if (!next) return;
+        locationRequest.current += 1;
+        setLocationError(null);
         setCoordinates(next);
         setManualLatitude(String(next[1]));
         setManualLongitude(String(next[0]));
@@ -157,10 +167,15 @@ export default function AddSpotScreen() {
   }, []);
 
   const locate = async () => {
+    const request = ++locationRequest.current;
     setLocationError(null);
     try {
       const position = await getBrowserLocation();
-      const next: [number, number] = [position.longitude, position.latitude];
+      if (request !== locationRequest.current) return;
+      const next = parseSpotCoordinates(position.latitude, position.longitude);
+      if (!next) {
+        throw new Error('Your browser returned an invalid location. Enter coordinates or choose a pin.');
+      }
       setCoordinates(next);
       setManualLatitude(String(next[1]));
       setManualLongitude(String(next[0]));
@@ -174,6 +189,7 @@ export default function AddSpotScreen() {
       }
       map.current?.flyTo({ center: next, zoom: 16 });
     } catch (error) {
+      if (request !== locationRequest.current) return;
       const message = error instanceof Error ? error.message : 'Location is unavailable.';
       setLocationError(message);
       Logger.warn('Add spot browser location failed', { message });
@@ -181,6 +197,7 @@ export default function AddSpotScreen() {
   };
 
   const applyManualCoordinates = () => {
+    locationRequest.current += 1;
     const next = parseSpotCoordinates(manualLatitude, manualLongitude);
     if (!next) {
       setLocationError('Enter a latitude from -90 to 90 and a longitude from -180 to 180.');

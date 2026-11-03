@@ -1,11 +1,10 @@
 /** Active skate session with verified server-backed XP. */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Modal, Vibration, StyleSheet, Animated } from 'react-native';
-import { Play, Square, Plus, Music, Heart, Zap, MapPin, Clock, Flame, Trophy, Pause, Radio } from 'lucide-react-native';
+import { Play, Square, Plus, Music, Heart, Zap, MapPin, Clock, Flame, Trophy, Radio } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
-import { feedService } from '../lib/feedService';
 import { supabase } from '../lib/supabase';
 import { SessionTimer, saveSkateSessionToHealth, estimateCalories } from '../lib/healthService';
 import { RootStackParamList } from '../types';
@@ -84,8 +83,6 @@ export default function ActiveSessionScreen() {
     } finally { setStarting(false); }
   }, [spotId, spotName, starting, user?.id]);
 
-  const pauseSession = useCallback(() => { if (intervalRef.current) clearInterval(intervalRef.current); setIsRunning(false); }, []);
-  const resumeSession = useCallback(() => { intervalRef.current = setInterval(() => setElapsedSeconds(timerRef.current.getDurationSeconds()), 1000); setIsRunning(true); }, []);
   const logTrick = useCallback(() => { if (!isRunning) return; Vibration.vibrate(50); setTrickCount(prev => prev + 1); }, [isRunning]);
   const handleEndSession = () => { if (intervalRef.current) clearInterval(intervalRef.current); timerRef.current.stop(); setIsRunning(false); setShowEndModal(true); };
 
@@ -99,8 +96,6 @@ export default function ActiveSessionScreen() {
       const durationMinutes = Math.max(0, Number(result.duration_minutes ?? 0));
       const xpAwarded = Math.max(0, Number(result.xp_awarded ?? 0));
       const verifiedCalories = estimateCalories(durationMinutes);
-      const { error: feedError } = await feedService.create({ user_id: user.id, activity_type: 'skate_session', title: `Skated ${spotName} for ${durationMinutes} min`, description: `${trickCount} tricks logged · ~${verifiedCalories} cal burned`, xp_earned: xpAwarded });
-      if (feedError) console.warn('Verified session saved, but feed activity failed:', feedError.message);
       const healthResult = await saveSkateSessionToHealth({ startTime: timerRef.current.getStartTime() || new Date(), endTime: timerRef.current.getEndTime() || new Date(), durationMinutes, caloriesBurned: verifiedCalories, spotName });
       if (healthResult.success) setHealthSynced(true);
       setShowEndModal(false);
@@ -154,10 +149,10 @@ export default function ActiveSessionScreen() {
             <Play size={22} color="#fff" fill="#fff" /><Text style={s.primaryText}>{starting ? 'Starting verified session…' : 'Start session'}</Text>
           </TouchableOpacity>
         ) : (
-          <View style={s.controlsRow}>
-            <TouchableOpacity style={[s.controlButton, isRunning ? s.pauseButton : s.resumeButton]} onPress={isRunning ? pauseSession : resumeSession}>{isRunning ? <Pause size={19} color="#fff" fill="#fff" /> : <Play size={19} color="#fff" fill="#fff" />}<Text style={s.controlText}>{isRunning ? 'Pause' : 'Resume'}</Text></TouchableOpacity>
-            <TouchableOpacity style={[s.controlButton, s.endButton]} onPress={handleEndSession}><Square size={18} color="#fff" fill="#fff" /><Text style={s.controlText}>End</Text></TouchableOpacity>
-          </View>
+          <TouchableOpacity style={[s.primaryButton, s.endButton]} onPress={handleEndSession}>
+            <Square size={19} color="#fff" fill="#fff" />
+            <Text style={s.primaryText}>End session</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -211,8 +206,6 @@ const s = StyleSheet.create({
   primaryText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   controlsRow: { flexDirection: 'row', gap: 10 },
   controlButton: { flex: 1, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', borderRadius: 15, paddingVertical: 14 },
-  pauseButton: { backgroundColor: '#C88A2D' },
-  resumeButton: { backgroundColor: '#2F9D62' },
   endButton: { backgroundColor: '#C94A4A' },
   controlText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   disabled: { opacity: 0.42 },

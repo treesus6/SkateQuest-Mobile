@@ -129,13 +129,17 @@ export default function FeedScreen() {
         ) : null}
 
         <View className="flex-row items-center justify-between px-4 py-3.5 border-t border-[#252D39] mt-3">
-          <HypeButton
-            mediaId={item.media_id || item.id}
-            initialHypeCount={hype.total}
-            userHypeCount={hype.mine}
-            onHype={(mediaId, newCount) => handleHype(item.id, mediaId, newCount)}
-            size="md"
-          />
+          {item.media_id && item.media ? (
+            <HypeButton
+              mediaId={item.media_id}
+              initialHypeCount={hype.total}
+              userHypeCount={hype.mine}
+              onHype={(mediaId, newCount) => handleHype(item.id, mediaId, newCount)}
+              size="md"
+            />
+          ) : (
+            <View />
+          )}
           <Text className="text-[#596271] text-[10px] font-black uppercase tracking-wider">{item.activity_type.replace(/_/g, ' ')}</Text>
         </View>
       </View>

@@ -18,13 +18,17 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
 import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import { Logger } from '../lib/logger';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
+import {
+  getSpotPersistenceError,
+  getSpotSubmissionErrorMessage,
+  parseSpotCoordinates,
+} from '../lib/spotSubmission';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
 
-const ACCENT = '#D2673D';
+const ACCENT = '#E36D3F';
+const ACID = '#D8F04B';
+const PAPER = '#F5F0E7';
 const BG = '#05070B';
-const CARD = '#101722';
-const BORDER = '#202B3A';
 const NEUTRAL_CENTER: [number, number] = [0, 20];
 const OBSTACLES = [
   'Stairs',
@@ -47,12 +51,12 @@ export default function AddSpotScreen() {
   const route = useRoute<any>();
   const user = useAuthStore(state => state.user);
   const cameraRef = useRef<Mapbox.Camera>(null);
-  const routeLat = Number(route.params?.latitude);
-  const routeLng = Number(route.params?.longitude);
-  const hasRoutePoint = Number.isFinite(routeLat) && Number.isFinite(routeLng);
+  const locationRequest = useRef(0);
+  const routedCoordinates = parseSpotCoordinates(route.params?.latitude, route.params?.longitude);
+  const hasRoutePoint = routedCoordinates !== null;
 
   const [coordinates, setCoordinates] = useState<[number, number]>(
-    hasRoutePoint ? [routeLng, routeLat] : NEUTRAL_CENTER
+    routedCoordinates ?? NEUTRAL_CENTER
   );
   const [hasCoordinates, setHasCoordinates] = useState(hasRoutePoint);
   const [name, setName] = useState('');
@@ -71,10 +75,12 @@ export default function AddSpotScreen() {
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
 
   const locate = async () => {
+    const request = ++locationRequest.current;
     setLocating(true);
     setLocationMessage(null);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
+      if (request !== locationRequest.current) return;
       if (permission.status !== 'granted') {
         setLocationMessage('Location permission is off. Tap the real spot on the map instead.');
         return;
@@ -82,7 +88,9 @@ export default function AddSpotScreen() {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      const next: [number, number] = [location.coords.longitude, location.coords.latitude];
+      if (request !== locationRequest.current) return;
+      const next = parseSpotCoordinates(location.coords.latitude, location.coords.longitude);
+      if (!next) throw new Error('Your device returned an invalid location. Choose a pin on the map.');
       setCoordinates(next);
       setHasCoordinates(true);
       cameraRef.current?.setCamera({
@@ -91,16 +99,20 @@ export default function AddSpotScreen() {
         animationDuration: 700,
       });
     } catch (error) {
+      if (request !== locationRequest.current) return;
       setLocationMessage(
         error instanceof Error ? error.message : 'Could not get your current location.'
       );
     } finally {
-      setLocating(false);
+      if (request === locationRequest.current) setLocating(false);
     }
   };
 
   useEffect(() => {
     if (isMapboxConfigured && !hasRoutePoint) void locate();
+    return () => {
+      locationRequest.current += 1;
+    };
   }, []);
 
   if (!isMapboxConfigured) {
@@ -115,8 +127,12 @@ export default function AddSpotScreen() {
   const handleMapPress = (event: any) => {
     const point = event?.geometry?.coordinates;
     if (!Array.isArray(point) || point.length < 2) return;
-    const next: [number, number] = [Number(point[0]), Number(point[1])];
-    if (!Number.isFinite(next[0]) || !Number.isFinite(next[1])) return;
+    const next = parseSpotCoordinates(point[1], point[0]);
+    if (!next) return;
+    // A chosen pin takes precedence over any pending GPS request.
+    locationRequest.current += 1;
+    setLocating(false);
+    setLocationMessage(null);
     setCoordinates(next);
     setHasCoordinates(true);
   };
@@ -256,10 +272,10 @@ export default function AddSpotScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={s.hero}>
-        <Text style={s.eyebrow}>REAL-WORLD MAP</Text>
-        <Text style={s.title}>Add a skate spot</Text>
+        <Text style={s.eyebrow}>SPOT DROP // GPS LOCK</Text>
+        <Text style={s.title}>PIN THE{`\n`}LINE.</Text>
         <Text style={s.subtitle}>
-          Put the pin on the actual location. No guessed coordinates and no fake spot data.
+          Mark the real place, show what is skateable, and put it on the live scene.
         </Text>
       </View>
 
@@ -278,7 +294,7 @@ export default function AddSpotScreen() {
           {hasCoordinates ? (
             <Mapbox.PointAnnotation id="new-spot" coordinate={coordinates}>
               <View style={s.pin}>
-                <MapPin color="#fff" size={25} />
+                <MapPin color="#07080B" size={25} strokeWidth={2.8} />
               </View>
             </Mapbox.PointAnnotation>
           ) : null}
@@ -292,11 +308,17 @@ export default function AddSpotScreen() {
                 : 'Choose a real location'}
             </Text>
           </View>
-          <Pressable style={s.locateButton} onPress={() => void locate()} disabled={locating}>
+          <Pressable
+            accessibilityLabel="Use my location"
+            accessibilityRole="button"
+            style={s.locateButton}
+            onPress={() => void locate()}
+            disabled={locating}
+          >
             {locating ? (
-              <ActivityIndicator color={ACCENT} size="small" />
+              <ActivityIndicator color="#07080B" size="small" />
             ) : (
-              <Crosshair color={ACCENT} size={20} />
+              <Crosshair color="#07080B" size={20} strokeWidth={2.8} />
             )}
           </Pressable>
         </View>
@@ -400,11 +422,11 @@ export default function AddSpotScreen() {
           onPress={() => void submit()}
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#07080B" />
           ) : (
             <>
-              <Plus color="#fff" size={19} />
-              <Text style={s.submitText}>SAVE REAL SPOT</Text>
+              <Plus color="#07080B" size={19} strokeWidth={3} />
+              <Text style={s.submitText}>PUT IT ON THE MAP</Text>
             </>
           )}
         </Pressable>
@@ -487,17 +509,17 @@ const s = StyleSheet.create({
   },
   container: { flex: 1, backgroundColor: BG },
   content: { paddingBottom: 48 },
-  hero: { padding: 20, paddingBottom: 14 },
-  eyebrow: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
-  title: { color: '#F7F4EF', fontSize: 27, fontWeight: '900', marginTop: 4 },
-  subtitle: { color: '#8793A4', fontSize: 12, lineHeight: 18, marginTop: 5 },
+  hero: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 16 },
+  eyebrow: { color: ACCENT, fontSize: 9, fontWeight: '900', letterSpacing: 2 },
+  title: { color: PAPER, fontSize: 43, lineHeight: 39, fontWeight: '900', letterSpacing: -2.2, marginTop: 6 },
+  subtitle: { color: '#929AA7', fontSize: 12, lineHeight: 18, marginTop: 9, maxWidth: 350 },
   mapCard: {
     marginHorizontal: 16,
     height: 310,
-    borderRadius: 22,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#343B46',
     backgroundColor: '#0F1722',
   },
   mapTopBar: {
@@ -524,7 +546,9 @@ const s = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 13,
-    backgroundColor: '#fff',
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: BG,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -536,24 +560,24 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: BG,
   },
   warning: { color: '#FBBF8A', fontSize: 11, lineHeight: 17, marginHorizontal: 20, marginTop: 9 },
   formCard: {
     margin: 16,
-    backgroundColor: CARD,
-    borderRadius: 22,
+    backgroundColor: '#0D1117',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: '#303640',
     padding: 16,
   },
   label: {
-    color: '#B8C2CF',
-    fontSize: 11,
+    color: ACCENT,
+    fontSize: 9,
     fontWeight: '900',
-    marginTop: 12,
+    marginTop: 14,
     marginBottom: 8,
-    letterSpacing: 0.3,
+    letterSpacing: 1.4,
   },
   input: {
     minHeight: 48,
@@ -575,9 +599,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#293648',
   },
-  chipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  chipActive: { backgroundColor: ACID, borderColor: ACID, transform: [{ rotate: '-1deg' }] },
   chipText: { color: '#8491A2', fontSize: 10, fontWeight: '800' },
-  chipTextActive: { color: '#fff' },
+  chipTextActive: { color: BG, fontWeight: '900' },
   helper: { color: '#627083', fontSize: 10, lineHeight: 15, marginTop: 6 },
   photoButton: {
     minHeight: 70,
@@ -651,12 +675,14 @@ const s = StyleSheet.create({
   submitButton: {
     minHeight: 52,
     marginTop: 16,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
+    borderRadius: 13,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: BG,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  submitText: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
+  submitText: { color: BG, fontSize: 11, fontWeight: '900', letterSpacing: 1.3 },
 });
