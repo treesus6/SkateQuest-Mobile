@@ -32,3 +32,12 @@ export function parseMapCoordinates(
 
   return [lng, lat];
 }
+
+/** Only numeric, finite coordinates can be passed directly to native Mapbox layers. */
+export function isRenderableMapPoint(latitude: unknown, longitude: unknown): boolean {
+  return (
+    typeof latitude === 'number' &&
+    typeof longitude === 'number' &&
+    parseMapCoordinates(latitude, longitude) !== null
+  );
+}
