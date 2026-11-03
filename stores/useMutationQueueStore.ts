@@ -87,7 +87,8 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
     set({ isSyncing: true });
     Logger.info(`Processing ${queue.length} queued mutation(s)`);
 
-    const failed: OfflineMutation[] = [];
+    const attemptedIds = new Set(queue.map((mutation) => mutation.id));
+    const failedById = new Map<string, OfflineMutation>();
 
     for (const mutation of queue) {
       try {
@@ -97,7 +98,9 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
         const errorMsg = err instanceof ServiceError ? err.message : (err?.message ?? 'Unknown error');
         Logger.error('Mutation sync failed', err, { id: mutation.id });
 
-        failed.push({
+        // Never discard a user's offline action merely because it has failed
+        // five times. It must remain available for a later retry or recovery.
+        failedById.set(mutation.id, {
           ...mutation,
           retryCount: mutation.retryCount + 1,
           lastError: errorMsg,
@@ -105,13 +108,16 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
       }
     }
 
-    // Keep failed items (up to 5 retries), discard the rest
-    const retriable = failed.filter((m) => m.retryCount < 5);
-    set({ queue: retriable, isSyncing: false });
-    await persistQueue(retriable);
+    // Re-read the live queue: new mutations can be enqueued while an earlier
+    // batch is syncing. Only remove successfully processed IDs from that batch.
+    const pending = get().queue
+      .filter((mutation) => !attemptedIds.has(mutation.id) || failedById.has(mutation.id))
+      .map((mutation) => failedById.get(mutation.id) ?? mutation);
+    set({ queue: pending, isSyncing: false });
+    await persistQueue(pending);
 
-    if (retriable.length > 0) {
-      Logger.warn(`${retriable.length} mutation(s) still pending after sync attempt`);
+    if (failedById.size > 0) {
+      Logger.warn(`${failedById.size} mutation(s) still pending after sync attempt`);
     }
   },
 
