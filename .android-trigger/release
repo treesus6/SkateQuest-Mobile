@@ -1,2 +1,4 @@
-android-release 2026-10-24 oauth-callback-pkce
-source 352ff3aaa49679fd233575ffaa030ef292c60394
+android-local-preview 2026-11-03
+reason: EAS monthly Android quota exhausted; validate local Gradle APK with existing GitHub build workflow
+source: c4d040d6ecb8e0208ba70b05d2c8bb2a241031d3
+no Google Play upload or store submission
