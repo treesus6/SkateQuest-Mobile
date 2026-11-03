@@ -99,7 +99,9 @@ describe('offline mutation queue data integrity', () => {
 
       const queue = useMutationQueueStore.getState().queue;
       expect(queue.map((entry) => entry.payload.session_id)).toEqual(['previous', 'new']);
-      const stored = (AsyncStorage.setItem as jest.Mock).mock.calls.at(-1)?.[1] as string;
+      const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
+      const calls = setItemSpy.mock.calls;
+      const stored = calls[calls.length - 1]?.[1] as string;
       expect(JSON.parse(stored).map((entry: { payload: { session_id: string } }) => entry.payload.session_id))
         .toEqual(['previous', 'new']);
     } finally {
