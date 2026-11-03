@@ -1,4 +1,4 @@
-import { parseMapCoordinates } from '../../lib/geoCoordinates';
+import { isRenderableMapPoint, parseMapCoordinates } from '../../lib/geoCoordinates';
 
 describe('parseMapCoordinates', () => {
   it('accepts valid coordinates including zero and boundary values', () => {
@@ -22,5 +22,23 @@ describe('parseMapCoordinates', () => {
     expect(parseMapCoordinates(NaN, 0)).toBeNull();
     expect(parseMapCoordinates(Infinity, 0)).toBeNull();
     expect(parseMapCoordinates('not-a-latitude', 0)).toBeNull();
+  });
+});
+
+describe('isRenderableMapPoint', () => {
+  it('accepts real numeric coordinates including the origin and boundaries', () => {
+    expect(isRenderableMapPoint(45.64, -122.67)).toBe(true);
+    expect(isRenderableMapPoint(0, 0)).toBe(true);
+    expect(isRenderableMapPoint(-90, 180)).toBe(true);
+  });
+
+  it('rejects invalid cached or database coordinates before native map rendering', () => {
+    expect(isRenderableMapPoint(null, -122.67)).toBe(false);
+    expect(isRenderableMapPoint('45.64', -122.67)).toBe(false);
+    expect(isRenderableMapPoint(45.64, '-122.67')).toBe(false);
+    expect(isRenderableMapPoint(NaN, -122.67)).toBe(false);
+    expect(isRenderableMapPoint(45.64, Infinity)).toBe(false);
+    expect(isRenderableMapPoint(91, 0)).toBe(false);
+    expect(isRenderableMapPoint(0, -181)).toBe(false);
   });
 });
