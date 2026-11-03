@@ -8,6 +8,21 @@ on:
     paths:
       - '.github/workflows/build-android-apk.yml'
       - '.android-trigger/release'
+      - 'screens/MapScreen.native.tsx'
+      - 'screens/AddSpotScreen.native.tsx'
+      - 'lib/mapboxSetup.native.ts'
+      - 'app/_layout.tsx'
+      - 'app/auth/callback.tsx'
+      - 'components/auth/NativeAuthCallback.tsx'
+      - 'lib/googleAuth.native.ts'
+      - 'stores/useMutationQueueStore.ts'
+      - 'lib/offlineMutationExecutor.ts'
+      - 'scripts/android-smoke.sh'
+      - 'app.config.js'
+
+concurrency:
+  group: android-local-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
