@@ -331,9 +331,8 @@ export default function MapScreen() {
         styleURL={mapStyle}
         onRegionDidChange={() => onRegionDidChange()}
         onDidFinishLoadingMap={() => setMapError(null)}
-        onDidFailLoadingMap={(event) => {
-          const details = JSON.stringify(event?.nativeEvent ?? event).slice(0, 350);
-          setMapError(`Mapbox failed: ${details}`);
+        onDidFailLoadingMap={() => {
+          setMapError('Mapbox could not load its style or tiles. Check network access and Mapbox token restrictions.');
         }}
       >
         <Mapbox.Camera
