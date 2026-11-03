@@ -45,6 +45,13 @@ function generateId(): string {
 // AsyncStorage writes can complete out of order. Serialize snapshots so a
 // slower old write cannot overwrite an action enqueued during a sync.
 let storageOperation: Promise<void> = Promise.resolve();
+// Startup hydration must finish before any queue mutation can replace the
+// persisted snapshot. Otherwise a slow getItem can erase a new offline action.
+let hydrationInFlight: Promise<void> | null = null;
+
+async function waitForHydration(): Promise<void> {
+  if (hydrationInFlight) await hydrationInFlight;
+}
 
 function persistQueue(queue: OfflineMutation[]): Promise<void> {
   const snapshot = JSON.stringify(queue);
@@ -76,6 +83,7 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
   isSyncing: false,
 
   enqueue: async (type, table, payload) => {
+    await waitForHydration();
     const mutation: OfflineMutation = {
       id: generateId(),
       type,
@@ -93,12 +101,14 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
   },
 
   dequeue: async (id) => {
+    await waitForHydration();
     const updated = get().queue.filter((m) => m.id !== id);
     set({ queue: updated });
     await persistQueue(updated);
   },
 
   processQueue: async (executor) => {
+    await waitForHydration();
     const { queue, isSyncing } = get();
     if (isSyncing || queue.length === 0) return;
 
@@ -143,19 +153,35 @@ export const useMutationQueueStore = create<MutationQueueState>((set, get) => ({
   },
 
   rehydrate: async () => {
-    try {
-      const raw = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
-      if (raw) {
-        const queue: OfflineMutation[] = JSON.parse(raw);
-        set({ queue });
-        Logger.info(`Rehydrated ${queue.length} queued mutation(s)`);
+    if (hydrationInFlight) {
+      await hydrationInFlight;
+      return;
+    }
+    const hydration = (async () => {
+      try {
+        // Wait for any writes started before hydration. Reads and writes must
+        // not race, or a stale snapshot can replace newer in-memory actions.
+        await storageOperation;
+        const raw = await AsyncStorage.getItem(QUEUE_STORAGE_KEY);
+        if (raw) {
+          const queue: OfflineMutation[] = JSON.parse(raw);
+          set({ queue });
+          Logger.info(`Rehydrated ${queue.length} queued mutation(s)`);
+        }
+      } catch (err) {
+        Logger.error('Failed to rehydrate mutation queue', err);
       }
-    } catch (err) {
-      Logger.error('Failed to rehydrate mutation queue', err);
+    })();
+    hydrationInFlight = hydration;
+    try {
+      await hydration;
+    } finally {
+      if (hydrationInFlight === hydration) hydrationInFlight = null;
     }
   },
 
   clear: async () => {
+    await waitForHydration();
     set({ queue: [] });
     await removePersistedQueue();
   },

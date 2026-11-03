@@ -67,6 +67,80 @@ describe('offline mutation queue data integrity', () => {
       expect.objectContaining({ payload: { session_id: 'second' } }),
     ]);
   });
+  it('waits for startup hydration before persisting a newly queued offline action', async () => {
+    let releaseRead!: () => void;
+    let readStarted!: () => void;
+    const readGate = new Promise<void>((resolve) => { releaseRead = resolve; });
+    const readStartedPromise = new Promise<void>((resolve) => { readStarted = resolve; });
+    const persisted = [{
+      id: 'previous-session',
+      type: 'create',
+      table: 'session_attendees',
+      payload: { session_id: 'previous' },
+      createdAt: 1,
+      retryCount: 0,
+    }];
+    const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
+    const spy = jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async () => {
+      readStarted();
+      await readGate;
+      return JSON.stringify(persisted);
+    });
+
+    try {
+      const hydration = useMutationQueueStore.getState().rehydrate();
+      await readStartedPromise;
+      const enqueue = useMutationQueueStore.getState().enqueue('create', 'session_attendees', {
+        session_id: 'new',
+      });
+      // The new action must wait rather than being overwritten by the stale read.
+      expect(useMutationQueueStore.getState().queue).toHaveLength(0);
+      releaseRead();
+      await Promise.all([hydration, enqueue]);
+
+      const queue = useMutationQueueStore.getState().queue;
+      expect(queue.map((entry) => entry.payload.session_id)).toEqual(['previous', 'new']);
+      const calls = setItemSpy.mock.calls;
+      const stored = calls[calls.length - 1]?.[1] as string;
+      expect(JSON.parse(stored).map((entry: { payload: { session_id: string } }) => entry.payload.session_id))
+        .toEqual(['previous', 'new']);
+    } finally {
+      releaseRead();
+      spy.mockRestore();
+      setItemSpy.mockRestore();
+    }
+  });
+
+  it('does not resurrect cleared actions when clear races with startup hydration', async () => {
+    let releaseRead!: () => void;
+    let readStarted!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseRead = resolve; });
+    const started = new Promise<void>((resolve) => { readStarted = resolve; });
+    const removeItemSpy = jest.spyOn(AsyncStorage, 'removeItem');
+    const spy = jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async () => {
+      readStarted();
+      await gate;
+      return JSON.stringify([{
+        id: 'old', type: 'create', table: 'session_attendees',
+        payload: { session_id: 'old' }, createdAt: 1, retryCount: 0,
+      }]);
+    });
+
+    try {
+      const hydration = useMutationQueueStore.getState().rehydrate();
+      await started;
+      const clearing = useMutationQueueStore.getState().clear();
+      releaseRead();
+      await Promise.all([hydration, clearing]);
+      expect(useMutationQueueStore.getState().queue).toEqual([]);
+      expect(removeItemSpy).toHaveBeenCalledWith('offline_mutation_queue');
+    } finally {
+      releaseRead();
+      spy.mockRestore();
+      removeItemSpy.mockRestore();
+    }
+  });
+
   it('persists the newest snapshot even when an older AsyncStorage write is slow', async () => {
     let releaseFirst!: () => void;
     let firstStarted!: () => void;
