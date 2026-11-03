@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - '.github/workflows/agent-android-preview-emulator.yml'
+      - 'screens/MapScreen.native.tsx'
+      - 'screens/AddSpotScreen.native.tsx'
+      - 'lib/mapboxSetup.native.ts'
   workflow_dispatch:
 permissions:
   contents: read
