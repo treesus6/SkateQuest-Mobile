@@ -22,7 +22,8 @@ on:
 
 concurrency:
   group: android-local-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep long native compilation alive when another source change lands.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -292,6 +293,8 @@ jobs:
             /tmp/skatequest-logcat.txt
             /tmp/skatequest-startup.png
             /tmp/activities.txt
+            /tmp/window-focus.txt
+            /tmp/skatequest-fatal-lines.txt
             /tmp/skatequest.pid
           retention-days: 14
           if-no-files-found: warn
