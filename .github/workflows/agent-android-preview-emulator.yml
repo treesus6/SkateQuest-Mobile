@@ -6,6 +6,9 @@ on:
       - 'screens/MapScreen.native.tsx'
       - 'screens/AddSpotScreen.native.tsx'
       - 'lib/mapboxSetup.native.ts'
+      - 'app/_layout.tsx'
+      - 'package.json'
+      - 'app.config.js'
   workflow_dispatch:
 permissions:
   contents: read
