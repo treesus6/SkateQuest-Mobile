@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getAuthReturnPath } from '../../lib/authReturnPath';
+import { completeNativeOAuthCallback } from '../../lib/nativeOAuthCompletion';
 
 export default function NativeAuthCallback() {
   const router = useRouter();
@@ -14,35 +15,23 @@ export default function NativeAuthCallback() {
   useEffect(() => {
     let active = true;
     async function finish() {
-      try {
-        if (oauthError || error_description) {
-          setError(error_description || oauthError || 'Authentication failed');
-          return;
-        }
-        const existing = await supabase.auth.getSession();
-        if (!active) return;
-        if (existing.data.session) {
-          router.replace(getAuthReturnPath() as any);
-          return;
-        }
-        if (typeof code !== 'string' || !code) {
-          setError('Google did not return an authorization code. Please sign in again.');
-          return;
-        }
-        const result = await supabase.auth.exchangeCodeForSession(code);
-        if (!active) return;
-        if (result.error) {
-          const retry = await supabase.auth.getSession();
-          if (!active) return;
-          if (!retry.data.session) {
-            setError(result.error.message);
-            return;
-          }
-        }
-        router.replace(getAuthReturnPath() as any);
-      } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : 'Sign-in failed.');
+      if (oauthError || error_description) {
+        if (active) setError(error_description || oauthError || 'Authentication failed');
+        return;
       }
+
+      // Never navigate on a pre-existing session: it could belong to a
+      // different user, and a failed PKCE exchange must not appear successful.
+      const result = await completeNativeOAuthCallback(
+        typeof code === 'string' ? code : undefined,
+        value => supabase.auth.exchangeCodeForSession(value)
+      );
+      if (!active) return;
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      router.replace(getAuthReturnPath() as any);
     }
     void finish();
     return () => { active = false; };
