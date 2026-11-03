@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { getBrowserLocation } from './browserLocation';
+import { parseMapCoordinates } from './geoCoordinates';
 
 export type CurrentLocation = {
   latitude: number;
@@ -9,7 +10,12 @@ export type CurrentLocation = {
 
 export async function getCurrentLocation(): Promise<CurrentLocation> {
   if (Platform.OS === 'web') {
-    return getBrowserLocation();
+    const location = await getBrowserLocation();
+    const coordinates = parseMapCoordinates(location.latitude, location.longitude);
+    if (!coordinates) {
+      throw new Error('Browser returned invalid location coordinates.');
+    }
+    return { ...location, latitude: coordinates[1], longitude: coordinates[0] };
   }
 
   const Location = await import('expo-location');
@@ -21,10 +27,14 @@ export async function getCurrentLocation(): Promise<CurrentLocation> {
   const position = await Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.Balanced,
   });
+  const coordinates = parseMapCoordinates(position.coords.latitude, position.coords.longitude);
+  if (!coordinates) {
+    throw new Error('Device returned invalid location coordinates.');
+  }
 
   return {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
+    latitude: coordinates[1],
+    longitude: coordinates[0],
     accuracy: position.coords.accuracy,
   };
 }
