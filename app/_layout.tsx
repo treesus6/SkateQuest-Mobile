@@ -23,11 +23,11 @@ import { shouldDropSentryEvent } from '../lib/sentryEventFilter';
 import { validateEnvironment } from '../lib/envValidation';
 import { Logger } from '../lib/logger';
 import { analytics } from '../lib/analytics';
-import { useMutationQueueStore, OfflineMutation } from '../stores/useMutationQueueStore';
+import { useMutationQueueStore } from '../stores/useMutationQueueStore';
+import { executeOfflineMutation } from '../lib/offlineMutationExecutor';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
 import { checkForOTAUpdate } from '../lib/otaUpdates';
 import { initializeMapbox } from '../lib/mapboxSetup';
-import { supabase } from '../lib/supabase';
 import {
   buildAuthReturnPath,
   getAuthReturnPath,
@@ -121,18 +121,7 @@ function RootLayout() {
         }
 
         await useMutationQueueStore.getState().rehydrate();
-        const mutationExecutor = async (mutation: OfflineMutation) => {
-          if (mutation.table !== 'session_attendees') return;
-          const { session_id } = mutation.payload;
-          const { data, error } = await supabase.rpc('set_session_rsvp', {
-            p_session_id: session_id,
-            p_attending: mutation.type === 'create',
-          });
-          if (error) throw error;
-          const result = data as { error?: string } | null;
-          if (result?.error) throw new Error(result.error);
-        };
-        startBackgroundSync([], mutationExecutor);
+        startBackgroundSync([], executeOfflineMutation);
 
         if (Platform.OS !== 'web') {
           checkForOTAUpdate({ silent: true });
