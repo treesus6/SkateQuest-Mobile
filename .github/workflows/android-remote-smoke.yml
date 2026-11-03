@@ -1,8 +1,9 @@
 name: Android Remote Emulator Smoke Test
 
+# This workflow tests a supplied/previous EAS artifact, which may predate main.
+# Do not automatically mark a new main commit as Android-verified using a stale APK.
+# Current-source APK verification runs in eas-local-preview-apk.yml.
 on:
-  push:
-    branches: [main, codex/android-smoke-bash-fix]
   workflow_dispatch:
     inputs:
       apk_url:
