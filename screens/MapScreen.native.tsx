@@ -25,7 +25,7 @@ import MapStyleSelector from '../components/MapStyleSelector';
 import MapDirections from '../components/MapDirections';
 import MapFilters from '../components/MapFilters';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
-import { parseMapCoordinates } from '../lib/geoCoordinates';
+import { isRenderableMapPoint, parseMapCoordinates } from '../lib/geoCoordinates';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -299,6 +299,8 @@ export default function MapScreen() {
   const filteredSpots = useMemo(
     () =>
       spots.filter(spot => {
+        // Never hand malformed cached/database coordinates to native Mapbox.
+        if (!isRenderableMapPoint(spot.latitude, spot.longitude)) return false;
         const type = (spot.spot_type?.toLowerCase() ?? 'park') as keyof typeof activeFilters;
         return activeFilters[type] ?? false;
       }),
@@ -306,7 +308,10 @@ export default function MapScreen() {
   );
 
   const filteredShops = useMemo(
-    () => (activeFilters.shop ? shops : []),
+    () =>
+      activeFilters.shop
+        ? shops.filter(shop => isRenderableMapPoint(shop.latitude, shop.longitude))
+        : [],
     [shops, activeFilters.shop]
   );
   const spotsWithoutPhotos = useMemo(
