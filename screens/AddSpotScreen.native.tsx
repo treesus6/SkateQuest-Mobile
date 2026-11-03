@@ -83,7 +83,11 @@ export default function AddSpotScreen() {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      const next: [number, number] = [location.coords.longitude, location.coords.latitude];
+      const next = parseMapCoordinates(location.coords.latitude, location.coords.longitude);
+      if (!next) {
+        setLocationMessage('Your device returned invalid GPS coordinates. Move the pin manually or try again.');
+        return;
+      }
       setCoordinates(next);
       setHasCoordinates(true);
       cameraRef.current?.setCamera({

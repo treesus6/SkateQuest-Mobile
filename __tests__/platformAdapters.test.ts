@@ -42,6 +42,29 @@ describe('web/native platform selection', () => {
     nativeSources.forEach(source => expect(source).toContain('isMapboxConfigured'));
   });
 
+  it('rejects invalid device GPS and map centers before native Mapbox camera updates', () => {
+    const map = fs.readFileSync(
+      path.join(__dirname, '..', 'screens', 'MapScreen.native.tsx'),
+      'utf8'
+    );
+    const addSpot = fs.readFileSync(
+      path.join(__dirname, '..', 'screens', 'AddSpotScreen.native.tsx'),
+      'utf8'
+    );
+
+    expect(addSpot).toContain(
+      'const next = parseMapCoordinates(location.coords.latitude, location.coords.longitude)'
+    );
+    expect(addSpot).toContain('if (!next) {');
+    expect(map).toContain(
+      'const center = parseMapCoordinates(location.coords.latitude, location.coords.longitude)'
+    );
+    expect(map).toContain('if (!center) return false;');
+    expect(map).toContain('if (lastKnown && applyLocation(lastKnown))');
+    expect(map).toContain('const validCenter = parseMapCoordinates(center[1], center[0])');
+    expect(map).toContain('mapCenter = parseMapCoordinates(currentCenter[1], currentCenter[0])');
+  });
+
   it('keeps photo-backed spot markers and the live photo RPC migration on both platforms', () => {
     const nativeMap = fs.readFileSync(
       path.join(__dirname, '..', 'screens', 'MapScreen.native.tsx'),
