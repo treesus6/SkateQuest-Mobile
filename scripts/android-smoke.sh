@@ -24,6 +24,17 @@ sleep 20
 timeout 20s adb shell pidof com.treesus6.skatequest | tee "$evidence_dir/skatequest.pid"
 collect_evidence
 trap - EXIT
+# A live process and screenshot can be false positives if Android returned to
+# the launcher or displayed a system crash dialog. Require the SkateQuest
+# activity to remain foregrounded after the startup settling period.
+timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt" || true
+if ! grep -E '(mCurrentFocus|mFocusedApp).*com\\.treesus6\\.skatequest' "$evidence_dir/window-focus.txt" >/dev/null && \
+   ! grep -E '(topResumedActivity|mResumedActivity).*com\\.treesus6\\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
+  echo "FAIL: SkateQuest process exists but its activity is not foregrounded" >&2
+  grep -E 'mCurrentFocus|mFocusedApp' "$evidence_dir/window-focus.txt" >&2 || true
+  grep -E 'topResumedActivity|mResumedActivity' "$evidence_dir/activities.txt" >&2 || true
+  exit 1
+fi
 # Fail when the app logs a native or JavaScript fatal crash during startup.
 if grep -E "FATAL EXCEPTION|Fatal signal [0-9]+|ReactNativeJS.*(TypeError|ReferenceError|Invariant Violation)" "$evidence_dir/skatequest-logcat.txt" | grep -E "com\.treesus6\.skatequest|ReactNativeJS|libc" > "$evidence_dir/skatequest-fatal-lines.txt"; then
   echo "FAIL: Android startup emitted a fatal error" >&2
@@ -31,4 +42,4 @@ if grep -E "FATAL EXCEPTION|Fatal signal [0-9]+|ReactNativeJS.*(TypeError|Refere
   exit 1
 fi
 test -s "$evidence_dir/skatequest-startup.png" || { echo "FAIL: no startup screenshot captured" >&2; exit 1; }
-echo "PASS: APK installed, activity launched, process alive after 20 seconds, screenshot captured"
+echo "PASS: APK installed, activity foregrounded, process alive after 20 seconds, screenshot captured"
