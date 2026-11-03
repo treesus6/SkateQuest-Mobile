@@ -1,0 +1,26 @@
+name: Verify Preview Mapbox Access
+on:
+  push:
+    paths:
+      - '.github/workflows/mapbox-token-health.yml'
+      - 'scripts/mapbox-token-health.cjs'
+      - 'lib/mapboxSetup.native.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.1'
+      - run: npm install --global eas-cli
+      - name: Probe Mapbox style and tile access using EAS preview token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "::error::EXPO_TOKEN missing"; exit 1; }
+          eas env:exec preview "node scripts/mapbox-token-health.cjs" --non-interactive
