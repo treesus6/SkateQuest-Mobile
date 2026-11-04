@@ -19,7 +19,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
-import { getSessionStatus, sessionsService, SessionRsvpResult } from '../lib/sessionsService';
+import { getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../lib/sessionsService';
 
 interface Session {
   id: string;
@@ -198,23 +198,19 @@ export default function SessionsScreen() {
         session.id,
         attending
       );
-      const result = rpcData as SessionRsvpResult | null;
-      if (rpcError || result?.error) {
-        throw new Error(result?.error ?? rpcError?.message ?? 'RSVP failed');
-      }
-      if (result) {
-        setSessions(prev =>
-          prev.map(s =>
-            s.id === session.id
-              ? {
-                  ...s,
-                  is_attending: result.is_attending ?? attending,
-                  attendee_count: result.attendee_count ?? s.attendee_count,
-                }
-              : s
-          )
-        );
-      }
+      if (rpcError) throw rpcError;
+      const result = requireConfirmedSessionRsvp(rpcData, attending);
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === session.id
+            ? {
+                ...s,
+                is_attending: result.is_attending,
+                attendee_count: result.attendee_count,
+              }
+            : s
+        )
+      );
     } catch (err) {
       console.error('toggleRSVP error', err);
       const msg = err instanceof Error ? err.message : '';
