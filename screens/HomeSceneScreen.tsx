@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { profilesService } from '../lib/profilesService';
 import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -81,7 +82,7 @@ export default function HomeSceneScreen() {
     if (!user?.id) return;
 
     const [profileRes, liveRes, questRes, clipRes, bountyRes, mediaRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      profilesService.getById(user.id),
       supabase
         .from('live_checkins')
         .select('*,profiles(username,avatar_url)')
@@ -629,3 +630,4 @@ const s = StyleSheet.create({
   exploreSub: { color: MUTED, fontSize: 9.5, lineHeight: 13, marginTop: 2, paddingRight: 18 },
   exploreArrow: { position: 'absolute', right: 12, top: 14 },
 });
+
