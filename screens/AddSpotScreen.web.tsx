@@ -34,7 +34,7 @@ import {
   getMapboxAvailabilityError,
   getMapInitializationError,
 } from '../lib/mapboxWebSupport';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage, parseSpotCoordinates } from '../lib/spotSubmission';
+import { getSpotPersistenceError, getSpotSubmissionErrorMessage, getSpotSubmissionFailure, parseSpotCoordinates } from '../lib/spotSubmission';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -303,7 +303,17 @@ export default function AddSpotScreen() {
           Logger.warn('Orphan spot photo cleanup failed', cleanupError);
         }
       }
-      Alert.alert('Spot not saved', getSpotSubmissionErrorMessage(error));
+      const failure = getSpotSubmissionFailure(createdId, error);
+      Alert.alert(
+        failure.title,
+        failure.message,
+        failure.spotId
+          ? [
+              { text: 'Check spot', onPress: () => navigation.navigate('SpotDetail', { spotId: failure.spotId }) },
+              { text: 'Close', style: 'cancel' },
+            ]
+          : undefined
+      );
     } finally {
       setSubmitting(false);
     }
