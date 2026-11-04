@@ -1,8 +1,9 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import { MapPin } from 'lucide-react-native';
 import { isMapboxConfigured } from '../lib/mapboxSetup';
+import { isRenderableMapPoint } from '../lib/geoCoordinates';
 
 export default function SpotMiniMap({
   latitude,
@@ -11,6 +12,23 @@ export default function SpotMiniMap({
   latitude: number;
   longitude: number;
 }) {
+  if (!isRenderableMapPoint(latitude, longitude)) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          borderRadius: 18,
+          backgroundColor: '#101722',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+        }}
+      >
+        <Text style={{ color: '#9AA8BA', textAlign: 'center' }}>Spot location unavailable</Text>
+      </View>
+    );
+  }
+
   if (!isMapboxConfigured) {
     return <View style={{ flex: 1, borderRadius: 18, backgroundColor: '#101722' }} />;
   }
