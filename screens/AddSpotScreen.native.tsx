@@ -160,8 +160,11 @@ export default function AddSpotScreen() {
       );
       return;
     }
-    if (!mapReady || mapError) {
-      Alert.alert('Map not ready', mapError ?? 'Wait until the map finishes drawing before saving this spot.');
+    // Map rendering is visual-only: a GPS or manually selected valid pin can be saved
+    // even when Mapbox tiles are still loading or failed to render.
+    const validCoordinates = parseMapCoordinates(coordinates[1], coordinates[0]);
+    if (!validCoordinates) {
+      Alert.alert('Invalid location', 'Choose a valid real-world location before saving.');
       return;
     }
     let uploadedPhotoUrl: string | null = null;
@@ -331,7 +334,7 @@ export default function AddSpotScreen() {
       {locationMessage ? <Text style={s.warning}>{locationMessage}</Text> : null}
       {mapError ? <Text style={s.warning}>{mapError}</Text> : null}
       {!mapReady && !mapError ? (
-        <Text style={s.warning}>Waiting for the map to finish drawing before a spot can be saved.</Text>
+        <Text style={s.warning}>Map is still drawing. You can save once a real location is selected.</Text>
       ) : null}
 
       <View style={s.formCard}>
