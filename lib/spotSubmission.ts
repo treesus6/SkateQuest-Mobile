@@ -154,7 +154,7 @@ export function getSpotSubmissionFailure(
   }
   return {
     title: 'Spot save unconfirmed',
-    message: `${getSpotSubmissionErrorMessage(error)} Check the map before submitting again to avoid duplicates.`,
+    message: `${getSpotSubmissionErrorMessage(error, 'SkateQuest could not confirm the save.')} Check the map before submitting again to avoid duplicates.`,
     spotId: null,
   };
 }
