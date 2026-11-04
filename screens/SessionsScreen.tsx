@@ -19,7 +19,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
-import { getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../lib/sessionsService';
+import { getSessionPersistenceError, getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../lib/sessionsService';
 import { getTomorrowLocalDate, parseLocalSessionDateTime } from '../lib/sessionScheduling';
 
 interface Session {
@@ -270,6 +270,8 @@ export default function SessionsScreen() {
     }
 
     setCreating(true);
+    let attemptedSave = false;
+    let createdSessionId: string | null = null;
     try {
       let resolvedSpotId = routeParams?.spotId ?? null;
       if (!resolvedSpotId && spotName.trim()) {
@@ -283,6 +285,7 @@ export default function SessionsScreen() {
         resolvedSpotId = matchedSpot?.id ?? null;
       }
 
+      attemptedSave = true;
       const { data, error } = await sessionsService.create({
         title: title.trim(),
         spotId: resolvedSpotId,
@@ -295,7 +298,18 @@ export default function SessionsScreen() {
       if (error) throw error;
       const result = data as { error?: string; id?: string } | null;
       if (result?.error) throw new Error(result.error);
-      if (!result?.id) throw new Error('The session did not return a saved record.');
+      createdSessionId = typeof result?.id === 'string' ? result.id.trim() : null;
+      if (!createdSessionId) throw new Error('The session did not return a saved record.');
+
+      const { data: savedSession, error: readError } = await sessionsService.getById(createdSessionId);
+      if (readError) throw readError;
+      const persistenceError = getSessionPersistenceError(savedSession, {
+        id: createdSessionId,
+        title: title.trim(),
+        creatorId: user.id,
+        scheduledTime: scheduledTime.toISOString(),
+      });
+      if (persistenceError) throw new Error(persistenceError);
 
       setCreateVisible(false);
       setTitle('');
@@ -305,7 +319,16 @@ export default function SessionsScreen() {
       await loadSessions();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not create session.';
-      Alert.alert('Error', msg);
+      Alert.alert(
+        attemptedSave
+          ? createdSessionId
+            ? 'Session needs verification'
+            : 'Session save unconfirmed'
+          : 'Error',
+        attemptedSave
+          ? `${msg} Check your sessions before trying again to avoid creating a duplicate.`
+          : msg
+      );
     } finally {
       setCreating(false);
     }

@@ -1,6 +1,6 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../../lib/sessionsService';
+import { getSessionPersistenceError, getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../../lib/sessionsService';
 import { supabase } from '../../lib/supabase';
 import { Logger } from '../../lib/logger';
 
@@ -33,6 +33,31 @@ describe('sessionsService', () => {
     expect(() =>
       requireConfirmedSessionRsvp({ is_attending: true, attendee_count: Number.NaN }, true)
     ).toThrow('not confirmed');
+  });
+
+  it('confirms session creation only when independent read-back matches the server record', () => {
+    const expected = {
+      id: 'session-1',
+      title: 'Saturday ledge session',
+      creatorId: 'skater-1',
+      scheduledTime: '2026-11-07T21:00:00.000Z',
+    };
+    const saved = {
+      id: 'session-1',
+      title: 'Saturday ledge session',
+      creator_id: 'skater-1',
+      scheduled_time: '2026-11-07T21:00:00+00:00',
+      participants: ['skater-1'],
+    };
+
+    expect(getSessionPersistenceError(saved, expected)).toBeNull();
+    expect(getSessionPersistenceError(null, expected)).toContain('read back');
+    expect(getSessionPersistenceError({ ...saved, id: 'other' }, expected)).toContain('ID');
+    expect(getSessionPersistenceError({ ...saved, creator_id: 'other' }, expected)).toContain('creator');
+    expect(getSessionPersistenceError({ ...saved, title: 'Other session' }, expected)).toContain('title');
+    expect(getSessionPersistenceError({ ...saved, scheduled_time: '2026-11-08T21:00:00Z' }, expected)).toContain('time');
+    expect(getSessionPersistenceError({ ...saved, scheduled_time: 'not-a-date' }, expected)).toContain('time');
+    expect(getSessionPersistenceError({ ...saved, participants: [] }, expected)).toContain('attendance');
   });
 
   it('creates sessions through the server-validated RPC', async () => {
