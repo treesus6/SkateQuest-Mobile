@@ -49,6 +49,7 @@ jobs:
       MAPBOX_DOWNLOADS_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
       RNMAPBOX_MAPS_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOADS_TOKEN }}
       CI: '1'
+      GRADLE_USER_HOME: /tmp/skatequest-gradle-home
 
     steps:
       - uses: actions/checkout@v4
@@ -83,6 +84,21 @@ jobs:
         run: |
           npm ci
           npm install --global eas-cli
+
+      # The default generated Gradle config caps Metaspace at 512 MiB,
+      # which exhausted during expo-updates:kspReleaseKotlin in run 41723136479.
+      # User-home Gradle properties override generated project properties;
+      # keep memory bounded on the 7 GiB GitHub-hosted runner.
+      - name: Configure bounded Gradle memory for EAS local build
+        shell: bash
+        run: |
+          mkdir -p "$GRADLE_USER_HOME"
+          cat > "$GRADLE_USER_HOME/gradle.properties" <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          kotlin.compiler.execution.strategy=in-process
+          EOF
+          grep -Fx 'org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8' "$GRADLE_USER_HOME/gradle.properties"
 
       - name: Build preview APK locally with existing EAS credentials
         env:
