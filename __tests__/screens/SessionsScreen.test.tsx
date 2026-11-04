@@ -57,11 +57,11 @@ it('clears the previous account sessions immediately after logout', async () => 
     error: null,
   });
 
-  const view = render(<SessionsScreen />);
+  const view = await render(<SessionsScreen />);
   await waitFor(() => expect(view.getByText('Session from account A')).toBeTruthy());
 
   mockUserRef.current = null;
-  view.rerender(<SessionsScreen />);
+  await view.rerender(<SessionsScreen />);
 
   await waitFor(() => expect(view.queryByText('Session from account A')).toBeNull());
 });
@@ -80,9 +80,9 @@ it('ignores an old account response after switching to a different account', asy
       error: null,
     });
 
-  const view = render(<SessionsScreen />);
+  const view = await render(<SessionsScreen />);
   mockUserRef.current = { id: 'skater-b' };
-  view.rerender(<SessionsScreen />);
+  await view.rerender(<SessionsScreen />);
 
   await waitFor(() => expect(view.getByText('Session from account B')).toBeTruthy());
 
