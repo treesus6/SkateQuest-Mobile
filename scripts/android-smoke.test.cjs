@@ -34,13 +34,19 @@ else if (args === 'shell am start -W -n com.treesus6.skatequest/.MainActivity') 
   if (!state.alive) process.exitCode = 1;
   else console.log(2000 + state.starts);
 } else if (args === 'shell dumpsys activity activities' || args === 'shell dumpsys window windows') {
+  if (second() && process.env.FAKE_ANDROID_SCENARIO === 'window-error' && args === 'shell dumpsys window windows') process.exit(1);
   const app = second() && process.env.FAKE_ANDROID_SCENARIO === 'background' ? 'com.android.launcher' : 'com.treesus6.skatequest';
   // The activity can be resumed while a system ANR dialog covers it.
-  const overlay = second() && process.env.FAKE_ANDROID_SCENARIO === 'system-dialog';
-  console.log('mCurrentFocus=Window{ ' + (overlay ? 'Application Not Responding: com.google.android.apps.nexuslauncher' : app + '/.MainActivity') + ' }');
+  const overlay = second() && (process.env.FAKE_ANDROID_SCENARIO === 'system-dialog' ||
+    (process.env.FAKE_ANDROID_SCENARIO === 'window-dialog' && args === 'shell dumpsys window windows'));
+  if (!(second() && process.env.FAKE_ANDROID_SCENARIO === 'missing-focus')) {
+    console.log('mCurrentFocus=Window{ ' + (overlay ? 'Application Not Responding: com.google.android.apps.nexuslauncher' : app + '/.MainActivity') + ' }');
+  }
   console.log('mFocusedApp=ActivityRecord{ com.treesus6.skatequest/.MainActivity }');
   console.log('topResumedActivity=ActivityRecord{ ' + app + '/.MainActivity }');
 } else if (args === 'logcat -d -v time') {
+  if (second() && process.env.FAKE_ANDROID_SCENARIO === 'logcat-error') { console.log('partial log before device disconnected'); process.exit(1); }
+  if (!(second() && process.env.FAKE_ANDROID_SCENARIO === 'empty-logcat')) console.log('ActivityTaskManager: Displayed com.treesus6.skatequest/.MainActivity');
   if (second() && process.env.FAKE_ANDROID_SCENARIO === 'fatal') console.log('ReactNativeJS: TypeError: relaunch crashed');
 } else if (args === 'exec-out screencap -p') process.stdout.write(Buffer.alloc(1200, 1));
 else throw new Error('Unexpected adb command: ' + args);
@@ -71,7 +77,7 @@ test('requires two launches and retains separate cold and relaunch evidence', ()
   } finally { run.cleanup(); }
 });
 
-for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog']) {
+for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'logcat-error', 'empty-logcat']) {
   test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
     const run = runSmoke(scenario);
     try {

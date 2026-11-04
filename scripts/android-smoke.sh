@@ -5,7 +5,10 @@ base_evidence_dir="$evidence_dir"
 mkdir -p "$evidence_dir"
 collect_evidence() {
   timeout 25s adb shell dumpsys activity activities > "$evidence_dir/activities.txt" || true
-  timeout 30s adb logcat -d -v time > "$evidence_dir/skatequest-logcat.txt" || true
+  logcat_collected=false
+  if timeout 30s adb logcat -d -v time > "$evidence_dir/skatequest-logcat.txt"; then
+    logcat_collected=true
+  fi
   for attempt in 1 2 3; do
     if timeout 20s adb exec-out screencap -p > "$evidence_dir/skatequest-startup.png" && [ "$(wc -c < "$evidence_dir/skatequest-startup.png")" -gt 1000 ]; then return 0; fi
     sleep 2
@@ -35,18 +38,29 @@ launch_and_verify() {
   sleep 20
   timeout 20s adb shell pidof com.treesus6.skatequest | tee "$evidence_dir/skatequest.pid"
   collect_evidence
+  # Missing or partial logs cannot establish that startup was crash-free.
+  if [[ "$logcat_collected" != true ]] || [[ ! -s "$evidence_dir/skatequest-logcat.txt" ]]; then
+    echo "FAIL: $phase startup log collection failed or returned no evidence" >&2
+    return 1
+  fi
   # A live process and screenshot can be false positives if Android returned to
   # the launcher or displayed a system crash dialog. Require the SkateQuest
   # activity to remain foregrounded after the startup settling period.
-  timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt" || true
+  if ! timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt"; then
+    echo "FAIL: $phase unable to collect focused-window evidence" >&2
+    return 1
+  fi
   # Android may leave our activity top-resumed while a system ANR/crash dialog
   # takes actual input focus. The 2026-11-04 emulator evidence showed exactly
   # that: a Pixel Launcher ANR covered the SkateQuest sign-in screen, yet the
   # old resumed-activity-only gate passed. Do not certify an obscured screen.
   local current_focus
-  current_focus="$(grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/activities.txt" || \
-    grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/window-focus.txt" || true)"
-  if [[ -n "$current_focus" && "$current_focus" != *"com.treesus6.skatequest/"* ]]; then
+  current_focus="$(grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/window-focus.txt" || true)"
+  if [[ -z "$current_focus" ]]; then
+    echo "FAIL: $phase focused window is missing from collected evidence" >&2
+    return 1
+  fi
+  if [[ "$current_focus" != *"com.treesus6.skatequest/"* ]]; then
     echo "FAIL: $phase SkateQuest is obscured by another focused window: $current_focus" >&2
     return 1
   fi
