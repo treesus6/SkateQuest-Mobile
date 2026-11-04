@@ -44,14 +44,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
 
   initialize: () => {
+    // getSession and onAuthStateChange can finish in either order. A delayed
+    // startup read must never restore an account after SIGNED_OUT or replace
+    // a newer account's session after SIGNED_IN.
+    let disposed = false;
+    let authEventSeen = false;
     const timeout = setTimeout(() => {
-      set({ loading: false });
+      if (!disposed) set({ loading: false });
     }, 10000);
 
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
         clearTimeout(timeout);
+        if (disposed || authEventSeen) return;
         set({
           session,
           user: session?.user ?? null,
@@ -60,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
       .catch((error) => {
         clearTimeout(timeout);
+        if (disposed || authEventSeen) return;
         console.error('Supabase session error:', error);
         set({ loading: false });
       });
@@ -67,6 +74,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (disposed) return;
+      authEventSeen = true;
+      clearTimeout(timeout);
       set({
         session,
         user: session?.user ?? null,
@@ -100,6 +110,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
 
     return () => {
+      disposed = true;
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
