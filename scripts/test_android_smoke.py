@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -18,22 +19,48 @@ class AndroidSmokeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             adb = folder / 'adb'
-            adb.write_text('''#!/bin/sh
-case "$*" in
-  'shell pidof com.treesus6.skatequest')
-    test "$FAIL_PID" = 0 || exit 1
-    echo 1234 ;;
-  'logcat -d -v time') echo 'diagnostic log' ;;
-  'shell dumpsys activity activities') echo 'activity state' ;;
-  'pull /sdcard/skatequest-startup.png '*) touch "$3" ;;
-esac
+            adb.write_text('#!' + sys.executable + '''
+import os
+from pathlib import Path
+import sys
+
+args = ' '.join(sys.argv[1:])
+state = Path(os.environ['FAKE_ANDROID_STATE'])
+if args == 'install -r /tmp/skatequest.apk':
+    print('Success')
+elif args == 'shell pm path com.treesus6.skatequest':
+    print('package:/data/app/base.apk')
+elif args.startswith('shell cmd package resolve-activity '):
+    print('com.treesus6.skatequest/.MainActivity')
+elif args == 'logcat -c':
+    pass
+elif args == 'shell am force-stop com.treesus6.skatequest':
+    state.unlink(missing_ok=True)
+elif args == 'shell am start -W -n com.treesus6.skatequest/.MainActivity':
+    state.write_text('alive')
+    print('Status: ok')
+elif args == 'shell pidof com.treesus6.skatequest':
+    if not state.exists() or os.environ['FAIL_PID'] == '1':
+        sys.exit(1)
+    print('1234')
+elif args == 'logcat -d -v time':
+    print('diagnostic log')
+elif args == 'shell dumpsys activity activities':
+    print('topResumedActivity=ActivityRecord{ com.treesus6.skatequest/.MainActivity }')
+elif args == 'shell dumpsys window windows':
+    print('mCurrentFocus=Window{ com.treesus6.skatequest/.MainActivity }')
+elif args == 'exec-out screencap -p':
+    sys.stdout.buffer.write(bytes(1200))
+else:
+    raise RuntimeError('Unexpected adb command: ' + args)
 ''')
             adb.chmod(0o755)
             sleep = folder / 'sleep'
             sleep.write_text('#!/bin/sh\nexit 0\n')
             sleep.chmod(0o755)
             env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'],
-                       FAIL_PID=str(int(fail_pid)), SMOKE_EVIDENCE_DIR=directory)
+                       FAIL_PID=str(int(fail_pid)), SMOKE_EVIDENCE_DIR=directory,
+                       FAKE_ANDROID_STATE=str(folder / 'state'))
             # The action runs each script line in a new sh process.
             result = None
             for command in step['with']['script'].strip().splitlines():
