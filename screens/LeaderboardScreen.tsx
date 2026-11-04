@@ -43,7 +43,9 @@ export default function LeaderboardScreen() {
               <Text className="text-white text-[16px] font-black">@{item.username}</Text>
               {rank === 1 ? <Crown size={13} color="#FFD700" fill="#FFD700" /> : null}
             </View>
-            <Text className="text-[#7B8493] text-xs mt-1">Level {item.level} · {item.spots_added} spots</Text>
+            <Text className="text-[#7B8493] text-xs mt-1">
+              Level {item.level}{item.spots_added != null ? ` · ${item.spots_added} spots` : ''}
+            </Text>
           </View>
           <View className="items-end">
             <View className="flex-row items-center gap-1">
@@ -99,3 +101,4 @@ export default function LeaderboardScreen() {
     </View>
   );
 }
+

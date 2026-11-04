@@ -1,13 +1,14 @@
 import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
+import { PUBLIC_PROFILE_SELECT } from './profileColumns';
 
 export const profilesService = {
   async getById(userId: string) {
     try {
       return await supabase
         .from('profiles')
-        .select('*')
+        .select(PUBLIC_PROFILE_SELECT)
         .eq('id', userId)
         .single();
     } catch (error) {
@@ -27,7 +28,7 @@ export const profilesService = {
     badges?: Record<string, boolean>;
   }) {
     try {
-      return await supabase.from('profiles').insert([profile]).select().single();
+      return await supabase.from('profiles').insert([profile]).select(PUBLIC_PROFILE_SELECT).single();
     } catch (error) {
       Logger.error('profilesService.create failed', error);
       throw new ServiceError('Failed to create profile', 'PROFILES_CREATE_FAILED', error);
@@ -40,7 +41,7 @@ export const profilesService = {
         .from('profiles')
         .update(updates)
         .eq('id', userId)
-        .select()
+        .select(PUBLIC_PROFILE_SELECT)
         .single();
     } catch (error) {
       Logger.error('profilesService.update failed', error);
@@ -63,7 +64,7 @@ export const profilesService = {
     try {
       return await supabase
         .from('profiles')
-        .select('*')
+        .select(PUBLIC_PROFILE_SELECT)
         .order('xp', { ascending: false })
         .limit(limit);
     } catch (error) {
@@ -72,3 +73,4 @@ export const profilesService = {
     }
   },
 };
+

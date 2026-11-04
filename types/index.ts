@@ -121,7 +121,8 @@ export interface UserProfile {
   username: string;
   level: number;
   xp: number;
-  spots_added: number;
+  // Legacy clients may supply this; the current profiles table has no such column.
+  spots_added?: number;
   challenges_completed: string[];
   streak?: number;
   badges?: { [key: string]: boolean };
@@ -314,3 +315,4 @@ export interface CharityStats {
   total_kids_helped: number;
   last_updated: string;
 }
+
