@@ -1,6 +1,7 @@
 import {
   getSpotSubmissionErrorMessage,
   getSpotPersistenceError,
+  getSpotSubmissionFailure,
   parseSpotCoordinates,
 } from '../../lib/spotSubmission';
 import type { PersistedSpotExpectation } from '../../lib/spotSubmission';
@@ -159,5 +160,33 @@ describe('getSpotSubmissionErrorMessage', () => {
 
   it('falls back when an error has no readable message', () => {
     expect(getSpotSubmissionErrorMessage(null, 'Try again.')).toBe('Try again.');
+  });
+});
+
+describe('getSpotSubmissionFailure', () => {
+  it('does not claim a failed save after the server returned a spot ID', () => {
+    expect(getSpotSubmissionFailure(' spot-123 ', new Error('Read-back timed out'))).toEqual({
+      title: 'Spot needs verification',
+      message:
+        'SkateQuest received a spot ID, but could not verify all saved details. Open that spot to check it before submitting again.',
+      spotId: 'spot-123',
+    });
+  });
+
+  it('uses a neutral fallback if no server error message is available', () => {
+    expect(getSpotSubmissionFailure('', null)).toEqual({
+      title: 'Spot save unconfirmed',
+      message:
+        'SkateQuest could not confirm the save. Check the map before submitting again to avoid duplicates.',
+      spotId: null,
+    });
+  });
+
+  it('does not claim failure when the create acknowledgement is ambiguous', () => {
+    expect(getSpotSubmissionFailure('', new Error('Network request failed'))).toEqual({
+      title: 'Spot save unconfirmed',
+      message: 'Network request failed Check the map before submitting again to avoid duplicates.',
+      spotId: null,
+    });
   });
 });

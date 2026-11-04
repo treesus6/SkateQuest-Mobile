@@ -18,7 +18,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
 import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import { Logger } from '../lib/logger';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
+import { getSpotPersistenceError, getSpotSubmissionErrorMessage, getSpotSubmissionFailure } from '../lib/spotSubmission';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
 import { parseMapCoordinates } from '../lib/geoCoordinates';
 
@@ -252,7 +252,17 @@ export default function AddSpotScreen() {
           Logger.warn('Orphan spot photo cleanup failed', cleanupError);
         }
       }
-      Alert.alert('Spot not saved', getSpotSubmissionErrorMessage(error));
+      const failure = getSpotSubmissionFailure(createdId, error);
+      Alert.alert(
+        failure.title,
+        failure.message,
+        failure.spotId
+          ? [
+              { text: 'Check spot', onPress: () => navigation.navigate('SpotDetail', { spotId: failure.spotId }) },
+              { text: 'Close', style: 'cancel' },
+            ]
+          : undefined
+      );
     } finally {
       setSubmitting(false);
     }

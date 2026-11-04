@@ -134,3 +134,27 @@ export function getSpotSubmissionErrorMessage(
   }
   return fallback;
 }
+
+/**
+ * An RPC may have committed before a read-back or network acknowledgement fails.
+ * Never tell a skater the spot was definitely not saved when its status is unknown.
+ */
+export function getSpotSubmissionFailure(
+  createdId: string,
+  error: unknown
+): { title: string; message: string; spotId: string | null } {
+  const spotId = createdId.trim();
+  if (spotId) {
+    return {
+      title: 'Spot needs verification',
+      message:
+        'SkateQuest received a spot ID, but could not verify all saved details. Open that spot to check it before submitting again.',
+      spotId,
+    };
+  }
+  return {
+    title: 'Spot save unconfirmed',
+    message: `${getSpotSubmissionErrorMessage(error, 'SkateQuest could not confirm the save.')} Check the map before submitting again to avoid duplicates.`,
+    spotId: null,
+  };
+}
