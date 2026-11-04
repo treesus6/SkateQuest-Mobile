@@ -35,7 +35,10 @@ else if (args === 'shell am start -W -n com.treesus6.skatequest/.MainActivity') 
   else console.log(2000 + state.starts);
 } else if (args === 'shell dumpsys activity activities' || args === 'shell dumpsys window windows') {
   const app = second() && process.env.FAKE_ANDROID_SCENARIO === 'background' ? 'com.android.launcher' : 'com.treesus6.skatequest';
-  console.log('mCurrentFocus=Window{ ' + app + '/.MainActivity }');
+  // The activity can be resumed while a system ANR dialog covers it.
+  const overlay = second() && process.env.FAKE_ANDROID_SCENARIO === 'system-dialog';
+  console.log('mCurrentFocus=Window{ ' + (overlay ? 'Application Not Responding: com.google.android.apps.nexuslauncher' : app + '/.MainActivity') + ' }');
+  console.log('mFocusedApp=ActivityRecord{ com.treesus6.skatequest/.MainActivity }');
   console.log('topResumedActivity=ActivityRecord{ ' + app + '/.MainActivity }');
 } else if (args === 'logcat -d -v time') {
   if (second() && process.env.FAKE_ANDROID_SCENARIO === 'fatal') console.log('ReactNativeJS: TypeError: relaunch crashed');
@@ -68,7 +71,7 @@ test('requires two launches and retains separate cold and relaunch evidence', ()
   } finally { run.cleanup(); }
 });
 
-for (const scenario of ['start-error', 'background', 'fatal']) {
+for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog']) {
   test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
     const run = runSmoke(scenario);
     try {

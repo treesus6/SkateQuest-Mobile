@@ -39,6 +39,17 @@ launch_and_verify() {
   # the launcher or displayed a system crash dialog. Require the SkateQuest
   # activity to remain foregrounded after the startup settling period.
   timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt" || true
+  # Android may leave our activity top-resumed while a system ANR/crash dialog
+  # takes actual input focus. The 2026-11-04 emulator evidence showed exactly
+  # that: a Pixel Launcher ANR covered the SkateQuest sign-in screen, yet the
+  # old resumed-activity-only gate passed. Do not certify an obscured screen.
+  local current_focus
+  current_focus="$(grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/activities.txt" || \
+    grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/window-focus.txt" || true)"
+  if [[ -n "$current_focus" && "$current_focus" != *"com.treesus6.skatequest/"* ]]; then
+    echo "FAIL: $phase SkateQuest is obscured by another focused window: $current_focus" >&2
+    return 1
+  fi
   if ! grep -E '(mCurrentFocus|mFocusedApp).*com\.treesus6\.skatequest' "$evidence_dir/window-focus.txt" >/dev/null && \
      ! grep -E '(topResumedActivity|mResumedActivity).*com\.treesus6\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
     echo "FAIL: $phase SkateQuest process exists but its activity is not foregrounded" >&2
