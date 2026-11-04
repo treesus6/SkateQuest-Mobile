@@ -227,6 +227,78 @@ describe('useAuthStore', () => {
       expect(state.user).toBeNull();
     });
 
+    it('does not resurrect a signed-out account from a delayed startup session read', async () => {
+      let resolveRead!: (value: unknown) => void;
+      let onAuthChange!: (event: string, session: unknown) => void;
+      mockGetSession.mockImplementation(
+        () => new Promise(resolve => { resolveRead = resolve; })
+      );
+      mockOnAuthStateChange.mockImplementation(callback => {
+        onAuthChange = callback;
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      });
+
+      const cleanup = useAuthStore.getState().initialize();
+      act(() => onAuthChange('SIGNED_OUT', null));
+      await act(async () => {
+        resolveRead({ data: { session: { user: { id: 'old-user' }, access_token: 'old-token' } } });
+        await Promise.resolve();
+      });
+
+      expect(useAuthStore.getState()).toEqual(expect.objectContaining({
+        user: null, session: null, loading: false,
+      }));
+      cleanup();
+    });
+
+    it('does not replace a newly signed-in account with a stale startup account', async () => {
+      let resolveRead!: (value: unknown) => void;
+      let onAuthChange!: (event: string, session: unknown) => void;
+      mockGetSession.mockImplementation(
+        () => new Promise(resolve => { resolveRead = resolve; })
+      );
+      mockOnAuthStateChange.mockImplementation(callback => {
+        onAuthChange = callback;
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      });
+
+      const cleanup = useAuthStore.getState().initialize();
+      const newSession = { user: { id: 'new-user' }, access_token: 'new-token' };
+      act(() => onAuthChange('SIGNED_IN', newSession));
+      await act(async () => {
+        resolveRead({ data: { session: { user: { id: 'old-user' }, access_token: 'old-token' } } });
+        await Promise.resolve();
+      });
+
+      expect(useAuthStore.getState().user?.id).toBe('new-user');
+      expect(useAuthStore.getState().session).toEqual(newSession);
+      cleanup();
+    });
+
+    it('ignores a delayed startup read and auth event after initialize cleanup', async () => {
+      let resolveRead!: (value: unknown) => void;
+      let onAuthChange!: (event: string, session: unknown) => void;
+      mockGetSession.mockImplementation(
+        () => new Promise(resolve => { resolveRead = resolve; })
+      );
+      mockOnAuthStateChange.mockImplementation(callback => {
+        onAuthChange = callback;
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      });
+
+      const cleanup = useAuthStore.getState().initialize();
+      cleanup();
+      act(() => onAuthChange('SIGNED_IN', { user: { id: 'late-user' } }));
+      await act(async () => {
+        resolveRead({ data: { session: { user: { id: 'late-user' } } } });
+        await Promise.resolve();
+      });
+
+      expect(useAuthStore.getState()).toEqual(expect.objectContaining({
+        user: null, session: null, loading: true,
+      }));
+    });
+
     it('should unsubscribe and clear timeout on cleanup', async () => {
       const mockUnsubscribe = jest.fn();
       mockGetSession.mockResolvedValue({ data: { session: null } });
