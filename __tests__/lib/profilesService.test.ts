@@ -1,4 +1,5 @@
 import { profilesService } from '../../lib/profilesService';
+import type { UserProfile } from '../../types';
 
 const mockFetch = jest.fn();
 jest.mock('../../lib/supabase', () => {
@@ -46,7 +47,10 @@ describe('profilesService public projection compatibility', () => {
 
   it('loads an owner or public profile without requiring sensitive-column SELECT', async () => {
     const result = await profilesService.getById('user-1');
+    // Compile-time caller contract: the live schema has no spots_added column.
+    const profile: UserProfile | null = result.data;
     expect(result.error).toBeNull();
+    expect(profile?.id).toBe('user-1');
     expect(result.data).toMatchObject({ id: 'user-1', username: 'Skater', xp: 100, level: 2 });
     const url = new URL(mockFetch.mock.calls[0][0]);
     expect(url.searchParams.get('id')).toBe('eq.user-1');
@@ -58,7 +62,9 @@ describe('profilesService public projection compatibility', () => {
 
   it('loads the XP-ordered leaderboard with the same safe projection', async () => {
     const result = await profilesService.getLeaderboard(12);
+    const profiles: UserProfile[] | null = result.data;
     expect(result.error).toBeNull();
+    expect(profiles?.[0].id).toBe('user-1');
     expect(result.data).toEqual([publicProfile]);
     const url = new URL(mockFetch.mock.calls[0][0]);
     expect(url.searchParams.get('order')).toBe('xp.desc');
