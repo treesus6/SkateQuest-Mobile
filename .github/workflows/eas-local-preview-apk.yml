@@ -100,6 +100,9 @@ jobs:
           EOF
           grep -Fx 'org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8' "$GRADLE_USER_HOME/gradle.properties"
 
+      - name: Test Android smoke-test gates
+        run: node --test scripts/android-smoke.test.cjs
+
       - name: Build preview APK locally with existing EAS credentials
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -199,5 +202,8 @@ jobs:
             /tmp/activities.txt
             /tmp/window-focus.txt
             /tmp/skatequest.pid
+            /tmp/skatequest-cold-start.txt
+            /tmp/skatequest-fatal-lines.txt
+            /tmp/skatequest-relaunch-evidence/
           retention-days: 14
           if-no-files-found: warn

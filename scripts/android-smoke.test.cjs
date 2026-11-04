@@ -1,0 +1,83 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { test } = require('node:test');
+
+// Exercise the real shell script. Only the external Android device and
+// twenty-second settling delay are replaced; file collection and gates are real.
+function runSmoke(scenario) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'android-smoke-test-'));
+  const bin = path.join(root, 'bin');
+  const evidence = path.join(root, 'evidence');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'sleep'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'adb'), `#!${process.execPath}
+const fs = require('node:fs');
+const args = process.argv.slice(2).join(' ');
+const stateFile = process.env.FAKE_ANDROID_STATE;
+let state = fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile)) : { starts: 0, alive: false };
+const second = () => state.starts === 2;
+if (args.startsWith('install -r ')) console.log('Success');
+else if (args === 'shell pm path com.treesus6.skatequest') console.log('package:/data/app/base.apk');
+else if (args === 'logcat -c') {}
+else if (args === 'shell am force-stop com.treesus6.skatequest') state.alive = false;
+else if (args.startsWith('shell cmd package resolve-activity ')) console.log('com.treesus6.skatequest/.MainActivity');
+else if (args === 'shell am start -W -n com.treesus6.skatequest/.MainActivity') {
+  state.starts++;
+  state.alive = true;
+  console.log(second() && process.env.FAKE_ANDROID_SCENARIO === 'start-error' ? 'Status: error' : 'Status: ok');
+  console.log('LaunchState: COLD');
+  console.log('Activity: com.treesus6.skatequest/.MainActivity');
+} else if (args === 'shell pidof com.treesus6.skatequest') {
+  if (!state.alive) process.exitCode = 1;
+  else console.log(2000 + state.starts);
+} else if (args === 'shell dumpsys activity activities' || args === 'shell dumpsys window windows') {
+  const app = second() && process.env.FAKE_ANDROID_SCENARIO === 'background' ? 'com.android.launcher' : 'com.treesus6.skatequest';
+  console.log('mCurrentFocus=Window{ ' + app + '/.MainActivity }');
+  console.log('topResumedActivity=ActivityRecord{ ' + app + '/.MainActivity }');
+} else if (args === 'logcat -d -v time') {
+  if (second() && process.env.FAKE_ANDROID_SCENARIO === 'fatal') console.log('ReactNativeJS: TypeError: relaunch crashed');
+} else if (args === 'exec-out screencap -p') process.stdout.write(Buffer.alloc(1200, 1));
+else throw new Error('Unexpected adb command: ' + args);
+fs.writeFileSync(stateFile, JSON.stringify(state));
+`, { mode: 0o755 });
+  const result = spawnSync('bash', [path.join(__dirname, 'android-smoke.sh')], {
+    encoding: 'utf8',
+    timeout: 10000,
+    env: {
+      ...process.env,
+      PATH: `${bin}:${process.env.PATH}`,
+      SMOKE_EVIDENCE_DIR: evidence,
+      FAKE_ANDROID_STATE: path.join(root, 'state.json'),
+      FAKE_ANDROID_SCENARIO: scenario,
+    },
+  });
+  return { result, root, evidence, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
+}
+
+test('requires two launches and retains separate cold and relaunch evidence', () => {
+  const run = runSmoke('success');
+  try {
+    assert.equal(run.result.status, 0, run.result.stderr);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(run.root, 'state.json'))).starts, 2);
+    for (const name of ['skatequest-cold-start.txt', 'skatequest-startup.png', 'skatequest-relaunch-evidence/skatequest-relaunch-start.txt', 'skatequest-relaunch-evidence/skatequest-startup.png']) {
+      assert.ok(fs.statSync(path.join(run.evidence, name)).size > 0, name);
+    }
+  } finally { run.cleanup(); }
+});
+
+for (const scenario of ['start-error', 'background', 'fatal']) {
+  test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
+    const run = runSmoke(scenario);
+    try {
+      assert.equal(run.result.error, undefined);
+      assert.notEqual(run.result.status, null, run.result.stderr);
+      assert.notEqual(run.result.status, 0, run.result.stdout);
+      assert.match(run.result.stdout + run.result.stderr, /FAIL:/);
+      assert.ok(fs.statSync(path.join(run.evidence, 'skatequest-cold-start.txt')).size > 0);
+      assert.ok(fs.statSync(path.join(run.evidence, 'skatequest-relaunch-evidence/skatequest-relaunch-start.txt')).size > 0);
+    } finally { run.cleanup(); }
+  });
+}
