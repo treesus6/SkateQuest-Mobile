@@ -1,6 +1,6 @@
 /// <reference path="../../types/testEnvShims.d.ts" />
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { getSessionStatus, sessionsService } from '../../lib/sessionsService';
+import { getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../../lib/sessionsService';
 import { supabase } from '../../lib/supabase';
 import { Logger } from '../../lib/logger';
 
@@ -18,6 +18,21 @@ describe('sessionsService', () => {
     expect(getSessionStatus('2026-08-24T18:30:00.000Z', now)).toBe('upcoming');
     expect(getSessionStatus('2026-08-24T17:30:00.000Z', now)).toBe('live');
     expect(getSessionStatus('2026-08-24T15:30:00.000Z', now)).toBe('ended');
+  });
+
+  it('requires an explicit matching RSVP state and valid attendee count', () => {
+    expect(requireConfirmedSessionRsvp({ is_attending: true, attendee_count: 0 }, true)).toEqual({
+      is_attending: true,
+      attendee_count: 0,
+    });
+    expect(() => requireConfirmedSessionRsvp(null, true)).toThrow('not confirmed');
+    expect(() => requireConfirmedSessionRsvp({ error: 'full' }, true)).toThrow('full');
+    expect(() =>
+      requireConfirmedSessionRsvp({ is_attending: false, attendee_count: 2 }, true)
+    ).toThrow('not confirmed');
+    expect(() =>
+      requireConfirmedSessionRsvp({ is_attending: true, attendee_count: Number.NaN }, true)
+    ).toThrow('not confirmed');
   });
 
   it('creates sessions through the server-validated RPC', async () => {
