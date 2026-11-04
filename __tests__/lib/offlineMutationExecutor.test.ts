@@ -22,14 +22,14 @@ describe('offline mutation executor', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('persists create and delete through the server RSVP RPC', async () => {
-    mockRpc.mockResolvedValue({ data: { is_attending: true }, error: null });
+    mockRpc.mockResolvedValue({ data: { is_attending: true, attendee_count: 2 }, error: null });
     await executeOfflineMutation(mutation());
     expect(mockRpc).toHaveBeenCalledWith('set_session_rsvp', {
       p_session_id: 'session-1',
       p_attending: true,
     });
 
-    mockRpc.mockResolvedValue({ data: { is_attending: false }, error: null });
+    mockRpc.mockResolvedValue({ data: { is_attending: false, attendee_count: 1 }, error: null });
     await executeOfflineMutation(mutation({ type: 'delete' }));
     expect(mockRpc).toHaveBeenLastCalledWith('set_session_rsvp', {
       p_session_id: 'session-1',
@@ -56,5 +56,21 @@ describe('offline mutation executor', () => {
 
     mockRpc.mockResolvedValue({ data: { error: 'session_full' }, error: null });
     await expect(executeOfflineMutation(mutation())).rejects.toThrow('session_full');
+  });
+
+  it('keeps offline RSVPs queued when the RPC response cannot prove persistence', async () => {
+    for (const data of [
+      null,
+      {},
+      { is_attending: true },
+      { is_attending: false, attendee_count: 1 },
+      { is_attending: true, attendee_count: -1 },
+      { is_attending: true, attendee_count: 1.5 },
+    ]) {
+      mockRpc.mockResolvedValue({ data, error: null });
+      await expect(executeOfflineMutation(mutation())).rejects.toThrow(
+        'Session RSVP was not confirmed by the server'
+      );
+    }
   });
 });
