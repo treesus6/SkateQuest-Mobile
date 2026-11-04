@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { requireConfirmedSessionRsvp } from './sessionsService';
 import type { OfflineMutation } from '../stores/useMutationQueueStore';
 
 /**
@@ -22,6 +23,5 @@ export async function executeOfflineMutation(mutation: OfflineMutation): Promise
     p_attending: mutation.type === 'create',
   });
   if (error) throw error;
-  const result = data as { error?: string } | null;
-  if (result?.error) throw new Error(result.error);
+  requireConfirmedSessionRsvp(data, mutation.type === 'create');
 }
