@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
 import { getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../lib/sessionsService';
+import { getTomorrowLocalDate, parseLocalSessionDateTime } from '../lib/sessionScheduling';
 
 interface Session {
   id: string;
@@ -85,11 +86,7 @@ export default function SessionsScreen() {
   // Create form state — pre-filled from route params when coming from CheckInScreen
   const [title, setTitle] = useState('');
   const [spotName, setSpotName] = useState(routeParams?.spotName ?? '');
-  const [date, setDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  });
+  const [date, setDate] = useState(() => getTomorrowLocalDate());
   const [time, setTime] = useState('14:00');
   const [description, setDescription] = useState('');
   const [maxAttendees, setMaxAttendees] = useState('');
@@ -232,7 +229,7 @@ export default function SessionsScreen() {
       Alert.alert('Invalid title', 'Enter a session title between 2 and 120 characters.');
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
+    if (!parseLocalSessionDateTime(date, '12:00')) {
       Alert.alert('Invalid date', 'Use YYYY-MM-DD, for example 2026-08-08.');
       return;
     }
@@ -262,8 +259,12 @@ export default function SessionsScreen() {
       return;
     }
 
-    const scheduledTime = new Date(`${date}T${time}:00`);
-    if (Number.isNaN(scheduledTime.getTime()) || scheduledTime.getTime() <= Date.now()) {
+    const scheduledTime = parseLocalSessionDateTime(date, time);
+    if (!scheduledTime) {
+      Alert.alert('Invalid local time', 'That time does not exist on the selected date. Choose another time.');
+      return;
+    }
+    if (scheduledTime.getTime() <= Date.now()) {
       Alert.alert('Choose a future time', 'Session time must be later than right now.');
       return;
     }
