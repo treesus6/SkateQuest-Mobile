@@ -163,7 +163,6 @@ describe('getSpotSubmissionErrorMessage', () => {
   });
 });
 
-
 describe('getSpotSubmissionFailure', () => {
   it('does not claim a failed save after the server returned a spot ID', () => {
     expect(getSpotSubmissionFailure(' spot-123 ', new Error('Read-back timed out'))).toEqual({
@@ -171,6 +170,15 @@ describe('getSpotSubmissionFailure', () => {
       message:
         'SkateQuest received a spot ID, but could not verify all saved details. Open that spot to check it before submitting again.',
       spotId: 'spot-123',
+    });
+  });
+
+  it('uses a neutral fallback if no server error message is available', () => {
+    expect(getSpotSubmissionFailure('', null)).toEqual({
+      title: 'Spot save unconfirmed',
+      message:
+        'SkateQuest could not confirm the save. Check the map before submitting again to avoid duplicates.',
+      spotId: null,
     });
   });
 
