@@ -82,6 +82,10 @@ export default function SessionsScreen() {
   const [createVisible, setCreateVisible] = useState(false);
   const [creating, setCreating] = useState(false);
   const [rsvpingId, setRsvpingId] = useState<string | null>(null);
+  // Prevent an old account's in-flight request from repopulating Sessions after logout/switch.
+  const loadVersionRef = useRef(0);
+  const activeUserIdRef = useRef(user?.id);
+  activeUserIdRef.current = user?.id;
 
   // Create form state — pre-filled from route params when coming from CheckInScreen
   const [title, setTitle] = useState('');
@@ -102,7 +106,14 @@ export default function SessionsScreen() {
   }, []);
 
   const loadSessions = useCallback(async () => {
-    if (!user?.id) return;
+    const requestedUserId = user?.id;
+    const loadVersion = ++loadVersionRef.current;
+    const isCurrentLoad = () =>
+      loadVersionRef.current === loadVersion && activeUserIdRef.current === requestedUserId;
+    if (!requestedUserId) {
+      setSessions([]);
+      return;
+    }
     try {
       const { data: rawSessions, error: sessionsError } = await supabase
         .from('skate_sessions')
@@ -114,7 +125,7 @@ export default function SessionsScreen() {
 
       if (sessionsError) throw sessionsError;
       if (!rawSessions?.length) {
-        setSessions([]);
+        if (isCurrentLoad()) setSessions([]);
         return;
       }
 
@@ -151,13 +162,15 @@ export default function SessionsScreen() {
         attendee_count: s.participants?.length ?? 0,
         max_attendees: s.max_participants,
         status: getSessionStatus(s.scheduled_time),
-        is_attending: (s.participants ?? []).includes(user.id),
+        is_attending: (s.participants ?? []).includes(requestedUserId),
       }));
 
-      setSessions(mapped);
+      if (isCurrentLoad()) setSessions(mapped);
     } catch (err) {
-      console.error('loadSessions error', err);
-      Alert.alert('Could not load sessions', 'Check your connection and try again.');
+      if (isCurrentLoad()) {
+        console.error('loadSessions error', err);
+        Alert.alert('Could not load sessions', 'Check your connection and try again.');
+      }
     }
   }, [user?.id]);
 
