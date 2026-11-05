@@ -85,7 +85,7 @@ test('requires two launches and retains separate cold and relaunch evidence', ()
   } finally { run.cleanup(); }
 });
 
-for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'input-dialog', 'activity-dialog', 'logcat-error', 'empty-logcat']) {
+for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'missing-focus', 'input-dialog', 'activity-dialog', 'logcat-error', 'empty-logcat']) {
   test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
     const run = runSmoke(scenario);
     try {
@@ -113,5 +113,13 @@ test('accepts a real focused window reported only by activity diagnostics', () =
   try {
     assert.equal(run.result.status, 0, run.result.stderr);
     assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/activities.txt'), 'utf8'), /mCurrentFocus=.*com\.treesus6\.skatequest/);
+  } finally { run.cleanup(); }
+});
+
+test('accepts activity diagnostics if WindowManager dumpsys exits unsuccessfully', () => {
+  const run = runSmoke('window-error');
+  try {
+    assert.equal(run.result.status, 0, run.result.stderr);
+    assert.ok(fs.statSync(path.join(run.evidence, 'skatequest-relaunch-evidence/skatequest-startup.png')).size > 1000);
   } finally { run.cleanup(); }
 });
