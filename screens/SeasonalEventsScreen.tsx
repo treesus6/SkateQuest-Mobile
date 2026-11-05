@@ -172,8 +172,7 @@ export default function SeasonalEventsScreen() {
             </View>
           </View>
           <Text style={s.eyebrow}>REAL EVENT WINDOWS • REAL REWARD LEDGER</Text>
-          <Text style={s.title}>SEASONAL{'
-'}EVENTS.</Text>
+          <Text style={s.title}>SEASONAL{'\\n'}EVENTS.</Text>
           <Text style={s.subtitle}>
             SkateQuest only shows seasons that actually exist in the live event catalog.
           </Text>
