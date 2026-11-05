@@ -21,7 +21,8 @@
     "update:production": "eas update --branch production --message 'prod: release'",
     "export:web": "expo export --platform web --output-dir dist",
     "export:web:github-pages": "EXPO_PUBLIC_BASE_URL=/SkateQuest-Mobile expo export --platform web --output-dir dist",
-    "deploy:web": "eas deploy --environment production --prod"
+    "deploy:web": "eas deploy --environment production --prod",
+    "test:dependency-security": "node --test scripts/dependency-security.test.cjs"
   },
   "trustedDependencies": [
     "@sentry/cli"
@@ -78,7 +79,7 @@
     "react-native-url-polyfill": "^4.0.0",
     "react-native-web": "^0.21.4",
     "react-native-worklets": "0.11.4",
-    "sanitize-html": ">=2.17.3",
+    "sanitize-html": "^2.18.1",
     "vexo-analytics": "1.5.8",
     "yup": "^1.7.1",
     "zustand": "^5.0.11"
@@ -119,11 +120,21 @@
   },
   "private": true,
   "overrides": {
-    "@xmldom/xmldom": "0.8.13",
+    "@xmldom/xmldom": "0.8.15",
     "react": "19.2.7",
     "react-native": "0.86.3",
-    "shell-quote": ">=1.8.2",
-    "fast-uri": ">=3.1.0"
+    "shell-quote": "^1.12.0",
+    "fast-uri": ">=3.1.0",
+    "node-forge": "^1.4.3",
+    "source-map-js": "^1.2.2",
+    "minimatch@>=7 <11.0.1": "^11.0.4",
+    "zod": "^4.6.7",
+    "@expo/ngrok": {
+      "uuid": "11.1.1"
+    },
+    "@expo/fingerprint": {
+      "glob": "^14.0.3"
+    }
   },
   "expo": {
     "install": {
