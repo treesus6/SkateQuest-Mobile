@@ -1,13 +1,13 @@
 /** Active skate session with verified server-backed XP. */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Modal, Vibration, StyleSheet, Animated } from 'react-native';
-import { Play, Square, Plus, Music, Heart, Zap, MapPin, Clock, Flame, Trophy, Pause, Radio } from 'lucide-react-native';
+import { Play, Square, Plus, Music, Zap, MapPin, Clock, Flame, Trophy, Pause, Radio } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '../lib/useNavigation';
 import { NativeStackNavigationProp } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { feedService } from '../lib/feedService';
 import { supabase } from '../lib/supabase';
-import { SessionTimer, saveSkateSessionToHealth, estimateCalories } from '../lib/healthService';
+import { SessionTimer, estimateCalories } from '../lib/healthService';
 import { RootStackParamList } from '../types';
 
 const XP_PER_MINUTE = 2;
@@ -48,7 +48,6 @@ export default function ActiveSessionScreen() {
   const [starting, setStarting] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
-  const [healthSynced, setHealthSynced] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const calories = estimateCalories(Math.floor(elapsedSeconds / 60));
@@ -101,10 +100,8 @@ export default function ActiveSessionScreen() {
       const verifiedCalories = estimateCalories(durationMinutes);
       const { error: feedError } = await feedService.create({ user_id: user.id, activity_type: 'skate_session', title: `Skated ${spotName} for ${durationMinutes} min`, description: `${trickCount} tricks logged · ~${verifiedCalories} cal burned`, xp_earned: xpAwarded });
       if (feedError) console.warn('Verified session saved, but feed activity failed:', feedError.message);
-      const healthResult = await saveSkateSessionToHealth({ startTime: timerRef.current.getStartTime() || new Date(), endTime: timerRef.current.getEndTime() || new Date(), durationMinutes, caloriesBurned: verifiedCalories, spotName });
-      if (healthResult.success) setHealthSynced(true);
       setShowEndModal(false);
-      Alert.alert('Session complete', `${durationMinutes} min · ${trickCount} tricks · +${xpAwarded} XP${healthResult.success ? '\nSaved to Health app' : ''}`, [{ text: 'Done', onPress: () => navigation.goBack() }]);
+      Alert.alert('Session complete', `${durationMinutes} min · ${trickCount} tricks · +${xpAwarded} XP`, [{ text: 'Done', onPress: () => navigation.goBack() }]);
     } catch (error: any) { Alert.alert('Error', error?.message || 'Could not save the verified session.'); }
     finally { setSaving(false); }
   };
@@ -147,7 +144,7 @@ export default function ActiveSessionScreen() {
           <View style={s.spotifyIcon}><Music size={20} color="#fff" /></View><View style={{ flex: 1 }}><Text style={s.musicTitle}>Skate soundtrack</Text><Text style={s.musicSub}>Open a playlist in Spotify</Text></View><Text style={s.arrow}>›</Text>
         </TouchableOpacity>
 
-        <View style={s.healthCard}><Heart size={17} color={healthSynced ? '#4ADE80' : '#EF6666'} /><Text style={s.healthText}>{healthSynced ? 'Session synced to your Health app.' : 'Final duration and verified XP are saved when you end the session.'}</Text></View>
+        <View style={s.saveCard}><Radio size={17} color="#4ADE80" /><Text style={s.saveText}>Final duration, trick count, and XP are written to SkateQuest when you save the session.</Text></View>
 
         {!sessionStarted ? (
           <TouchableOpacity style={[s.primaryButton, starting && s.disabled]} onPress={() => void startSession()} disabled={starting}>
@@ -205,8 +202,8 @@ const s = StyleSheet.create({
   musicTitle: { color: '#F7F4EF', fontWeight: '900', fontSize: 14 },
   musicSub: { color: '#7B8493', fontSize: 11, marginTop: 2 },
   arrow: { color: '#7B8493', fontSize: 25 },
-  healthCard: { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: '#0B1018', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#1A2230', marginBottom: 18 },
-  healthText: { color: '#8E97A4', fontSize: 11, lineHeight: 17, flex: 1 },
+  saveCard: { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: '#0B1018', borderRadius: 14, padding: 13, borderWidth: 1, borderColor: '#1A2230', marginBottom: 18 },
+  saveText: { color: '#8E97A4', fontSize: 11, lineHeight: 17, flex: 1 },
   primaryButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 9, backgroundColor: '#2F9D62', borderRadius: 17, paddingVertical: 17 },
   primaryText: { color: '#fff', fontWeight: '900', fontSize: 16 },
   controlsRow: { flexDirection: 'row', gap: 10 },
