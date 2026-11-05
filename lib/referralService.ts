@@ -2,7 +2,19 @@ import { supabase } from './supabase';
 import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
-interface ReferralCode {
+const RECRUITER_BONUS_XP = 500;
+const NEW_SKATER_BONUS_XP = 250;
+
+interface ReferralRow {
+  id: string;
+  referrer_id: string;
+  referred_id: string | null;
+  code: string;
+  claimed: boolean;
+  created_at: string;
+}
+
+export interface ReferralCode {
   id: string;
   user_id: string;
   code: string;
@@ -10,51 +22,49 @@ interface ReferralCode {
   activation_bonus_xp: number;
   recruiter_bonus_xp: number;
   active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface ReferralUse {
-  id: string;
-  referral_code_id: string;
-  recruiter_user_id: string;
-  new_user_id: string;
-  bonus_xp_awarded: number;
-  recruiter_bonus_xp_awarded: number;
-  used_at: string;
+  claimed: boolean;
   created_at: string;
 }
 
-interface ReferralStats {
+export interface ReferralStats {
   total_referrals: number;
   total_xp_earned: number;
   active_codes: number;
 }
 
-export const referralService = {
-  // =========================================================================
-  // REFERRAL CODES
-  // =========================================================================
+function toReferralCode(row: ReferralRow): ReferralCode {
+  return {
+    id: row.id,
+    user_id: row.referrer_id,
+    code: row.code,
+    activation_bonus_xp: NEW_SKATER_BONUS_XP,
+    recruiter_bonus_xp: RECRUITER_BONUS_XP,
+    active: !row.claimed,
+    claimed: row.claimed,
+    created_at: row.created_at,
+  };
+}
 
-  async createReferralCode(
-    userId: string,
-    code: string,
-    description?: string
-  ): Promise<ReferralCode> {
+export const referralService = {
+  async createReferralCode(userId: string, code: string): Promise<ReferralCode> {
     try {
+      const normalized = code.trim().toUpperCase();
+      if (!normalized) throw new Error('Referral code is required');
+
       const { data, error } = await supabase
-        .from('referral_codes')
+        .from('referrals')
         .insert({
-          user_id: userId,
-          code: code.toUpperCase(),
-          description,
+          referrer_id: userId,
+          referred_id: null,
+          code: normalized,
+          claimed: false,
         })
-        .select('*')
+        .select('id,referrer_id,referred_id,code,claimed,created_at')
         .single();
 
       if (error) throw error;
-      if (!data) throw new Error('Failed to create referral code');
-      return data;
+      if (!data) throw new Error('Referral code was not saved');
+      return toReferralCode(data as ReferralRow);
     } catch (error) {
       Logger.error('referralService.createReferralCode failed', error);
       throw new ServiceError('Failed to create referral code', 'CREATE_CODE_FAILED', error);
@@ -64,57 +74,18 @@ export const referralService = {
   async getUserReferralCodes(userId: string): Promise<ReferralCode[]> {
     try {
       const { data, error } = await supabase
-        .from('referral_codes')
-        .select('*')
-        .eq('user_id', userId)
+        .from('referrals')
+        .select('id,referrer_id,referred_id,code,claimed,created_at')
+        .eq('referrer_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return ((data as ReferralRow[] | null) ?? []).map(toReferralCode);
     } catch (error) {
       Logger.error('referralService.getUserReferralCodes failed', error);
       throw new ServiceError('Failed to get referral codes', 'GET_CODES_FAILED', error);
     }
   },
-
-  async getReferralCodeByCode(code: string): Promise<ReferralCode | null> {
-    try {
-      const { data, error } = await supabase
-        .from('referral_codes')
-        .select('*')
-        .eq('code', code.toUpperCase())
-        .eq('active', true)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;  // 116 = no rows
-      return data || null;
-    } catch (error) {
-      Logger.error('referralService.getReferralCodeByCode failed', error);
-      throw new ServiceError('Failed to get referral code', 'GET_CODE_FAILED', error);
-    }
-  },
-
-  async deactivateReferralCode(codeId: string): Promise<ReferralCode> {
-    try {
-      const { data, error } = await supabase
-        .from('referral_codes')
-        .update({ active: false })
-        .eq('id', codeId)
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new Error('Failed to deactivate code');
-      return data;
-    } catch (error) {
-      Logger.error('referralService.deactivateReferralCode failed', error);
-      throw new ServiceError('Failed to deactivate referral code', 'DEACTIVATE_CODE_FAILED', error);
-    }
-  },
-
-  // =========================================================================
-  // REFERRAL STATS
-  // =========================================================================
 
   async getReferralStats(userId: string): Promise<ReferralStats> {
     try {
@@ -123,65 +94,54 @@ export const referralService = {
       });
 
       if (error) throw error;
-      if (!data || data.length === 0) {
-        return { total_referrals: 0, total_xp_earned: 0, active_codes: 0 };
-      }
-      return data[0];
+
+      const stats = (data ?? {}) as { total?: number; claimed?: number };
+      const total = Math.max(0, Number(stats.total ?? 0));
+      const claimed = Math.max(0, Number(stats.claimed ?? 0));
+
+      return {
+        total_referrals: claimed,
+        total_xp_earned: claimed * RECRUITER_BONUS_XP,
+        active_codes: Math.max(0, total - claimed),
+      };
     } catch (error) {
       Logger.error('referralService.getReferralStats failed', error);
       throw new ServiceError('Failed to get referral stats', 'STATS_FAILED', error);
     }
   },
 
-  async getReferralUses(codeId: string): Promise<ReferralUse[]> {
-    try {
-      const { data, error } = await supabase
-        .from('referral_uses')
-        .select('*')
-        .eq('referral_code_id', codeId)
-        .order('used_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      Logger.error('referralService.getReferralUses failed', error);
-      throw new ServiceError('Failed to get referral uses', 'GET_USES_FAILED', error);
-    }
-  },
-
-  async applyReferralCodeOnSignup(code: string, newUserId: string): Promise<{ success: boolean; recruiter_name?: string; error?: string }> {
+  async applyReferralCodeOnSignup(
+    code: string,
+    newUserId: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const { data, error } = await supabase.rpc('apply_referral_code', {
-        p_referral_code: code.toUpperCase(),
-        p_new_user_id: newUserId,
+        p_code: code.trim().toUpperCase(),
+        p_user_id: newUserId,
       });
 
       if (error) throw error;
-      if (!data) throw new Error('Failed to apply referral code');
-      return data;
+      if (!data) throw new Error('Referral code did not return a result');
+      return data as { success: boolean; error?: string };
     } catch (error) {
       Logger.error('referralService.applyReferralCodeOnSignup failed', error);
       throw new ServiceError('Failed to apply referral code', 'APPLY_CODE_FAILED', error);
     }
   },
 
-  // =========================================================================
-  // REAL-TIME SUBSCRIPTIONS
-  // =========================================================================
-
   subscribeToReferralCodes(
     userId: string,
-    onUpdate: (payload: any) => void
+    onUpdate: (payload: unknown) => void
   ): { unsubscribe: () => void } {
     const subscription = supabase
-      .channel(`user_referral_codes:${userId}`)
+      .channel(`user_referrals:${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'referral_codes',
-          filter: `user_id=eq.${userId}`,
+          table: 'referrals',
+          filter: `referrer_id=eq.${userId}`,
         },
         onUpdate
       )
@@ -189,7 +149,7 @@ export const referralService = {
 
     return {
       unsubscribe: () => {
-        subscription.unsubscribe();
+        void subscription.unsubscribe();
       },
     };
   },
