@@ -3,13 +3,14 @@ import { Session, User } from '@supabase/supabase-js';
 import * as Sentry from '@sentry/react-native';
 import { analytics, SkateEvents } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
+import { applyPendingReferralCode } from '../lib/pendingReferral';
 
 interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
   initialize: () => () => void;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any; userId: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: any }>;
@@ -63,6 +64,9 @@ export const useAuthStore = create<AuthState>((set) => ({
           user: session?.user ?? null,
           loading: false,
         });
+        if (session?.user?.id) {
+          void applyPendingReferralCode(session.user.id);
+        }
       })
       .catch((error) => {
         clearTimeout(timeout);
@@ -84,6 +88,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       if (session?.user) {
+        void applyPendingReferralCode(session.user.id);
         Sentry.setUser({
           id: session.user.id,
           email: session.user.email,
@@ -118,12 +123,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signUp: async (email: string, password: string) => {
     const emailRedirectTo = signupConfirmationRedirect();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       ...(emailRedirectTo ? { options: { emailRedirectTo } } : {}),
     });
-    return { error };
+    return { error, userId: data.user?.id ?? null };
   },
 
   signIn: async (email: string, password: string) => {
