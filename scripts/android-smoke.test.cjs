@@ -19,7 +19,10 @@ const args = process.argv.slice(2).join(' ');
 const stateFile = process.env.FAKE_ANDROID_STATE;
 let state = fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile)) : { starts: 0, alive: false };
 const second = () => state.starts === 2;
-if (args.startsWith('install -r ')) console.log('Success');
+if (args === 'wait-for-device') {}
+else if (args === 'shell getprop sys.boot_completed') console.log('1');
+else if (args === 'shell pm list packages com.android.settings') console.log('package:com.android.settings');
+else if (args.startsWith('install -r ')) console.log('Success');
 else if (args === 'shell pm path com.treesus6.skatequest') console.log('package:/data/app/base.apk');
 else if (args === 'logcat -c') {}
 else if (args === 'shell am force-stop com.treesus6.skatequest') state.alive = false;
@@ -39,11 +42,14 @@ else if (args === 'shell am start -W -n com.treesus6.skatequest/.MainActivity') 
   // The activity can be resumed while a system ANR dialog covers it.
   const overlay = second() && (process.env.FAKE_ANDROID_SCENARIO === 'system-dialog' ||
     (process.env.FAKE_ANDROID_SCENARIO === 'window-dialog' && args === 'shell dumpsys window windows'));
-  if (!(second() && process.env.FAKE_ANDROID_SCENARIO === 'missing-focus')) {
+  if (!(second() && ['missing-focus', 'input-focus', 'input-dialog'].includes(process.env.FAKE_ANDROID_SCENARIO))) {
     console.log('mCurrentFocus=Window{ ' + (overlay ? 'Application Not Responding: com.google.android.apps.nexuslauncher' : app + '/.MainActivity') + ' }');
   }
   console.log('mFocusedApp=ActivityRecord{ com.treesus6.skatequest/.MainActivity }');
   console.log('topResumedActivity=ActivityRecord{ ' + app + '/.MainActivity }');
+} else if (args === 'shell dumpsys input') {
+  if (second() && process.env.FAKE_ANDROID_SCENARIO === 'input-focus') console.log('FocusedWindow: name=com.treesus6.skatequest/.MainActivity');
+  else if (second() && process.env.FAKE_ANDROID_SCENARIO === 'input-dialog') console.log('FocusedWindow: name=Application Not Responding: com.google.android.apps.nexuslauncher');
 } else if (args === 'logcat -d -v time') {
   if (second() && process.env.FAKE_ANDROID_SCENARIO === 'logcat-error') { console.log('partial log before device disconnected'); process.exit(1); }
   if (!(second() && process.env.FAKE_ANDROID_SCENARIO === 'empty-logcat')) console.log('ActivityTaskManager: Displayed com.treesus6.skatequest/.MainActivity');
@@ -77,7 +83,7 @@ test('requires two launches and retains separate cold and relaunch evidence', ()
   } finally { run.cleanup(); }
 });
 
-for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'logcat-error', 'empty-logcat']) {
+for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'input-dialog', 'logcat-error', 'empty-logcat']) {
   test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
     const run = runSmoke(scenario);
     try {
@@ -90,3 +96,12 @@ for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', '
     } finally { run.cleanup(); }
   });
 }
+
+
+test('accepts InputDispatcher focused window when WindowManager omits mCurrentFocus', () => {
+  const run = runSmoke('input-focus');
+  try {
+    assert.equal(run.result.status, 0, run.result.stderr);
+    assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/input-focus.txt'), 'utf8'), /FocusedWindow:.*com\\.treesus6\\.skatequest/);
+  } finally { run.cleanup(); }
+});
