@@ -172,7 +172,7 @@ jobs:
       # Publish this clearly labeled QA-pending APK even if the emulator itself
       # fails, so a valid signed artifact is not lost behind infrastructure QA.
       - name: Upload signer-verified preview APK (emulator QA pending)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skatequest-eas-signer-verified-qa-pending-apk
           path: /tmp/skatequest.apk
@@ -195,7 +195,7 @@ jobs:
           script: bash scripts/android-smoke.sh
 
       - name: Upload verified installable preview APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skatequest-eas-local-verified-preview-apk
           path: /tmp/skatequest.apk
@@ -204,7 +204,7 @@ jobs:
 
       - name: Upload emulator evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skatequest-eas-local-emulator-evidence
           path: |
