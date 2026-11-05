@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowRight, CheckCircle2, Crosshair, MapPin, Sparkles } from 'lucide-react-native';
 import { useAuthStore } from '../stores/useAuthStore';
 import { SkateEvents } from '../lib/analytics';
+import { applyPendingReferralCode, savePendingReferralCode } from '../lib/pendingReferral';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -23,6 +24,8 @@ export default function SignupScreen({ navigation }: any) {
   const { signUp, loading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralNotice, setReferralNotice] = useState('');
   const [error, setError] = useState('');
   const [submittedEmail, setSubmittedEmail] = useState('');
 
@@ -37,13 +40,34 @@ export default function SignupScreen({ navigation }: any) {
       setError('Password must be at least 8 characters');
       return;
     }
-    const { error: signUpError } = await signUp(normalizedEmail, password);
+    const { error: signUpError, userId } = await signUp(normalizedEmail, password);
     if (signUpError) {
       setError(signUpError.message || 'Failed to create account');
     } else {
+      const normalizedReferral = referralCode.trim().toUpperCase();
+      setReferralNotice('');
+
+      if (normalizedReferral && userId) {
+        try {
+          await savePendingReferralCode(normalizedReferral, userId);
+          // This succeeds immediately when signup creates a session. When email
+          // confirmation is required, the pending code stays on-device and the
+          // auth store retries it after that same account becomes authenticated.
+          await applyPendingReferralCode(userId);
+          setReferralNotice(
+            'Referral saved. If the code is valid, the 250 XP signup bonus applies after confirmation.'
+          );
+        } catch {
+          setReferralNotice(
+            'Your account was created, but the referral code could not be queued on this device.'
+          );
+        }
+      }
+
       SkateEvents.signedUp();
       setSubmittedEmail(normalizedEmail);
       setPassword('');
+      setReferralCode('');
     }
   };
 
@@ -61,6 +85,11 @@ export default function SignupScreen({ navigation }: any) {
             <Text style={s.confirmFoot}>
               Open the newest confirmation email on this device. The link will bring you back into SkateQuest.
             </Text>
+            {referralNotice ? (
+              <View style={s.referralNotice}>
+                <Text style={s.referralNoticeText}>{referralNotice}</Text>
+              </View>
+            ) : null}
           </View>
 
           <Pressable style={s.confirmButton} onPress={() => navigation.navigate('Login')}>
@@ -141,6 +170,23 @@ export default function SignupScreen({ navigation }: any) {
             />
           </View>
 
+          <View style={s.fieldWrap}>
+            <View style={s.fieldLabelRow}>
+              <Text style={s.fieldLabel}>REFERRAL CODE</Text>
+              <Text style={s.fieldHint}>OPTIONAL • +250 XP</Text>
+            </View>
+            <TextInput
+              style={s.input}
+              placeholder="Invite code"
+              placeholderTextColor="#777D87"
+              value={referralCode}
+              onChangeText={setReferralCode}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={15}
+            />
+          </View>
+
           <Pressable style={[s.signupButton, loading && s.disabled]} onPress={handleSignup} disabled={loading}>
             {loading ? (
               <ActivityIndicator color={INK} size="small" />
@@ -212,6 +258,8 @@ const s = StyleSheet.create({
   emailTicket: { backgroundColor: INK, borderRadius: 14, padding: 13, marginTop: 12, transform: [{ rotate: '-0.5deg' }] },
   emailTicketText: { color: ACID, fontSize: 13, fontWeight: '900', textAlign: 'center' },
   confirmFoot: { color: '#6B6F70', fontSize: 11, lineHeight: 17, marginTop: 17 },
+  referralNotice: { backgroundColor: '#E8F1D1', borderRadius: 12, borderWidth: 1, borderColor: '#AABD68', padding: 11, marginTop: 12 },
+  referralNoticeText: { color: '#42500E', fontSize: 10.5, lineHeight: 15, fontWeight: '800' },
   confirmButton: { minHeight: 56, marginTop: 12, backgroundColor: ACID, borderRadius: 16, borderWidth: 2, borderColor: INK, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   confirmButtonText: { color: INK, fontSize: 14, fontWeight: '900' },
 });
