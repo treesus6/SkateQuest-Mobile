@@ -16,6 +16,17 @@ collect_evidence() {
   rm -f "$evidence_dir/skatequest-startup.png"
 }
 trap collect_evidence EXIT
+# GitHub-hosted emulators can expose adb before Android's package manager is ready.
+# Wait for full boot and a responsive package manager before installing.
+for attempt in $(seq 1 30); do
+  if timeout 10s adb wait-for-device >/dev/null 2>&1 &&
+     [[ "$(timeout 10s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" == "1" ]] &&
+     timeout 10s adb shell pm list packages com.android.settings >/dev/null 2>&1; then
+    break
+  fi
+  if [[ "$attempt" == 30 ]]; then echo "FAIL: emulator never became boot-ready" >&2; exit 1; fi
+  sleep 3
+done
 adb install -r /tmp/skatequest.apk
 adb shell pm path com.treesus6.skatequest
 # Resolve the real launcher activity rather than relying on Monkey's event injection.
@@ -46,29 +57,42 @@ launch_and_verify() {
   # A live process and screenshot can be false positives if Android returned to
   # the launcher or displayed a system crash dialog. Require the SkateQuest
   # activity to remain foregrounded after the startup settling period.
-  if ! timeout 20s adb shell dumpsys window windows > "$evidence_dir/window-focus.txt"; then
-    echo "FAIL: $phase unable to collect focused-window evidence" >&2
-    return 1
-  fi
-  # Android may leave our activity top-resumed while a system ANR/crash dialog
-  # takes actual input focus. The 2026-11-04 emulator evidence showed exactly
-  # that: a Pixel Launcher ANR covered the SkateQuest sign-in screen, yet the
-  # old resumed-activity-only gate passed. Do not certify an obscured screen.
-  local current_focus
-  current_focus="$(grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/window-focus.txt" || true)"
+  # WindowManager output varies between Android versions, and can briefly
+  # have no focused window during launcher transitions. Inspect the actual
+  # focused window (not merely topResumedActivity) with bounded retries.
+  local current_focus=""
+  local focus_dump=""
+  local candidate=""
+  for attempt in 1 2 3 4 5 6; do
+    focus_dump="$(timeout 20s adb shell dumpsys window windows 2>/dev/null || true)"
+    if [[ -z "$focus_dump" ]]; then
+      focus_dump="$(timeout 20s adb shell dumpsys window 2>/dev/null || true)"
+    fi
+    printf '%s\\n' "$focus_dump" > "$evidence_dir/window-focus.txt"
+    candidate="$(printf '%s\\n' "$focus_dump" | grep -m1 -E 'mCurrentFocus[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
+    # Modern Android builds also report the focused window via InputDispatcher.
+    # Do not mistake mFocusedApp or a resumed activity for actual input focus.
+    if [[ -z "$candidate" || "$candidate" == *'null'* ]]; then
+      local input_dump
+      input_dump="$(timeout 20s adb shell dumpsys input 2>/dev/null || true)"
+      printf '%s\\n' "$input_dump" > "$evidence_dir/input-focus.txt"
+      candidate="$(printf '%s\\n' "$input_dump" | grep -m1 -E 'FocusedWindow:|FocusedWindow[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
+    fi
+    if [[ "$candidate" == *'com.treesus6.skatequest/'* ]]; then
+      current_focus="$candidate"
+      break
+    fi
+    echo "INFO: $phase focus attempt $attempt: ${candidate:-unavailable}" >&2
+    sleep 3
+  done
   if [[ -z "$current_focus" ]]; then
-    echo "FAIL: $phase focused window is missing from collected evidence" >&2
+    echo "FAIL: $phase SkateQuest was never confirmed as the focused window (see window-focus.txt and input-focus.txt)" >&2
     return 1
   fi
-  if [[ "$current_focus" != *"com.treesus6.skatequest/"* ]]; then
-    echo "FAIL: $phase SkateQuest is obscured by another focused window: $current_focus" >&2
-    return 1
-  fi
-  if ! grep -E '(mCurrentFocus|mFocusedApp).*com\.treesus6\.skatequest' "$evidence_dir/window-focus.txt" >/dev/null && \
-     ! grep -E '(topResumedActivity|mResumedActivity).*com\.treesus6\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
-    echo "FAIL: $phase SkateQuest process exists but its activity is not foregrounded" >&2
-    grep -E 'mCurrentFocus|mFocusedApp' "$evidence_dir/window-focus.txt" >&2 || true
-    grep -E 'topResumedActivity|mResumedActivity' "$evidence_dir/activities.txt" >&2 || true
+  # Keep activity evidence as a second independent check; never pass solely
+  # because the app process exists or a system dialog has focus.
+  if ! grep -E '(topResumedActivity|mResumedActivity).*com\\.treesus6\\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
+    echo "FAIL: $phase app window focused but activity is not top-resumed" >&2
     return 1
   fi
   # Fail when the app logs a native or JavaScript fatal crash during startup.
