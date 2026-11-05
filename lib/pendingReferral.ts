@@ -56,10 +56,18 @@ export async function applyPendingReferralCode(userId: string): Promise<void> {
 
     const result = (data ?? {}) as { success?: boolean; error?: string };
 
-    // A server response is authoritative. Success consumes the code; a
-    // semantic rejection (invalid, claimed, self-referral) should not loop on
-    // every future app launch.
-    if (result.success || result.error) {
+    if (result.success) {
+      await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
+      return;
+    }
+
+    // During email-confirmation signup the account exists before an authenticated
+    // session does. Keep the pending code through that expected timing window.
+    if (result.error === 'Not authorized') return;
+
+    // Other semantic rejections (invalid, claimed, self-referral) are final and
+    // should not loop on every future app launch.
+    if (result.error) {
       await AsyncStorage.removeItem(PENDING_REFERRAL_KEY);
     }
   })()
