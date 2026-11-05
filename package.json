@@ -16,6 +16,7 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
     "analyze:bundle": "npx expo-bundle-visualizer",
     "prepare": "husky || true",
+    "eas-build-post-install": "node scripts/configure-gradle-wrapper.cjs",
     "build:production": "eas build --platform all --profile production",
     "update:production": "eas update --branch production --message 'prod: release'",
     "export:web": "expo export --platform web --output-dir dist",
