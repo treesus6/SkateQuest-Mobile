@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { Youtube, ExternalLink, Bookmark, X, Send, Search } from 'lucide-react-native';
 import { useRoute, RouteProp } from '../lib/useNavigation';
@@ -24,10 +25,12 @@ type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced' | 'Pro';
 interface Tutorial {
   id: string;
   trick_name: string;
-  youtube_url: string;
+  youtube_url: string | null;
   difficulty: Difficulty;
   submitted_by: string;
   votes: number;
+  description: string | null;
+  tips: string[];
   is_bookmarked: boolean;
 }
 
@@ -47,6 +50,21 @@ const FILTER_TABS: Array<'All' | Difficulty> = [
   'Advanced',
   'Pro',
 ];
+
+function normalizeDifficulty(value: string | null | undefined): Difficulty {
+  switch ((value ?? '').toLowerCase()) {
+    case 'beginner':
+      return 'Beginner';
+    case 'intermediate':
+      return 'Intermediate';
+    case 'advanced':
+      return 'Advanced';
+    case 'pro':
+      return 'Pro';
+    default:
+      return 'Beginner';
+  }
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -72,6 +90,7 @@ function TutorialCard({
   onBookmark: (id: string, isBookmarked: boolean) => void;
 }) {
   const handleOpen = () => {
+    if (!item.youtube_url) return;
     Linking.openURL(item.youtube_url).catch((err) =>
       console.error('Failed to open URL:', err)
     );
@@ -104,16 +123,34 @@ function TutorialCard({
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        onPress={handleOpen}
-        className="flex-row items-center gap-2 mt-3 bg-red-600/10 border border-red-600/30 rounded-lg px-3 py-2"
-      >
-        <Youtube size={18} color="#FF0000" />
-        <Text className="text-red-400 text-sm font-semibold flex-1" numberOfLines={1}>
-          Watch on YouTube
+      {item.description ? (
+        <Text className="text-neutral-300 text-sm leading-5 mt-3">
+          {item.description}
         </Text>
-        <ExternalLink size={14} color="#666" />
-      </TouchableOpacity>
+      ) : null}
+
+      {item.tips.length > 0 ? (
+        <View className="mt-3 gap-1">
+          {item.tips.slice(0, 3).map((tip, index) => (
+            <Text key={`${item.id}-tip-${index}`} className="text-neutral-400 text-xs leading-4">
+              • {tip}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {item.youtube_url ? (
+        <TouchableOpacity
+          onPress={handleOpen}
+          className="flex-row items-center gap-2 mt-3 bg-red-600/10 border border-red-600/30 rounded-lg px-3 py-2"
+        >
+          <Youtube size={18} color="#FF0000" />
+          <Text className="text-red-400 text-sm font-semibold flex-1" numberOfLines={1}>
+            Watch on YouTube
+          </Text>
+          <ExternalLink size={14} color="#666" />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -245,7 +282,9 @@ export default function TrickTutorialsScreen() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id ?? null);
+      const userId = data.user?.id ?? null;
+      setCurrentUserId(userId);
+      if (!userId) setLoading(false);
     });
   }, []);
 
@@ -253,25 +292,34 @@ export default function TrickTutorialsScreen() {
     if (!currentUserId) return;
     setLoading(true);
 
-    const { data: tuts, error } = await supabase
-      .from('trick_tutorials')
-      .select('id, trick_name, youtube_url, difficulty, suggested_by')
-      .order('created_at', { ascending: false });
+    const [{ data: tuts, error }, { data: bookmarks, error: bookmarkError }] = await Promise.all([
+      supabase
+        .from('trick_tutorials')
+        .select('id, name, video_url, difficulty, description, tips, suggested_by, votes')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('tutorial_bookmarks')
+        .select('tutorial_id')
+        .eq('user_id', currentUserId),
+    ]);
 
-    if (error) {
-      console.error('Tutorials fetch error:', error.message);
+    if (error || bookmarkError) {
+      console.error('Tutorials fetch error:', error?.message ?? bookmarkError?.message);
       setLoading(false);
       return;
     }
 
+    const bookmarkedIds = new Set((bookmarks ?? []).map((row: any) => row.tutorial_id));
     const mapped: Tutorial[] = (tuts ?? []).map((t: any) => ({
       id: t.id,
-      trick_name: t.trick_name,
-      youtube_url: t.youtube_url,
-      difficulty: t.difficulty as Difficulty,
-      submitted_by: t.suggested_by ?? 'community',
-      votes: 0,
-      is_bookmarked: false,
+      trick_name: t.name,
+      youtube_url: t.video_url ?? null,
+      difficulty: normalizeDifficulty(t.difficulty),
+      submitted_by: t.suggested_by ? 'community' : 'SkateQuest',
+      votes: Number(t.votes ?? 0),
+      description: t.description ?? null,
+      tips: Array.isArray(t.tips) ? t.tips : [],
+      is_bookmarked: bookmarkedIds.has(t.id),
     }));
 
     setTutorials(mapped);
@@ -283,15 +331,38 @@ export default function TrickTutorialsScreen() {
   }, [currentUserId, fetchTutorials]);
 
   const handleBookmark = useCallback(
-    (_tutorialId: string, _isBookmarked: boolean) => {
-      // Bookmark persistence is not yet backed by a live table — optimistic UI only
+    async (tutorialId: string, isBookmarked: boolean) => {
+      if (!currentUserId) {
+        Alert.alert('Sign in required', 'Sign in to save tutorial bookmarks.');
+        return;
+      }
+
       setTutorials((prev) =>
         prev.map((t) =>
-          t.id === _tutorialId ? { ...t, is_bookmarked: !_isBookmarked } : t
+          t.id === tutorialId ? { ...t, is_bookmarked: !isBookmarked } : t
         )
       );
+
+      const result = isBookmarked
+        ? await supabase
+            .from('tutorial_bookmarks')
+            .delete()
+            .eq('tutorial_id', tutorialId)
+            .eq('user_id', currentUserId)
+        : await supabase
+            .from('tutorial_bookmarks')
+            .insert({ tutorial_id: tutorialId, user_id: currentUserId });
+
+      if (result.error) {
+        setTutorials((prev) =>
+          prev.map((t) =>
+            t.id === tutorialId ? { ...t, is_bookmarked: isBookmarked } : t
+          )
+        );
+        Alert.alert('Bookmark not saved', result.error.message);
+      }
     },
-    []
+    [currentUserId]
   );
 
   const handleSuggest = useCallback(
@@ -300,10 +371,11 @@ export default function TrickTutorialsScreen() {
       setSubmitting(true);
 
       const { error } = await supabase.from('trick_tutorials').insert({
-        trick_name: trickName,
-        youtube_url: youtubeUrl,
-        difficulty,
-        submitted_by: currentUserId,
+        name: trickName,
+        video_url: youtubeUrl,
+        difficulty: difficulty.toLowerCase(),
+        category: 'community',
+        suggested_by: currentUserId,
         votes: 0,
       });
 
