@@ -102,6 +102,6 @@ test('accepts InputDispatcher focused window when WindowManager omits mCurrentFo
   const run = runSmoke('input-focus');
   try {
     assert.equal(run.result.status, 0, run.result.stderr);
-    assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/input-focus.txt'), 'utf8'), /FocusedWindow:.*com\\.treesus6\\.skatequest/);
+    assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/input-focus.txt'), 'utf8'), /FocusedWindow:.*com\.treesus6\.skatequest/);
   } finally { run.cleanup(); }
 });
