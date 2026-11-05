@@ -294,6 +294,7 @@ jobs:
             /tmp/skatequest-startup.png
             /tmp/activities.txt
             /tmp/window-focus.txt
+            /tmp/input-focus.txt
             /tmp/skatequest-fatal-lines.txt
             /tmp/skatequest.pid
           retention-days: 14
