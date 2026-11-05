@@ -20,7 +20,7 @@ trap collect_evidence EXIT
 # Wait for full boot and a responsive package manager before installing.
 for attempt in $(seq 1 30); do
   if timeout 10s adb wait-for-device >/dev/null 2>&1 &&
-     [[ "$(timeout 10s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" == "1" ]] &&
+     [[ "$(timeout 10s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]] &&
      timeout 10s adb shell pm list packages com.android.settings >/dev/null 2>&1; then
     break
   fi
@@ -68,15 +68,15 @@ launch_and_verify() {
     if [[ -z "$focus_dump" ]]; then
       focus_dump="$(timeout 20s adb shell dumpsys window 2>/dev/null || true)"
     fi
-    printf '%s\\n' "$focus_dump" > "$evidence_dir/window-focus.txt"
-    candidate="$(printf '%s\\n' "$focus_dump" | grep -m1 -E 'mCurrentFocus[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
+    printf '%s\n' "$focus_dump" > "$evidence_dir/window-focus.txt"
+    candidate="$(printf '%s\n' "$focus_dump" | grep -m1 -E 'mCurrentFocus[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
     # Modern Android builds also report the focused window via InputDispatcher.
     # Do not mistake mFocusedApp or a resumed activity for actual input focus.
     if [[ -z "$candidate" || "$candidate" == *'null'* ]]; then
       local input_dump
       input_dump="$(timeout 20s adb shell dumpsys input 2>/dev/null || true)"
-      printf '%s\\n' "$input_dump" > "$evidence_dir/input-focus.txt"
-      candidate="$(printf '%s\\n' "$input_dump" | grep -m1 -E 'FocusedWindow:|FocusedWindow[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
+      printf '%s\n' "$input_dump" > "$evidence_dir/input-focus.txt"
+      candidate="$(printf '%s\n' "$input_dump" | grep -m1 -E 'FocusedWindow:|FocusedWindow[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
     fi
     if [[ "$candidate" == *'com.treesus6.skatequest/'* ]]; then
       current_focus="$candidate"
@@ -91,7 +91,7 @@ launch_and_verify() {
   fi
   # Keep activity evidence as a second independent check; never pass solely
   # because the app process exists or a system dialog has focus.
-  if ! grep -E '(topResumedActivity|mResumedActivity).*com\\.treesus6\\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
+  if ! grep -E '(topResumedActivity|mResumedActivity).*com\.treesus6\.skatequest' "$evidence_dir/activities.txt" >/dev/null; then
     echo "FAIL: $phase app window focused but activity is not top-resumed" >&2
     return 1
   fi
