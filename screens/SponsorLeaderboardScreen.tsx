@@ -45,29 +45,51 @@ export default function SponsorLeaderboardScreen() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // xp_donations table does not exist — use profiles.charity_points for leaderboard
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, charity_points')
-        .gt('charity_points', 0)
-        .order('charity_points', { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase
+        .from('xp_donations')
+        .select('user_id, xp_amount, usd_value, profile:user_id(username)')
+        .order('created_at', { ascending: false });
 
-      if (data) {
-        const mapped: Donor[] = (data as any[]).map(row => ({
-          user_id: row.id,
-          username: row.username ?? 'Skater',
-          total_xp: row.charity_points ?? 0,
-          boards_funded: Math.floor((row.charity_points ?? 0) / 1000),
-        }));
-        setDonors(mapped);
+      if (error) throw error;
 
-        const totalBoards = mapped.reduce((s, d) => s + d.boards_funded, 0);
-        const totalXp = mapped.reduce((s, d) => s + d.total_xp, 0);
-        setTotals({ total_boards: totalBoards, total_xp: totalXp, total_usd: Math.floor(totalXp / 1000) });
+      const byUser = new Map<string, { username: string; total_xp: number; total_usd: number }>();
+      for (const row of (data ?? []) as any[]) {
+        const current = byUser.get(row.user_id) ?? {
+          username: row.profile?.username ?? 'Skater',
+          total_xp: 0,
+          total_usd: 0,
+        };
+        current.total_xp += Number(row.xp_amount ?? 0);
+        current.total_usd += Number(row.usd_value ?? 0);
+        byUser.set(row.user_id, current);
       }
-    } catch (_) {}
-    setLoading(false);
+
+      const mapped: Donor[] = [...byUser.entries()]
+        .map(([user_id, value]) => ({
+          user_id,
+          username: value.username,
+          total_xp: value.total_xp,
+          boards_funded: Math.floor(value.total_usd / 50),
+        }))
+        .sort((a, b) => b.total_xp - a.total_xp)
+        .slice(0, 50);
+
+      const totalXp = (data ?? []).reduce((sum: number, row: any) => sum + Number(row.xp_amount ?? 0), 0);
+      const totalUsd = (data ?? []).reduce((sum: number, row: any) => sum + Number(row.usd_value ?? 0), 0);
+
+      setDonors(mapped);
+      setTotals({
+        total_boards: Math.floor(totalUsd / 50),
+        total_xp: totalXp,
+        total_usd: totalUsd,
+      });
+    } catch (error) {
+      console.error('Sponsor leaderboard load failed:', error);
+      setDonors([]);
+      setTotals({ total_boards: 0, total_xp: 0, total_usd: 0 });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const progressPct = Math.min((totals.total_boards / MILESTONE) * 100, 100);
@@ -96,7 +118,7 @@ export default function SponsorLeaderboardScreen() {
             </View>
             <View style={{ width: 1, backgroundColor: '#222' }} />
             <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#4CAF50', fontSize: 20, fontWeight: '800' }}>${totals.total_usd}</Text>
+              <Text style={{ color: '#4CAF50', fontSize: 20, fontWeight: '800' }}>${totals.total_usd.toFixed(2)}</Text>
               <Text style={{ color: '#555', fontSize: 10, letterSpacing: 1 }}>USD VALUE</Text>
             </View>
           </View>
