@@ -18,7 +18,11 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
 import { deleteFromStorage, pickImage, uploadImage } from '../lib/mediaUpload';
 import { Logger } from '../lib/logger';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage } from '../lib/spotSubmission';
+import {
+  getSpotPersistenceError,
+  getSpotSubmissionErrorMessage,
+  parseSpotTricks,
+} from '../lib/spotSubmission';
 import { isMapboxConfigured, mapboxConfigurationError } from '../lib/mapboxSetup';
 
 const ACCENT = '#D2673D';
@@ -187,6 +191,7 @@ export default function AddSpotScreen() {
         uploadedPhotoUrl = uploaded.url;
         photoFileSize = uploaded.fileSize;
       }
+      const parsedTricks = parseSpotTricks(tricks);
 
       const { data, error } = await spotsService.createWithDetails({
         name: name.trim(),
@@ -194,10 +199,7 @@ export default function AddSpotScreen() {
         longitude: coordinates[0],
         difficultyLabel: difficulty,
         obstacles,
-        tricks: tricks
-          .split(',')
-          .map(value => value.trim())
-          .filter(Boolean),
+        tricks: parsedTricks,
         spotType,
         bustRisk: spotType === 'street' ? bustRisk : undefined,
         potential: potentialRating,
@@ -227,6 +229,7 @@ export default function AddSpotScreen() {
         qualityRating,
         ratingCount: 1,
         photoUrl: uploadedPhotoUrl,
+        tricks: parsedTricks,
       });
       if (persistenceError) throw new Error(persistenceError);
       Alert.alert(

@@ -37,11 +37,20 @@ export interface PersistedSpotExpectation {
   latitude: number;
   longitude: number;
   addedBy: string;
+  tricks?: string[];
   potentialRating?: number;
   difficultyRating?: number;
   qualityRating?: number;
   ratingCount?: number;
   photoUrl?: string | null;
+}
+
+export function parseSpotTricks(raw: string): string[] {
+  return raw
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean)
+    .slice(0, 50);
 }
 
 function readNumber(row: Record<string, unknown>, key: string): number | null {
@@ -114,6 +123,21 @@ export function getSpotPersistenceError(
 
   if (expected.photoUrl && !hasPersistedPhoto(row, expected.photoUrl)) {
     return 'The saved spot photo could not be read back.';
+  }
+
+  if (Array.isArray(expected.tricks) && expected.tricks.length > 0) {
+    const persistedRaw = row.tricks;
+    if (!Array.isArray(persistedRaw)) {
+      return 'The saved spot trick list could not be read back.';
+    }
+    const persistedTricks = persistedRaw
+      .filter(value => typeof value === 'string')
+      .map(value => String(value).trim())
+      .filter(Boolean);
+    const missingExpected = expected.tricks.find(trick => !persistedTricks.includes(trick));
+    if (missingExpected) {
+      return 'The saved spot trick list could not be verified.';
+    }
   }
 
   return null;

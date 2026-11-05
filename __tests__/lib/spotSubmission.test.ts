@@ -1,6 +1,7 @@
 import {
   getSpotSubmissionErrorMessage,
   getSpotPersistenceError,
+  parseSpotTricks,
   parseSpotCoordinates,
 } from '../../lib/spotSubmission';
 import type { PersistedSpotExpectation } from '../../lib/spotSubmission';
@@ -145,6 +146,32 @@ describe('getSpotPersistenceError', () => {
     expect(getSpotPersistenceError(saved, { ...expected, photoUrl })).toBe(
       'The saved spot photo could not be read back.'
     );
+  });
+
+  it('verifies saved trick tags when trick expectations are provided', () => {
+    expect(
+      getSpotPersistenceError(
+        {
+          ...saved,
+          tricks: ['kickflip', '50-50', 'manual line'],
+        },
+        { ...expected, tricks: ['kickflip', 'manual line'] }
+      )
+    ).toBeNull();
+
+    expect(getSpotPersistenceError({ ...saved, tricks: ['kickflip'] }, { ...expected, tricks: ['50-50'] })).toBe(
+      'The saved spot trick list could not be verified.'
+    );
+  });
+});
+
+describe('parseSpotTricks', () => {
+  it('splits, trims, and removes blanks from comma-separated trick tags', () => {
+    expect(parseSpotTricks(' kickflip ,  ,50-50, manual line ')).toEqual([
+      'kickflip',
+      '50-50',
+      'manual line',
+    ]);
   });
 });
 

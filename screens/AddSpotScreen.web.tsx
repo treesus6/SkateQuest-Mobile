@@ -34,7 +34,12 @@ import {
   getMapboxAvailabilityError,
   getMapInitializationError,
 } from '../lib/mapboxWebSupport';
-import { getSpotPersistenceError, getSpotSubmissionErrorMessage, parseSpotCoordinates } from '../lib/spotSubmission';
+import {
+  getSpotPersistenceError,
+  getSpotSubmissionErrorMessage,
+  parseSpotCoordinates,
+  parseSpotTricks,
+} from '../lib/spotSubmission';
 
 const INK = '#07080B';
 const PAPER = '#F6F0E5';
@@ -76,6 +81,7 @@ export default function AddSpotScreen() {
   const [spotType, setSpotType] = useState<'park' | 'street' | 'diy' | 'quest' | 'shop'>('park');
   const [bustRisk, setBustRisk] = useState<'low' | 'medium' | 'high'>('low');
   const [obstacles, setObstacles] = useState<string[]>([]);
+  const [tricks, setTricks] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [pickingPhoto, setPickingPhoto] = useState(false);
   const [potentialRating, setPotentialRating] = useState(3);
@@ -250,6 +256,7 @@ export default function AddSpotScreen() {
         uploadedPhotoUrl = uploaded.url;
         photoFileSize = uploaded.fileSize;
       }
+      const parsedTricks = parseSpotTricks(tricks);
 
       const { data, error } = await spotsService.createWithDetails({
         name: name.trim(),
@@ -257,6 +264,7 @@ export default function AddSpotScreen() {
         longitude: coordinates[0],
         difficultyLabel: difficulty,
         obstacles,
+        tricks: parsedTricks,
         spotType,
         bustRisk: spotType === 'street' ? bustRisk : undefined,
         potential: potentialRating,
@@ -289,6 +297,7 @@ export default function AddSpotScreen() {
         qualityRating,
         ratingCount: 1,
         photoUrl: uploadedPhotoUrl,
+        tricks: parsedTricks,
       });
       if (persistenceError) throw new Error(persistenceError);
       Alert.alert('Spot added', `Your pin and ratings${uploadedPhotoUrl ? ', plus the photo,' : ''} are saved on the live SkateQuest map.`, [
@@ -467,6 +476,17 @@ export default function AddSpotScreen() {
             onChange={value => setBustRisk(value as typeof bustRisk)}
           />
         ) : null}
+
+        <Field
+          label="KNOWN TRICKS / LINES"
+          value={tricks}
+          onChangeText={setTricks}
+          placeholder="kickflip, 50-50, manual line"
+          multiline
+        />
+        <Text style={s.fieldHelp}>
+          Comma-separated tags are saved with the spot so skaters know what works there.
+        </Text>
       </View>
 
       <View style={s.obstacleCard}>
@@ -574,6 +594,7 @@ function Field(props: {
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
+  multiline?: boolean;
 }) {
   return (
     <View style={s.field}>
@@ -583,7 +604,8 @@ function Field(props: {
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
         placeholderTextColor="#777D87"
-        style={s.input}
+        multiline={props.multiline}
+        style={[s.input, props.multiline && s.inputMultiline]}
       />
     </View>
   );
@@ -710,6 +732,8 @@ const s = StyleSheet.create({
   field: { marginTop: 14 },
   fieldLabel: { color: INK, fontSize: 7.5, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
   input: { minHeight: 52, borderRadius: 14, paddingHorizontal: 13, backgroundColor: '#E9E4DA', borderWidth: 1.5, borderColor: '#CFC8BB', color: INK, fontSize: 14, fontWeight: '700' },
+  inputMultiline: { minHeight: 72, paddingTop: 12, textAlignVertical: 'top' },
+  fieldHelp: { marginTop: 6, color: '#6B6577', fontSize: 10, lineHeight: 14, fontWeight: '700' },
   choiceBlock: { marginTop: 14 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   choiceChip: { minHeight: 36, borderRadius: 11, paddingHorizontal: 10, borderWidth: 1, borderColor: '#CFC8BB', backgroundColor: '#E9E4DA', flexDirection: 'row', alignItems: 'center', gap: 5 },
