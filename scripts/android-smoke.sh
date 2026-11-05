@@ -78,6 +78,16 @@ launch_and_verify() {
       printf '%s\n' "$input_dump" > "$evidence_dir/input-focus.txt"
       candidate="$(printf '%s\n' "$input_dump" | grep -m1 -E 'FocusedWindow:|FocusedWindow[[:space:]]*=|mFocusedWindow[[:space:]]*=' || true)"
     fi
+    # API 35 sometimes places mCurrentFocus/mFocusedWindow only in
+    # dumpsys activity activities (confirmed from the Nov 5 emulator ZIP).
+    # These are actual focused-window fields, unlike mFocusedApp.
+    if [[ -z "$candidate" || "$candidate" == *'null'* ]]; then
+      timeout 20s adb shell dumpsys activity activities > "$evidence_dir/activities.txt" 2>/dev/null || true
+      candidate="$(grep -m1 -E '^[[:space:]]*mCurrentFocus=' "$evidence_dir/activities.txt" || true)"
+      if [[ -z "$candidate" || "$candidate" == *'null'* ]]; then
+        candidate="$(grep -m1 -E '^[[:space:]]*mFocusedWindow=' "$evidence_dir/activities.txt" || true)"
+      fi
+    fi
     if [[ "$candidate" == *'com.treesus6.skatequest/'* ]]; then
       current_focus="$candidate"
       break
