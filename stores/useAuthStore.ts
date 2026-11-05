@@ -128,7 +128,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       password,
       ...(emailRedirectTo ? { options: { emailRedirectTo } } : {}),
     });
-    return { error, userId: data.user?.id ?? null };
+    return { error, userId: data?.user?.id ?? null };
   },
 
   signIn: async (email: string, password: string) => {
