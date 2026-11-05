@@ -41,8 +41,10 @@ else if (args === 'shell am start -W -n com.treesus6.skatequest/.MainActivity') 
   const app = second() && process.env.FAKE_ANDROID_SCENARIO === 'background' ? 'com.android.launcher' : 'com.treesus6.skatequest';
   // The activity can be resumed while a system ANR dialog covers it.
   const overlay = second() && (process.env.FAKE_ANDROID_SCENARIO === 'system-dialog' ||
+    (process.env.FAKE_ANDROID_SCENARIO === 'activity-dialog' && args === 'shell dumpsys activity activities') ||
     (process.env.FAKE_ANDROID_SCENARIO === 'window-dialog' && args === 'shell dumpsys window windows'));
-  if (!(second() && ['missing-focus', 'input-focus', 'input-dialog'].includes(process.env.FAKE_ANDROID_SCENARIO))) {
+  if (!(second() && (['missing-focus', 'input-focus', 'input-dialog'].includes(process.env.FAKE_ANDROID_SCENARIO) ||
+    (['activity-focus', 'activity-dialog'].includes(process.env.FAKE_ANDROID_SCENARIO) && args === 'shell dumpsys window windows')))) {
     console.log('mCurrentFocus=Window{ ' + (overlay ? 'Application Not Responding: com.google.android.apps.nexuslauncher' : app + '/.MainActivity') + ' }');
   }
   console.log('mFocusedApp=ActivityRecord{ com.treesus6.skatequest/.MainActivity }');
@@ -83,7 +85,7 @@ test('requires two launches and retains separate cold and relaunch evidence', ()
   } finally { run.cleanup(); }
 });
 
-for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'input-dialog', 'logcat-error', 'empty-logcat']) {
+for (const scenario of ['start-error', 'background', 'fatal', 'system-dialog', 'window-dialog', 'window-error', 'missing-focus', 'input-dialog', 'activity-dialog', 'logcat-error', 'empty-logcat']) {
   test(`rejects relaunch ${scenario} even after a successful cold launch`, () => {
     const run = runSmoke(scenario);
     try {
@@ -103,5 +105,13 @@ test('accepts InputDispatcher focused window when WindowManager omits mCurrentFo
   try {
     assert.equal(run.result.status, 0, run.result.stderr);
     assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/input-focus.txt'), 'utf8'), /FocusedWindow:.*com\.treesus6\.skatequest/);
+  } finally { run.cleanup(); }
+});
+
+test('accepts a real focused window reported only by activity diagnostics', () => {
+  const run = runSmoke('activity-focus');
+  try {
+    assert.equal(run.result.status, 0, run.result.stderr);
+    assert.match(fs.readFileSync(path.join(run.evidence, 'skatequest-relaunch-evidence/activities.txt'), 'utf8'), /mCurrentFocus=.*com\.treesus6\.skatequest/);
   } finally { run.cleanup(); }
 });
