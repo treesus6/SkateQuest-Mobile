@@ -168,6 +168,17 @@ jobs:
           cp "$apk" /tmp/skatequest.apk
           echo "Verified matching EAS upload signer, standalone JS bundle, release manifest and packaged runtime configuration."
 
+      # Signing, package, runtime config, and standalone JS checks have passed.
+      # Publish this clearly labeled QA-pending APK even if the emulator itself
+      # fails, so a valid signed artifact is not lost behind infrastructure QA.
+      - name: Upload signer-verified preview APK (emulator QA pending)
+        uses: actions/upload-artifact@v4
+        with:
+          name: skatequest-eas-signer-verified-qa-pending-apk
+          path: /tmp/skatequest.apk
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Enable KVM acceleration
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; else echo '::warning::KVM unavailable'; fi
@@ -201,6 +212,7 @@ jobs:
             /tmp/skatequest-startup.png
             /tmp/activities.txt
             /tmp/window-focus.txt
+            /tmp/input-focus.txt
             /tmp/skatequest.pid
             /tmp/skatequest-cold-start.txt
             /tmp/skatequest-fatal-lines.txt
