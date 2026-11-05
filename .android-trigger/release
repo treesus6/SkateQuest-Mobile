@@ -1,4 +1,4 @@
-android-local-preview 2026-11-03
-reason: EAS monthly Android quota exhausted; validate local Gradle APK with existing GitHub build workflow
-source: c4d040d6ecb8e0208ba70b05d2c8bb2a241031d3
+android-local-preview 2026-11-05
+reason: refresh expired APK artifact from current main
+source: 824ce9b2911c9d0e7ea6f9e481893109e2ea009e
 no Google Play upload or store submission
