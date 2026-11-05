@@ -22,6 +22,8 @@ on:
       - 'assets/**'
       - 'app.config.js'
       - 'eas.json'
+      - '.easignore'
+      - 'scripts/configure-gradle-wrapper.cjs'
       - 'package.json'
       - 'package-lock.json'
 
