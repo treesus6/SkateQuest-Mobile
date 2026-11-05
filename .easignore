@@ -20,7 +20,9 @@ __tests__/
 coverage/
 
 # Scripts and admin
-scripts/
+# Keep the EAS Gradle download-retry hook inside the EAS project archive.
+scripts/*
+!scripts/configure-gradle-wrapper.cjs
 admin/
 dataconnect/
 supabase/
