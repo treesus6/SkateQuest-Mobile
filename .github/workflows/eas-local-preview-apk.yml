@@ -12,6 +12,7 @@ on:
       - '.github/workflows/eas-local-preview-apk.yml'
       - '.android-trigger/release'
       - 'scripts/android-smoke.sh'
+      - 'scripts/android-smoke.test.cjs'
       - 'app/**'
       - 'screens/**'
       - 'components/**'
