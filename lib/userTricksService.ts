@@ -23,9 +23,17 @@ export const userTricksService = {
     notes?: string;
   }) {
     try {
+      // A trick logged directly as landed/consistent must carry
+      // first_landed_at, the same timestamp updateStatus sets when a
+      // trick moves to landed. Server-side XP checks require it.
+      const firstLandedAt =
+        trick.status === 'landed' || trick.status === 'consistent'
+          ? new Date().toISOString()
+          : undefined;
       return await supabase.from('user_tricks').insert([{
         ...trick,
         attempts: 0,
+        ...(firstLandedAt ? { first_landed_at: firstLandedAt } : {}),
       }]).select().single();
     } catch (error) {
       Logger.error('userTricksService.create failed', error);
