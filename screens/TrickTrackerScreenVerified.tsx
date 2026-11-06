@@ -68,6 +68,7 @@ export default function TrickTrackerScreenVerified() {
   const { user } = useAuthStore();
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
+  const [newStatus, setNewStatus] = useState<'trying' | 'landed' | 'consistent'>('trying');
 
   const { data: tricks, refetch } = useSupabaseQuery<any[]>(
     () => userTricksService.getAll(user?.id || ''),
@@ -98,16 +99,36 @@ export default function TrickTrackerScreenVerified() {
 
   const addTrick = async () => {
     if (!user || !name.trim()) return;
+    const trickName = name.trim();
     try {
       const { error } = await userTricksService.create({
         user_id: user.id,
-        trick_name: name.trim(),
-        status: 'trying',
+        trick_name: trickName,
+        status: newStatus,
       });
       if (error) throw error;
+      if (newStatus === 'landed' || newStatus === 'consistent') {
+        await feedService
+          .create({
+            user_id: user.id,
+            activity_type: 'trick_landed',
+            title: `Logged ${trickName} as landed`,
+            description:
+              'Self-reported trick log — no XP awarded until a verified SkateQuest activity earns it.',
+            xp_earned: 0,
+          })
+          .catch(() => undefined);
+      }
       setName('');
+      setNewStatus('trying');
       setShowAdd(false);
       refetch();
+      if (newStatus === 'landed' || newStatus === 'consistent') {
+        Alert.alert(
+          'Trick logged',
+          `${trickName} is marked landed. XP is only awarded through verified activity.`
+        );
+      }
     } catch (error: any) {
       Alert.alert('Could not add trick', error?.message || 'Please try again.');
     }
@@ -399,7 +420,11 @@ export default function TrickTrackerScreenVerified() {
         visible={showAdd}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAdd(false)}
+        onRequestClose={() => {
+          setShowAdd(false);
+          setName('');
+          setNewStatus('trying');
+        }}
       >
         <View style={s.modalBackdrop}>
           <View style={s.modalCard}>
@@ -423,6 +448,22 @@ export default function TrickTrackerScreenVerified() {
               autoFocus
             />
 
+            <Text style={s.commonLabel}>STATUS</Text>
+            <View style={s.commonWrap}>
+              {(['trying', 'landed', 'consistent'] as const).map(option => (
+                <TouchableOpacity
+                  key={option}
+                  style={[s.commonChip, newStatus === option && s.commonChipActive]}
+                  onPress={() => setNewStatus(option)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: newStatus === option }}
+                  accessibilityLabel={`Mark as ${STATUS[option].label}`}
+                >
+                  <Text style={s.commonChipText}>{STATUS[option].label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <Text style={s.commonLabel}>COMMON TRICKS</Text>
             <ScrollView style={s.commonScroll} showsVerticalScrollIndicator={false}>
               <View style={s.commonWrap}>
@@ -444,6 +485,7 @@ export default function TrickTrackerScreenVerified() {
                 onPress={() => {
                   setShowAdd(false);
                   setName('');
+                  setNewStatus('trying');
                 }}
               >
                 <Text style={s.cancelButtonText}>CANCEL</Text>
