@@ -114,7 +114,7 @@ export default function TrickTrackerScreenVerified() {
             activity_type: 'trick_landed',
             title: `Logged ${trickName} as landed`,
             description:
-              'Self-reported trick log — no XP awarded until a verified SkateQuest activity earns it.',
+              'Landed trick log — the server awards +25 XP once per trick.',
             xp_earned: 0,
           })
           .catch(() => undefined);
@@ -126,7 +126,7 @@ export default function TrickTrackerScreenVerified() {
       if (newStatus === 'landed' || newStatus === 'consistent') {
         Alert.alert(
           'Trick logged',
-          `${trickName} is marked landed. XP is only awarded through verified activity.`
+          `${trickName} is marked landed. +25 XP is awarded once per trick by the server.`
         );
       }
     } catch (error: any) {
@@ -149,13 +149,13 @@ export default function TrickTrackerScreenVerified() {
             activity_type: 'trick_landed',
             title: `Logged ${trick.trick_name} as landed`,
             description:
-              'Self-reported trick log — no XP awarded until a verified SkateQuest activity earns it.',
+              'Landed trick log — the server awards +25 XP once per trick.',
             xp_earned: 0,
           })
           .catch(() => undefined);
         Alert.alert(
           'Trick logged',
-          `${trick.trick_name} is marked landed. XP is only awarded through verified activity.`
+          `${trick.trick_name} is marked landed. +25 XP is awarded once per trick by the server.`
         );
       }
       refetch();
