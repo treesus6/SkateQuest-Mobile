@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import type { AlertButton } from 'react-native';
 import {
   BarChart3,
   BookOpen,
@@ -25,6 +26,7 @@ import { useNavigation } from '../lib/useNavigation';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';
+import type { LandedXpClaim } from '../lib/userTricksService';
 import { feedService } from '../lib/feedService';
 
 const INK = '#07080B';
@@ -62,6 +64,80 @@ const STATUS = {
   landed: { label: 'LANDED', color: BLUE, Icon: Target },
   consistent: { label: 'CONSISTENT', color: ACID, Icon: Star },
 } as const;
+
+// Feed copy for a landed trick, worded from the actual XP claim result —
+// never a promise the server did not make.
+function landedFeedDescription(xpClaim: LandedXpClaim | undefined): string {
+  if (xpClaim?.ok && xpClaim.awarded) {
+    return 'Landed trick log — +25 XP awarded by the server.';
+  }
+  if (xpClaim?.ok && xpClaim.alreadyClaimed) {
+    return 'Landed trick log — +25 XP already awarded for this trick.';
+  }
+  return 'Landed trick log.';
+}
+
+// Re-attempt the server XP claim for a trick whose first claim failed.
+// The server ledger dedupes per trick, so a retry can never pay twice.
+async function retryLandedXp(
+  trickId: string,
+  trickName: string,
+  statusLabel: string
+): Promise<void> {
+  const claim = await userTricksService.awardLandedXp(trickId);
+  if (claim.ok && claim.awarded) {
+    Alert.alert('XP awarded', `${trickName} earned +25 XP.`);
+  } else if (claim.ok && claim.alreadyClaimed) {
+    Alert.alert('Already awarded', `${trickName} already earned its +25 XP.`);
+  } else {
+    Alert.alert(
+      'XP award failed',
+      `The +25 XP for ${trickName} could not be awarded. Check your connection and try again.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Retry',
+          onPress: () => void retryLandedXp(trickId, trickName, statusLabel),
+        },
+      ]
+    );
+  }
+}
+
+// Confirm a landed-trick save with the real XP outcome: +25 XP only when
+// the server actually awarded it, silence about XP when it was already
+// claimed, and a retry offer when the claim failed.
+function showLandedXpResult(
+  trickId: string | undefined,
+  trickName: string,
+  statusLabel: string,
+  xpClaim: LandedXpClaim | undefined
+): void {
+  if (!xpClaim) {
+    Alert.alert('Trick logged', `${trickName} is marked ${statusLabel}.`);
+    return;
+  }
+  if (xpClaim.ok && xpClaim.awarded) {
+    Alert.alert('Trick logged', `${trickName} is marked ${statusLabel}. +25 XP awarded.`);
+    return;
+  }
+  if (xpClaim.ok && xpClaim.alreadyClaimed) {
+    Alert.alert('Trick logged', `${trickName} is marked ${statusLabel}.`);
+    return;
+  }
+  const buttons: AlertButton[] = [{ text: 'Later', style: 'cancel' }];
+  if (trickId) {
+    buttons.push({
+      text: 'Retry XP',
+      onPress: () => void retryLandedXp(trickId, trickName, statusLabel),
+    });
+  }
+  Alert.alert(
+    'Trick logged — XP not awarded',
+    `${trickName} is marked ${statusLabel}, but the +25 XP could not be awarded.`,
+    buttons
+  );
+}
 
 export default function TrickTrackerScreenVerified() {
   const navigation = useNavigation<any>();
@@ -101,33 +177,31 @@ export default function TrickTrackerScreenVerified() {
     if (!user || !name.trim()) return;
     const trickName = name.trim();
     try {
-      const { error } = await userTricksService.create({
+      const created = await userTricksService.create({
         user_id: user.id,
         trick_name: trickName,
         status: newStatus,
       });
-      if (error) throw error;
+      if (created.error) throw created.error;
+      const xpClaim = (created as { xpClaim?: LandedXpClaim }).xpClaim;
       if (newStatus === 'landed' || newStatus === 'consistent') {
         await feedService
           .create({
             user_id: user.id,
             activity_type: 'trick_landed',
             title: `Logged ${trickName} as landed`,
-            description:
-              'Landed trick log — the server awards +25 XP once per trick.',
+            description: landedFeedDescription(xpClaim),
             xp_earned: 0,
           })
           .catch(() => undefined);
       }
+      const createdId = (created.data as { id?: string } | null)?.id;
       setName('');
       setNewStatus('trying');
       setShowAdd(false);
       refetch();
       if (newStatus === 'landed' || newStatus === 'consistent') {
-        Alert.alert(
-          'Trick logged',
-          `${trickName} is marked landed. +25 XP is awarded once per trick by the server.`
-        );
+        showLandedXpResult(createdId, trickName, newStatus, xpClaim);
       }
     } catch (error: any) {
       Alert.alert('Could not add trick', error?.message || 'Please try again.');
@@ -140,23 +214,24 @@ export default function TrickTrackerScreenVerified() {
   ) => {
     if (!user) return;
     try {
-      const { error } = await userTricksService.updateStatus(trick.id, status);
-      if (error) throw error;
-      if (status === 'landed' && trick.status === 'trying') {
+      const updated = await userTricksService.updateStatus(trick.id, status);
+      if (updated.error) throw updated.error;
+      const xpClaim = (updated as { xpClaim?: LandedXpClaim }).xpClaim;
+      const becameLanded = status === 'landed' && trick.status === 'trying';
+      const becameConsistent = status === 'consistent' && trick.status === 'landed';
+      if (becameLanded) {
         await feedService
           .create({
             user_id: user.id,
             activity_type: 'trick_landed',
             title: `Logged ${trick.trick_name} as landed`,
-            description:
-              'Landed trick log — the server awards +25 XP once per trick.',
+            description: landedFeedDescription(xpClaim),
             xp_earned: 0,
           })
           .catch(() => undefined);
-        Alert.alert(
-          'Trick logged',
-          `${trick.trick_name} is marked landed. +25 XP is awarded once per trick by the server.`
-        );
+      }
+      if (becameLanded || becameConsistent) {
+        showLandedXpResult(trick.id, trick.trick_name, status, xpClaim);
       }
       refetch();
     } catch (error: any) {
