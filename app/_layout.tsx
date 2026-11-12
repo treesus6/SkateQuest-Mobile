@@ -26,7 +26,6 @@ import { analytics } from '../lib/analytics';
 import { useMutationQueueStore } from '../stores/useMutationQueueStore';
 import { executeOfflineMutation } from '../lib/offlineMutationExecutor';
 import { startBackgroundSync, stopBackgroundSync } from '../lib/backgroundSync';
-import { checkForOTAUpdate } from '../lib/otaUpdates';
 import { initializeMapbox } from '../lib/mapboxSetup';
 import {
   buildAuthReturnPath,
@@ -82,7 +81,11 @@ function AuthGuard() {
     const authScreen = routeSegments[1];
     const isPasswordRecovery = inAuthGroup && authScreen === 'reset-password';
 
-    if (!user && !inAuthGroup && !(routeSegments[0] === 'auth' && routeSegments[1] === 'callback')) {
+    if (
+      !user &&
+      !inAuthGroup &&
+      !(routeSegments[0] === 'auth' && routeSegments[1] === 'callback')
+    ) {
       rememberAuthReturnPath(requestedPath);
       router.replace('/login');
     } else if (user && inAuthGroup && !isPasswordRecovery) {
@@ -92,7 +95,9 @@ function AuthGuard() {
 
   useEffect(() => {
     if (!loading) {
-      SplashScreen.hideAsync().then(() => markInteractive()).catch(() => {});
+      SplashScreen.hideAsync()
+        .then(() => markInteractive())
+        .catch(() => {});
     }
   }, [loading, markInteractive]);
 
@@ -123,9 +128,10 @@ function RootLayout() {
         await useMutationQueueStore.getState().rehydrate();
         startBackgroundSync([], executeOfflineMutation);
 
-        if (Platform.OS !== 'web') {
-          checkForOTAUpdate({ silent: true });
-        }
+        // No manual OTA check here: app.config.js sets
+        // `updates.checkAutomatically` to 'ON_LOAD', so Expo already
+        // checks for updates when the app launches. A manual check would
+        // run the same check twice.
 
         Logger.info('SkateQuest initialized');
         Sentry.addBreadcrumb({
