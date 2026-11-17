@@ -1,4 +1,4 @@
-android-local-preview 2026-11-05
-reason: refresh expired APK artifact from current main
-source: 824ce9b2911c9d0e7ea6f9e481893109e2ea009e
+android-local-preview 2026-11-17
+reason: build APK with all four fix PRs merged (#427, #428, #434, #435)
+source: ea878e5c4a2aa3e5615979cf962bdabcf4c45a96
 no Google Play upload or store submission
