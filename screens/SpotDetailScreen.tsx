@@ -43,7 +43,8 @@ import TerritoryControl from '../components/TerritoryControl';
 import GhostClipViewer from '../components/GhostClipViewer';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import SpotMiniMap from '../components/SpotMiniMap';
-import { getSessionStatus, sessionsService, SessionRsvpResult } from '../lib/sessionsService';
+import { getSessionStatus, sessionsService, SessionRsvpResult, requireConfirmedSessionRsvp } from '../lib/sessionsService';
+import { getUnverifiedCommentMessage, postSpotComment, verifySpotComment } from '../lib/spotComments';
 import { getSpotShareUrl, normalizeSpotId } from '../lib/spotLinks';
 
 const { width } = Dimensions.get('window');
@@ -105,6 +106,7 @@ const SpotDetailContent = memo(({ spotId, navigation }: any) => {
   const [sessions, setSessions] = useState<SpotSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [rsvpingId, setRsvpingId] = useState<string | null>(null);
+  const [reportingCondition, setReportingCondition] = useState(false);
 
   useEffect(() => {
     if (!spotId) {
@@ -234,31 +236,30 @@ const SpotDetailContent = memo(({ spotId, navigation }: any) => {
     try {
       const { data, error } = await sessionsService.setRsvp(session.id, attending);
       if (error) throw error;
-      const result = data as SessionRsvpResult | null;
-      if (result?.error === 'full') {
+      // The RPC must confirm the exact RSVP state and a valid attendee
+      // count; a null or mismatched response must never update the UI.
+      const result = requireConfirmedSessionRsvp(data as SessionRsvpResult | null, attending);
+      setSessions(prev =>
+        prev.map(s =>
+          s.id === session.id
+            ? { ...s, is_attending: result.is_attending, attendee_count: result.attendee_count }
+            : s
+        )
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === 'full') {
         Alert.alert('Session Full', 'This session has reached its maximum participants.');
-        return;
-      }
-      if (result?.error === 'session ended') {
+      } else if (message === 'session ended') {
         Alert.alert('Session Ended', 'This session has already happened.');
-        return;
-      }
-      if (result?.error) throw new Error(result.error);
-      if (result?.attendee_count !== undefined) {
-        setSessions(prev =>
-          prev.map(s =>
-            s.id === session.id
-              ? {
-                  ...s,
-                  is_attending: result.is_attending ?? attending,
-                  attendee_count: result.attendee_count!,
-                }
-              : s
-          )
+      } else if (message === 'Session RSVP was not confirmed by the server') {
+        Alert.alert(
+          'RSVP not confirmed',
+          'SkateQuest could not confirm your RSVP was saved. Check the session before trying again.'
         );
+      } else {
+        Alert.alert('Error', 'Could not update RSVP');
       }
-    } catch {
-      Alert.alert('Error', 'Could not update RSVP');
     } finally {
       setRsvpingId(null);
     }
@@ -306,14 +307,24 @@ const SpotDetailContent = memo(({ spotId, navigation }: any) => {
           Logger.warn('Orphan spot photo cleanup failed', cleanupError);
         }
       }
-      Alert.alert('Photo not saved', getSpotSubmissionErrorMessage(error));
+      if (attached) {
+        // add_spot_photo committed, but the read-back could not confirm it.
+        // The photo IS attached server-side, so never claim it was not saved.
+        Alert.alert(
+          'Photo needs verification',
+          'The photo was attached, but SkateQuest could not read it back. Open the spot to check it before adding the photo again.'
+        );
+      } else {
+        Alert.alert('Photo not saved', getSpotSubmissionErrorMessage(error));
+      }
     } finally {
       setUploading(false);
     }
   };
 
   const reportCondition = async (condition: string) => {
-    if (!user) return;
+    if (!user || reportingCondition) return;
+    setReportingCondition(true);
     try {
       await spotsService.reportCondition(spotId, user.id, condition);
       Alert.alert('Success', 'Condition reported!');
@@ -321,21 +332,32 @@ const SpotDetailContent = memo(({ spotId, navigation }: any) => {
       await loadSpotData();
     } catch (error: any) {
       Alert.alert('Error', error.message);
+    } finally {
+      setReportingCondition(false);
     }
   };
 
   const submitComment = async () => {
     if (!user || !commentText.trim()) return;
+    const content = commentText.trim();
+    let posted = false;
     try {
       setSubmittingComment(true);
-      const { error } = await supabase
-        .from('spot_comments')
-        .insert([{ spot_id: spotId, user_id: user.id, content: commentText.trim() }]);
-      if (error) throw error;
+      const inserted = await postSpotComment(spotId, user.id, content);
+      posted = true;
+      const verified = await verifySpotComment(inserted.id);
+      if (!verified) throw new Error('Your comment could not be read back after posting.');
       setCommentText('');
       await loadSpotData();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Logger.error('Spot comment submit failed', error);
+      if (posted) {
+        // The insert succeeded but the read-back did not confirm it: the
+        // comment may already be live, so keep the draft and say so.
+        Alert.alert('Comment not confirmed', getUnverifiedCommentMessage());
+      } else {
+        Alert.alert('Error', error.message);
+      }
     } finally {
       setSubmittingComment(false);
     }
@@ -786,6 +808,7 @@ const SpotDetailContent = memo(({ spotId, navigation }: any) => {
                   key={option.value}
                   className="w-[31%] bg-[#0B1017] border border-[#252D39] p-4 rounded-xl items-center"
                   onPress={() => reportCondition(option.value)}
+                  disabled={reportingCondition}
                 >
                   <Text className="text-[#D4D8DE] text-[10px] font-black text-center">
                     {option.label.toUpperCase()}
