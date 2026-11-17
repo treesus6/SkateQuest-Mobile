@@ -3,24 +3,50 @@ import { Logger } from './logger';
 import { ServiceError } from './serviceError';
 
 // XP awarded once per landed trick by the server. The server function
-// (migration 20260818150000) only pays out when the trick has a
-// first_landed_at within the last 15 minutes and no ledger entry exists
+// award_landed_trick_xp (migration 20261109100500) only pays out when
+// the trick belongs to the caller, is landed/consistent with a
+// first_landed_at within the last 15 minutes, and no ledger entry exists
 // for it yet, so a re-award attempt is a no-op server-side.
 export const LANDED_TRICK_XP = 25;
 
+// Result of a server claim for the one-time +25 XP award on a landed
+// trick. `ok` means the server answered the claim; `awarded` means the
+// 25 XP was actually paid; `alreadyClaimed` means the server ledger
+// already holds this trick, so no XP is owed and nothing should be
+// promised. Anything else is a failure the screen must surface.
+export type LandedXpClaim =
+  | { ok: true; awarded: true; alreadyClaimed: false }
+  | { ok: true; awarded: false; alreadyClaimed: true }
+  | { ok: false; awarded: false; alreadyClaimed: false; error: Error };
+
 export const userTricksService = {
-  // Best-effort XP claim for a landed trick. Never throws: a failed or
-  // already-claimed XP award must never fail the trick save that
-  // already succeeded. Failures are logged through the project logger.
-  async awardLandedXp(userId: string) {
+  // Claim the one-time +25 XP award for a landed trick from the server
+  // function award_landed_trick_xp. The server verifies ownership via
+  // auth.uid(), that the trick is landed/consistent with first_landed_at
+  // inside the last 15 minutes, and dedupes per trick through
+  // xp_reward_ledger, so a claim is paid at most once and a retry can
+  // never pay twice. Returns the claim result instead of throwing:
+  // callers decide what to show. A failed claim is logged through the
+  // project logger and never fails the trick save that already succeeded.
+  async awardLandedXp(trickId: string): Promise<LandedXpClaim> {
     try {
-      const { error } = await supabase.rpc('increment_xp', {
-        p_user_id: userId,
-        p_xp_amount: LANDED_TRICK_XP,
+      const { data, error } = await supabase.rpc('award_landed_trick_xp', {
+        p_trick_id: trickId,
       });
       if (error) throw error;
-    } catch (error) {
-      Logger.error('userTricksService.awardLandedXp failed', error);
+      if (data && typeof data === 'object' && (data as any).awarded === false) {
+        if ((data as any).reason === 'already_claimed') {
+          return { ok: true, awarded: false, alreadyClaimed: true };
+        }
+        const claimError = new Error(`XP award not granted: ${(data as any).reason ?? 'unknown reason'}`);
+        Logger.error('userTricksService.awardLandedXp not granted', claimError);
+        return { ok: false, awarded: false, alreadyClaimed: false, error: claimError };
+      }
+      return { ok: true, awarded: true, alreadyClaimed: false };
+    } catch (error: any) {
+      const claimError = error instanceof Error ? error : new Error(String(error));
+      Logger.error('userTricksService.awardLandedXp failed', claimError);
+      return { ok: false, awarded: false, alreadyClaimed: false, error: claimError };
     }
   },
 
@@ -57,10 +83,12 @@ export const userTricksService = {
         ...(firstLandedAt ? { first_landed_at: firstLandedAt } : {}),
       }]).select().single();
       // Claim the one-time server XP award for a trick logged as landed.
-      // awardLandedXp never throws, so the save stands even if the
-      // claim fails or was already claimed.
-      if (!result.error && (trick.status === 'landed' || trick.status === 'consistent')) {
-        await userTricksService.awardLandedXp(trick.user_id);
+      // The claim result rides along on the return value so the screen can
+      // confirm the award, report an already-claimed award, or offer a
+      // retry; a failed claim never fails the save that already succeeded.
+      if (!result.error && (trick.status === 'landed' || trick.status === 'consistent') && result.data?.id) {
+        const xpClaim = await userTricksService.awardLandedXp(result.data.id);
+        return { ...result, xpClaim };
       }
       return result;
     } catch (error) {
@@ -84,10 +112,13 @@ export const userTricksService = {
         .select()
         .single();
       // Claim the one-time server XP award. The server ledger dedupes
-      // per trick, so re-marking a trick cannot pay twice, and
-      // awardLandedXp never throws, so the save stands either way.
+      // per trick, so re-marking a trick cannot pay twice, and the claim
+      // result rides along on the return value so the screen can confirm
+      // the award, report an already-claimed award, or offer a retry. A
+      // failed claim never fails the save that already succeeded.
       if (!result.error && (status === 'landed' || status === 'consistent') && result.data?.user_id) {
-        await userTricksService.awardLandedXp(result.data.user_id);
+        const xpClaim = await userTricksService.awardLandedXp(trickId);
+        return { ...result, xpClaim };
       }
       return result;
     } catch (error) {

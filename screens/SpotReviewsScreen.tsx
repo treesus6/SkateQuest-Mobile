@@ -16,6 +16,8 @@ import { ChevronLeft, MessageSquare, X, PenLine, MapPin, Users, Sparkles, Star }
 import { supabase } from '../lib/supabase'
 import { spotsService } from '../lib/spotsService'
 import { getSpotSubmissionErrorMessage } from '../lib/spotSubmission'
+import { getUnverifiedCommentMessage, postSpotComment, verifySpotComment } from '../lib/spotComments'
+import { Logger } from '../lib/logger'
 import { useAuthStore } from '../stores/useAuthStore'
 import { SkateSpot, SpotRating } from '../types'
 
@@ -115,23 +117,30 @@ export default function SpotReviewsScreen() {
       Alert.alert('Comment required', 'Please write something about this spot.')
       return
     }
+    const content = commentText.trim()
+    let posted = false
     try {
       setSubmitting(true)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not logged in')
 
-      const { error: insertError } = await supabase.from('spot_comments').insert({
-        spot_id: spotId,
-        user_id: user.id,
-        content: commentText.trim(),
-      })
-      if (insertError) throw insertError
+      const inserted = await postSpotComment(spotId, user.id, content)
+      posted = true
+      const verified = await verifySpotComment(inserted.id)
+      if (!verified) throw new Error('Your comment could not be read back after posting.')
 
       setModalVisible(false)
       setCommentText('')
       await fetchPage(true)
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit comment')
+      Logger.error('Spot comment submit failed', err)
+      if (posted) {
+        // The insert succeeded but the read-back did not confirm it: the
+        // comment may already be live, so keep the draft and say so.
+        Alert.alert('Comment not confirmed', getUnverifiedCommentMessage())
+      } else {
+        Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit comment')
+      }
     } finally {
       setSubmitting(false)
     }

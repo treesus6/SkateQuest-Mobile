@@ -91,22 +91,26 @@ describe('userTricksService.create', () => {
 describe('userTricksService XP award on landed tricks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRpc.mockResolvedValue({ data: null, error: null });
+    mockRpc.mockResolvedValue({ data: { awarded: true, xp_amount: 25 }, error: null });
   });
 
   it('claims 25 XP once when a trick is created as landed', async () => {
     mockInsertChain();
 
-    await userTricksService.create({
+    const result = await userTricksService.create({
       user_id: 'user-1',
       trick_name: 'Kickflip',
       status: 'landed',
     });
 
     expect(mockRpc).toHaveBeenCalledTimes(1);
-    expect(mockRpc).toHaveBeenCalledWith('increment_xp', {
-      p_user_id: 'user-1',
-      p_xp_amount: 25,
+    expect(mockRpc).toHaveBeenCalledWith('award_landed_trick_xp', {
+      p_trick_id: 'trick-1',
+    });
+    expect((result as any).xpClaim).toEqual({
+      ok: true,
+      awarded: true,
+      alreadyClaimed: false,
     });
   });
 
@@ -119,9 +123,8 @@ describe('userTricksService XP award on landed tricks', () => {
       status: 'consistent',
     });
 
-    expect(mockRpc).toHaveBeenCalledWith('increment_xp', {
-      p_user_id: 'user-1',
-      p_xp_amount: 25,
+    expect(mockRpc).toHaveBeenCalledWith('award_landed_trick_xp', {
+      p_trick_id: 'trick-1',
     });
   });
 
@@ -139,7 +142,7 @@ describe('userTricksService XP award on landed tricks', () => {
 
   it('still saves the trick when the XP claim fails', async () => {
     mockInsertChain();
-    mockRpc.mockRejectedValueOnce(new Error('No verified unclaimed 25 XP activity found'));
+    mockRpc.mockRejectedValueOnce(new Error('Trick not found'));
 
     const result = await userTricksService.create({
       user_id: 'user-1',
@@ -149,19 +152,51 @@ describe('userTricksService XP award on landed tricks', () => {
 
     expect(result.data).toEqual({ id: 'trick-1' });
     expect(result.error).toBeNull();
+    expect((result as any).xpClaim).toEqual({
+      ok: false,
+      awarded: false,
+      alreadyClaimed: false,
+      error: expect.any(Error),
+    });
+  });
+
+  it('reports an already-claimed award without failing the save', async () => {
+    mockInsertChain();
+    mockRpc.mockResolvedValue({
+      data: { awarded: false, reason: 'already_claimed' },
+      error: null,
+    });
+
+    const result = await userTricksService.create({
+      user_id: 'user-1',
+      trick_name: 'Kickflip',
+      status: 'landed',
+    });
+
+    expect(result.data).toEqual({ id: 'trick-1' });
+    expect(result.error).toBeNull();
+    expect((result as any).xpClaim).toEqual({
+      ok: true,
+      awarded: false,
+      alreadyClaimed: true,
+    });
   });
 
   it('stamps first_landed_at and claims XP when a trick is marked landed', async () => {
     const { mockUpdate } = mockUpdateChain();
 
-    await userTricksService.updateStatus('trick-1', 'landed');
+    const result = await userTricksService.updateStatus('trick-1', 'landed');
 
     const updates = mockUpdate.mock.calls[0][0];
     expect(updates.status).toBe('landed');
     expect(typeof updates.first_landed_at).toBe('string');
-    expect(mockRpc).toHaveBeenCalledWith('increment_xp', {
-      p_user_id: 'user-1',
-      p_xp_amount: 25,
+    expect(mockRpc).toHaveBeenCalledWith('award_landed_trick_xp', {
+      p_trick_id: 'trick-1',
+    });
+    expect((result as any).xpClaim).toEqual({
+      ok: true,
+      awarded: true,
+      alreadyClaimed: false,
     });
   });
 
@@ -170,9 +205,8 @@ describe('userTricksService XP award on landed tricks', () => {
 
     await userTricksService.updateStatus('trick-1', 'consistent');
 
-    expect(mockRpc).toHaveBeenCalledWith('increment_xp', {
-      p_user_id: 'user-1',
-      p_xp_amount: 25,
+    expect(mockRpc).toHaveBeenCalledWith('award_landed_trick_xp', {
+      p_trick_id: 'trick-1',
     });
   });
 
@@ -183,5 +217,60 @@ describe('userTricksService XP award on landed tricks', () => {
 
     expect(mockUpdate.mock.calls[0][0].first_landed_at).toBeUndefined();
     expect(mockRpc).not.toHaveBeenCalled();
+  });
+});
+
+describe('userTricksService.awardLandedXp', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns the awarded verdict from the server', async () => {
+    mockRpc.mockResolvedValue({ data: { awarded: true, xp_amount: 25 }, error: null });
+
+    const claim = await userTricksService.awardLandedXp('trick-1');
+
+    expect(mockRpc).toHaveBeenCalledWith('award_landed_trick_xp', {
+      p_trick_id: 'trick-1',
+    });
+    expect(claim).toEqual({ ok: true, awarded: true, alreadyClaimed: false });
+  });
+
+  it('returns already-claimed when the server already paid for the trick', async () => {
+    mockRpc.mockResolvedValue({
+      data: { awarded: false, reason: 'already_claimed' },
+      error: null,
+    });
+
+    const claim = await userTricksService.awardLandedXp('trick-1');
+
+    expect(claim).toEqual({ ok: true, awarded: false, alreadyClaimed: true });
+  });
+
+  it('returns a failed claim when the RPC responds with an error', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'Landed trick is outside the 15 minute award window' },
+    });
+
+    const claim = await userTricksService.awardLandedXp('trick-1');
+
+    expect(claim.ok).toBe(false);
+    expect(claim.awarded).toBe(false);
+    expect(claim.alreadyClaimed).toBe(false);
+    expect((claim as any).error).toBeDefined();
+  });
+
+  it('returns a failed claim when the RPC call itself rejects', async () => {
+    mockRpc.mockRejectedValueOnce(new Error('network down'));
+
+    const claim = await userTricksService.awardLandedXp('trick-1');
+
+    expect(claim).toEqual({
+      ok: false,
+      awarded: false,
+      alreadyClaimed: false,
+      error: expect.any(Error),
+    });
   });
 });
