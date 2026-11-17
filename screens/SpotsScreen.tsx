@@ -5,6 +5,7 @@ import {
 import { MapPin, Search, Navigation, Layers3, ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '../lib/useNavigation';
 import { spotsService } from '../lib/spotsService';
+import { Logger } from '../lib/logger';
 import { SkateSpot } from '../types';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 
@@ -18,20 +19,35 @@ export default function SpotsScreen() {
   const [filtered, setFiltered] = useState<SkateSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   const loadSpots = useCallback(async () => {
     try {
+      setLoadError(null);
       const { data, error } = await spotsService.getAll();
-      if (!error && data) {
+      if (error) {
+        Logger.error('Spots load failed', error);
+        setLoadError('SkateQuest could not load spots. Check your connection and try again.');
+        return;
+      }
+      if (data) {
         setSpots(data as SkateSpot[]);
         setFiltered(data as SkateSpot[]);
       }
-    } catch {} finally {
+    } catch (error) {
+      Logger.error('Spots load failed', error);
+      setLoadError('SkateQuest could not load spots. Check your connection and try again.');
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
+
+  const retryLoadSpots = useCallback(() => {
+    setLoading(true);
+    void loadSpots();
+  }, [loadSpots]);
 
   useEffect(() => { loadSpots(); }, [loadSpots]);
 
@@ -136,13 +152,31 @@ export default function SpotsScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32 }}
         refreshControl={<RefreshControl tintColor="#D2673D" refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadSpots(); }} />}
         ListEmptyComponent={
-          <View className="items-center mt-20 px-8">
-            <View className="w-16 h-16 rounded-2xl bg-[#10151D] items-center justify-center border border-[#252D39]">
-              <MapPin size={28} color="#596271" />
+          loadError ? (
+            <View className="items-center mt-20 px-8">
+              <View className="w-16 h-16 rounded-2xl bg-[#10151D] items-center justify-center border border-[#252D39]">
+                <MapPin size={28} color="#596271" />
+              </View>
+              <Text className="text-white text-lg font-black mt-4">Spots could not load</Text>
+              <Text className="text-[#697383] text-sm text-center mt-2">{loadError}</Text>
+              <TouchableOpacity
+                className="bg-[#D2673D] rounded-xl px-5 py-3 mt-5"
+                onPress={retryLoadSpots}
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading spots"
+              >
+                <Text className="text-white text-xs font-black">TRY AGAIN</Text>
+              </TouchableOpacity>
             </View>
-            <Text className="text-white text-lg font-black mt-4">{query ? 'No matching spots' : 'No spots yet'}</Text>
-            <Text className="text-[#697383] text-sm text-center mt-2">{query ? 'Try another spot name.' : 'Community spots will show here as they are added.'}</Text>
-          </View>
+          ) : (
+            <View className="items-center mt-20 px-8">
+              <View className="w-16 h-16 rounded-2xl bg-[#10151D] items-center justify-center border border-[#252D39]">
+                <MapPin size={28} color="#596271" />
+              </View>
+              <Text className="text-white text-lg font-black mt-4">{query ? 'No matching spots' : 'No spots yet'}</Text>
+              <Text className="text-[#697383] text-sm text-center mt-2">{query ? 'Try another spot name.' : 'Community spots will show here as they are added.'}</Text>
+            </View>
+          )
         }
       />
     </View>

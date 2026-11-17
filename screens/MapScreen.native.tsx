@@ -17,6 +17,8 @@ import {
 } from 'lucide-react-native';
 import { spotsService } from '../lib/spotsService';
 import { shopsService } from '../lib/shopsService';
+import { savedSpotsService } from '../lib/savedSpotsService';
+import { Logger } from '../lib/logger';
 import { PersistentCache } from '../lib/persistentCache';
 import { useNetworkStore } from '../stores/useNetworkStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -58,13 +60,19 @@ const CONDITION_LABELS: Record<string, string> = {
 export default function MapScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthStore();
+  const isConnected = useNetworkStore(state => state.isConnected);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapRef = useRef<Mapbox.MapView>(null);
   const portalMarkerRef = useRef<any>(null);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+  const wasConnectedRef = useRef(isConnected);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [spotsSource, setSpotsSource] = useState<'live' | 'cached' | null>(null);
+  const [spotsLoadError, setSpotsLoadError] = useState<string | null>(null);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapInstance, setMapInstance] = useState(0);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
@@ -90,14 +98,39 @@ export default function MapScreen() {
 
     SkateEvents.mapOpened();
     void requestLocationPermission();
-    AsyncStorage.getItem(SAVED_SPOTS_KEY).then((raw: string | null) => {
-      if (raw) {
-        try {
-          setSavedSpotIds(new Set(JSON.parse(raw)));
-        } catch {}
-      }
-    });
   }, []);
+
+  // Bookmarks live in the user_saved_spots server table. AsyncStorage only
+  // holds a read fallback; local-only ids reconcile to the server here and
+  // again whenever the connection comes back.
+  const loadSavedSpots = async () => {
+    let localIds: string[] = [];
+    try {
+      const raw = await AsyncStorage.getItem(SAVED_SPOTS_KEY);
+      if (raw) localIds = JSON.parse(raw) as string[];
+    } catch {}
+    if (!user?.id) {
+      setSavedSpotIds(new Set(localIds));
+      return;
+    }
+    try {
+      const { data } = await savedSpotsService.reconcileSavedSpots(user.id, localIds);
+      setSavedSpotIds(new Set(data));
+      await AsyncStorage.setItem(SAVED_SPOTS_KEY, JSON.stringify(data));
+    } catch (error) {
+      Logger.error('Saved spots reconcile failed', error);
+      setSavedSpotIds(new Set(localIds));
+    }
+  };
+
+  useEffect(() => {
+    void loadSavedSpots();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!wasConnectedRef.current && isConnected && user?.id) void loadSavedSpots();
+    wasConnectedRef.current = isConnected;
+  }, [isConnected, user?.id]);
 
   useEffect(() => {
     if (!selectedSpot) {
@@ -142,9 +175,12 @@ export default function MapScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
+        // Do not silently sit at the default [0, 20] coordinates: say why.
+        setLocationDenied(true);
         setLoading(false);
         return;
       }
+      setLocationDenied(false);
 
       const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
       if (lastKnown && applyLocation(lastKnown)) {
@@ -172,11 +208,11 @@ export default function MapScreen() {
   };
 
   const loadSpots = async (lat: number, lng: number) => {
+    lastCoordsRef.current = { lat, lng };
     const cacheKey = `spots_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
     const shopCacheKey = `shops_nearby_${lat.toFixed(2)}_${lng.toFixed(2)}`;
     const CACHE_TTL = 60 * 60 * 1000;
     const STALE_WINDOW = 23 * 60 * 60 * 1000;
-    const { isConnected } = useNetworkStore.getState();
 
     try {
       if (!isConnected) {
@@ -184,7 +220,17 @@ export default function MapScreen() {
           PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW),
           PersistentCache.get<Shop[]>(shopCacheKey, STALE_WINDOW),
         ]);
-        if (cachedSpots) setSpots(cachedSpots.data);
+        if (cachedSpots) {
+          setSpots(cachedSpots.data);
+          setSpotsSource('cached');
+          setSpotsLoadError(null);
+        } else {
+          setSpots([]);
+          setSpotsSource(null);
+          setSpotsLoadError(
+            'You are offline and no saved spots are available for this area.'
+          );
+        }
         if (cachedShops) setShops(cachedShops.data);
         return;
       }
@@ -195,10 +241,22 @@ export default function MapScreen() {
       ]);
       if (error) {
         const cached = await PersistentCache.get<SkateSpot[]>(cacheKey, STALE_WINDOW);
-        if (cached) setSpots(cached.data);
+        if (cached) {
+          setSpots(cached.data);
+          setSpotsSource('cached');
+          setSpotsLoadError(null);
+        } else {
+          setSpots([]);
+          setSpotsSource(null);
+          setSpotsLoadError(
+            'Could not load nearby spots. Check your connection and try again.'
+          );
+        }
       } else {
         const spotsData = (data || []) as SkateSpot[];
         setSpots(spotsData);
+        setSpotsSource('live');
+        setSpotsLoadError(null);
         await PersistentCache.set(cacheKey, spotsData, CACHE_TTL);
       }
 
@@ -212,13 +270,26 @@ export default function MapScreen() {
       ]);
       if (cachedSpots) {
         setSpots(cachedSpots.data);
+        setSpotsSource('cached');
+        setSpotsLoadError(null);
         if (cachedShops) setShops(cachedShops.data);
       } else {
-        console.error('Error loading spots:', error);
+        setSpots([]);
+        setSpotsSource(null);
+        setSpotsLoadError('Could not load nearby spots. Check your connection and try again.');
+        Logger.error('Error loading spots:', error);
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryLoadSpots = () => {
+    setSpotsLoadError(null);
+    setLoading(true);
+    const coords = lastCoordsRef.current;
+    if (coords) void loadSpots(coords.lat, coords.lng);
+    else void requestLocationPermission();
   };
 
   const onRegionDidChange = () => {
@@ -261,11 +332,34 @@ export default function MapScreen() {
     );
   };
   const toggleSave = async (spot: SkateSpot) => {
-    const next = new Set(savedSpotIds);
-    if (next.has(spot.id)) next.delete(spot.id);
-    else next.add(spot.id);
+    const previous = new Set(savedSpotIds);
+    const saving = !previous.has(spot.id);
+    const next = new Set(previous);
+    if (saving) next.add(spot.id);
+    else next.delete(spot.id);
     setSavedSpotIds(next);
     await AsyncStorage.setItem(SAVED_SPOTS_KEY, JSON.stringify(Array.from(next)));
+
+    // Signed out, or offline: the bookmark stays device-only in AsyncStorage
+    // and reconciles to the server table on sign-in / reconnect.
+    if (!user?.id || !isConnected) return;
+
+    try {
+      if (saving) await savedSpotsService.saveSpot(user.id, spot.id);
+      else await savedSpotsService.unsaveSpot(user.id, spot.id);
+    } catch (error) {
+      Logger.error('Bookmark sync failed', error, { spot_id: spot.id });
+      // Optimistic UI must roll back: never show a bookmark the server
+      // did not confirm.
+      setSavedSpotIds(previous);
+      await AsyncStorage.setItem(SAVED_SPOTS_KEY, JSON.stringify(Array.from(previous)));
+      Alert.alert(
+        'Bookmark not saved',
+        saving
+          ? 'Your bookmark was not saved to your account. Check your connection and try again.'
+          : 'Your bookmark could not be removed. Check your connection and try again.'
+      );
+    }
   };
 
   const reportCondition = async (condition: string) => {
@@ -596,19 +690,77 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
-      <View className="absolute top-[50px] left-5 bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
-        <Text className="text-white font-bold text-sm">
-          {loading
-            ? 'Finding nearby spots…'
-            : `${filteredSpots.length} spots${activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby`}
-        </Text>
-      </View>
-
-      {savedSpotIds.size > 0 && (
-        <View className="absolute top-[90px] left-5 bg-yellow-500 px-3 py-1.5 rounded-full shadow">
-          <Text className="text-white font-bold text-xs">⭐ {savedSpotIds.size} saved</Text>
+      <View className="absolute top-[50px] left-5 right-20 z-10" pointerEvents="box-none">
+        <View className="self-start bg-[#D2673D] px-4 py-2 rounded-full shadow-lg">
+          <Text className="text-white font-bold text-sm">
+            {loading
+              ? 'Finding nearby spots…'
+              : locationDenied
+                ? 'Location off'
+                : spotsLoadError && spotsSource !== 'cached'
+                  ? 'Spots unavailable'
+                  : `${filteredSpots.length} spots${activeFilters.shop ? ` · ${filteredShops.length} shops` : ''} nearby`}
+          </Text>
         </View>
-      )}
+
+        {spotsSource === 'cached' && !loading && (
+          <View className="self-start mt-2 bg-[#3B2F0B] border border-[#8A6D1B] px-3 py-1.5 rounded-full shadow">
+            <Text className="text-[#FCD34D] font-bold text-xs">
+              Showing saved spots — offline data, up to 23h old
+            </Text>
+          </View>
+        )}
+
+        {savedSpotIds.size > 0 && (
+          <View className="self-start mt-2 bg-yellow-500 px-3 py-1.5 rounded-full shadow">
+            <Text className="text-white font-bold text-xs">⭐ {savedSpotIds.size} saved</Text>
+          </View>
+        )}
+
+        {locationDenied && (
+          <View className="mt-2 rounded-2xl border border-[#6B3325] bg-[#15100F] p-4">
+            <Text className="text-base font-black text-white">Location is off</Text>
+            <Text className="mt-1 text-sm text-gray-400">
+              SkateQuest can&apos;t show spots near you without location access, so the map is
+              showing a default view. Turn location on to find spots nearby.
+            </Text>
+            <View className="flex-row gap-2 mt-3">
+              <TouchableOpacity
+                className="flex-1 min-h-[44px] flex-row items-center justify-center rounded-xl bg-[#D2673D]"
+                onPress={() => Linking.openSettings()}
+                accessibilityRole="button"
+                accessibilityLabel="Open location settings"
+              >
+                <Text className="font-black text-white">Open settings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 min-h-[44px] flex-row items-center justify-center rounded-xl bg-[#1B1110] border border-[#5B2D22]"
+                onPress={() => void requestLocationPermission()}
+                accessibilityRole="button"
+                accessibilityLabel="Try location again"
+              >
+                <Text className="font-black text-white">Try again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {spotsLoadError && !loading && (
+          <View className="mt-2 rounded-2xl border border-[#6B3325] bg-[#15100F] p-4">
+            <Text className="text-base font-black text-white">Spots could not load</Text>
+            <Text className="mt-1 text-sm text-gray-400">{spotsLoadError}</Text>
+            <TouchableOpacity
+              className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl bg-[#D2673D]"
+              onPress={retryLoadSpots}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading nearby spots"
+            >
+              <RotateCcw color="#FFFFFF" size={18} />
+              <Text className="font-black text-white">Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       {!selectedSpot &&
         !selectedShop &&
