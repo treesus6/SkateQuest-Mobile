@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 import { ScreenFadeIn, AnimatedListItem } from '../components/ui';
 import { getSessionPersistenceError, getSessionStatus, requireConfirmedSessionRsvp, sessionsService } from '../lib/sessionsService';
+import { activitySessionsService, ActivitySessionHistoryItem } from '../lib/activitySessionsService';
 import { getTomorrowLocalDate, parseLocalSessionDateTime } from '../lib/sessionScheduling';
 
 interface Session {
@@ -70,6 +71,10 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+function formatHistoryDate(dateStr: string): string {
+  return `${formatDate(dateStr)} · ${formatTime(dateStr)}`;
+}
+
 export default function SessionsScreen() {
   const { user } = useAuthStore();
   const route = useRoute<RouteProp<RootStackParamList, 'Sessions'>>();
@@ -78,7 +83,12 @@ export default function SessionsScreen() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'all' | 'mine'>('all');
+  const [tab, setTab] = useState<'all' | 'mine' | 'history'>('all');
+  // Past activity sessions: finished skate_activity_sessions for this user,
+  // read through lib/activitySessionsService.ts (not sessionsService.ts).
+  const [history, setHistory] = useState<ActivitySessionHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [createVisible, setCreateVisible] = useState(false);
   const [creating, setCreating] = useState(false);
   const [rsvpingId, setRsvpingId] = useState<string | null>(null);
@@ -174,11 +184,33 @@ export default function SessionsScreen() {
     }
   }, [user?.id]);
 
+  const loadHistory = useCallback(async () => {
+    if (!user?.id) {
+      setHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      setHistory(await activitySessionsService.listFinished());
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Could not load past sessions.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [user?.id]);
+
+  // History loads lazily, only when its tab is opened.
+  useEffect(() => {
+    if (tab === 'history') void loadHistory();
+  }, [tab, loadHistory]);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    await loadSessions();
+    if (tab === 'history') await loadHistory();
+    else await loadSessions();
     setRefreshing(false);
-  }, [loadSessions]);
+  }, [loadSessions, loadHistory, tab]);
 
   useEffect(() => {
     setLoading(true);
@@ -446,6 +478,33 @@ export default function SessionsScreen() {
     );
   };
 
+  const renderHistoryItem = ({ item, index }: { item: ActivitySessionHistoryItem; index: number }) => (
+    <AnimatedListItem index={index}>
+      <View className="bg-white dark:bg-gray-800 rounded-2xl mx-4 mb-3 overflow-hidden shadow-sm">
+        <View className="p-4">
+          <View className="flex-row items-start justify-between mb-2">
+            <View className="flex-1 mr-3">
+              <Text className="text-lg font-bold text-gray-800 dark:text-gray-100" numberOfLines={1}>
+                {item.spot_name ?? 'Skate session'}
+              </Text>
+              <Text className="text-xs text-gray-400 mt-0.5">
+                {formatHistoryDate(item.ended_at ?? item.started_at)}
+              </Text>
+            </View>
+            <View className="px-2 py-1 rounded-full" style={{ backgroundColor: '#10B98120' }}>
+              <Text style={{ color: '#10B981' }} className="text-xs font-bold">
+                +{item.xp_awarded} XP
+              </Text>
+            </View>
+          </View>
+          <Text className="text-sm text-gray-500 dark:text-gray-400">
+            {item.duration_minutes ?? 0} min · {item.trick_count} trick{item.trick_count === 1 ? '' : 's'}
+          </Text>
+        </View>
+      </View>
+    </AnimatedListItem>
+  );
+
   return (
     <ScreenFadeIn>
       <View className="flex-1 bg-brand-beige dark:bg-gray-950">
@@ -469,7 +528,7 @@ export default function SessionsScreen() {
           </View>
 
           <View className="flex-row bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-3">
-            {(['all', 'mine'] as const).map(t => (
+            {(['all', 'mine', 'history'] as const).map(t => (
               <TouchableOpacity
                 key={t}
                 className="flex-1 py-2 rounded-lg items-center"
@@ -480,7 +539,7 @@ export default function SessionsScreen() {
                   className="font-semibold text-sm"
                   style={{ color: tab === t ? 'white' : '#9CA3AF' }}
                 >
-                  {t === 'all' ? 'All Sessions' : 'My Sessions'}
+                  {t === 'all' ? 'All Sessions' : t === 'mine' ? 'My Sessions' : 'Past Sessions'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -491,6 +550,45 @@ export default function SessionsScreen() {
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#6B4CE6" />
           </View>
+        ) : tab === 'history' ? (
+          <FlatList
+            data={history}
+            keyExtractor={s => s.id}
+            renderItem={renderHistoryItem}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            ListEmptyComponent={
+              historyLoading ? (
+                <View className="flex-1 items-center justify-center py-16">
+                  <ActivityIndicator size="large" color="#6B4CE6" />
+                </View>
+              ) : historyError ? (
+                <View className="items-center justify-center py-16 px-6">
+                  <CalendarDays size={48} color="#9CA3AF" />
+                  <Text className="text-lg font-bold text-gray-500 dark:text-gray-400 mt-4 text-center">
+                    Could not load past sessions
+                  </Text>
+                  <Text className="text-sm text-gray-400 text-center mt-1">{historyError}</Text>
+                  <TouchableOpacity
+                    className="mt-4 bg-purple-600 px-6 py-3 rounded-full"
+                    onPress={() => void loadHistory()}
+                  >
+                    <Text className="text-white font-bold">Try again</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View className="items-center justify-center py-16 px-6">
+                  <CalendarDays size={48} color="#6B4CE680" />
+                  <Text className="text-lg font-bold text-gray-500 dark:text-gray-400 mt-4 text-center">
+                    No past sessions yet
+                  </Text>
+                  <Text className="text-sm text-gray-400 text-center mt-1">
+                    Finished skate sessions will show up here
+                  </Text>
+                </View>
+              )
+            }
+          />
         ) : (
           <FlatList
             data={displayedSessions}
