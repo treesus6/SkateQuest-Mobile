@@ -76,11 +76,13 @@ describe('live activity session backend contract', () => {
 
   it('matches the ActiveSessionScreen start and finish call sites', () => {
     const screen = readSource('screens', 'ActiveSessionScreen.tsx');
-    expect(screen).toContain(
+    // Flattened: the finish call is wrapped across lines in the source.
+    const flat = screen.replace(/\s+/g, ' ');
+    expect(flat).toContain(
       "supabase.rpc('start_skate_activity_session', { p_spot_id: spotId || null, p_spot_name: spotName })"
     );
-    expect(screen).toContain(
-      "supabase.rpc('finish_skate_activity_session', { p_session_id: serverSessionId, p_trick_count: trickCount })"
+    expect(flat).toContain(
+      "supabase.rpc('finish_skate_activity_session', { p_session_id: serverSessionId, p_trick_count: drainedTrickCount, })"
     );
     expect(screen).toContain('const result = (data ?? {}) as StartSessionResult;');
     expect(screen).toContain('if (!result.session_id) throw new Error');
@@ -187,6 +189,26 @@ describe('live activity session pause / resume / trick records', () => {
     expect(screen).toContain('activitySessionsService.pause(serverSessionId)');
     expect(screen).toContain('activitySessionsService.resume(serverSessionId)');
     expect(screen).toContain('activitySessionsService.logTrick(serverSessionId)');
+    // P1-1: pause and finish both drain the trick queue before changing
+    // the server session state, and new taps are blocked during the drain.
+    expect(screen).toContain('drainTrickQueue()');
+    expect(screen).toContain('trickWritesBlockedRef');
+    const firstDrain = screen.indexOf('await drainTrickQueue();');
+    const lastDrain = screen.lastIndexOf('await drainTrickQueue();');
+    expect(firstDrain).toBeGreaterThan(-1);
+    expect(lastDrain).toBeGreaterThan(firstDrain);
+    expect(firstDrain).toBeLessThan(
+      screen.indexOf('activitySessionsService.pause(serverSessionId)')
+    );
+    expect(lastDrain).toBeLessThan(screen.indexOf("supabase.rpc('finish_skate_activity_session'"));
+    // P1-2: confirmed and pending trick increments are tracked separately
+    // so a success or failure consumes only its own tap (flattened: the
+    // calls are wrapped across lines in the source).
+    expect(screen).toContain('confirmedTrickCountRef');
+    expect(screen).toContain('pendingTrickCountRef');
+    expect(screen.replace(/\s+/g, ' ')).toContain(
+      'applyTrickCounts( result.trick_count, Math.max(0, pendingTrickCountRef.current - 1), )'
+    );
     expect(screen).toContain('Resume your session?');
     expect(screen).toContain('timerRef.current.pause()');
     expect(screen).toContain('timerRef.current.resume(result.paused_total_seconds)');

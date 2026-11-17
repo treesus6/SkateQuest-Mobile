@@ -54,6 +54,39 @@ export default function ActiveSessionScreen() {
   const [saving, setSaving] = useState(false);
   const trickQueueRef = useRef(Promise.resolve());
   const recoveryCheckedRef = useRef(false);
+  // The displayed trick count is confirmed + pending. A tap adds a pending
+  // increment immediately; each queued write then consumes exactly its own
+  // increment on success (reconciling confirmed to the server count) or on
+  // failure (rolling back just that tap) — so concurrent taps can never
+  // clobber each other (P1-2).
+  const confirmedTrickCountRef = useRef(0);
+  const pendingTrickCountRef = useRef(0);
+  // True while pause/finish drains the trick queue: new taps are ignored
+  // until the transition completes or fails (P1-1).
+  const trickWritesBlockedRef = useRef(false);
+  const [trickWritesBlocked, setTrickWritesBlockedState] = useState(false);
+
+  const applyTrickCounts = useCallback((confirmed: number, pending: number) => {
+    confirmedTrickCountRef.current = confirmed;
+    pendingTrickCountRef.current = pending;
+    setTrickCount(confirmed + pending);
+  }, []);
+
+  const setTrickWritesBlocked = useCallback((blocked: boolean) => {
+    trickWritesBlockedRef.current = blocked;
+    setTrickWritesBlockedState(blocked);
+  }, []);
+
+  // Block new taps, then wait for every queued trick write to land. The
+  // block is set synchronously before the await, so no tap can slip into
+  // the queue after the drain starts and overtake the pause/finish RPC
+  // that follows — the server rejects trick writes once the session is
+  // paused or completed. Callers leave writes blocked on success (taps are
+  // impossible once paused or finished anyway) and unblock on failure.
+  const drainTrickQueue = useCallback(async () => {
+    setTrickWritesBlocked(true);
+    await trickQueueRef.current;
+  }, [setTrickWritesBlocked]);
 
   const calories = estimateCalories(Math.floor(elapsedSeconds / 60));
   const estimatedXp = Math.min(Math.floor(elapsedSeconds / 60) * XP_PER_MINUTE, MAX_SESSION_XP);
@@ -81,7 +114,8 @@ export default function ActiveSessionScreen() {
       active.paused_total_seconds,
       active.paused_at ? new Date(active.paused_at) : null
     );
-    setTrickCount(active.trick_count);
+    applyTrickCounts(active.trick_count, 0);
+    setTrickWritesBlocked(false);
     setElapsedSeconds(timerRef.current.getDurationSeconds());
     setSessionStarted(true);
     if (active.paused_at) {
@@ -90,7 +124,7 @@ export default function ActiveSessionScreen() {
       setIsRunning(true);
       intervalRef.current = setInterval(() => setElapsedSeconds(timerRef.current.getDurationSeconds()), 1000);
     }
-  }, []);
+  }, [applyTrickCounts, setTrickWritesBlocked]);
 
   // Recovery: a killed app leaves an active server session behind. On mount,
   // offer to resume it (timer and tricks restored) or finish it, instead of
@@ -153,7 +187,8 @@ export default function ActiveSessionScreen() {
       setServerSessionId(result.session_id);
       setSessionSpotName(spotName);
       timerRef.current.start();
-      setTrickCount(0);
+      applyTrickCounts(0, 0);
+      setTrickWritesBlocked(false);
       setElapsedSeconds(0);
       setIsRunning(true);
       setSessionStarted(true);
@@ -161,7 +196,15 @@ export default function ActiveSessionScreen() {
     } catch (error: any) {
       Alert.alert('Could not start session', error?.message || 'Check your connection and try again.');
     } finally { setStarting(false); }
-  }, [spotId, spotName, starting, user?.id, attachToServerSession]);
+  }, [
+    spotId,
+    spotName,
+    starting,
+    user?.id,
+    attachToServerSession,
+    applyTrickCounts,
+    setTrickWritesBlocked,
+  ]);
 
   // Real pause: the server records paused_at and the client timer freezes.
   // If the server pause fails, the timer keeps running and the user is told
@@ -170,21 +213,27 @@ export default function ActiveSessionScreen() {
     if (!serverSessionId || pausing || !isRunning) return;
     setPausing(true);
     try {
+      // Drain first: every queued trick must land before the server freezes
+      // the session, or the server rejects it as paused and the tap is lost.
+      await drainTrickQueue();
       await activitySessionsService.pause(serverSessionId);
       if (intervalRef.current) clearInterval(intervalRef.current);
       timerRef.current.pause();
       setElapsedSeconds(timerRef.current.getDurationSeconds());
       setIsRunning(false);
+      // Writes stay blocked while paused; resume unblocks them.
     } catch (_error: any) {
+      setTrickWritesBlocked(false);
       Alert.alert('Could not pause', 'The pause was not saved, so the timer kept running. Check your connection and try again.');
     } finally { setPausing(false); }
-  }, [serverSessionId, pausing, isRunning]);
+  }, [serverSessionId, pausing, isRunning, drainTrickQueue, setTrickWritesBlocked]);
 
   const resumeSession = useCallback(async () => {
     if (!serverSessionId || resuming || isRunning) return;
     setResuming(true);
     try {
       const result = await activitySessionsService.resume(serverSessionId);
+      setTrickWritesBlocked(false);
       timerRef.current.resume(result.paused_total_seconds);
       setElapsedSeconds(timerRef.current.getDurationSeconds());
       intervalRef.current = setInterval(() => setElapsedSeconds(timerRef.current.getDurationSeconds()), 1000);
@@ -192,45 +241,69 @@ export default function ActiveSessionScreen() {
     } catch (_error: any) {
       Alert.alert('Could not resume', 'The resume was not saved. Check your connection and try again.');
     } finally { setResuming(false); }
-  }, [serverSessionId, resuming, isRunning]);
+  }, [serverSessionId, resuming, isRunning, setTrickWritesBlocked]);
 
   // Persisted trick tap: the server inserts a skate_session_tricks row and
   // increments the session trick_count in one transaction. The tap shows
   // immediately (optimistic), reconciles to the server count on success,
   // and rolls back with an alert on failure — a failed tap is never shown
-  // as saved.
+  // as saved. Confirmed and pending increments are tracked separately, so
+  // each queued write consumes only its own increment: a success never
+  // wipes out a still-pending tap, and a failure never rolls back a
+  // trick the server already saved.
   const logTrick = useCallback(() => {
-    if (!isRunning || !serverSessionId) return;
+    if (!isRunning || !serverSessionId || trickWritesBlockedRef.current) return;
     Vibration.vibrate(50);
-    setTrickCount(prev => prev + 1);
+    applyTrickCounts(confirmedTrickCountRef.current, pendingTrickCountRef.current + 1);
     trickQueueRef.current = trickQueueRef.current.then(async () => {
       try {
         const result = await activitySessionsService.logTrick(serverSessionId);
-        setTrickCount(result.trick_count);
+        // Success consumes only this tap's pending increment; the server
+        // count is authoritative for the confirmed part.
+        applyTrickCounts(
+          result.trick_count,
+          Math.max(0, pendingTrickCountRef.current - 1),
+        );
       } catch (_error: any) {
-        setTrickCount(prev => Math.max(0, prev - 1));
+        // Failure rolls back only this tap's increment.
+        applyTrickCounts(
+          confirmedTrickCountRef.current,
+          Math.max(0, pendingTrickCountRef.current - 1),
+        );
         Alert.alert('Trick not saved', 'That trick was not saved to the session. Check your connection and tap again to retry.');
       }
     });
-  }, [isRunning, serverSessionId]);
+  }, [isRunning, serverSessionId, applyTrickCounts]);
   const handleEndSession = () => { if (intervalRef.current) clearInterval(intervalRef.current); timerRef.current.stop(); setIsRunning(false); setShowEndModal(true); };
 
   const saveSession = async () => {
     if (!user?.id || !serverSessionId) { Alert.alert('Session not saved', 'This session is missing its verified server record.'); return; }
     setSaving(true);
     try {
-      const { data, error } = await supabase.rpc('finish_skate_activity_session', { p_session_id: serverSessionId, p_trick_count: trickCount });
+      // Drain first: every queued trick must land before the server
+      // completes the session, or it is lost while finish still reports
+      // success. The drained confirmed count is what finish is told — not
+      // a stale optimistic render value.
+      await drainTrickQueue();
+      const drainedTrickCount = confirmedTrickCountRef.current;
+      const { data, error } = await supabase.rpc('finish_skate_activity_session', {
+        p_session_id: serverSessionId,
+        p_trick_count: drainedTrickCount,
+      });
       if (error) throw error;
       const result = (data ?? {}) as FinishSessionResult;
       const durationMinutes = Math.max(0, Number(result.duration_minutes ?? 0));
       const xpAwarded = Math.max(0, Number(result.xp_awarded ?? 0));
-      const finalTrickCount = Math.max(0, Number(result.trick_count ?? trickCount));
+      const finalTrickCount = Math.max(0, Number(result.trick_count ?? drainedTrickCount));
       // The server finish RPC inserts the single activity_feed row for this
       // session. There is no client feed write here: the old second client
       // feed write duplicated every finished session in the feed.
       setShowEndModal(false);
       Alert.alert('Session complete', `${durationMinutes} min · ${finalTrickCount} tricks · +${xpAwarded} XP`, [{ text: 'Done', onPress: () => navigation.goBack() }]);
-    } catch (error: any) { Alert.alert('Error', error?.message || 'Could not save the verified session.'); }
+    } catch (error: any) {
+      setTrickWritesBlocked(false);
+      Alert.alert('Error', error?.message || 'Could not save the verified session.');
+    }
     finally { setSaving(false); }
   };
 
@@ -262,7 +335,15 @@ export default function ActiveSessionScreen() {
           <View style={s.metricCard}><Trophy size={21} color="#B56CFF" /><Text style={s.metricValue}>{trickCount}</Text><Text style={s.metricLabel}>TRICKS</Text></View>
         </View>
 
-        <TouchableOpacity style={[s.trickButton, !isRunning && s.disabled]} onPress={logTrick} disabled={!isRunning} activeOpacity={0.86}>
+        <TouchableOpacity
+          style={[
+            s.trickButton,
+            (!isRunning || pausing || saving || trickWritesBlocked) && s.disabled,
+          ]}
+          onPress={logTrick}
+          disabled={!isRunning || pausing || saving || trickWritesBlocked}
+          activeOpacity={0.86}
+        >
           <View style={s.trickIcon}><Plus size={28} color="#fff" strokeWidth={3} /></View>
           <View style={{ flex: 1 }}><Text style={s.trickTitle}>Landed one?</Text><Text style={s.trickSub}>Tap to log a trick in this session</Text></View>
           <Text style={s.trickCount}>+1</Text>
