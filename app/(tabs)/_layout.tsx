@@ -1,3 +1,4 @@
+import { withSceneTypography } from '../../lib/sceneTheme';
 import React, { useEffect, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { TouchableOpacity, View, Text, Animated, StyleSheet } from 'react-native';
@@ -7,10 +8,20 @@ import LevelUpModal from '../../components/LevelUpModal';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { profilesService } from '../../lib/profilesService';
 import { supabase } from '../../lib/supabase';
-import { Home, Map as MapIcon, Zap, Users, UserRound, Video, MapPin, Bot, Footprints } from 'lucide-react-native';
+import {
+  Home,
+  Map as MapIcon,
+  Zap,
+  Users,
+  UserRound,
+  Video,
+  MapPin,
+  Bot,
+  Footprints,
+} from 'lucide-react-native';
 
 const INK = '#07080B';
-const PAPER = '#F5F0E7';
+const PAPER = '#F6F0E5';
 const ORANGE = '#E36D3F';
 const ACID = '#D8F04B';
 
@@ -76,7 +87,10 @@ function SkateQuestTabBar({ state, navigation }: any) {
           <View style={[s.postMenu, { bottom: 82 + insets.bottom }]}>
             <Text style={s.postMenuKicker}>DROP SOMETHING</Text>
             {POST_ACTIONS.map((action, i) => (
-              <Animated.View key={action.screen} style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}>
+              <Animated.View
+                key={action.screen}
+                style={{ transform: [{ scale: scaleRefs[i] || postScale }] }}
+              >
                 <TouchableOpacity
                   style={[s.postAction, { borderLeftColor: action.color }]}
                   onPress={() => {
@@ -170,7 +184,10 @@ function SkateQuestTabBar({ state, navigation }: any) {
 function readLevelFromProgress(progress: unknown): number | null {
   const row = Array.isArray(progress) ? progress[0] : progress;
   if (!row || typeof row !== 'object') return null;
-  const value = Number((row as { current_level?: unknown; level?: unknown }).current_level ?? (row as { level?: unknown }).level);
+  const value = Number(
+    (row as { current_level?: unknown; level?: unknown }).current_level ??
+      (row as { level?: unknown }).level
+  );
   return Number.isFinite(value) && value >= 1 ? value : null;
 }
 
@@ -192,7 +209,8 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
 
     const previousLevel = lastLevelRef.current;
     setLevel(nextLevel);
-    if (announceIncrease && previousLevel !== null && nextLevel > previousLevel) setShowLevelUp(true);
+    if (announceIncrease && previousLevel !== null && nextLevel > previousLevel)
+      setShowLevelUp(true);
     lastLevelRef.current = nextLevel;
   }, []);
 
@@ -245,7 +263,10 @@ function LevelUpWrapper({ children }: { children: React.ReactNode }) {
 export default function TabsLayout() {
   return (
     <LevelUpWrapper>
-      <Tabs tabBar={props => <SkateQuestTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tabs
+        tabBar={props => <SkateQuestTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
         <Tabs.Screen name="index" options={{ title: 'Home' }} />
         <Tabs.Screen name="map" options={{ title: 'Map' }} />
         <Tabs.Screen name="quests" options={{ title: 'Quests' }} />
@@ -256,68 +277,99 @@ export default function TabsLayout() {
   );
 }
 
-const s = StyleSheet.create({
-  shell: { backgroundColor: INK, paddingHorizontal: 9, paddingTop: 7 },
-  rail: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    backgroundColor: '#101319',
-    borderRadius: 23,
-    borderWidth: 1,
-    borderColor: '#2B3039',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.34,
-    shadowRadius: 16,
-    elevation: 18,
-  },
-  tab: { flex: 1 },
-  tabInner: { alignItems: 'center', justifyContent: 'center', minHeight: 58, gap: 3 },
-  iconWrap: { width: 35, height: 31, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  iconWrapActive: { backgroundColor: PAPER, transform: [{ rotate: '-3deg' }] },
-  tabLabel: { fontSize: 8, color: '#606875', fontWeight: '900', letterSpacing: 0.8 },
-  tabLabelActive: { color: PAPER },
-  postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -23 },
-  postBtn: {
-    width: 57,
-    height: 57,
-    borderRadius: 17,
-    backgroundColor: ACID,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: INK,
-    shadowColor: ACID,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 13,
-  },
-  postPlus: { color: INK, fontSize: 34, fontWeight: '400', lineHeight: 37, marginTop: -3 },
-  postCaption: { color: ACID, fontSize: 7, fontWeight: '900', letterSpacing: 1.2, marginTop: 2 },
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, backgroundColor: 'rgba(3,4,6,0.54)' },
-  postMenu: { position: 'absolute', right: 12, left: 12, gap: 8, alignItems: 'stretch' },
-  postMenuKicker: { color: PAPER, fontSize: 10, fontWeight: '900', letterSpacing: 2, textAlign: 'right', marginBottom: 2, marginRight: 6 },
-  postAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    minHeight: 58,
-    backgroundColor: '#11151B',
-    borderRadius: 17,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#303641',
-    borderLeftWidth: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  postActionIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-3deg' }] },
-  postActionLabel: { flex: 1, color: PAPER, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
-  postActionArrow: { fontSize: 22, fontWeight: '900' },
-});
+const s = StyleSheet.create(
+  withSceneTypography({
+    shell: { backgroundColor: INK, paddingHorizontal: 9, paddingTop: 7 },
+    rail: {
+      minHeight: 68,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      backgroundColor: '#101319',
+      borderRadius: 23,
+      borderWidth: 1,
+      borderColor: '#2B3039',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -6 },
+      shadowOpacity: 0.34,
+      shadowRadius: 16,
+      elevation: 18,
+    },
+    tab: { flex: 1 },
+    tabInner: { alignItems: 'center', justifyContent: 'center', minHeight: 58, gap: 3 },
+    iconWrap: {
+      width: 35,
+      height: 31,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconWrapActive: { backgroundColor: PAPER, transform: [{ rotate: '-3deg' }] },
+    tabLabel: { fontSize: 8, color: '#606875', fontWeight: '900', letterSpacing: 0.8 },
+    tabLabelActive: { color: PAPER },
+    postWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -23 },
+    postBtn: {
+      width: 57,
+      height: 57,
+      borderRadius: 17,
+      backgroundColor: ACID,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 4,
+      borderColor: INK,
+      shadowColor: ACID,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 13,
+    },
+    postPlus: { color: INK, fontSize: 34, fontWeight: '400', lineHeight: 37, marginTop: -3 },
+    postCaption: { color: ACID, fontSize: 7, fontWeight: '900', letterSpacing: 1.2, marginTop: 2 },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 100,
+      backgroundColor: 'rgba(3,4,6,0.54)',
+    },
+    postMenu: { position: 'absolute', right: 12, left: 12, gap: 8, alignItems: 'stretch' },
+    postMenuKicker: {
+      color: PAPER,
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 2,
+      textAlign: 'right',
+      marginBottom: 2,
+      marginRight: 6,
+    },
+    postAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      minHeight: 58,
+      backgroundColor: '#11151B',
+      borderRadius: 17,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: '#303641',
+      borderLeftWidth: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    postActionIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ rotate: '-3deg' }],
+    },
+    postActionLabel: { flex: 1, color: PAPER, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
+    postActionArrow: { fontSize: 22, fontWeight: '900' },
+  })
+);

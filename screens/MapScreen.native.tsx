@@ -1,3 +1,4 @@
+import SpotCheckInSheet from '../components/SpotCheckInSheet';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +16,10 @@ import {
   RotateCcw,
   TriangleAlert,
 } from 'lucide-react-native';
+import { useSpotDiscovery } from '../hooks/useSpotDiscovery';
+import { DiscoveryFilter, DiscoveryPartner, matchesDiscoveryFilter } from '../lib/discoveryService';
+import DiscoveryFilterChips from '../components/DiscoveryFilterChips';
+import PartnerDiscoveryCard, { openDiscoveryPartner } from '../components/PartnerDiscoveryCard';
 import { spotsService } from '../lib/spotsService';
 import { shopsService } from '../lib/shopsService';
 import { savedSpotsService } from '../lib/savedSpotsService';
@@ -35,8 +40,6 @@ const INITIAL_COORDINATES: [number, number] = [0, 20];
 const SEARCH_RADIUS_KM = 50;
 const SAVED_SPOTS_KEY = 'saved_spot_ids';
 const LOCATION_TIMEOUT_MS = 6000;
-const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
-const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
 
 const CONDITION_OPTIONS: Array<{ key: string; emoji: string; label: string }> = [
   { key: 'dry', emoji: '🌞', label: 'Dry' },
@@ -63,11 +66,17 @@ export default function MapScreen() {
   const isConnected = useNetworkStore(state => state.isConnected);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapRef = useRef<Mapbox.MapView>(null);
-  const portalMarkerRef = useRef<any>(null);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const wasConnectedRef = useRef(isConnected);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
+  const discovery = useSpotDiscovery(spots.map(spot => spot.id));
+  const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryFilter>('all');
+  const [haloLarge, setHaloLarge] = useState(false);
+  useEffect(() => {
+    const timer = setInterval(() => setHaloLarge(value => !value), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [spotsSource, setSpotsSource] = useState<'live' | 'cached' | null>(null);
@@ -78,6 +87,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(INITIAL_COORDINATES);
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
+  const [checkInSpot, setCheckInSpot] = useState<SkateSpot | null>(null);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -227,9 +237,7 @@ export default function MapScreen() {
         } else {
           setSpots([]);
           setSpotsSource(null);
-          setSpotsLoadError(
-            'You are offline and no saved spots are available for this area.'
-          );
+          setSpotsLoadError('You are offline and no saved spots are available for this area.');
         }
         if (cachedShops) setShops(cachedShops.data);
         return;
@@ -248,9 +256,7 @@ export default function MapScreen() {
         } else {
           setSpots([]);
           setSpotsSource(null);
-          setSpotsLoadError(
-            'Could not load nearby spots. Check your connection and try again.'
-          );
+          setSpotsLoadError('Could not load nearby spots. Check your connection and try again.');
         }
       } else {
         const spotsData = (data || []) as SkateSpot[];
@@ -382,31 +388,32 @@ export default function MapScreen() {
     }
   };
 
-  const openPortalDimension = async () => {
-    try {
-      await Linking.openURL(PORTAL_DIMENSION_URL);
-    } catch {
-      Alert.alert('Could not open Portal Dimension', 'The website could not be opened right now.');
-    }
-  };
-
   const filteredSpots = useMemo(
     () =>
       spots.filter(spot => {
         // Never hand malformed cached/database coordinates to native Mapbox.
         if (!isRenderableMapPoint(spot.latitude, spot.longitude)) return false;
         const type = (spot.spot_type?.toLowerCase() ?? 'park') as keyof typeof activeFilters;
-        return activeFilters[type] ?? false;
+        return (
+          (activeFilters[type] ?? false) &&
+          matchesDiscoveryFilter(
+            spot,
+            discoveryFilter,
+            discovery.pulse[spot.id],
+            discovery.partners,
+            savedSpotIds
+          )
+        );
       }),
-    [spots, activeFilters]
+    [spots, activeFilters, discoveryFilter, discovery.pulse, discovery.partners, savedSpotIds]
   );
 
   const filteredShops = useMemo(
     () =>
-      activeFilters.shop
+      activeFilters.shop && discoveryFilter === 'all'
         ? shops.filter(shop => isRenderableMapPoint(shop.latitude, shop.longitude))
         : [],
-    [shops, activeFilters.shop]
+    [shops, activeFilters.shop, discoveryFilter]
   );
   const spotsWithoutPhotos = useMemo(
     () => filteredSpots.filter(spot => !spot.image_url?.trim()),
@@ -430,6 +437,11 @@ export default function MapScreen() {
 
   return (
     <View className="flex-1 bg-[#07090D]">
+      <SpotCheckInSheet
+        spot={checkInSpot}
+        onClose={() => setCheckInSpot(null)}
+        onSaved={() => void discovery.refresh()}
+      />
       <Mapbox.MapView
         key={mapInstance}
         ref={mapRef}
@@ -441,10 +453,14 @@ export default function MapScreen() {
         // a prior map error after Mapbox reports a complete frame.
         onDidFinishRenderingMapFully={() => setMapError(null)}
         onMapLoadingError={() => {
-          setMapError('Mapbox reported a style or tile loading error. Check connectivity and token access.');
+          setMapError(
+            'Mapbox reported a style or tile loading error. Check connectivity and token access.'
+          );
         }}
         onDidFailLoadingMap={() => {
-          setMapError('Mapbox could not load its style or tiles. Check network access and Mapbox token restrictions.');
+          setMapError(
+            'Mapbox could not load its style or tiles. Check network access and Mapbox token restrictions.'
+          );
         }}
       >
         <Mapbox.Camera
@@ -588,40 +604,50 @@ export default function MapScreen() {
           </Mapbox.ShapeSource>
         )}
 
-        <Mapbox.PointAnnotation
-          ref={portalMarkerRef}
-          id="portal-dimension-newport"
-          coordinate={PORTAL_DIMENSION_COORDINATES}
-          anchor={{ x: 0.5, y: 1 }}
-          onSelected={() => void openPortalDimension()}
+        {discovery.partners
+          .filter(
+            partner =>
+              isRenderableMapPoint(partner.latitude, partner.longitude) &&
+              (discoveryFilter === 'all' || discoveryFilter === 'partners')
+          )
+          .map(partner => (
+            <PartnerMapAnnotation key={partner.id} partner={partner} signedIn={!!user} />
+          ))}
+        <Mapbox.ShapeSource
+          id="live-spot-pulse"
+          shape={{
+            type: 'FeatureCollection',
+            features: filteredSpots
+              .filter(spot => Number(discovery.pulse[spot.id]?.active_skaters) > 0)
+              .map(spot => ({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [spot.longitude, spot.latitude] },
+                properties: { count: discovery.pulse[spot.id].active_skaters },
+              })),
+          }}
         >
-          <View
+          <Mapbox.CircleLayer
+            id="live-spot-halos"
             style={{
-              width: 58,
-              height: 58,
-              borderRadius: 14,
-              borderWidth: 2,
-              borderColor: '#D2673D',
-              backgroundColor: '#FFFFFF',
-              padding: 3,
-              shadowColor: '#000000',
-              shadowOpacity: 0.35,
-              shadowRadius: 7,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 7,
-              overflow: 'hidden',
+              circleColor: '#D8F04B',
+              circleOpacity: haloLarge ? 0.12 : 0.3,
+              circleRadius: haloLarge ? 27 : 18,
+              circleStrokeColor: '#D8F04B',
+              circleStrokeWidth: 2,
             }}
-          >
-            <Image
-              source={require('../assets/supporters/portal-dimension.png')}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="contain"
-              accessibilityLabel="Portal Dimension"
-              onLoad={() => portalMarkerRef.current?.refresh?.()}
-            />
-          </View>
-          <Mapbox.Callout title="Portal Dimension · Newport, Oregon skatepark partner" />
-        </Mapbox.PointAnnotation>
+          />
+          <Mapbox.SymbolLayer
+            id="live-spot-count"
+            style={{
+              textField: ['concat', ['to-string', ['get', 'count']], ' LIVE'],
+              textColor: '#07080B',
+              textHaloColor: '#D8F04B',
+              textHaloWidth: 2,
+              textSize: 11,
+              textOffset: [0, -2],
+            }}
+          />
+        </Mapbox.ShapeSource>
 
         {showDirections && userLocation && (selectedSpot || selectedShop) && (
           <MapDirections
@@ -681,6 +707,16 @@ export default function MapScreen() {
         onFilterChange={setActiveFilters}
       />
 
+      <View style={{ position: 'absolute', top: 100, left: 12, right: 12 }}>
+        <DiscoveryFilterChips value={discoveryFilter} onChange={setDiscoveryFilter} />
+        {discovery.error ? (
+          <TouchableOpacity onPress={() => void discovery.refresh()}>
+            <Text style={{ color: '#FFAF8B', backgroundColor: '#12161C', padding: 8 }}>
+              Live activity unavailable. Tap to retry.
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {userLocation && (
         <TouchableOpacity
           className="absolute top-[50px] right-5 bg-white dark:bg-gray-800 rounded-full w-[50px] h-[50px] justify-center items-center shadow-lg"
@@ -849,6 +885,32 @@ export default function MapScreen() {
             </View>
           </View>
 
+          <Text style={{ color: '#4D7A0B', fontWeight: '900', marginVertical: 8 }}>
+            {discovery.pulse[selectedSpot.id]
+              ? `${discovery.pulse[selectedSpot.id].active_skaters} SKATING NOW`
+              : 'LIVE ACTIVITY UNAVAILABLE'}
+          </Text>
+          <TouchableOpacity
+            style={{
+              minHeight: 44,
+              backgroundColor: '#D8F04B',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 10,
+            }}
+            onPress={() => setCheckInSpot(selectedSpot)}
+          >
+            <Text style={{ color: '#07080B', fontWeight: '900' }}>
+              {Number(discovery.pulse[selectedSpot.id]?.active_skaters) > 0
+                ? 'JOIN SESSION'
+                : 'CHECK IN HERE'}
+            </Text>
+          </TouchableOpacity>
+          {discovery.partners
+            .filter(partner => partner.spot_id === selectedSpot.id)
+            .map(partner => (
+              <PartnerDiscoveryCard key={partner.id} partner={partner} surface="spot" />
+            ))}
           <View className="mb-3">
             <Text className="text-xs text-gray-400 mb-1.5 font-medium">Report conditions:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -998,6 +1060,65 @@ function PhotoSpotAnnotation({
           onLoad={() => annotationRef.current?.refresh?.()}
         />
       </View>
+    </Mapbox.PointAnnotation>
+  );
+}
+
+function PartnerMapAnnotation({
+  partner,
+  signedIn,
+}: {
+  partner: DiscoveryPartner;
+  signedIn: boolean;
+}) {
+  const marker = useRef<any>(null);
+  useEffect(() => {
+    marker.current?.refresh?.();
+  }, [partner.referral_clicks]);
+  return (
+    <Mapbox.PointAnnotation
+      ref={marker}
+      id={`partner-${partner.id}`}
+      coordinate={[partner.longitude, partner.latitude]}
+      onSelected={() => {
+        void openDiscoveryPartner(partner, 'map', signedIn).catch(error => {
+          Logger.error('Map partner referral failed', error);
+          Alert.alert(
+            'Partner visit could not be fully recorded',
+            error?.message || 'Please try again.'
+          );
+        });
+      }}
+    >
+      <View
+        style={{
+          width: 74,
+          height: 76,
+          padding: 4,
+          backgroundColor: '#fff',
+          borderWidth: 2,
+          borderColor: '#D8F04B',
+        }}
+      >
+        {partner.logo_url ? (
+          <Image
+            source={
+              partner.website_url === 'https://portaldimension.com'
+                ? require('../assets/supporters/portal-dimension.png')
+                : { uri: partner.logo_url }
+            }
+            style={{ width: '100%', height: 48 }}
+            resizeMode="contain"
+            onLoad={() => marker.current?.refresh?.()}
+          />
+        ) : (
+          <Text style={{ color: '#07080B', fontWeight: '900', fontSize: 10 }}>{partner.name}</Text>
+        )}
+        <Text style={{ fontSize: 9, color: '#07080B', fontWeight: '900', textAlign: 'center' }}>
+          {partner.referral_clicks == null ? 'TAPS —' : `${partner.referral_clicks} TAPS`}
+        </Text>
+      </View>
+      <Mapbox.Callout title={`${partner.name} · ${partner.category.replace(/_/g, ' ')}`} />
     </Mapbox.PointAnnotation>
   );
 }

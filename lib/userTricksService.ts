@@ -38,7 +38,9 @@ export const userTricksService = {
         if ((data as any).reason === 'already_claimed') {
           return { ok: true, awarded: false, alreadyClaimed: true };
         }
-        const claimError = new Error(`XP award not granted: ${(data as any).reason ?? 'unknown reason'}`);
+        const claimError = new Error(
+          `XP award not granted: ${(data as any).reason ?? 'unknown reason'}`
+        );
         Logger.error('userTricksService.awardLandedXp not granted', claimError);
         return { ok: false, awarded: false, alreadyClaimed: false, error: claimError };
       }
@@ -48,6 +50,15 @@ export const userTricksService = {
       Logger.error('userTricksService.awardLandedXp failed', claimError);
       return { ok: false, awarded: false, alreadyClaimed: false, error: claimError };
     }
+  },
+
+  async getById(trickId: string, userId: string) {
+    return supabase
+      .from('user_tricks')
+      .select('id,user_id,trick_name,status,attempts')
+      .eq('id', trickId)
+      .eq('user_id', userId)
+      .maybeSingle();
   },
 
   async getAll(userId: string) {
@@ -77,16 +88,26 @@ export const userTricksService = {
         trick.status === 'landed' || trick.status === 'consistent'
           ? new Date().toISOString()
           : undefined;
-      const result = await supabase.from('user_tricks').insert([{
-        ...trick,
-        attempts: 0,
-        ...(firstLandedAt ? { first_landed_at: firstLandedAt } : {}),
-      }]).select().single();
+      const result = await supabase
+        .from('user_tricks')
+        .insert([
+          {
+            ...trick,
+            attempts: 0,
+            ...(firstLandedAt ? { first_landed_at: firstLandedAt } : {}),
+          },
+        ])
+        .select()
+        .single();
       // Claim the one-time server XP award for a trick logged as landed.
       // The claim result rides along on the return value so the screen can
       // confirm the award, report an already-claimed award, or offer a
       // retry; a failed claim never fails the save that already succeeded.
-      if (!result.error && (trick.status === 'landed' || trick.status === 'consistent') && result.data?.id) {
+      if (
+        !result.error &&
+        (trick.status === 'landed' || trick.status === 'consistent') &&
+        result.data?.id
+      ) {
         const xpClaim = await userTricksService.awardLandedXp(result.data.id);
         return { ...result, xpClaim };
       }
@@ -116,7 +137,11 @@ export const userTricksService = {
       // result rides along on the return value so the screen can confirm
       // the award, report an already-claimed award, or offer a retry. A
       // failed claim never fails the save that already succeeded.
-      if (!result.error && (status === 'landed' || status === 'consistent') && result.data?.user_id) {
+      if (
+        !result.error &&
+        (status === 'landed' || status === 'consistent') &&
+        result.data?.user_id
+      ) {
         const xpClaim = await userTricksService.awardLandedXp(trickId);
         return { ...result, xpClaim };
       }
@@ -129,10 +154,7 @@ export const userTricksService = {
 
   async update(trickId: string, updates: Record<string, any>) {
     try {
-      return await supabase
-        .from('user_tricks')
-        .update(updates)
-        .eq('id', trickId);
+      return await supabase.from('user_tricks').update(updates).eq('id', trickId);
     } catch (error) {
       Logger.error('userTricksService.update failed', error);
       throw new ServiceError('Failed to update trick', 'USER_TRICKS_UPDATE_FAILED', error);
@@ -141,10 +163,7 @@ export const userTricksService = {
 
   async delete(trickId: string) {
     try {
-      return await supabase
-        .from('user_tricks')
-        .delete()
-        .eq('id', trickId);
+      return await supabase.from('user_tricks').delete().eq('id', trickId);
     } catch (error) {
       Logger.error('userTricksService.delete failed', error);
       throw new ServiceError('Failed to delete trick', 'USER_TRICKS_DELETE_FAILED', error);

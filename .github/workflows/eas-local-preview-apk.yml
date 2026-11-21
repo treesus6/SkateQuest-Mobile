@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - main
+      # Build this isolated redesign candidate with the existing frozen signer.
+      - feat/spot-discovery-upgrade
     paths:
       # Rebuild the actual Android source, not only edits to this workflow.
       - '.github/workflows/eas-local-preview-apk.yml'
