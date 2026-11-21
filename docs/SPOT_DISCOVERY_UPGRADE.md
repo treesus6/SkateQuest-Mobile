@@ -79,3 +79,5 @@ not evidence of a physical GPS fix, Android rendering, or a real purchase.
 - Full Jest run: 57 suites, 455 tests passed.
 - Android and web JavaScript/static exports passed; this does not produce a signed APK or verify device behavior.
 - Database integration assertions passed with every test mutation rolled back. Follow-up counts confirmed zero committed QA clips/check-ins/challenges.
+- Three additional UI regression tests passed: a locked node opens the real coach without creating progress; attempts use the existing tracker record; failed check-in read-back never produces a success alert.
+- GitHub CI and CodeQL passed on af1cb9f; signed preview/emulator run 44914840339 is in progress. Authenticated device flows remain unverified.
