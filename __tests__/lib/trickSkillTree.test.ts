@@ -22,3 +22,20 @@ describe('skill tree from persisted tracker rows', () => {
     expect(tree.find(n => n.key === 'ollie')?.state).toBe('LANDED');
   });
 });
+
+it('exposes every curriculum tier and draws only real prerequisite connections', () => {
+  const nodes = buildSkillTree([]);
+  expect(new Set(nodes.map(node => node.tier))).toEqual(new Set([1, 2, 3, 4, 5]));
+  const { skillTreeEdges } = require('../../lib/trickSkillTree');
+  const edges = skillTreeEdges(
+    nodes,
+    {
+      ollie: { x: 0, y: 0, width: 100, height: 50 },
+      kickflip: { x: 120, y: 100, width: 100, height: 50 },
+    },
+    'kickflip'
+  );
+  expect(edges).toHaveLength(1);
+  expect(edges[0].key).toBe('ollie->kickflip');
+  expect(edges[0].highlighted).toBe(true);
+});

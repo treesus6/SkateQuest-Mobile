@@ -4,12 +4,13 @@ import { ThumbsDown, ThumbsUp } from 'lucide-react-native';
 import { Video, ResizeMode } from '../components/VideoPlayer';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { challengesService } from '../lib/challengesService';
+import { Logger } from '../lib/logger';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const { width, height } = Dimensions.get('window');
 
-type SubmissionSource = 'challenge' | 'bounty' | 'spot_claim' | 'bingo';
+type SubmissionSource = 'challenge' | 'bounty' | 'spot_claim' | 'bingo' | 'spotlight';
 
 interface Submission {
   id: string;
@@ -33,6 +34,7 @@ interface JudgeResult {
 }
 
 function sourceLabel(source: SubmissionSource) {
+  if (source === 'spotlight') return 'COMMUNITY CLIP SPOTLIGHT';
   if (source === 'bounty') return 'BOUNTY PROOF';
   if (source === 'spot_claim') return 'KING OF THE HILL';
   if (source === 'bingo') return 'TRICK BINGO';
@@ -60,7 +62,13 @@ export default function JudgesBoothScreen() {
 
     setLoading(true);
     try {
-      const [challengeResponse, bountyResponse, spotClaimResponse, bingoResponse] = await Promise.all([
+      const [
+        challengeResponse,
+        bountyResponse,
+        spotClaimResponse,
+        bingoResponse,
+        spotlightResponse,
+      ] = await Promise.all([
         supabase
           .from('challenge_submissions')
           .select(
@@ -97,12 +105,42 @@ export default function JudgesBoothScreen() {
           .neq('user_id', user.id)
           .order('submitted_at', { ascending: true })
           .limit(50),
+        supabase
+          .from('skatetv_clips')
+          .select(
+            'id,user_id,video_url,title,park_name,created_at,stomped_votes,bail_votes,profiles(username)'
+          )
+          .eq('review_status', 'pending')
+          .neq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(50),
       ]);
 
       if (challengeResponse.error) throw challengeResponse.error;
       if (bountyResponse.error) throw bountyResponse.error;
       if (spotClaimResponse.error) throw spotClaimResponse.error;
       if (bingoResponse.error) throw bingoResponse.error;
+      if (spotlightResponse.error) throw spotlightResponse.error;
+      const { data: clipVotes, error: clipVotesError } = await supabase
+        .from('spotlight_clip_votes')
+        .select('clip_id')
+        .eq('user_id', user.id);
+      if (clipVotesError) throw clipVotesError;
+      const judgedClips = new Set((clipVotes ?? []).map((vote: any) => vote.clip_id));
+      const spotlightQueue: Submission[] = (spotlightResponse.data ?? [])
+        .filter((row: any) => !judgedClips.has(row.id))
+        .map((row: any) => ({
+          id: row.id,
+          source: 'spotlight',
+          user_id: row.user_id,
+          video_url: row.video_url,
+          username: row.profiles?.username || 'skater',
+          title: row.title || 'Community clip',
+          subtitle: row.park_name || 'First Land Friday',
+          submitted_at: row.created_at,
+          stomped_votes: row.stomped_votes,
+          bail_votes: row.bail_votes,
+        }));
 
       const challengeRows = challengeResponse.data ?? [];
       const bountyRows = bountyResponse.data ?? [];
@@ -113,7 +151,12 @@ export default function JudgesBoothScreen() {
       const spotClaimIds = spotClaimRows.map((row: any) => row.id);
       const bingoIds = bingoRows.map((row: any) => row.id);
 
-      const [challengeVotesResponse, bountyVotesResponse, spotClaimVotesResponse, bingoVotesResponse] = await Promise.all([
+      const [
+        challengeVotesResponse,
+        bountyVotesResponse,
+        spotClaimVotesResponse,
+        bingoVotesResponse,
+      ] = await Promise.all([
         challengeIds.length
           ? supabase
               .from('submission_votes')
@@ -149,10 +192,18 @@ export default function JudgesBoothScreen() {
       if (spotClaimVotesResponse.error) throw spotClaimVotesResponse.error;
       if (bingoVotesResponse.error) throw bingoVotesResponse.error;
 
-      const judgedChallenges = new Set((challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
-      const judgedBounties = new Set((bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
-      const judgedSpotClaims = new Set((spotClaimVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
-      const judgedBingo = new Set((bingoVotesResponse.data ?? []).map((vote: any) => vote.submission_id));
+      const judgedChallenges = new Set(
+        (challengeVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+      const judgedBounties = new Set(
+        (bountyVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+      const judgedSpotClaims = new Set(
+        (spotClaimVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
+      const judgedBingo = new Set(
+        (bingoVotesResponse.data ?? []).map((vote: any) => vote.submission_id)
+      );
 
       const challengeQueue: Submission[] = challengeRows
         .filter((row: any) => !judgedChallenges.has(row.id))
@@ -215,7 +266,7 @@ export default function JudgesBoothScreen() {
         }));
 
       setSubmissions(
-        [...challengeQueue, ...bountyQueue, ...spotClaimQueue, ...bingoQueue]
+        [...challengeQueue, ...bountyQueue, ...spotClaimQueue, ...bingoQueue, ...spotlightQueue]
           .sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())
           .slice(0, 20)
       );
@@ -238,24 +289,36 @@ export default function JudgesBoothScreen() {
     setVoting(true);
     try {
       const response =
-        submission.source === 'bounty'
-          ? await supabase.rpc('judge_bounty_submission', {
-              p_submission_id: submission.id,
-              p_vote: vote,
-            })
-          : submission.source === 'spot_claim'
-            ? await supabase.rpc('judge_spot_claim_submission', {
+        submission.source === 'spotlight'
+          ? await supabase.rpc('judge_spotlight_clip', { p_clip_id: submission.id, p_vote: vote })
+          : submission.source === 'bounty'
+            ? await supabase.rpc('judge_bounty_submission', {
                 p_submission_id: submission.id,
                 p_vote: vote,
               })
-            : submission.source === 'bingo'
-              ? await supabase.rpc('judge_bingo_cell_submission', {
+            : submission.source === 'spot_claim'
+              ? await supabase.rpc('judge_spot_claim_submission', {
                   p_submission_id: submission.id,
                   p_vote: vote,
                 })
-              : await challengesService.vote(submission.id, user.id, vote);
+              : submission.source === 'bingo'
+                ? await supabase.rpc('judge_bingo_cell_submission', {
+                    p_submission_id: submission.id,
+                    p_vote: vote,
+                  })
+                : await challengesService.vote(submission.id, user.id, vote);
 
       if (response.error) throw response.error;
+      if (submission.source === 'spotlight') {
+        const saved = await supabase
+          .from('spotlight_clip_votes')
+          .select('clip_id,vote')
+          .eq('clip_id', submission.id)
+          .eq('user_id', user.id)
+          .single();
+        if (saved.error || saved.data?.vote !== vote)
+          throw saved.error ?? new Error('Vote could not be verified. Refresh before retrying.');
+      }
 
       const result = (response.data ?? {}) as JudgeResult;
       const earned = Number(result.judge_xp ?? result.xp_earned ?? 10);
@@ -279,6 +342,7 @@ export default function JudgesBoothScreen() {
         );
       }
     } catch (error: any) {
+      Logger.error('Judge vote failed', error);
       const message = String(error?.message ?? error ?? '').toLowerCase();
       if (message.includes('already voted')) {
         Alert.alert('Already Voted', "You've already judged this clip.");
@@ -309,7 +373,8 @@ export default function JudgesBoothScreen() {
       <View className="flex-1 bg-gray-900 justify-center items-center px-6">
         <Text className="text-lg font-bold text-white mb-2">No clips to judge!</Text>
         <Text className="text-sm text-gray-500 text-center">
-          You're caught up. New challenge, bounty, King of the Hill, and Trick Bingo proof clips will show here when skaters submit them.
+          You're caught up. New challenge, bounty, King of the Hill, and Trick Bingo and community
+          spotlight clips will show here when skaters submit them.
         </Text>
       </View>
     );
@@ -371,11 +436,15 @@ export default function JudgesBoothScreen() {
           <View className="flex-row gap-5">
             <View className="flex-row items-center gap-1">
               <ThumbsUp color="#4ade80" size={16} />
-              <Text className="text-sm text-white font-semibold">{currentSubmission.stomped_votes}</Text>
+              <Text className="text-sm text-white font-semibold">
+                {currentSubmission.stomped_votes}
+              </Text>
             </View>
             <View className="flex-row items-center gap-1">
               <ThumbsDown color="#ef4444" size={16} />
-              <Text className="text-sm text-white font-semibold">{currentSubmission.bail_votes}</Text>
+              <Text className="text-sm text-white font-semibold">
+                {currentSubmission.bail_votes}
+              </Text>
             </View>
           </View>
         </View>

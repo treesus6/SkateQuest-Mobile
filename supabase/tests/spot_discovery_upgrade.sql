@@ -58,5 +58,25 @@ begin
  end;
  execute 'reset role';
 end $$;
+do $$
+declare ids uuid[];clip uuid;result jsonb;
+begin
+ select array_agg(id) into ids from (select id from public.profiles order by created_at limit 4) profiles;
+ if cardinality(ids)<4 then raise exception 'Need four existing profiles for review tests';end if;
+ perform set_config('request.jwt.claim.sub',ids[1]::text,true);execute 'set local role authenticated';
+ insert into public.skatetv_clips(user_id,video_url,title,milestone,review_status,stomped_votes,likes,views,featured)
+ values(ids[1],'https://example.invalid/rollback-review.mp4','QA rollback review','first_land_friday','approved',99,0,0,false) returning id into clip;
+ if not exists(select 1 from public.skatetv_clips where id=clip and review_status='pending' and stomped_votes=0) then raise exception 'Client forged review status';end if;
+ begin perform public.judge_spotlight_clip(clip,'stomped');raise exception 'Self vote accepted';exception when raise_exception then if sqlerrm<>'cannot judge own submission' then raise;end if;end;
+ perform set_config('request.jwt.claim.sub',ids[2]::text,true);
+ result:=public.judge_spotlight_clip(clip,'stomped');
+ if result->>'status'<>'PENDING' or (result->>'judge_xp')::integer<>0 then raise exception 'Single vote finalized clip or invented XP';end if;
+ begin perform public.judge_spotlight_clip(clip,'stomped');raise exception 'Duplicate vote accepted';exception when raise_exception then if sqlerrm<>'already voted' then raise;end if;end;
+ perform set_config('request.jwt.claim.sub',ids[3]::text,true);perform public.judge_spotlight_clip(clip,'bail');
+ perform set_config('request.jwt.claim.sub',ids[4]::text,true);result:=public.judge_spotlight_clip(clip,'stomped');
+ if result->>'status'<>'APPROVED' then raise exception 'Three-voter majority failed';end if;
+ if not exists(select 1 from public.skatetv_clips where id=clip and review_status='approved' and stomped_votes=2 and bail_votes=1) then raise exception 'Review read-back failed';end if;
+ execute 'reset role';
+end $$;
 rollback;
-select 'PASS: GPS distance gate, check-in read-back, rejoin/XP dedupe, radar count, referral read-back/cooldown, direct-write denial, spotlight/spot read-back, cross-account privacy/checkout denial, checkout persistence, anonymous write denial; all writes rolled back' as verification;
+select 'PASS: GPS distance gate, check-in read-back, rejoin/XP dedupe, radar count, referral read-back/cooldown, direct-write denial, spotlight/spot read-back, cross-account privacy/checkout denial, checkout persistence, anonymous write denial, forged-review reset, self-vote and duplicate rejection, three-review majority and counter read-back; all writes rolled back' as verification;

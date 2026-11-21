@@ -1,3 +1,6 @@
+import ClipHypeButton from '../components/ClipHypeButton';
+import SceneTexture from '../components/SceneTexture';
+import { withSceneTypography } from '../lib/sceneTheme';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -22,7 +25,6 @@ import {
   Camera,
   Eye,
   Flame,
-  Heart,
   MapPin,
   Play,
   Plus,
@@ -40,7 +42,7 @@ import { uploadSkateTVClip } from '../lib/uploadMedia';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const INK = '#07080B';
-const PAPER = '#F5F0E7';
+const PAPER = '#F6F0E5';
 const ORANGE = '#E36D3F';
 const ACID = '#D8F04B';
 const BLUE = '#63A7FF';
@@ -58,6 +60,8 @@ type Clip = {
   views: number;
   featured: boolean;
   created_at: string;
+  milestone: string | null;
+  review_status: 'unreviewed' | 'pending' | 'approved' | 'rejected';
   spot_id: string | null;
   spotlight_id: string | null;
   profiles: { username: string | null } | null;
@@ -87,6 +91,7 @@ export default function SkateTVLiveScreen() {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadTrick, setUploadTrick] = useState('');
   const [uploadPark, setUploadPark] = useState('');
+  const [firstLand, setFirstLand] = useState(false);
 
   useEffect(() => {
     void discoveryService
@@ -132,7 +137,7 @@ export default function SkateTVLiveScreen() {
     let query = supabase
       .from('skatetv_clips')
       .select(
-        'id,user_id,video_url,thumbnail_url,title,trick_name,park_name,likes,views,featured,created_at,spot_id,spotlight_id,profiles(username)'
+        'id,user_id,video_url,thumbnail_url,title,trick_name,park_name,likes,views,featured,created_at,spot_id,spotlight_id,milestone,review_status,profiles(username)'
       )
       .order('created_at', { ascending: false })
       .limit(30);
@@ -157,7 +162,7 @@ export default function SkateTVLiveScreen() {
     setClips(nextClips);
 
     if (user?.id && nextClips.length > 0) {
-      const { data: likes } = await supabase
+      const { data: likes, error: likesError } = await supabase
         .from('skatetv_likes')
         .select('clip_id')
         .eq('user_id', user.id)
@@ -166,6 +171,11 @@ export default function SkateTVLiveScreen() {
           nextClips.map(clip => clip.id)
         );
       if (current !== request.current) return;
+      if (likesError) {
+        setLoadError(reportDiscoveryError('Your hype could not load', likesError));
+        setRefreshing(false);
+        return;
+      }
       setLikedClips(new Set((likes ?? []).map(row => row.clip_id)));
     } else {
       setLikedClips(new Set());
@@ -221,6 +231,8 @@ export default function SkateTVLiveScreen() {
     } finally {
       liking.current.delete(clip.id);
     }
+    if (!error && (!data || typeof data.liked !== 'boolean' || typeof data.likes !== 'number'))
+      error = new Error('Hype response could not be verified.');
     if (error) {
       setLikedClips(current => {
         const next = new Set(current);
@@ -308,6 +320,7 @@ export default function SkateTVLiveScreen() {
           park_name: selectedSpot?.name || uploadPark.trim() || null,
           spot_id: selectedSpot?.id ?? null,
           spotlight_id: selectedSpotlight?.id ?? null,
+          milestone: firstLand ? 'first_land_friday' : null,
           likes: 0,
           views: 0,
           featured: false,
@@ -329,6 +342,7 @@ export default function SkateTVLiveScreen() {
       setUploadTitle('');
       setUploadTrick('');
       setUploadPark('');
+      setFirstLand(false);
       setSelectedSpot(null);
       setSelectedSpotlight(null);
       setSpotSearch('');
@@ -362,6 +376,7 @@ export default function SkateTVLiveScreen() {
         ListHeaderComponent={
           <View>
             <View style={s.hero}>
+              <SceneTexture />
               <View style={s.heroSlashA} />
               <View style={s.heroSlashB} />
               <View style={s.heroTop}>
@@ -479,6 +494,20 @@ export default function SkateTVLiveScreen() {
               </Pressable>
 
               <View style={s.info}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  {item.milestone ? (
+                    <Text style={{ color: ACID, fontSize: 10, fontWeight: '900' }}>
+                      FIRST LAND FRIDAY · SELF-REPORTED
+                    </Text>
+                  ) : null}
+                  {item.review_status === 'approved' ? (
+                    <Text style={{ color: '#22C55E', fontWeight: '900', fontSize: 10 }}>
+                      COMMUNITY REVIEWED
+                    </Text>
+                  ) : item.review_status === 'pending' ? (
+                    <Text style={{ color: MUTED, fontSize: 10 }}>AWAITING COMMUNITY REVIEW</Text>
+                  ) : null}
+                </View>
                 <View style={s.tagRow}>
                   {item.trick_name ? (
                     <View style={s.trickTag}>
@@ -495,17 +524,11 @@ export default function SkateTVLiveScreen() {
                   ) : null}
                 </View>
                 <View style={s.actions}>
-                  <Pressable
-                    style={[s.action, liked && s.actionLiked]}
+                  <ClipHypeButton
+                    liked={liked}
+                    count={item.likes}
                     onPress={() => void toggleLike(item)}
-                  >
-                    <Heart
-                      color={liked ? INK : ORANGE}
-                      fill={liked ? INK : 'transparent'}
-                      size={18}
-                    />
-                    <Text style={[s.actionText, liked && s.actionTextLiked]}>{item.likes}</Text>
-                  </Pressable>
+                  />
                   <View style={s.action}>
                     <Eye color={MUTED} size={18} />
                     <Text style={s.actionText}>{item.views}</Text>
@@ -577,6 +600,25 @@ export default function SkateTVLiveScreen() {
                 value={uploadTitle}
                 onChangeText={setUploadTitle}
               />
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: firstLand }}
+                onPress={() => setFirstLand(value => !value)}
+                style={{
+                  padding: 14,
+                  borderWidth: 2,
+                  borderColor: firstLand ? ACID : MUTED,
+                  marginBottom: 12,
+                }}
+              >
+                <Text style={{ color: PAPER, fontWeight: '900' }}>
+                  {firstLand ? '✓ ' : ''}FIRST LAND FRIDAY
+                </Text>
+                <Text style={{ color: MUTED, marginTop: 6 }}>
+                  Mark your own first land. The clip enters community review; this does not verify
+                  when or where you first landed it.
+                </Text>
+              </Pressable>
               <Input
                 label="TRICK"
                 placeholder="Kickflip, boardslide, line…"
@@ -691,278 +733,285 @@ function Stat({ color, value, label }: { color: string; value: number; label: st
   );
 }
 
-const s = StyleSheet.create({
-  fill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  container: { flex: 1, backgroundColor: INK },
-  list: { padding: 14, paddingBottom: 40, gap: 14 },
-  hero: {
-    minHeight: 210,
-    borderRadius: 27,
-    backgroundColor: '#161A21',
-    borderWidth: 1,
-    borderColor: '#2C323C',
-    overflow: 'hidden',
-    padding: 19,
-  },
-  heroSlashA: {
-    position: 'absolute',
-    width: 240,
-    height: 72,
-    backgroundColor: ORANGE,
-    right: -78,
-    top: 22,
-    transform: [{ rotate: '29deg' }],
-  },
-  heroSlashB: {
-    position: 'absolute',
-    width: 190,
-    height: 20,
-    backgroundColor: ACID,
-    left: -66,
-    bottom: 33,
-    transform: [{ rotate: '-10deg' }],
-  },
-  heroTop: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  kicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.7 },
-  title: {
-    color: PAPER,
-    fontSize: 45,
-    lineHeight: 41,
-    fontWeight: '900',
-    letterSpacing: -2.2,
-    marginTop: 7,
-  },
-  sub: { color: '#B7BDC7', fontSize: 11, fontWeight: '700', marginTop: 7 },
-  uploadBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: ACID,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '4deg' }],
-  },
-  uploadTxt: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginTop: 2 },
-  statsRail: { flexDirection: 'row', gap: 8, marginTop: 9 },
-  stat: { flex: 1, minHeight: 72, borderRadius: 17, padding: 11, justifyContent: 'center' },
-  statValue: { color: INK, fontSize: 18, fontWeight: '900' },
-  statLabel: {
-    color: 'rgba(7,8,11,0.67)',
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  tabs: { flexDirection: 'row', gap: 8, marginTop: 16, marginBottom: 2 },
-  tab: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    backgroundColor: '#151A21',
-    borderWidth: 1,
-    borderColor: '#2C323C',
-  },
-  tabOn: { backgroundColor: PAPER, borderColor: PAPER },
-  tabText: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
-  tabTextOn: { color: INK },
-  card: {
-    backgroundColor: '#12161C',
-    borderRadius: 23,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#2B313B',
-  },
-  media: { height: 330, backgroundColor: '#171B22', overflow: 'hidden' },
-  noThumb: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 9 },
-  noThumbText: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-  indexSticker: {
-    position: 'absolute',
-    top: 13,
-    left: 13,
-    minWidth: 40,
-    height: 31,
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    backgroundColor: ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-4deg' }],
-  },
-  indexText: { color: INK, fontSize: 11, fontWeight: '900' },
-  featured: {
-    position: 'absolute',
-    top: 13,
-    right: 13,
-    minHeight: 31,
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    backgroundColor: ACID,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  featuredText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  play: {
-    position: 'absolute',
-    left: 18,
-    bottom: 82,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.68)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mediaCopy: { position: 'absolute', left: 18, right: 18, bottom: 18 },
-  clipTitle: {
-    color: '#fff',
-    fontSize: 25,
-    lineHeight: 28,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  byline: { color: '#D1D5DC', fontSize: 11, fontWeight: '800', marginTop: 5 },
-  info: { padding: 13 },
-  tagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 },
-  trickTag: { backgroundColor: ORANGE, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 6 },
-  trickTagText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  spotTag: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  spotText: { flex: 1, color: MUTED, fontSize: 10, fontWeight: '700' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 11 },
-  action: {
-    minHeight: 40,
-    minWidth: 62,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#303641',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-  },
-  actionLiked: { backgroundColor: ORANGE, borderColor: ORANGE },
-  actionText: { color: PAPER, fontSize: 10, fontWeight: '900' },
-  actionTextLiked: { color: INK },
-  watch: {
-    marginLeft: 'auto',
-    minHeight: 40,
-    borderRadius: 12,
-    backgroundColor: ACID,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-  },
-  watchText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-  empty: {
-    minHeight: 220,
-    borderRadius: 23,
-    backgroundColor: '#13171D',
-    borderWidth: 1,
-    borderColor: '#2B313B',
-    padding: 22,
-    justifyContent: 'center',
-  },
-  emptyIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 17,
-    backgroundColor: ACID,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-4deg' }],
-  },
-  emptyTitle: { color: PAPER, fontSize: 21, fontWeight: '900', marginTop: 14 },
-  emptyText: { color: MUTED, fontSize: 11, lineHeight: 17, marginTop: 4 },
-  modalShade: { flex: 1, backgroundColor: 'rgba(2,3,5,0.76)', justifyContent: 'flex-end' },
-  modalSheet: {
-    maxHeight: '86%',
-    backgroundColor: '#11151B',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderColor: '#343B46',
-  },
-  modalHeader: {
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: { color: PAPER, fontSize: 25, fontWeight: '900', marginTop: 2 },
-  close: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#222832',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContent: { paddingHorizontal: 18, paddingBottom: 28 },
-  videoPicker: {
-    minHeight: 150,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#3B424D',
-    backgroundColor: '#171B22',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-  },
-  videoPickerReady: { backgroundColor: ACID, borderColor: ACID, borderStyle: 'solid' },
-  videoPickerTitle: { color: PAPER, fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-  videoPickerReadyText: { color: INK },
-  videoPickerSub: { color: MUTED, fontSize: 9 },
-  videoPickerReadySub: { color: 'rgba(7,8,11,0.62)' },
-  inputBlock: { marginTop: 14 },
-  inputLabel: {
-    color: ORANGE,
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 1.4,
-    marginBottom: 6,
-  },
-  input: {
-    minHeight: 50,
-    borderRadius: 14,
-    backgroundColor: '#1A1F27',
-    borderWidth: 1,
-    borderColor: '#303743',
-    color: PAPER,
-    paddingHorizontal: 13,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  postButton: {
-    minHeight: 52,
-    borderRadius: 15,
-    backgroundColor: ACID,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 18,
-  },
-  postButtonDisabled: { opacity: 0.4 },
-  postButtonText: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-});
+const s = StyleSheet.create(
+  withSceneTypography({
+    fill: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+    container: { flex: 1, backgroundColor: INK },
+    list: { padding: 14, paddingBottom: 40, gap: 14 },
+    hero: {
+      minHeight: 210,
+      borderRadius: 27,
+      backgroundColor: '#161A21',
+      borderWidth: 1,
+      borderColor: '#2C323C',
+      overflow: 'hidden',
+      padding: 19,
+    },
+    heroSlashA: {
+      position: 'absolute',
+      width: 240,
+      height: 72,
+      backgroundColor: ORANGE,
+      right: -78,
+      top: 22,
+      transform: [{ rotate: '29deg' }],
+    },
+    heroSlashB: {
+      position: 'absolute',
+      width: 190,
+      height: 20,
+      backgroundColor: ACID,
+      left: -66,
+      bottom: 33,
+      transform: [{ rotate: '-10deg' }],
+    },
+    heroTop: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+    },
+    kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    kicker: { color: ORANGE, fontSize: 9, fontWeight: '900', letterSpacing: 1.7 },
+    title: {
+      color: PAPER,
+      fontSize: 45,
+      lineHeight: 41,
+      fontWeight: '900',
+      letterSpacing: -2.2,
+      marginTop: 7,
+    },
+    sub: { color: '#B7BDC7', fontSize: 11, fontWeight: '700', marginTop: 7 },
+    uploadBtn: {
+      width: 64,
+      height: 64,
+      borderRadius: 18,
+      backgroundColor: ACID,
+      alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ rotate: '4deg' }],
+    },
+    uploadTxt: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 1, marginTop: 2 },
+    statsRail: { flexDirection: 'row', gap: 8, marginTop: 9 },
+    stat: { flex: 1, minHeight: 72, borderRadius: 17, padding: 11, justifyContent: 'center' },
+    statValue: { color: INK, fontSize: 18, fontWeight: '900' },
+    statLabel: {
+      color: 'rgba(7,8,11,0.67)',
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 1,
+      marginTop: 2,
+    },
+    tabs: { flexDirection: 'row', gap: 8, marginTop: 16, marginBottom: 2 },
+    tab: {
+      flex: 1,
+      minHeight: 44,
+      borderRadius: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      backgroundColor: '#151A21',
+      borderWidth: 1,
+      borderColor: '#2C323C',
+    },
+    tabOn: { backgroundColor: PAPER, borderColor: PAPER },
+    tabText: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+    tabTextOn: { color: INK },
+    card: {
+      backgroundColor: '#12161C',
+      borderRadius: 23,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: '#2B313B',
+    },
+    media: { height: 330, backgroundColor: '#171B22', overflow: 'hidden' },
+    noThumb: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 9 },
+    noThumbText: { color: MUTED, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+    scrim: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: 'rgba(0,0,0,0.18)',
+    },
+    indexSticker: {
+      position: 'absolute',
+      top: 13,
+      left: 13,
+      minWidth: 40,
+      height: 31,
+      borderRadius: 10,
+      paddingHorizontal: 9,
+      backgroundColor: ORANGE,
+      alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ rotate: '-4deg' }],
+    },
+    indexText: { color: INK, fontSize: 11, fontWeight: '900' },
+    featured: {
+      position: 'absolute',
+      top: 13,
+      right: 13,
+      minHeight: 31,
+      borderRadius: 10,
+      paddingHorizontal: 9,
+      backgroundColor: ACID,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    featuredText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+    play: {
+      position: 'absolute',
+      left: 18,
+      bottom: 82,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(0,0,0,0.68)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mediaCopy: { position: 'absolute', left: 18, right: 18, bottom: 18 },
+    clipTitle: {
+      color: '#fff',
+      fontSize: 25,
+      lineHeight: 28,
+      fontWeight: '900',
+      letterSpacing: -0.8,
+    },
+    byline: { color: '#D1D5DC', fontSize: 11, fontWeight: '800', marginTop: 5 },
+    info: { padding: 13 },
+    tagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 28 },
+    trickTag: {
+      backgroundColor: ORANGE,
+      borderRadius: 9,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+    },
+    trickTagText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+    spotTag: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    spotText: { flex: 1, color: MUTED, fontSize: 10, fontWeight: '700' },
+    actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 11 },
+    action: {
+      minHeight: 40,
+      minWidth: 62,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#303641',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+    },
+    actionLiked: { backgroundColor: ORANGE, borderColor: ORANGE },
+    actionText: { color: PAPER, fontSize: 10, fontWeight: '900' },
+    actionTextLiked: { color: INK },
+    watch: {
+      marginLeft: 'auto',
+      minHeight: 40,
+      borderRadius: 12,
+      backgroundColor: ACID,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+    },
+    watchText: { color: INK, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+    empty: {
+      minHeight: 220,
+      borderRadius: 23,
+      backgroundColor: '#13171D',
+      borderWidth: 1,
+      borderColor: '#2B313B',
+      padding: 22,
+      justifyContent: 'center',
+    },
+    emptyIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 17,
+      backgroundColor: ACID,
+      alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ rotate: '-4deg' }],
+    },
+    emptyTitle: { color: PAPER, fontSize: 21, fontWeight: '900', marginTop: 14 },
+    emptyText: { color: MUTED, fontSize: 11, lineHeight: 17, marginTop: 4 },
+    modalShade: { flex: 1, backgroundColor: 'rgba(2,3,5,0.76)', justifyContent: 'flex-end' },
+    modalSheet: {
+      maxHeight: '86%',
+      backgroundColor: '#11151B',
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      borderTopWidth: 1,
+      borderColor: '#343B46',
+    },
+    modalHeader: {
+      padding: 18,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    modalTitle: { color: PAPER, fontSize: 25, fontWeight: '900', marginTop: 2 },
+    close: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: '#222832',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalContent: { paddingHorizontal: 18, paddingBottom: 28 },
+    videoPicker: {
+      minHeight: 150,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: '#3B424D',
+      backgroundColor: '#171B22',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+    },
+    videoPickerReady: { backgroundColor: ACID, borderColor: ACID, borderStyle: 'solid' },
+    videoPickerTitle: { color: PAPER, fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+    videoPickerReadyText: { color: INK },
+    videoPickerSub: { color: MUTED, fontSize: 9 },
+    videoPickerReadySub: { color: 'rgba(7,8,11,0.62)' },
+    inputBlock: { marginTop: 14 },
+    inputLabel: {
+      color: ORANGE,
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 1.4,
+      marginBottom: 6,
+    },
+    input: {
+      minHeight: 50,
+      borderRadius: 14,
+      backgroundColor: '#1A1F27',
+      borderWidth: 1,
+      borderColor: '#303743',
+      color: PAPER,
+      paddingHorizontal: 13,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    postButton: {
+      minHeight: 52,
+      borderRadius: 15,
+      backgroundColor: ACID,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 18,
+    },
+    postButtonDisabled: { opacity: 0.4 },
+    postButtonText: { color: INK, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  })
+);

@@ -1,3 +1,4 @@
+import SpotCheckInSheet from '../components/SpotCheckInSheet';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, ScrollView, Linking, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -86,6 +87,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const [centerCoordinates, setCenterCoordinates] = useState<[number, number]>(INITIAL_COORDINATES);
   const [mapStyle, setMapStyle] = useState<string>(Mapbox.StyleURL.Street);
+  const [checkInSpot, setCheckInSpot] = useState<SkateSpot | null>(null);
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [showDirections, setShowDirections] = useState(false);
@@ -435,6 +437,11 @@ export default function MapScreen() {
 
   return (
     <View className="flex-1 bg-[#07090D]">
+      <SpotCheckInSheet
+        spot={checkInSpot}
+        onClose={() => setCheckInSpot(null)}
+        onSaved={() => void discovery.refresh()}
+      />
       <Mapbox.MapView
         key={mapInstance}
         ref={mapRef}
@@ -891,7 +898,7 @@ export default function MapScreen() {
               justifyContent: 'center',
               marginBottom: 10,
             }}
-            onPress={() => navigation.navigate('LiveCheckIn', { spotId: selectedSpot.id })}
+            onPress={() => setCheckInSpot(selectedSpot)}
           >
             <Text style={{ color: '#07080B', fontWeight: '900' }}>
               {Number(discovery.pulse[selectedSpot.id]?.active_skaters) > 0

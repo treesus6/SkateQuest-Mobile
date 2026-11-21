@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
 import { Slot, useGlobalSearchParams, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { SCENE_FONTS } from '../lib/sceneTheme';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import * as Sentry from '@sentry/react-native';
@@ -113,6 +115,10 @@ function AuthGuard() {
 }
 
 function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(SCENE_FONTS);
+  useEffect(() => {
+    if (fontError) Logger.error('Bundled fonts could not load', fontError);
+  }, [fontError]);
   useEffect(() => {
     const cleanupAuth = useAuthStore.getState().initialize();
     const cleanupNetwork = useNetworkStore.getState().initialize();
@@ -160,6 +166,20 @@ function RootLayout() {
       stopBackgroundSync();
     };
   }, []);
+
+  if (!fontsLoaded && !fontError)
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#07080B',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ActivityIndicator color="#D8F04B" />
+      </View>
+    );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

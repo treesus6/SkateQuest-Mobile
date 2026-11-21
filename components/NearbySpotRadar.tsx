@@ -1,3 +1,4 @@
+import SpotCheckInSheet from './SpotCheckInSheet';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import PartnerDiscoveryCard from './PartnerDiscoveryCard';
 
 export default function NearbySpotRadar() {
   const router = useRouter();
+  const [checkInSpot, setCheckInSpot] = useState<{ id: string; name: string } | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
   const [loading, setLoading] = useState(false);
   const [located, setLocated] = useState(false);
@@ -32,6 +34,11 @@ export default function NearbySpotRadar() {
   }, []);
   return (
     <View style={{ marginBottom: 14 }}>
+      <SpotCheckInSheet
+        spot={checkInSpot}
+        onClose={() => setCheckInSpot(null)}
+        onSaved={() => void discovery.refresh()}
+      />
       <View
         style={{
           flexDirection: 'row',
@@ -113,9 +120,7 @@ export default function NearbySpotRadar() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() =>
-                  router.push({ pathname: '/live-check-in', params: { spotId: spot.id } } as any)
-                }
+                onPress={() => setCheckInSpot(spot)}
                 style={{
                   backgroundColor: '#E36D3F',
                   minHeight: 44,

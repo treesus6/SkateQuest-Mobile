@@ -45,7 +45,18 @@ export function buildSkillTree(progress: SkillProgress[]): SkillNode[] {
       return {
         key,
         name: trick.name,
-        tier: trick.difficulty,
+        tier:
+          trick.difficulty >= 4
+            ? 5
+            : trick.category === 'grind' || trick.category === 'manual'
+              ? 3
+              : trick.category === 'transition' ||
+                  trick.category === 'grab' ||
+                  trick.category === 'street'
+                ? 4
+                : trick.difficulty === 1
+                  ? 1
+                  : 2,
         prerequisites: trick.prerequisites,
         missing,
         progress: current,
@@ -59,4 +70,41 @@ export function buildSkillTree(progress: SkillProgress[]): SkillNode[] {
       } as SkillNode;
     })
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+}
+
+export type SkillPoint = { x: number; y: number; width: number; height: number };
+export function skillTreeEdges(
+  nodes: SkillNode[],
+  positions: Record<string, SkillPoint>,
+  selected: string | null
+) {
+  const byName = new Map(
+    nodes.flatMap(
+      node =>
+        [
+          [normalizeTrickName(node.name), node],
+          [normalizeTrickName(node.key), node],
+        ] as [string, SkillNode][]
+    )
+  );
+  return nodes.flatMap(node =>
+    node.prerequisites.flatMap(prerequisite => {
+      const parent = byName.get(normalizeTrickName(prerequisite));
+      const a = parent && positions[parent.key];
+      const b = positions[node.key];
+      if (!parent || !a || !b) return [];
+      const x1 = a.x + a.width / 2,
+        y1 = a.y + a.height,
+        x2 = b.x + b.width / 2,
+        y2 = b.y;
+      const bend = Math.max(24, Math.abs(y2 - y1) / 2);
+      return [
+        {
+          key: `${parent.key}->${node.key}`,
+          highlighted: node.key === selected || parent.key === selected,
+          d: `M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`,
+        },
+      ];
+    })
+  );
 }
