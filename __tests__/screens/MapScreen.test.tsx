@@ -33,6 +33,9 @@ jest.mock('@rnmapbox/maps', () => {
     },
   };
 });
+jest.mock('../../hooks/useSpotDiscovery', () => ({
+  useSpotDiscovery: () => ({ pulse: {}, partners: [], error: null, refresh: jest.fn() }),
+}));
 jest.mock('../../lib/mapboxSetup', () => ({
   isMapboxConfigured: true,
   mapboxConfigurationError: null,
@@ -71,9 +74,7 @@ const shopsGetNearby = shopsService.getNearby as jest.Mock;
 const reconcileSavedSpots = savedSpotsService.reconcileSavedSpots as jest.Mock;
 const saveSpot = savedSpotsService.saveSpot as jest.Mock;
 const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-const openSettingsSpy = jest
-  .spyOn(Linking, 'openSettings')
-  .mockResolvedValue(undefined as never);
+const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined as never);
 
 const spot = {
   id: 'spot-1',
@@ -91,8 +92,9 @@ beforeEach(async () => {
   (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
     status: 'granted',
   });
-  (Location as unknown as { getLastKnownPositionAsync: jest.Mock }).getLastKnownPositionAsync =
-    jest.fn().mockResolvedValue(null);
+  (Location as unknown as { getLastKnownPositionAsync: jest.Mock }).getLastKnownPositionAsync = jest
+    .fn()
+    .mockResolvedValue(null);
   (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
     coords: { latitude: 34.0522, longitude: -118.2437 },
     timestamp: Date.now(),

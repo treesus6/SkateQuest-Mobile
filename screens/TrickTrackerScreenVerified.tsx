@@ -27,6 +27,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { useSupabaseQuery } from '../hooks/useSupabaseQuery';
 import { userTricksService } from '../lib/userTricksService';
 import type { LandedXpClaim } from '../lib/userTricksService';
+import TrickSkillTree from '../components/TrickSkillTree';
 import { feedService } from '../lib/feedService';
 
 const INK = '#07080B';
@@ -142,17 +143,23 @@ function showLandedXpResult(
 export default function TrickTrackerScreenVerified() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const [view, setView] = useState<'tree' | 'log'>('tree');
+  const [busy, setBusy] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
   const [newStatus, setNewStatus] = useState<'trying' | 'landed' | 'consistent'>('trying');
 
-  const { data: tricks, refetch } = useSupabaseQuery<any[]>(
-    () => userTricksService.getAll(user?.id || ''),
-    [user?.id],
-    { cacheKey: `tricks-${user?.id}`, enabled: !!user }
-  );
+  const {
+    data: tricks,
+    refetch,
+    error: progressError,
+  } = useSupabaseQuery<any[]>(() => userTricksService.getAll(user?.id || ''), [user?.id], {
+    cacheKey: `tricks-${user?.id}`,
+    enabled: !!user,
+    persist: true,
+  });
 
-  const allTricks = tricks || [];
+  const allTricks = (tricks || []).filter(trick => trick.user_id === user?.id);
   const daily = getDailyTrick();
   const dailyDone = allTricks.some(
     trick =>
@@ -208,10 +215,7 @@ export default function TrickTrackerScreenVerified() {
     }
   };
 
-  const setStatus = async (
-    trick: any,
-    status: 'trying' | 'landed' | 'consistent'
-  ) => {
+  const setStatus = async (trick: any, status: 'trying' | 'landed' | 'consistent') => {
     if (!user) return;
     try {
       const updated = await userTricksService.updateStatus(trick.id, status);
@@ -265,7 +269,7 @@ export default function TrickTrackerScreenVerified() {
   return (
     <View style={s.container}>
       <FlatList
-        data={allTricks}
+        data={view === 'log' ? allTricks : []}
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={s.listContent}
@@ -289,7 +293,8 @@ export default function TrickTrackerScreenVerified() {
               <Text style={s.eyebrow}>YOUR PERSONAL SKATE PROGRESSION NOTEBOOK</Text>
               <Text style={s.title}>TRICK{`\n`}TRACKER.</Text>
               <Text style={s.subtitle}>
-                Log attempts, mark progress, and build consistency without pretending a self-report is verified XP.
+                Log attempts, mark progress, and build consistency without pretending a self-report
+                is verified XP.
               </Text>
             </View>
 
@@ -319,6 +324,47 @@ export default function TrickTrackerScreenVerified() {
               </View>
             </View>
 
+            <View style={{ flexDirection: 'row', gap: 10, marginVertical: 12 }}>
+              {(['tree', 'log'] as const).map(mode => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={() => setView(mode)}
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    backgroundColor: view === mode ? ACID : '#12161C',
+                  }}
+                >
+                  <Text style={{ color: view === mode ? INK : PAPER, fontWeight: '900' }}>
+                    {mode === 'tree' ? 'SKILL TREE' : 'PROGRESS LOG'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {progressError ? (
+              <TouchableOpacity onPress={() => void refetch()}>
+                <Text style={{ color: ORANGE }}>Progress could not refresh. Tap to retry.</Text>
+              </TouchableOpacity>
+            ) : null}
+            {view === 'tree' ? (
+              <TrickSkillTree
+                progress={allTricks}
+                busy={busy}
+                onStart={trickName => {
+                  setName(trickName);
+                  setNewStatus('trying');
+                  setShowAdd(true);
+                }}
+                onAttempt={trick => {
+                  setBusy(true);
+                  void addAttempt(trick).finally(() => setBusy(false));
+                }}
+                onLand={trick => {
+                  setBusy(true);
+                  void setStatus(trick, 'landed').finally(() => setBusy(false));
+                }}
+              />
+            ) : null}
             <View style={s.dailyWrap}>
               <View style={s.dailyPoster}>
                 <View style={s.dailyTape}>
@@ -376,7 +422,8 @@ export default function TrickTrackerScreenVerified() {
               <View style={s.verificationCopy}>
                 <Text style={s.verificationTitle}>TRACKER ≠ VERIFIED XP</Text>
                 <Text style={s.verificationText}>
-                  This notebook is self-reported. XP still comes only from verified SkateQuest activity.
+                  This notebook is self-reported. XP still comes only from verified SkateQuest
+                  activity.
                 </Text>
               </View>
             </View>
@@ -428,7 +475,12 @@ export default function TrickTrackerScreenVerified() {
                         </Text>
                       </View>
                       {statusIndex < 2 ? (
-                        <View style={[s.progressLine, reached && item.status !== status && s.progressLineReached]} />
+                        <View
+                          style={[
+                            s.progressLine,
+                            reached && item.status !== status && s.progressLineReached,
+                          ]}
+                        />
                       ) : null}
                     </React.Fragment>
                   );
@@ -474,20 +526,22 @@ export default function TrickTrackerScreenVerified() {
           );
         }}
         ListEmptyComponent={
-          <View style={s.empty}>
-            <View style={s.emptyStamp}>
-              <Target color={INK} size={30} strokeWidth={2.8} />
+          view === 'tree' ? null : (
+            <View style={s.empty}>
+              <View style={s.emptyStamp}>
+                <Target color={INK} size={30} strokeWidth={2.8} />
+              </View>
+              <Text style={s.emptyKicker}>EMPTY NOTEBOOK</Text>
+              <Text style={s.emptyTitle}>NO TRICKS TRACKED YET</Text>
+              <Text style={s.emptyText}>
+                Add what you are actually working on and start logging attempts.
+              </Text>
+              <TouchableOpacity style={s.emptyButton} onPress={() => setShowAdd(true)}>
+                <Plus color={INK} size={16} strokeWidth={3} />
+                <Text style={s.emptyButtonText}>ADD FIRST TRICK</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={s.emptyKicker}>EMPTY NOTEBOOK</Text>
-            <Text style={s.emptyTitle}>NO TRICKS TRACKED YET</Text>
-            <Text style={s.emptyText}>
-              Add what you are actually working on and start logging attempts.
-            </Text>
-            <TouchableOpacity style={s.emptyButton} onPress={() => setShowAdd(true)}>
-              <Plus color={INK} size={16} strokeWidth={3} />
-              <Text style={s.emptyButtonText}>ADD FIRST TRICK</Text>
-            </TouchableOpacity>
-          </View>
+          )
         }
       />
 
@@ -585,105 +639,493 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: INK },
   listContent: { paddingBottom: 118 },
 
-  hero: { minHeight: 300, paddingHorizontal: 18, paddingTop: 46, paddingBottom: 28, overflow: 'hidden', position: 'relative' },
-  orangeSlash: { position: 'absolute', width: 310, height: 94, right: -105, top: 70, backgroundColor: ORANGE, transform: [{ rotate: '31deg' }] },
-  acidSlash: { position: 'absolute', width: 220, height: 27, left: -70, bottom: 35, backgroundColor: ACID, transform: [{ rotate: '-10deg' }] },
-  blueOrb: { position: 'absolute', width: 165, height: 165, borderRadius: 83, right: 8, bottom: -58, backgroundColor: BLUE, opacity: 0.12 },
+  hero: {
+    minHeight: 300,
+    paddingHorizontal: 18,
+    paddingTop: 46,
+    paddingBottom: 28,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  orangeSlash: {
+    position: 'absolute',
+    width: 310,
+    height: 94,
+    right: -105,
+    top: 70,
+    backgroundColor: ORANGE,
+    transform: [{ rotate: '31deg' }],
+  },
+  acidSlash: {
+    position: 'absolute',
+    width: 220,
+    height: 27,
+    left: -70,
+    bottom: 35,
+    backgroundColor: ACID,
+    transform: [{ rotate: '-10deg' }],
+  },
+  blueOrb: {
+    position: 'absolute',
+    width: 165,
+    height: 165,
+    borderRadius: 83,
+    right: 8,
+    bottom: -58,
+    backgroundColor: BLUE,
+    opacity: 0.12,
+  },
   heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroStamp: { width: 60, height: 60, borderRadius: 18, backgroundColor: ACID, borderWidth: 3, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-6deg' }] },
-  addButtonTop: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: PAPER, borderRadius: 999, borderWidth: 2, borderColor: INK, paddingHorizontal: 11, paddingVertical: 8 },
+  heroStamp: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: ACID,
+    borderWidth: 3,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-6deg' }],
+  },
+  addButtonTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: PAPER,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: INK,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+  },
   addButtonTopText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.9 },
   eyebrow: { color: ORANGE, fontSize: 8, fontWeight: '900', letterSpacing: 1.45, marginTop: 27 },
-  title: { color: PAPER, fontSize: 50, lineHeight: 46, fontWeight: '900', letterSpacing: -2.9, marginTop: 3 },
-  subtitle: { color: '#A3AAB5', fontSize: 12, lineHeight: 18, fontWeight: '700', maxWidth: 305, marginTop: 8 },
+  title: {
+    color: PAPER,
+    fontSize: 50,
+    lineHeight: 46,
+    fontWeight: '900',
+    letterSpacing: -2.9,
+    marginTop: 3,
+  },
+  subtitle: {
+    color: '#A3AAB5',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    maxWidth: 305,
+    marginTop: 8,
+  },
 
-  statsTicket: { marginHorizontal: 14, marginTop: -10, minHeight: 96, backgroundColor: PAPER, borderRadius: 24, borderWidth: 2, borderColor: INK, flexDirection: 'row', alignItems: 'stretch', paddingVertical: 13, shadowColor: '#000', shadowOpacity: 0.28, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 7, transform: [{ rotate: '-0.5deg' }] },
+  statsTicket: {
+    marginHorizontal: 14,
+    marginTop: -10,
+    minHeight: 96,
+    backgroundColor: PAPER,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: INK,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingVertical: 13,
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 7,
+    transform: [{ rotate: '-0.5deg' }],
+  },
   statCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   statDivider: { width: 1, backgroundColor: '#D4CEC2' },
   statValue: { color: INK, fontSize: 18, lineHeight: 21, fontWeight: '900', marginTop: 4 },
-  statLabel: { color: '#74766F', fontSize: 6.5, fontWeight: '900', letterSpacing: 0.65, marginTop: 1 },
+  statLabel: {
+    color: '#74766F',
+    fontSize: 6.5,
+    fontWeight: '900',
+    letterSpacing: 0.65,
+    marginTop: 1,
+  },
 
   dailyWrap: { marginHorizontal: 14, marginTop: 20 },
-  dailyPoster: { backgroundColor: ORANGE, borderRadius: 22, borderWidth: 2, borderColor: INK, padding: 15, position: 'relative', overflow: 'hidden', transform: [{ rotate: '-0.45deg' }] },
-  dailyTape: { position: 'absolute', right: -20, top: 14, minWidth: 85, height: 25, backgroundColor: ACID, borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '10deg' }] },
+  dailyPoster: {
+    backgroundColor: ORANGE,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: INK,
+    padding: 15,
+    position: 'relative',
+    overflow: 'hidden',
+    transform: [{ rotate: '-0.45deg' }],
+  },
+  dailyTape: {
+    position: 'absolute',
+    right: -20,
+    top: 14,
+    minWidth: 85,
+    height: 25,
+    backgroundColor: ACID,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '10deg' }],
+  },
   dailyTapeText: { color: INK, fontSize: 7, fontWeight: '900', letterSpacing: 0.8 },
-  dailyTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingRight: 45 },
+  dailyTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingRight: 45,
+  },
   dailyKicker: { color: '#763A24', fontSize: 7, fontWeight: '900', letterSpacing: 1 },
   dailyTitle: { color: INK, fontSize: 27, fontWeight: '900', letterSpacing: -0.9, marginTop: 2 },
-  dailyStamp: { width: 55, height: 55, borderRadius: 16, backgroundColor: PAPER, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '5deg' }] },
+  dailyStamp: {
+    width: 55,
+    height: 55,
+    borderRadius: 16,
+    backgroundColor: PAPER,
+    borderWidth: 2,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '5deg' }],
+  },
   dailyText: { color: '#543022', fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 11 },
   dailyActions: { flexDirection: 'row', gap: 8, marginTop: 13 },
-  dailyPrimary: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ACID, borderRadius: 13, borderWidth: 2, borderColor: INK },
-  dailyDoneButton: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ACID, borderRadius: 13, borderWidth: 2, borderColor: INK },
+  dailyPrimary: {
+    flex: 1,
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: ACID,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: INK,
+  },
+  dailyDoneButton: {
+    flex: 1,
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: ACID,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: INK,
+  },
   dailyPrimaryText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  dailySecondary: { flex: 1, minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: PAPER, borderRadius: 13, borderWidth: 2, borderColor: INK },
+  dailySecondary: {
+    flex: 1,
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: PAPER,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: INK,
+  },
   dailySecondaryText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
 
-  verificationRail: { marginHorizontal: 14, marginTop: 11, minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: ACID, borderRadius: 16, borderWidth: 2, borderColor: INK, paddingHorizontal: 12 },
+  verificationRail: {
+    marginHorizontal: 14,
+    marginTop: 11,
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: ACID,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: INK,
+    paddingHorizontal: 12,
+  },
   verificationCopy: { flex: 1 },
   verificationTitle: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
-  verificationText: { color: '#5D641F', fontSize: 8.5, lineHeight: 13, fontWeight: '700', marginTop: 2 },
+  verificationText: {
+    color: '#5D641F',
+    fontSize: 8.5,
+    lineHeight: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
 
-  sectionHeader: { paddingHorizontal: 18, paddingTop: 25, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 25,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sectionKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1 },
-  sectionTitle: { color: PAPER, fontSize: 19, fontWeight: '900', letterSpacing: -0.45, marginTop: 2 },
-  fileCountBadge: { minHeight: 31, borderRadius: 999, backgroundColor: '#171A20', borderWidth: 1.5, borderColor: '#30343D', paddingHorizontal: 10, justifyContent: 'center' },
+  sectionTitle: {
+    color: PAPER,
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: -0.45,
+    marginTop: 2,
+  },
+  fileCountBadge: {
+    minHeight: 31,
+    borderRadius: 999,
+    backgroundColor: '#171A20',
+    borderWidth: 1.5,
+    borderColor: '#30343D',
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
   fileCountText: { color: '#8B929E', fontSize: 7, fontWeight: '900', letterSpacing: 0.75 },
 
-  card: { marginHorizontal: 14, marginBottom: 12, backgroundColor: PAPER, borderRadius: 20, borderWidth: 2, borderColor: INK, padding: 14, overflow: 'hidden', position: 'relative' },
+  card: {
+    marginHorizontal: 14,
+    marginBottom: 12,
+    backgroundColor: PAPER,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: INK,
+    padding: 14,
+    overflow: 'hidden',
+    position: 'relative',
+  },
   cardTilt: { transform: [{ rotate: '0.35deg' }] },
   cardStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 3 },
-  statusStamp: { width: 46, height: 46, borderRadius: 13, borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-4deg' }] },
+  statusStamp: {
+    width: 46,
+    height: 46,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-4deg' }],
+  },
   cardCopy: { flex: 1 },
   statusKicker: { color: ORANGE, fontSize: 6.5, fontWeight: '900', letterSpacing: 0.8 },
-  trickName: { color: INK, fontSize: 17, lineHeight: 20, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
+  trickName: {
+    color: INK,
+    fontSize: 17,
+    lineHeight: 20,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    marginTop: 2,
+  },
   attemptsText: { color: '#747871', fontSize: 8.5, fontWeight: '800', marginTop: 3 },
-  deleteButton: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#F0D4CC', borderWidth: 1, borderColor: '#D6AAA0', alignItems: 'center', justifyContent: 'center' },
+  deleteButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    backgroundColor: '#F0D4CC',
+    borderWidth: 1,
+    borderColor: '#D6AAA0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   progressRail: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, marginTop: 16 },
-  progressDot: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#D8D2C6', borderWidth: 1.5, borderColor: '#BFB7AA', alignItems: 'center', justifyContent: 'center' },
+  progressDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#D8D2C6',
+    borderWidth: 1.5,
+    borderColor: '#BFB7AA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   progressDotReached: { backgroundColor: ACID, borderColor: INK },
   progressDotText: { color: '#8A8D86', fontSize: 8, fontWeight: '900' },
   progressDotTextReached: { color: INK },
   progressLine: { flex: 1, height: 4, backgroundColor: '#D8D2C6' },
   progressLineReached: { backgroundColor: ACID },
-  progressLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5, paddingHorizontal: 2 },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+    paddingHorizontal: 2,
+  },
   progressLabel: { color: '#8A8D86', fontSize: 6, fontWeight: '900', letterSpacing: 0.5 },
   actionRow: { flexDirection: 'row', gap: 7, marginTop: 14 },
-  tryButton: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: ORANGE, borderRadius: 12, borderWidth: 1.5, borderColor: INK },
+  tryButton: {
+    flex: 1,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: ORANGE,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INK,
+  },
   tryButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  advanceButton: { flex: 1.3, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: ACID, borderRadius: 12, borderWidth: 1.5, borderColor: INK },
+  advanceButton: {
+    flex: 1.3,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: ACID,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INK,
+  },
   advanceButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.65 },
-  lockedStateButton: { flex: 1.3, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: BLUE, borderRadius: 12, borderWidth: 1.5, borderColor: INK },
+  lockedStateButton: {
+    flex: 1.3,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: INK,
+  },
   lockedStateText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.65 },
 
-  empty: { marginHorizontal: 14, marginTop: 28, minHeight: 235, borderRadius: 24, borderWidth: 1.5, borderColor: '#30343D', backgroundColor: '#13161C', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyStamp: { width: 64, height: 64, borderRadius: 19, backgroundColor: ACID, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  empty: {
+    marginHorizontal: 14,
+    marginTop: 28,
+    minHeight: 235,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#30343D',
+    backgroundColor: '#13161C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyStamp: {
+    width: 64,
+    height: 64,
+    borderRadius: 19,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-5deg' }],
+  },
   emptyKicker: { color: ORANGE, fontSize: 7, fontWeight: '900', letterSpacing: 1, marginTop: 14 },
   emptyTitle: { color: PAPER, fontSize: 15, fontWeight: '900', letterSpacing: 0.7, marginTop: 3 },
-  emptyText: { color: '#7F8793', fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 6, maxWidth: 275 },
-  emptyButton: { minHeight: 45, marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ORANGE, borderRadius: 12, borderWidth: 2, borderColor: INK, paddingHorizontal: 15 },
+  emptyText: {
+    color: '#7F8793',
+    fontSize: 11,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 6,
+    maxWidth: 275,
+  },
+  emptyButton: {
+    minHeight: 45,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: ORANGE,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: INK,
+    paddingHorizontal: 15,
+  },
   emptyButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
 
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' },
-  modalCard: { maxHeight: '82%', backgroundColor: PAPER, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 2, borderBottomWidth: 0, borderColor: INK, padding: 18, paddingBottom: 28 },
-  modalHandle: { width: 48, height: 5, borderRadius: 999, backgroundColor: '#C8C1B5', alignSelf: 'center', marginBottom: 15 },
+  modalCard: {
+    maxHeight: '82%',
+    backgroundColor: PAPER,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 2,
+    borderBottomWidth: 0,
+    borderColor: INK,
+    padding: 18,
+    paddingBottom: 28,
+  },
+  modalHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#C8C1B5',
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
   modalTopRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  modalStamp: { width: 50, height: 50, borderRadius: 15, backgroundColor: ACID, borderWidth: 2, borderColor: INK, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '-5deg' }] },
+  modalStamp: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    backgroundColor: ACID,
+    borderWidth: 2,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-5deg' }],
+  },
   modalCopy: { flex: 1 },
   modalKicker: { color: ORANGE, fontSize: 6.5, fontWeight: '900', letterSpacing: 0.8 },
   modalTitle: { color: INK, fontSize: 19, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
-  modalInput: { minHeight: 52, marginTop: 15, backgroundColor: '#EAE5DB', borderRadius: 14, borderWidth: 1.5, borderColor: '#CFC7BB', color: INK, paddingHorizontal: 12, fontSize: 13, fontWeight: '700' },
-  commonLabel: { color: '#7D817A', fontSize: 7, fontWeight: '900', letterSpacing: 0.9, marginTop: 14, marginBottom: 7 },
+  modalInput: {
+    minHeight: 52,
+    marginTop: 15,
+    backgroundColor: '#EAE5DB',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#CFC7BB',
+    color: INK,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  commonLabel: {
+    color: '#7D817A',
+    fontSize: 7,
+    fontWeight: '900',
+    letterSpacing: 0.9,
+    marginTop: 14,
+    marginBottom: 7,
+  },
   commonScroll: { maxHeight: 240 },
   commonWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingBottom: 4 },
-  commonChip: { borderRadius: 999, borderWidth: 1.5, borderColor: '#C8C0B4', backgroundColor: '#EAE5DB', paddingHorizontal: 10, paddingVertical: 7 },
+  commonChip: {
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#C8C0B4',
+    backgroundColor: '#EAE5DB',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
   commonChipActive: { backgroundColor: ACID, borderColor: INK },
   commonChipText: { color: INK, fontSize: 8, fontWeight: '800' },
   modalActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  cancelButton: { flex: 1, minHeight: 48, borderRadius: 13, borderWidth: 1.5, borderColor: INK, alignItems: 'center', justifyContent: 'center' },
+  cancelButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cancelButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
-  saveButton: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 13, borderWidth: 2, borderColor: INK, backgroundColor: ORANGE },
+  saveButton: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: INK,
+    backgroundColor: ORANGE,
+  },
   saveButtonText: { color: INK, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
   disabled: { opacity: 0.45 },
 });

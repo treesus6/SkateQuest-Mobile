@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -12,6 +12,12 @@ import Constants from 'expo-constants';
 import { Crosshair, Flame, MapPin, Plus, RotateCcw, TriangleAlert } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { getBrowserLocation } from '../lib/browserLocation';
+import { useSpotDiscovery } from '../hooks/useSpotDiscovery';
+import { DiscoveryFilter, matchesDiscoveryFilter } from '../lib/discoveryService';
+import DiscoveryFilterChips from '../components/DiscoveryFilterChips';
+import PartnerDiscoveryCard, { openDiscoveryPartner } from '../components/PartnerDiscoveryCard';
+import { savedSpotsService } from '../lib/savedSpotsService';
+import { useAuthStore } from '../stores/useAuthStore';
 import { spotsService } from '../lib/spotsService';
 import { Logger } from '../lib/logger';
 import { getMapboxAvailabilityError, getMapInitializationError } from '../lib/mapboxWebSupport';
@@ -24,19 +30,32 @@ const ACID = '#D9F34A';
 const MUTED = '#7F8793';
 
 const NEUTRAL_CENTER: [number, number] = [0, 20];
-const PORTAL_DIMENSION_COORDINATES: [number, number] = [-124.05915, 44.64155];
-const PORTAL_DIMENSION_URL = 'https://portaldimension.com';
-const PORTAL_DIMENSION_LOGO =
-  'https://raw.githubusercontent.com/treesus6/SkateQuest-Mobile/main/assets/supporters/portal-dimension.png';
 
 export default function MapScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const [discoveryFilter, setDiscoveryFilter] = useState<DiscoveryFilter>('all');
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<any>(null);
   const mapRef = useRef<MapboxGLMap | null>(null);
   const markersRef = useRef<MapboxGLMarker[]>([]);
   const spotsRequestRef = useRef(0);
   const moveReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spots, setSpots] = useState<SkateSpot[]>([]);
+  const discovery = useSpotDiscovery(spots.map(spot => spot.id));
+  const visibleSpots = useMemo(
+    () =>
+      spots.filter(spot =>
+        matchesDiscoveryFilter(
+          spot,
+          discoveryFilter,
+          discovery.pulse[spot.id],
+          discovery.partners,
+          savedIds
+        )
+      ),
+    [spots, discoveryFilter, discovery.pulse, discovery.partners, savedIds]
+  );
   const [selectedSpot, setSelectedSpot] = useState<SkateSpot | null>(null);
   const [center, setCenter] = useState<[number, number]>(NEUTRAL_CENTER);
   const [hasRealCenter, setHasRealCenter] = useState(false);
@@ -44,6 +63,18 @@ export default function MapScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapUnavailable, setMapUnavailable] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSavedIds(new Set());
+    if (user?.id)
+      void savedSpotsService
+        .getSavedSpotIds(user.id)
+        .then(result => {
+          if (result.error) throw result.error;
+          setSavedIds(new Set(result.data));
+        })
+        .catch(err => Logger.error('Saved spots failed', err));
+  }, [user?.id]);
 
   const token =
     (Constants.expoConfig?.extra?.mapboxAccessToken as string | undefined) ??
@@ -177,7 +208,7 @@ export default function MapScreen() {
 
     markersRef.current.forEach(marker => marker.remove());
 
-    const spotMarkers = spots.map(spot => {
+    const spotMarkers = visibleSpots.map(spot => {
       const selected = selectedSpot?.id === spot.id;
       const hasPhoto = typeof spot.image_url === 'string' && spot.image_url.trim().length > 0;
       const el = document.createElement('button');
@@ -196,6 +227,18 @@ export default function MapScreen() {
         : '0 0 0 4px rgba(217,243,74,.22), 0 5px 12px rgba(0,0,0,.32)';
       el.style.cursor = 'pointer';
       el.style.transition = 'all 160ms ease';
+      const active = Number(discovery.pulse[spot.id]?.active_skaters ?? 0);
+      if (active > 0) {
+        el.title = `${spot.name} · ${active} skating now`;
+        if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+          el.animate(
+            [
+              { boxShadow: '0 0 0 4px rgba(216,240,75,.6)' },
+              { boxShadow: '0 0 0 18px rgba(216,240,75,0)' },
+            ],
+            { duration: 1600, iterations: Infinity }
+          );
+      }
       if (hasPhoto) {
         const image = document.createElement('img');
         image.src = spot.image_url!;
@@ -219,43 +262,58 @@ export default function MapScreen() {
         .addTo(map);
     });
 
-    const sponsorElement = document.createElement('button');
-    sponsorElement.type = 'button';
-    sponsorElement.title = 'Portal Dimension — Newport, Oregon Skatepark';
-    sponsorElement.setAttribute('aria-label', 'Open Portal Dimension website');
-    sponsorElement.style.width = '58px';
-    sponsorElement.style.height = '58px';
-    sponsorElement.style.borderRadius = '14px';
-    sponsorElement.style.border = `3px solid ${ORANGE}`;
-    sponsorElement.style.background = '#fff';
-    sponsorElement.style.padding = '3px';
-    sponsorElement.style.cursor = 'pointer';
-    sponsorElement.style.boxShadow = '0 6px 18px rgba(0,0,0,.34)';
-
-    const sponsorImage = document.createElement('img');
-    sponsorImage.src = PORTAL_DIMENSION_LOGO;
-    sponsorImage.alt = 'Portal Dimension';
-    sponsorImage.style.width = '100%';
-    sponsorImage.style.height = '100%';
-    sponsorImage.style.objectFit = 'contain';
-    sponsorImage.style.display = 'block';
-    sponsorElement.appendChild(sponsorImage);
-    sponsorElement.addEventListener('click', event => {
-      event.stopPropagation();
-      window.open(PORTAL_DIMENSION_URL, '_blank', 'noopener,noreferrer');
-    });
-
-    const sponsorMarker = new mapbox.Marker({ element: sponsorElement })
-      .setLngLat(PORTAL_DIMENSION_COORDINATES)
-      .setPopup(
-        new mapbox.Popup({ offset: 20 }).setHTML(
-          '<strong>Portal Dimension</strong><br/>Newport, Oregon skatepark partner — tap the logo to visit.'
-        )
-      )
-      .addTo(map);
-
-    markersRef.current = [...spotMarkers, sponsorMarker];
-  }, [spots, selectedSpot?.id]);
+    const sponsorMarkers = discovery.partners
+      .filter(() => discoveryFilter === 'all' || discoveryFilter === 'partners')
+      .map(partner => {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.title = partner.name;
+        el.setAttribute('aria-label', `Visit ${partner.name}`);
+        Object.assign(el.style, {
+          width: '58px',
+          height: '76px',
+          background: '#fff',
+          border: '3px solid #D8F04B',
+          cursor: 'pointer',
+          padding: '4px',
+        });
+        if (partner.logo_url) {
+          const img = document.createElement('img');
+          img.src = partner.logo_url;
+          img.alt = partner.name;
+          Object.assign(img.style, { width: '100%', height: '48px', objectFit: 'contain' });
+          el.appendChild(img);
+        } else {
+          el.textContent = partner.name;
+        }
+        const count = document.createElement('span');
+        count.textContent =
+          partner.referral_clicks == null ? 'TAPS —' : `${partner.referral_clicks} TAPS`;
+        Object.assign(count.style, {
+          display: 'block',
+          fontSize: '9px',
+          fontWeight: '900',
+          color: INK,
+        });
+        el.appendChild(count);
+        el.addEventListener('click', event => {
+          event.stopPropagation();
+          void openDiscoveryPartner(partner, 'map', !!user).catch(err => {
+            Logger.error('Partner referral failed', err);
+            setError('Partner visit could not be recorded. Please retry.');
+          });
+        });
+        return new mapbox.Marker({ element: el })
+          .setLngLat([partner.longitude, partner.latitude])
+          .setPopup(
+            new mapbox.Popup({ offset: 20 }).setText(
+              `${partner.name} · ${partner.category.replace(/_/g, ' ')}`
+            )
+          )
+          .addTo(map);
+      });
+    markersRef.current = [...spotMarkers, ...sponsorMarkers];
+  }, [visibleSpots, selectedSpot?.id, discovery.partners, discovery.pulse, discoveryFilter, user]);
 
   if (!token) {
     return (
@@ -327,6 +385,61 @@ export default function MapScreen() {
         />
       </View>
 
+      <View style={{ position: 'absolute', top: 152, left: 12, right: 12 }}>
+        <DiscoveryFilterChips value={discoveryFilter} onChange={setDiscoveryFilter} />
+        {discovery.error ? (
+          <Pressable onPress={() => void discovery.refresh()}>
+            <Text style={{ color: '#FFAF8B', backgroundColor: INK, padding: 8 }}>
+              Live activity unavailable. Tap to retry.
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {selectedSpot ? (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 210,
+            left: 14,
+            right: 14,
+            backgroundColor: INK,
+            padding: 12,
+            maxHeight: 300,
+          }}
+        >
+          <ScrollView>
+            <Text style={{ color: PAPER, fontWeight: '900' }}>
+              {selectedSpot.name} · {discovery.pulse[selectedSpot.id]?.active_skaters ?? '—'}{' '}
+              skating now
+            </Text>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/live-check-in',
+                  params: { spotId: selectedSpot.id },
+                } as any)
+              }
+              style={{ backgroundColor: ACID, padding: 14, marginTop: 10 }}
+            >
+              <Text style={{ fontWeight: '900', color: INK }}>CHECK IN / JOIN SESSION</Text>
+            </Pressable>
+            <Pressable onPress={() => openSpot(selectedSpot)} style={{ padding: 14 }}>
+              <Text style={{ color: PAPER }}>LOG CONDITION / VIEW DETAILS ↗</Text>
+            </Pressable>
+            {discovery.partners
+              .filter(partner => partner.spot_id === selectedSpot.id)
+              .map(partner => (
+                <PartnerDiscoveryCard key={partner.id} partner={partner} surface="spot" />
+              ))}
+            <Pressable
+              onPress={() => setSelectedSpot(null)}
+              style={{ minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text style={{ color: ORANGE }}>CLOSE</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      ) : null}
       {loading ? (
         <View style={s.loadingBadge}>
           <ActivityIndicator color={INK} />
@@ -340,7 +453,7 @@ export default function MapScreen() {
         contentContainerStyle={s.spotRail}
         showsHorizontalScrollIndicator={false}
       >
-        {spots.slice(0, 15).map((spot, index) => {
+        {visibleSpots.slice(0, 15).map((spot, index) => {
           const selected = selectedSpot?.id === spot.id;
           return (
             <Pressable
@@ -396,10 +509,10 @@ export default function MapScreen() {
           );
         })}
 
-        {spots.length === 0 && !loading ? (
+        {visibleSpots.length === 0 && !loading ? (
           <View style={s.emptyCard}>
             <Flame color={ORANGE} size={24} />
-            <Text style={s.emptyTitle}>NO SAVED SPOTS HERE YET</Text>
+            <Text style={s.emptyTitle}>NO MATCHING SPOTS HERE YET</Text>
             <Text style={s.emptyText}>
               GPS only finds nearby pins—it never limits where you can add one. Move the map and
               drop a real spot anywhere.
